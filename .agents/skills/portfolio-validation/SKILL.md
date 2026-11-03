@@ -43,7 +43,7 @@ branch.
    git merge origin/portfolio        # one-way absorb: portfolio -> portfolio_validations
    ```
 4. **Fork-internal only, never cross-fork.** Every PR targets `portfolio`
-   inside `prajoria/OpenBB`. Always pass `--repo prajoria/OpenBB --base portfolio`.
+   inside `rashmijain02/OpenBB`. Always pass `--repo rashmijain02/OpenBB --base portfolio`.
    Never target `OpenBB-finance/OpenBB` or any other fork. (Same hard rule as
    the rest of this repo — see CLAUDE.md.)
 5. **Never propose `portfolio_validations` → `develop`.** Promotion toward
@@ -98,7 +98,7 @@ branch.
   git add <files>
   git commit -m "<type>(<scope>): <what>"   # cite the issue if one exists: Refs #NN / Closes #NN
   git push
-  gh pr create --repo prajoria/OpenBB --base portfolio --head portfolio_validations \
+  gh pr create --repo rashmijain02/OpenBB --base portfolio --head portfolio_validations \
     --title "..." --body "..."
   ```
   Open exactly ONE PR; do not open the next until this one lands.
@@ -117,7 +117,7 @@ branch.
 ## What carries over unchanged from openbb-dev-cycle
 - Conservative git profile — no commit/push/PR/merge without explicit
   in-session authorization.
-- Fork-internal PRs only (`--repo prajoria/OpenBB`); never cross-fork.
+- Fork-internal PRs only (`--repo rashmijain02/OpenBB`); never cross-fork.
 - Provider policy: `fmp_cached` preferred, `fmp` fallback (+ `area:fmp-cached-gap`
   issue), never yfinance.
 - `.venv_portfolio` interpreter for all Python; never system Python.

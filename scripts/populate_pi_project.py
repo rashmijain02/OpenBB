@@ -28,7 +28,7 @@ from pathlib import Path
 
 # ---------- constants ----------
 OWNER = "prajoria"
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # project #4
 
 FIELD = {

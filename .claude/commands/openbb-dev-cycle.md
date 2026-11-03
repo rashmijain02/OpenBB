@@ -87,7 +87,7 @@ Example: if the doc says `<TASK: create title="foo" type=bug priority=P1>`
 and the mode is `gh`, resolve to:
 
 ```
-gh issue create --repo prajoria/OpenBB --title "foo" --label type:bug --label priority:P1
+gh issue create --repo rashmijain02/OpenBB --title "foo" --label type:bug --label priority:P1
 ```
 
 Never paste `<TASK: ...>` verbatim into a shell or tool call — it will fail.
@@ -416,7 +416,7 @@ The `<TASK: ...>` placeholders above translate to the following per mode.
 
 | Mode | Command |
 |---|---|
-| gh | `gh issue create --repo prajoria/OpenBB --title "<title>" --body "<body>" --label type:<T> --label priority:<P>[ --label area:<A>]` |
+| gh | `gh issue create --repo rashmijain02/OpenBB --title "<title>" --body "<body>" --label type:<T> --label priority:<P>[ --label area:<A>]` |
 | bd | `bd create --title="<title>" --description="<body>" --type=<T> --priority=<P>` |
 | ephemeral | `TaskCreate(subject="<title>", description="<body>")` |
 
