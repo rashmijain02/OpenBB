@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "scripts" / "fmp_full_coverage_items.json"
 DATA = ROOT / "scripts" / "fmp_full_coverage_endpoints.json"
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 PROJECT_ID = "PVT_kwHOAOc7384BdSTg"
 FIELD_TYPE = "PVTSSF_lAHOAOc7384BdSTgzhX06C4"
 TYPE_EPIC = "6a4a1e4d"

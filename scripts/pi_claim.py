@@ -37,7 +37,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ITEMS_JSON = REPO_ROOT / "scripts" / "pi_project_items.json"
 

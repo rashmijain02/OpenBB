@@ -181,7 +181,7 @@ localhost and widgets show fetch/CORS errors.
 - [ ] The narrative matches the notebook story for that ticker (per-ticker
       widgets should tell the SAME story as the Analysis notebook).
 - [ ] Screenshot captured as evidence; log any defect as a GitHub issue on
-      `prajoria/OpenBB` added to Project #4 BEFORE fixing (per repo protocol).
+      `rashmijain02/OpenBB` added to Project #4 BEFORE fixing (per repo protocol).
 
 ---
 

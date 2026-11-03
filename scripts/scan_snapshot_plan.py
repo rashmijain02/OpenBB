@@ -28,7 +28,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # Project #4
 PARENT = 1934
 DEPENDENCY_MARKER = re.compile(r"\[\[([A-Z]\d+)\]\]")

@@ -1,37 +1,37 @@
 [submodule "third_party/adk-python"]
 	path = third_party/adk-python
-	url = https://github.com/prajoria/adk-python.git
+	url = https://github.com/rashmijain02/adk-python.git
 	branch = main
 [submodule "third_party/awesome-quant"]
 	path = third_party/awesome-quant
-	url = https://github.com/prajoria/awesome-quant
+	url = https://github.com/rashmijain02/awesome-quant
 [submodule "third_party/openbb-docs"]
 	path = third_party/openbb-docs
 	url = https://github.com/OpenBB-finance/openbb-docs
 	branch = main
 [submodule "openbb_platform/extensions/techtrade/external/pandas-ta-classic"]
 	path = openbb_platform/extensions/techtrade/external/pandas-ta-classic
-	url = https://github.com/prajoria/pandas-ta-classic.git
+	url = https://github.com/rashmijain02/pandas-ta-classic.git
 [submodule "copilot-api"]
 	path = copilot-api
-	url = https://github.com/prajoria/copilot-api.git
+	url = https://github.com/rashmijain02/copilot-api.git
 	branch = master
 [submodule "third_party/openfigi-api"]
 	path = third_party/openfigi-api
-	url = https://github.com/prajoria/openfigi-api.git
+	url = https://github.com/rashmijain02/openfigi-api.git
 [submodule "third_party/backends-for-openbb"]
 	path = third_party/backends-for-openbb
-	url = https://github.com/prajoria/backends-for-openbb.git
+	url = https://github.com/rashmijain02/backends-for-openbb.git
 	branch = main
 [submodule "third_party/agents-for-openbb"]
 	path = third_party/agents-for-openbb
-	url = https://github.com/prajoria/agents-for-openbb.git
+	url = https://github.com/rashmijain02/agents-for-openbb.git
 	branch = main
 [submodule "third_party/openbb-workspace-bench"]
 	path = third_party/openbb-workspace-bench
-	url = https://github.com/prajoria/openbb-workspace-bench.git
+	url = https://github.com/rashmijain02/openbb-workspace-bench.git
 	branch = main
 [submodule "third_party/workspace"]
 	path = third_party/workspace
-	url = https://github.com/prajoria/workspace.git
+	url = https://github.com/rashmijain02/workspace.git
 	branch = main

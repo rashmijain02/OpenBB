@@ -65,4 +65,4 @@
 # - linear.api_key  → use LINEAR_API_KEY env var instead
 # - github.token    → use GITHUB_TOKEN env var instead
 
-sync.remote: "git+https://github.com/prajoria/OpenBB.git"
+sync.remote: "git+https://github.com/rashmijain02/OpenBB.git"

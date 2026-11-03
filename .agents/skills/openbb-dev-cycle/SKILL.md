@@ -84,7 +84,7 @@ If a repo has no active GH Project for the program, the skill halts and asks the
 1. **Recover abandoned claims before taking new work**:
    ```bash
    .venv_portfolio\Scripts\python.exe scripts\pi_claim.py --list-stale
-   gh issue list --repo prajoria/OpenBB --assignee @me --state open
+   gh issue list --repo rashmijain02/OpenBB --assignee @me --state open
    ```
    - A claim with no heartbeat or a heartbeat older than 2 hours has no active
      owner and is reclaimable.

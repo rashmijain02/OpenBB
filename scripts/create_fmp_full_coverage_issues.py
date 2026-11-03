@@ -1,4 +1,4 @@
-"""Create the FMP full-coverage issue hierarchy on prajoria/OpenBB and link it to
+"""Create the FMP full-coverage issue hierarchy on rashmijain02/OpenBB and link it to
 GitHub Project #4 (Portfolio Intelligence Engine).
 
 Hierarchy:
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "scripts" / "fmp_full_coverage_endpoints.json"
 STATE = ROOT / "scripts" / "fmp_full_coverage_items.json"
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # project #4
 EPIC_NUMBER = 844
 
