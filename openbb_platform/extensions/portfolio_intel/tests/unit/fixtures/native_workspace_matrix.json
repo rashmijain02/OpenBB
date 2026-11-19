@@ -1,0 +1,2729 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "apps": 3,
+    "placements": 96,
+    "widgets": 61,
+    "types": {
+      "chart": 14,
+      "markdown": 14,
+      "metric": 4,
+      "table": 29
+    }
+  },
+  "apps": [
+    {
+      "id": "custom-portfolio-intelligence-overview",
+      "name": "Portfolio Intelligence - Overview",
+      "description": "Default portfolio-intel dashboard: X-Ray, What-If, and Brinson attribution.",
+      "tabs": [
+        {
+          "id": "overview",
+          "name": "Overview",
+          "placements": 3
+        }
+      ],
+      "groups": [],
+      "params": {}
+    },
+    {
+      "id": "custom-portfolio-intelligence-terminal",
+      "name": "Portfolio Intelligence - Terminal",
+      "description": "Eleven-tab persona surface: seven research tabs (symbol-scoped) plus four portfolio tabs (book-scoped). Sandbox-style clone extended with X-Ray, Risk, Paper Trading, and Alerts (EPIC #1634). Context bars: research tabs share `symbol`; portfolio tabs share `account_id`.",
+      "tabs": [
+        {
+          "id": "overview",
+          "name": "F1: Overview",
+          "placements": 6
+        },
+        {
+          "id": "financials",
+          "name": "F2: Financials",
+          "placements": 12
+        },
+        {
+          "id": "technicals",
+          "name": "F3: Technicals",
+          "placements": 5
+        },
+        {
+          "id": "comparison",
+          "name": "F4: Comparison",
+          "placements": 5
+        },
+        {
+          "id": "ownership",
+          "name": "F5: Ownership",
+          "placements": 4
+        },
+        {
+          "id": "calendar",
+          "name": "F6: Calendar",
+          "placements": 4
+        },
+        {
+          "id": "estimates",
+          "name": "F7: Estimates",
+          "placements": 5
+        },
+        {
+          "id": "xray",
+          "name": "F8: X-Ray",
+          "placements": 7
+        },
+        {
+          "id": "risk",
+          "name": "F9: Risk & Attribution",
+          "placements": 9
+        },
+        {
+          "id": "paper",
+          "name": "F10: Paper Trading",
+          "placements": 8
+        },
+        {
+          "id": "alerts",
+          "name": "F11: Alerts & Catalysts",
+          "placements": 8
+        },
+        {
+          "id": "morning-review",
+          "name": "Morning Review (W8)",
+          "placements": 8
+        }
+      ],
+      "groups": [],
+      "params": {
+        "symbol": "AAPL",
+        "account_id": "demo"
+      }
+    },
+    {
+      "id": "custom-techtrade-desk",
+      "name": "Techtrade Trading Desk",
+      "description": "Systematic-trader desk surface (F13, EPIC #1691). Morning Scan (T1) ships first; T2-T6 (Position Workbench, Validation, Tuning, Audit, Engine Status) land per-widget in follow-up cycles.",
+      "tabs": [
+        {
+          "id": "morning-scan",
+          "name": "T1: Morning Scan",
+          "placements": 3
+        },
+        {
+          "id": "position-workbench",
+          "name": "T2: Position Workbench",
+          "placements": 4
+        },
+        {
+          "id": "validation",
+          "name": "T3: Validation",
+          "placements": 1
+        },
+        {
+          "id": "tuning",
+          "name": "T4: Tuning",
+          "placements": 1
+        },
+        {
+          "id": "audit",
+          "name": "T6: Audit Journal",
+          "placements": 1
+        },
+        {
+          "id": "engine-status",
+          "name": "T5: Engine Status",
+          "placements": 2
+        }
+      ],
+      "groups": [],
+      "params": {
+        "segment": "",
+        "symbol": "AAPL"
+      }
+    }
+  ],
+  "widgets": [
+    {
+      "id": "pi_alerts_panel",
+      "name": "Alerts Panel",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/alerts",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "severity",
+        "kind",
+        "symbol",
+        "detail"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 6,
+          "w": 30,
+          "h": 10
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 20,
+          "y": 12,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_backtest_button",
+      "name": "Backtest - One Click",
+      "type": "markdown",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/backtest/oneclick",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "gate-required",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 28,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_basket_analyst_consensus",
+      "name": "Basket Analyst Consensus",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/equity/basket-analyst-consensus",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "basket_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "avg_target",
+        "buy",
+        "hold",
+        "sell",
+        "consensus"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "estimates",
+          "tabName": "F7: Estimates",
+          "x": 0,
+          "y": 18,
+          "w": 30,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_book_context",
+      "name": "Book Context Bar",
+      "type": "markdown",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/context/book",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        }
+      ]
+    },
+    {
+      "id": "pi_brinson_attribution",
+      "name": "Brinson-Fachler Attribution",
+      "type": "chart",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/attribution",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "window",
+          "type": "text",
+          "default": "1Y",
+          "show": null
+        },
+        {
+          "name": "benchmark_symbol",
+          "type": "text",
+          "default": "SPY",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-overview",
+          "appName": "Portfolio Intelligence - Overview",
+          "tabId": "overview",
+          "tabName": "Overview",
+          "x": 0,
+          "y": 9,
+          "w": 40,
+          "h": 9
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 14,
+          "w": 40,
+          "h": 9
+        }
+      ]
+    },
+    {
+      "id": "pi_charting",
+      "name": "Charting (OHLC + Indicators)",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/charting",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "window",
+          "type": "text",
+          "default": "3M",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_company_filings",
+      "name": "Company Filings",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/company-filings",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_concentration_gauge",
+      "name": "Concentration Gauge",
+      "type": "metric",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/concentration",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [
+        "Concentration (HHI)"
+      ],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 0,
+          "y": 15,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 12,
+          "y": 6,
+          "w": 8,
+          "h": 6
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 0,
+          "y": 6,
+          "w": 8,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_data_provenance",
+      "name": "Data Provenance Bar",
+      "type": "markdown",
+      "category": "Chrome",
+      "endpoint": "pi/context/provenance",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "technicals",
+          "tabName": "F3: Technicals",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "comparison",
+          "tabName": "F4: Comparison",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "ownership",
+          "tabName": "F5: Ownership",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "calendar",
+          "tabName": "F6: Calendar",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "estimates",
+          "tabName": "F7: Estimates",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 3
+        }
+      ]
+    },
+    {
+      "id": "pi_dividend_payment",
+      "name": "Dividend Payment",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/dividend-payment",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "ex_date",
+        "payment_date",
+        "amount"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 20,
+          "y": 48,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_earnings_history",
+      "name": "Earnings History",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/earnings-history",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "quarter",
+        "eps_actual",
+        "eps_estimate",
+        "surprise_pct"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 20,
+          "y": 28,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_earnings_transcripts",
+      "name": "Earnings Transcripts",
+      "type": "markdown",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/earnings-transcripts",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_equity_analyst_forecasts",
+      "name": "Equity Profile - Analyst Forecasts",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/analyst-forecasts",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "metric",
+        "value",
+        "note"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "estimates",
+          "tabName": "F7: Estimates",
+          "x": 0,
+          "y": 6,
+          "w": 40,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_competitors",
+      "name": "Equity Profile - Competitor Strip",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/competitors",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "name",
+        "price",
+        "change_pct"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "comparison",
+          "tabName": "F4: Comparison",
+          "x": 0,
+          "y": 6,
+          "w": 40,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_complementary",
+      "name": "Equity Profile - Complementary Assets (bonds blocked on #1000)",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/complementary",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "kind",
+        "id",
+        "name",
+        "weight_pct",
+        "value_usd"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "comparison",
+          "tabName": "F4: Comparison",
+          "x": 0,
+          "y": 12,
+          "w": 40,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_financial_charts",
+      "name": "Equity Profile - Financial Statement Charts",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/financials",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "combo",
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 20,
+          "y": 6,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_key_stats",
+      "name": "Equity Profile - Key Stats",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/key-stats",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "metric",
+        "value"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 0,
+          "y": 11,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 6,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "ownership",
+          "tabName": "F5: Ownership",
+          "x": 0,
+          "y": 6,
+          "w": 40,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_price_history",
+      "name": "Equity Price History (line / candle)",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/price-history",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "chart_type",
+          "type": "text",
+          "default": "line",
+          "show": null
+        },
+        {
+          "name": "range",
+          "type": "text",
+          "default": "6M",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 20,
+          "y": 11,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "technicals",
+          "tabName": "F3: Technicals",
+          "x": 20,
+          "y": 6,
+          "w": 20,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_profile_header",
+      "name": "Equity Profile - Header + Live Price",
+      "type": "markdown",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/header",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 0,
+          "y": 6,
+          "w": 40,
+          "h": 5
+        }
+      ]
+    },
+    {
+      "id": "pi_equity_technicals",
+      "name": "Equity Profile - Technicals + Pivots (IV blocked on #999)",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/technicals",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "metric",
+        "value",
+        "note"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "technicals",
+          "tabName": "F3: Technicals",
+          "x": 0,
+          "y": 6,
+          "w": 20,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_event_calendar",
+      "name": "Event Calendar",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/events/calendar",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        },
+        {
+          "name": "horizon_days",
+          "type": "text",
+          "default": "14",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "type",
+        "date",
+        "detail"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "calendar",
+          "tabName": "F6: Calendar",
+          "x": 0,
+          "y": 6,
+          "w": 40,
+          "h": 12
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 16,
+          "w": 30,
+          "h": 10
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 0,
+          "y": 12,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_financial_statements",
+      "name": "Financial Statements",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/statements",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "period",
+          "type": "text",
+          "default": "annual",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "line_item",
+        "period_1",
+        "period_2"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 16,
+          "w": 40,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_insider_trading",
+      "name": "Insider Trading",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/insider-trading",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_institutional_ownership",
+      "name": "Institutional Ownership",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/institutional-ownership",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_lookthrough_top25",
+      "name": "Look-Through - Top 25 Holdings",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/lookthrough/top25",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "name",
+        "effective_weight",
+        "rank"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 12,
+          "y": 15,
+          "w": 28,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "pi_management_team",
+      "name": "Management Team",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/management-team",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_news_ribbon",
+      "name": "News - Held Symbols",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/news",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        },
+        {
+          "name": "horizon_days",
+          "type": "text",
+          "default": "7",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "when",
+        "title",
+        "severity"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 34,
+          "w": 30,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_paper_blotter",
+      "name": "Paper Blotter (PAPER)",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/paper/blotter",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "time",
+        "symbol",
+        "side",
+        "qty",
+        "status",
+        "avg_price"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 24,
+          "w": 32,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_paper_perf_kpis",
+      "name": "Paper Performance KPIs (PAPER)",
+      "type": "metric",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/paper/perf-kpis",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [
+        "Total Return (%)",
+        "Annualized Sharpe Ratio",
+        "Maximum Drawdown (%)"
+      ],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 16,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 20,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_paper_performance",
+      "name": "Paper Performance (PAPER)",
+      "type": "chart",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/paper/performance",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 14,
+          "w": 32,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_paper_ticket",
+      "name": "Paper Order Ticket (PAPER)",
+      "type": "markdown",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/paper/ticket",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        },
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "side",
+          "type": "text",
+          "default": "buy",
+          "show": null
+        },
+        {
+          "name": "quantity",
+          "type": "text",
+          "default": "100",
+          "show": null
+        },
+        {
+          "name": "confirm",
+          "type": "text",
+          "default": "false",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 6,
+          "w": 16,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "pi_peer_multiples",
+      "name": "Peer Multiples Matrix",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/peer-multiples",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "pe_ttm",
+        "pe_fwd",
+        "ev_ebitda",
+        "ps_ttm"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 28,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_price_performance",
+      "name": "Price Performance",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/price-performance",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_price_target_history",
+      "name": "Price Target vs. Close",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/price-target-history",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 48,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_provider_health",
+      "name": "Provider Health Table",
+      "type": "table",
+      "category": "Chrome",
+      "endpoint": "pi/health/providers",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [],
+      "chart": null,
+      "tableFields": [
+        "tier",
+        "role",
+        "status",
+        "latency_ms",
+        "serving",
+        "note"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 0,
+          "y": 21,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 58,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "technicals",
+          "tabName": "F3: Technicals",
+          "x": 0,
+          "y": 18,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "comparison",
+          "tabName": "F4: Comparison",
+          "x": 0,
+          "y": 24,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "ownership",
+          "tabName": "F5: Ownership",
+          "x": 0,
+          "y": 16,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "calendar",
+          "tabName": "F6: Calendar",
+          "x": 0,
+          "y": 18,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "estimates",
+          "tabName": "F7: Estimates",
+          "x": 0,
+          "y": 28,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 0,
+          "y": 27,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 33,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "paper",
+          "tabName": "F10: Paper Trading",
+          "x": 0,
+          "y": 34,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 44,
+          "w": 40,
+          "h": 7
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 0,
+          "y": 22,
+          "w": 40,
+          "h": 7
+        }
+      ]
+    },
+    {
+      "id": "pi_revenue_business_line",
+      "name": "Revenue Per Business Line",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/revenue-business-line",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "pie",
+        "labelColumn": "segment",
+        "valueColumn": "revenue"
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 38,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_revenue_geography",
+      "name": "Revenue Per Geography",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/revenue-geography",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "pie",
+        "labelColumn": "region",
+        "valueColumn": "revenue"
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 20,
+          "y": 38,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_risk_dashboard",
+      "name": "Risk Dashboard",
+      "type": "metric",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/risk/dashboard",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [
+        "Annualized Volatility",
+        "1-Day VaR (95%)",
+        "Beta vs SPY"
+      ],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "morning-review",
+          "tabName": "Morning Review (W8)",
+          "x": 8,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_risk_vol_chart",
+      "name": "Risk - Rolling Volatility",
+      "type": "chart",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/risk/vol",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 20,
+          "y": 6,
+          "w": 20,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "pi_sentiment_gauge",
+      "name": "Sentiment Gauge",
+      "type": "metric",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/sentiment",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [
+        "News Sentiment Score (-1 to +1)"
+      ],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 30,
+          "y": 6,
+          "w": 10,
+          "h": 6
+        }
+      ]
+    },
+    {
+      "id": "pi_smart_money_ribbon",
+      "name": "Smart-Money Ribbon (PAPER)",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/smart-money/ribbon",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "symbol",
+        "kind",
+        "actor",
+        "value_usd",
+        "date"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "alerts",
+          "tabName": "F11: Alerts & Catalysts",
+          "x": 0,
+          "y": 26,
+          "w": 40,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "pi_stock_ownership",
+      "name": "Stock Ownership Breakdown",
+      "type": "chart",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/stock-ownership",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "pie",
+        "labelColumn": "bucket",
+        "valueColumn": "pct"
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_stock_splits",
+      "name": "Stock Splits",
+      "type": "table",
+      "category": "Equity Profile",
+      "endpoint": "pi/equity/stock-splits",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "pi_symbol_context",
+      "name": "Symbol Context Bar",
+      "type": "markdown",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/context/symbol",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "overview",
+          "tabName": "F1: Overview",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "financials",
+          "tabName": "F2: Financials",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "technicals",
+          "tabName": "F3: Technicals",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "comparison",
+          "tabName": "F4: Comparison",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "ownership",
+          "tabName": "F5: Ownership",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "calendar",
+          "tabName": "F6: Calendar",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "estimates",
+          "tabName": "F7: Estimates",
+          "x": 0,
+          "y": 3,
+          "w": 40,
+          "h": 3
+        }
+      ]
+    },
+    {
+      "id": "pi_whatif_card",
+      "name": "What-If - Structured Diff Card",
+      "type": "table",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/whatif/card",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "delta_shares",
+          "type": "text",
+          "default": "100",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [
+        "metric",
+        "before",
+        "after",
+        "delta"
+      ],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 0,
+          "y": 23,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_whatif_diff",
+      "name": "What-If - Trade Impact",
+      "type": "markdown",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/whatif",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "delta_shares",
+          "type": "text",
+          "default": "100",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-overview",
+          "appName": "Portfolio Intelligence - Overview",
+          "tabId": "overview",
+          "tabName": "Overview",
+          "x": 20,
+          "y": 0,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "risk",
+          "tabName": "F9: Risk & Attribution",
+          "x": 20,
+          "y": 23,
+          "w": 20,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "pi_xray_country",
+      "name": "X-Ray - Country Weights",
+      "type": "chart",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/xray/country",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "pie",
+        "labelColumn": "country",
+        "valueColumn": "weight"
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 20,
+          "y": 6,
+          "w": 20,
+          "h": 9
+        }
+      ]
+    },
+    {
+      "id": "pi_xray_sector",
+      "name": "X-Ray - Sector Weights",
+      "type": "chart",
+      "category": "Portfolio Intelligence",
+      "endpoint": "pi/xray/sector",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "explicit-demo",
+      "parameters": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "default": "demo",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": "pie",
+        "labelColumn": "sector",
+        "valueColumn": "weight"
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-portfolio-intelligence-overview",
+          "appName": "Portfolio Intelligence - Overview",
+          "tabId": "overview",
+          "tabName": "Overview",
+          "x": 0,
+          "y": 0,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "appId": "custom-portfolio-intelligence-terminal",
+          "appName": "Portfolio Intelligence - Terminal",
+          "tabId": "xray",
+          "tabName": "F8: X-Ray",
+          "x": 0,
+          "y": 6,
+          "w": 20,
+          "h": 9
+        }
+      ]
+    },
+    {
+      "id": "tt_audit_journal",
+      "name": "Techtrade - Audit Journal",
+      "type": "table",
+      "category": "Techtrade",
+      "endpoint": "tt/audit/journal",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "audit",
+          "tabName": "T6: Audit Journal",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "tt_engine_status",
+      "name": "Techtrade - Engine Status",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/engine/status",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "engine-status",
+          "tabName": "T5: Engine Status",
+          "x": 0,
+          "y": 0,
+          "w": 20,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_execute_bridge",
+      "name": "Techtrade - Execute Bridge",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/execute/bridge",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "gate-required",
+      "parameters": [
+        {
+          "name": "verdict",
+          "type": "text",
+          "default": "PASS",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "engine-status",
+          "tabName": "T5: Engine Status",
+          "x": 20,
+          "y": 0,
+          "w": 20,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_execute_paper_status",
+      "name": "Techtrade - Paper Trading Status",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/execute/paper-status/markdown",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "gate-required",
+      "parameters": [],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": []
+    },
+    {
+      "id": "tt_export_button",
+      "name": "Techtrade - Export Scan",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/scan/export",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "morning-scan",
+          "tabName": "T1: Morning Scan",
+          "x": 20,
+          "y": 0,
+          "w": 10,
+          "h": 4
+        }
+      ]
+    },
+    {
+      "id": "tt_order_legs",
+      "name": "Techtrade - Order Legs",
+      "type": "table",
+      "category": "Techtrade",
+      "endpoint": "tt/position/order-legs",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "position-workbench",
+          "tabName": "T2: Position Workbench",
+          "x": 0,
+          "y": 8,
+          "w": 30,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_plan_card",
+      "name": "Techtrade - Plan Card",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/position/plan-card",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "position-workbench",
+          "tabName": "T2: Position Workbench",
+          "x": 15,
+          "y": 0,
+          "w": 15,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_scan_table",
+      "name": "Techtrade - Scan Table",
+      "type": "table",
+      "category": "Techtrade",
+      "endpoint": "tt/scan/table",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "segment",
+          "type": "text",
+          "default": "",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "morning-scan",
+          "tabName": "T1: Morning Scan",
+          "x": 0,
+          "y": 8,
+          "w": 30,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "tt_segment_movers",
+      "name": "Techtrade - Segment Movers",
+      "type": "chart",
+      "category": "Techtrade",
+      "endpoint": "tt/scan/segment-movers",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "morning-scan",
+          "tabName": "T1: Morning Scan",
+          "x": 0,
+          "y": 0,
+          "w": 20,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_signal_card",
+      "name": "Techtrade - Signal Card",
+      "type": "markdown",
+      "category": "Techtrade",
+      "endpoint": "tt/position/signal-card",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "native-ready",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "position-workbench",
+          "tabName": "T2: Position Workbench",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "id": "tt_simulate_result",
+      "name": "Techtrade - Simulated P&L",
+      "type": "chart",
+      "category": "Techtrade",
+      "endpoint": "tt/position/simulate",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": {
+        "raw": true,
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
+      },
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "position-workbench",
+          "tabName": "T2: Position Workbench",
+          "x": 0,
+          "y": 16,
+          "w": 30,
+          "h": 10
+        }
+      ]
+    },
+    {
+      "id": "tt_tuning_report",
+      "name": "Techtrade - Tuning Report",
+      "type": "table",
+      "category": "Techtrade",
+      "endpoint": "tt/tuning/report",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "default": "",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "tuning",
+          "tabName": "T4: Tuning",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 12
+        }
+      ]
+    },
+    {
+      "id": "tt_validation_verdict",
+      "name": "Techtrade - Validation Verdict",
+      "type": "table",
+      "category": "Techtrade",
+      "endpoint": "tt/validation/verdict",
+      "endpointRegistered": true,
+      "source": "portfolio-intel",
+      "baselineState": "contract-repair",
+      "parameters": [
+        {
+          "name": "symbol",
+          "type": "text",
+          "default": "AAPL",
+          "show": null
+        }
+      ],
+      "chart": null,
+      "tableFields": [],
+      "metricLabels": [],
+      "placements": [
+        {
+          "appId": "custom-techtrade-desk",
+          "appName": "Techtrade Trading Desk",
+          "tabId": "validation",
+          "tabName": "T3: Validation",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 12
+        }
+      ]
+    }
+  ],
+  "unknownAppPlacements": [],
+  "unplacedWidgets": [
+    "pi_charting",
+    "pi_company_filings",
+    "pi_earnings_transcripts",
+    "pi_insider_trading",
+    "pi_institutional_ownership",
+    "pi_management_team",
+    "pi_price_performance",
+    "pi_stock_ownership",
+    "pi_stock_splits",
+    "tt_execute_paper_status"
+  ]
+}
