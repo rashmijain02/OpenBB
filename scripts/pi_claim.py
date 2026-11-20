@@ -10,6 +10,7 @@ Usage:
   python scripts/pi_claim.py <issue> todo          # reset
   python scripts/pi_claim.py --list-stale          # In Progress items w/ last hb > 2h
   python scripts/pi_claim.py --status <issue>      # show current claim state
+  python scripts/pi_claim.py --mine                # my In Progress claims: ok / DUE / STALE
 
 Heartbeat protocol (see CLAUDE.md 'Coordination'):
   - Claimed items MUST heartbeat every <=10 min while owned
@@ -338,11 +339,7 @@ def cmd_list_stale() -> int:
         num = c.get("number")
         if not num:
             continue
-        st = None
-        for fv in (n.get("fieldValues") or {}).get("nodes", []):
-            if (fv.get("field") or {}).get("name") == "Status":
-                st = fv.get("name")
-        if st == "In Progress":
+        if _item_status(n) == "In Progress":
             in_progress.append((num, c.get("title", "")[:60]))
 
     printed = 0
@@ -363,6 +360,41 @@ def cmd_list_stale() -> int:
         print(
             f"no stale claims (all {len(in_progress)} In Progress items heartbeat within {STALE_HOURS}h)"
         )
+    return 0
+
+
+def _item_status(item: dict) -> str | None:
+    """Return a project item's single-select Status value, if any."""
+    for fv in (item.get("fieldValues") or {}).get("nodes", []):
+        if (fv.get("field") or {}).get("name") == "Status":
+            return fv.get("name")
+    return None
+
+
+def cmd_mine() -> int:
+    """List In Progress items whose latest trusted heartbeat owner is me.
+
+    Read-only: identity, project items and issue comments are fetched;
+    nothing is written. Ownership follows the latest trusted marker
+    (even a release/done marker), not issue assignment.
+    """
+    me = whoami()
+    rows = []
+    for item in _project_items():
+        content = item.get("content") or {}
+        number = content.get("number")
+        if not number or _item_status(item) != "In Progress":
+            continue
+        hb, _ = latest_heartbeat(str(number))
+        if not hb or hb["owner"] != me:
+            continue
+        rows.append((number, content.get("title", "")[:60]))
+
+    if not rows:
+        print(f"no In Progress claims for {me}")
+        return 0
+    for number, title in rows:
+        print(f"  #{number:>4}  {title}")
     return 0
 
 
@@ -445,12 +477,36 @@ def main() -> int:
     p.add_argument("--note", default=None)
     p.add_argument("--list-stale", action="store_true")
     p.add_argument("--status", metavar="ISSUE")
+    p.add_argument("--mine", action="store_true")
     p.add_argument("-h", "--help", action="store_true")
     a = p.parse_args()
 
-    if a.help or (not a.issue and not a.list_stale and not a.status):
+    if a.help or (not a.issue and not a.list_stale and not a.status and not a.mine):
         print(__doc__)
         return 0
+
+    if a.mine:
+        conflicts = [
+            name
+            for name, used in (
+                ("an issue or action", a.issue is not None or a.action is not None),
+                ("--note", a.note is not None),
+                ("--list-stale", a.list_stale),
+                ("--status", a.status is not None),
+            )
+            if used
+        ]
+        if conflicts:
+            print(
+                f"usage error: --mine cannot be combined with {', '.join(conflicts)}",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            return cmd_mine()
+        except RuntimeError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
 
     if a.list_stale:
         return cmd_list_stale()
