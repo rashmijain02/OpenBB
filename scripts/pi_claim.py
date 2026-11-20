@@ -371,12 +371,22 @@ def _item_status(item: dict) -> str | None:
     return None
 
 
+def _urgency(age: timedelta) -> str:
+    """Classify a heartbeat age on the unrounded value: ok, DUE or STALE."""
+    if age > timedelta(hours=STALE_HOURS):
+        return "STALE"
+    if age > timedelta(minutes=HEARTBEAT_INTERVAL_MIN):
+        return "DUE"
+    return "ok"
+
+
 def cmd_mine() -> int:
     """List In Progress items whose latest trusted heartbeat owner is me.
 
     Read-only: identity, project items and issue comments are fetched;
     nothing is written. Ownership follows the latest trusted marker
-    (even a release/done marker), not issue assignment.
+    (even a release/done marker), not issue assignment. Each row shows
+    the heartbeat age and whether a heartbeat is due.
     """
     me = whoami()
     rows = []
@@ -388,13 +398,16 @@ def cmd_mine() -> int:
         hb, _ = latest_heartbeat(str(number))
         if not hb or hb["owner"] != me:
             continue
-        rows.append((number, content.get("title", "")[:60]))
+        rows.append((number, content.get("title", "")[:60], _age(hb)))
 
     if not rows:
         print(f"no In Progress claims for {me}")
         return 0
-    for number, title in rows:
-        print(f"  #{number:>4}  {title}")
+    for number, title, age in rows:
+        print(
+            f"  #{number:>4}  age={int(age.total_seconds() // 60)}min "
+            f"({_urgency(age)})  {title}"
+        )
     return 0
 
 

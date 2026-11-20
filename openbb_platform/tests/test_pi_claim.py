@@ -356,17 +356,29 @@ def test_mine_main_read_only_paginated(monkeypatch, capsys):
         [
             _graphql_page([_project_item(1, "First page Todo", "Todo")], "cursor-100"),
             _graphql_page(
-                [_project_item(2042, "Second page claim", "In Progress")], None
+                [
+                    _project_item(2042, "Second page claim", "In Progress"),
+                    _project_item(2043, "Second page overdue", "In Progress"),
+                    _project_item(2044, "Second page abandoned", "In Progress"),
+                ],
+                None,
             ),
         ],
-        {2042: [_marker(ME)]},
+        {
+            2042: [_marker(ME, timedelta(minutes=5))],
+            2043: [_marker(ME, timedelta(minutes=11))],
+            2044: [_marker(ME, timedelta(minutes=121))],
+        },
     )
     monkeypatch.setattr(sys, "argv", ["pi_claim.py", "--mine"])
 
     assert module.main() == 0
 
     out = capsys.readouterr().out
-    assert "#2042" in out
+    rows = _rows_by_issue(out)
+    assert "age=5min (ok)" in rows[2042]
+    assert "age=11min (DUE)" in rows[2043]
+    assert "age=121min (STALE)" in rows[2044]
     graphql = [c for c in calls if c[:2] == ("api", "graphql")]
     assert len(graphql) == 2
     assert any("cursor-100" in arg for arg in graphql[1])
@@ -477,3 +489,70 @@ def test_mine_help_and_legacy_dispatch(monkeypatch, capsys):
         assert module.main() == 0
 
     assert seen == [("status", "7"), ("stale",), ("transition", "7", "heartbeat", "n")]
+
+
+def _rows_by_issue(out: str) -> dict[int, str]:
+    rows = {}
+    for line in out.splitlines():
+        m = re.search(r"#\s*(\d+)", line)
+        if m:
+            rows[int(m.group(1))] = line
+    return rows
+
+
+def test_mine_flags_use_exact_thresholds(monkeypatch, capsys):
+    """Ok up to 10 min, DUE above 10 min up to 2 h, STALE above 2 h (unrounded)."""
+    module = _load_module()
+    _freeze(module, monkeypatch)
+    cases = {
+        101: (timedelta(minutes=0), "ok"),
+        102: (timedelta(minutes=5), "ok"),
+        103: (timedelta(minutes=10), "ok"),
+        104: (timedelta(minutes=10, seconds=1), "DUE"),
+        105: (timedelta(minutes=11), "DUE"),
+        106: (timedelta(minutes=120), "DUE"),
+        107: (timedelta(minutes=120, seconds=1), "STALE"),
+        108: (timedelta(minutes=121), "STALE"),
+    }
+    monkeypatch.setattr(module, "whoami", lambda: ME)
+    monkeypatch.setattr(
+        module,
+        "_project_items",
+        lambda: [_project_item(n, f"Case {n}", "In Progress") for n in cases],
+    )
+    _fake_comments(
+        monkeypatch, module, {n: [_marker(ME, age)] for n, (age, _) in cases.items()}
+    )
+
+    assert module.cmd_mine() == 0
+
+    rows = _rows_by_issue(capsys.readouterr().out)
+    for number, (_age, flag) in cases.items():
+        labels = re.findall(r"\((ok|DUE|STALE)\)", rows[number])
+        assert labels == [flag], (number, rows[number])
+
+
+def test_mine_displays_signed_whole_minute_ages(monkeypatch, capsys):
+    """Ages are whole minutes (floor) and never change the unrounded label."""
+    module = _load_module()
+    _freeze(module, monkeypatch)
+    future = (FIXED_NOW + timedelta(seconds=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    histories = {
+        201: [_marker(ME, timedelta(minutes=10, seconds=1))],
+        202: [_marker(ME, timedelta(minutes=120, seconds=1))],
+        203: [_marker(ME, hb=future)],
+    }
+    monkeypatch.setattr(module, "whoami", lambda: ME)
+    monkeypatch.setattr(
+        module,
+        "_project_items",
+        lambda: [_project_item(n, f"Case {n}", "In Progress") for n in histories],
+    )
+    _fake_comments(monkeypatch, module, histories)
+
+    assert module.cmd_mine() == 0
+
+    rows = _rows_by_issue(capsys.readouterr().out)
+    assert "age=10min (DUE)" in rows[201]
+    assert "age=120min (STALE)" in rows[202]
+    assert "age=-2min (ok)" in rows[203]
