@@ -56,6 +56,7 @@ STALE_HOURS = 2
 HB_MARKER_RE = re.compile(
     r"<!--\s*pi-claim:\s*owner=(?P<owner>\S+)\s+hb=(?P<hb>\S+)\s+action=(?P<action>\S+)\s*-->"
 )
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +341,7 @@ def cmd_list_stale() -> int:
         if not num:
             continue
         if _item_status(n) == "In Progress":
-            in_progress.append((num, c.get("title", "")[:60]))
+            in_progress.append((num, _display_title(c)))
 
     printed = 0
     for num, title in in_progress:
@@ -361,6 +362,15 @@ def cmd_list_stale() -> int:
             f"no stale claims (all {len(in_progress)} In Progress items heartbeat within {STALE_HOURS}h)"
         )
     return 0
+
+
+def _display_title(content: dict) -> str:
+    """Return an issue title safe to print: 60 chars, control chars as '?'.
+
+    Titles are remote input; raw C0/C1 control characters could carry
+    terminal escape sequences (title spoofing, screen clears).
+    """
+    return _CONTROL_CHARS_RE.sub("?", content.get("title") or "")[:60]
 
 
 def _item_status(item: dict) -> str | None:
@@ -398,7 +408,7 @@ def cmd_mine() -> int:
         hb, _ = latest_heartbeat(str(number))
         if not hb or hb["owner"] != me:
             continue
-        rows.append((number, content.get("title", "")[:60], _age(hb)))
+        rows.append((number, _display_title(content), _age(hb)))
 
     if not rows:
         print(f"no In Progress claims for {me}")

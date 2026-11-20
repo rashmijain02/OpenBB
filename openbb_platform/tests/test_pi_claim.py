@@ -556,3 +556,22 @@ def test_mine_displays_signed_whole_minute_ages(monkeypatch, capsys):
     assert "age=10min (DUE)" in rows[201]
     assert "age=120min (STALE)" in rows[202]
     assert "age=-2min (ok)" in rows[203]
+
+
+def test_listings_neutralise_control_characters_in_titles(monkeypatch, capsys):
+    """Remote titles cannot inject terminal escape sequences into either listing."""
+    module = _load_module()
+    _freeze(module, monkeypatch)
+    hostile = "Fix \x1b]0;pwned\x07 bug\x1b[2J\x9b done"
+    items = [_project_item(301, hostile, "In Progress")]
+    monkeypatch.setattr(module, "whoami", lambda: ME)
+    monkeypatch.setattr(module, "_project_items", lambda: items)
+    _fake_comments(monkeypatch, module, {301: [_marker(ME, timedelta(hours=3))]})
+
+    assert module.cmd_mine() == 0
+    assert module.cmd_list_stale() == 0
+
+    out = capsys.readouterr().out
+    assert out.count("#") == 2
+    assert not re.search(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", out)
+    assert "Fix ?]0;pwned? bug?[2J? done" in out
