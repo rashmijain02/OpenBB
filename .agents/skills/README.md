@@ -5,10 +5,15 @@ Claude Code (each subfolder has a `SKILL.md` with YAML frontmatter).
 
 ## Repository model policy
 
-Every skill that launches an agent or subagent must explicitly use
-`gpt-5.6-sol`. A skill must not recommend or dispatch an execution agent on a
-different model, model alias, cost tier, or fallback. Product models being
-deployed, trained, evaluated, or documented are outside this execution policy.
+Model policy is by role (D1 in `docs/dev-strategy.md`): GPT-family models in GitHub
+Copilot CLI, Claude models in Claude Code. Every skill that launches an agent or
+subagent names the model explicitly and stops if it is unavailable; no cross-family
+fallback. Product models being deployed, trained, evaluated, or documented are outside
+this execution policy.
+
+The Superpowers skills copied here (brainstorming, writing-plans, subagent-driven-development,
+test-driven-development and the rest) are superseded by the Superpowers plugin declared in
+`.claude/settings.json` and will be removed after the Dev Strategy v4 pilot (D8).
 
 ## Why these live in the repo
 
@@ -18,7 +23,6 @@ are immediately available without re-installing plugins or syncing `~/.agents`.
 
 | Folder(s) | Origin |
 |-----------|--------|
-| `beads/` | Project-specific (Beads task-tracker workflow) |
 | `openbb-dev-cycle/` | Project-specific (converted from `.claude/commands/openbb-dev-cycle.md`) |
 | everything else | Vendored snapshot of `~/.agents/skills/` (Claude plugin + community skills) |
 

@@ -24,7 +24,7 @@ analysis.  All scripts share a common infrastructure pattern.
 | Data directory     | External (see `CONTEXT_LOCAL.md`)                    |
 
 > **Note:** Real paths, credentials, and account details are in
-> `Tools/docs/CONTEXT_LOCAL.md` (git-ignored).  See `rules/COLLABORATION_RULES.md`
+> `Tools/docs/CONTEXT_LOCAL.md` (git-ignored).  See `docs/archive/rules/COLLABORATION_RULES.md`
 > for PII hygiene guidelines.
 
 ---

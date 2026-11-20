@@ -185,5 +185,5 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Agents run autonomously and return detailed reports
 - Each agent focuses on its specialty for deep analysis
 - Results are actionable with specific file:line references
-- Every agent explicitly uses `gpt-5.6-sol`
+- Every agent explicitly names a Claude model (`sonnet` by default, `opus` for deep reviews) per the D1 model policy in `docs/dev-strategy.md`
 - All agents available in `/agents` list
