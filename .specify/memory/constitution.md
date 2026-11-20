@@ -22,7 +22,8 @@ Source: `CLAUDE.md` → "Coordination — GitHub Issues only"; `docs/dev-strateg
 ### III. Test first (non-negotiable)
 Every behaviour change starts with a failing test (red → green → refactor). Fixtures have
 realistic shapes, empty results are loud, and seams are tested with real contracts. Green pytest
-is not enough: the changed path is also driven end to end with the `/verify` harness.
+is not enough: the plan names a real-path check (the changed entry point run for real), and its
+output is recorded.
 Source: `CLAUDE.md` → "Testing Rules" (R1–R11); `rules/DEVELOPMENT_RULES.md` §7.
 
 ### IV. Data providers

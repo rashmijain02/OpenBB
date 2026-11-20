@@ -18,12 +18,17 @@ commits on a feature branch in a worktree, evidence, and `handoff.md`. You stop 
   and reviewers otherwise, `haiku` only for read-only search).
 - If a named model is unavailable, stop and report. Never fall back to another model family.
 
+Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
+`$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`.
+
 ## Preconditions (stop and report if any fails)
 
 1. **Superpowers plugin** is loaded (`superpowers:` skills are listed). If not, tell the user to
    accept the plugin prompt from `.claude/settings.json` or run
-   `/plugin install superpowers@superpowers-marketplace`, then restart. Do not use the copied
-   skills in `.agents/skills/` as a substitute.
+   `/plugin install superpowers@superpowers-marketplace`, then restart. Start the Claude Code
+   session inside the repo or the worktree, not a parent folder, or `.claude/settings.json` does not
+   apply and the plugin is not offered. Do not use the copied skills in `.agents/skills/` as a
+   substitute.
 2. `gh repo set-default --view` is `rashmijain02/OpenBB`.
 3. **Full relay:** `specs/gh-NN-slug/{spec,plan,tasks}.md` exist, `tasks.md` stories carry their
    sub-issue numbers `(#NN)`, and the user confirms G1 approval. If any is missing, send the user
@@ -37,7 +42,7 @@ commits on a feature branch in a worktree, evidence, and `handoff.md`. You stop 
 ## Steps
 
 1. **Claim.** For the sub-issue you start with (and the parent if it is not claimed):
-   `.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> in-progress`.
+   `& $py scripts\pi_claim.py <NN> in-progress` (`$py` as above).
    Heartbeat (`pi_claim.py <NN> heartbeat`) after each completed task and at least every
    10 minutes while you hold the claim. Never fake a heartbeat.
 2. **Isolate.** `git fetch origin`, then
@@ -50,15 +55,23 @@ commits on a feature branch in a worktree, evidence, and `handoff.md`. You stop 
 4. **Execute** with `superpowers:subagent-driven-development` over `tasks.md`, in order:
    - One implementer subagent per task, under `superpowers:test-driven-development`: write the
      failing test, run it and keep the red output, make it pass, refactor.
-   - A reviewer subagent after each task checks it against `spec.md`, the task text and
-     `CLAUDE.md`. Fix findings before the next task.
+   - A reviewer subagent after each **user story** checks it against `spec.md`, the tasks and
+     `CLAUDE.md`; review after each task only when a story has more than 5 tasks or touches a
+     risky path (money, credentials, private data, writes to GitHub). Fix findings before the
+     next story.
+   - Show each new test failing before writing its code. If a task cannot fail first because an
+     earlier task already delivered it, say so in the handoff and prove the test is not vacuous with
+     a temporary mutation that makes it fail.
    - TodoWrite may mirror `tasks.md` for this session only (D3). It is never the record.
    - A bug outside the task's scope becomes a new issue (`type-bug`), not a silent fix.
    - On a failure you cannot explain, switch to `superpowers:systematic-debugging`.
-5. **Quality.** With `.venv_portfolio\Scripts\python.exe`:
+5. **Quality.** With `$py`:
    - the plan's test suites, then `black --check` and `ruff` on changed files;
-   - the `/verify` harness on the real code path named in the plan, output captured to
-     `.dev-cycle/verify-gh-NN.log` (git-ignored). Green pytest alone does not pass this step;
+   - the **real-path check** named in `plan.md`: run the changed entry point for real (CLI command,
+     API route, extension call, notebook cell) with safe inputs, read-only where the code allows.
+     Record the command, exit code and key output in `.dev-cycle/verify-gh-NN.log` (git-ignored)
+     and in the handoff. Green pytest alone does not pass this step. (Older docs call this the
+     `/verify` harness; no such command exists in this repo.)
    - `simplify` on the branch diff.
 6. **Review gate (D5, Claude pass).** On the branch diff against its merge-base:
    `superpowers:requesting-code-review`, then `/security-review`. Triage every finding:

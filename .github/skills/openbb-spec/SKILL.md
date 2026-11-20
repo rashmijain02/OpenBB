@@ -34,6 +34,14 @@ Model (D1): GPT family. Name the model explicitly on any dispatch; if it is unav
 
 Let `NN` be the parent issue number and `slug` 2–4 lowercase words joined by hyphens.
 
+**Keep it proportionate.** Size the artifacts to the change. For a change of under about 200 lines
+of code, keep `spec.md` to about 80 lines and skip `research.md`, `data-model.md`, `quickstart.md`
+and `contracts/` unless they carry something the plan needs. If the change is one file and the
+fix is obvious, stop and suggest the small-fix route instead.
+
+**Headless runs.** If the owner cannot answer during the run, record each `/speckit-clarify`
+question with your recommended answer as an assumption marked "(pending owner confirmation at G1)".
+
 1. **Fix the folder.** `SPECIFY_FEATURE_DIRECTORY=specs/gh-NN-slug` (D2). Pass this value
    explicitly to `/speckit-specify` so it does not create a numbered folder. Spec Kit's `git`
    branching extension is intentionally not installed; do not install it and do not create a
@@ -42,11 +50,14 @@ Let `NN` be the parent issue number and `slug` 2–4 lowercase words joined by h
    Include the issue reference in the spec header as `#NN (title)`.
 3. `/speckit-clarify`. Ask the user the questions it raises; record answers in the spec.
 4. `/speckit-plan`. The plan must name: files to change, the test strategy (which failing tests
-   come first, which fixtures, which `/verify` invocation drives the real path), provider use
-   (`fmp_cached` first), and any private-data handling.
+   come first, which fixtures), the **real-path check** (the exact command that runs the changed
+   entry point for real, read-only where possible), provider use (`fmp_cached` first), and any
+   private-data handling.
 5. `/speckit-tasks`. Group tasks by user story. Each task is small enough for one red-green-refactor
-   cycle and names its test.
-6. `/speckit-analyze`. Fix every inconsistency it reports, or list it for the user.
+   cycle, names its test, and **can start red**: do not split a value from the display that shows it,
+   or put a behaviour in one task and its only observable effect in a later one.
+6. `/speckit-analyze`, asking it also to flag tasks that cannot start with a failing test. Fix every
+   inconsistency it reports, or list it for the user.
 7. **Gate G1.** Show the user a short summary: the spec folder, user stories, task count, open
    risks. Ask for approval. Do not continue without it.
 8. After approval, hand off to `openbb-issues` to create the sub-issues. Do not use

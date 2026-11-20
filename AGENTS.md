@@ -52,7 +52,8 @@ This governs execution agents, not models the product deploys, trains, evaluates
 
 ## Environment
 
-- Python: `.venv_portfolio\Scripts\python.exe`. Run `black --check` and `ruff` before handing off.
+- Python: `.venv_portfolio\Scripts\python.exe` in the main checkout (worktrees have none; resolve it from
+  `git rev-parse --git-common-dir`). Run `black --check` and `ruff` before handing off.
 - Data providers: `fmp_cached` first, `fmp` only as a tracked fallback, never yfinance.
 - Never read brokerage exports directly; keep credentials and personal paths out of code, logs,
   issues and PRs. Commit notebooks stripped.

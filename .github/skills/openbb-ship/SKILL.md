@@ -15,12 +15,20 @@ a fork-internal PR with green CI and every finding resolved, merged by the owner
 
 Model (D1): GPT family, named explicitly on every dispatch. If unavailable, stop.
 
+Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
+`$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`.
+
 ## Authority (D6)
 
 Ask the user, each time, before: `git push`, `gh pr create`, `gh pr merge`, closing issues by
 hand. A "yes" covers that one action only. You may, without asking: read, run tests, run the
 local reviews, comment review triage on the PR you opened, heartbeat the claim, and set board
-Status. Never merge; the owner merges. Promotion PRs (`portfolio_validations → portfolio`,
+Status. Never merge; the owner merges.
+
+**Headless runs** (`copilot -p`): Copilot CLI permission rules match only the first subcommand, so
+allowing `gh pr create` also allows `gh pr merge`. In a headless run, deny `shell(gh pr)`, write the PR
+body to `.dev-cycle/pr-<NN>.md`, and print the exact `gh pr create` command for the owner's executor
+to run. Promotion PRs (`portfolio_validations → portfolio`,
 `portfolio → develop`) only when the owner asks for that exact PR.
 
 ## Steps

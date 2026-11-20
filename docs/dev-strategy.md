@@ -61,6 +61,23 @@ Copilot CLI's main agent for Phases 1 and 3 is `.github/agents/openbb-orchestrat
   technical standards (tests cite rule R7.1), so they stay. `rules/COLLABORATION_RULES.md`,
   `rules/DOCUMENTATION_RULES.md`, `context/` and `.github/copilot/` moved to `docs/archive/`.
 
+## Pilot results (2026-11-20)
+
+Pilot: #1279 (pi_claim: add `--mine` to list my claims and flag overdue heartbeats), run through all
+three phases; PR #1283. What changed in the skills as a result:
+
+| # | Friction | Change |
+|---|---|---|
+| 1 | `.venv_portfolio` does not exist inside worktrees | Skills use the main checkout's venv via `git rev-parse --git-common-dir` |
+| 2 | `/verify` is not defined in this repo | Replaced by a **real-path check**: the plan names the exact command; the executor runs it and records output |
+| 3 | Spec Kit produced ~650 lines of spec for ~60 lines of code | `openbb-spec` keeps artifacts proportionate and suggests the small-fix route for one-file changes |
+| 4 | Superpowers absent when Claude Code starts outside the repo | Start Phase 2 sessions inside the repo or worktree |
+| 5 | A task could not start red (value and its display were split) | Tasks must be able to start red; `/speckit-analyze` flags those that cannot |
+| 6 | One reviewer per task is costly | Review per user story; per task only for large or risky stories |
+| 7 | Headless clarify cannot ask the owner | Kept: recommended answers recorded as G1 assumptions |
+| 8 | Pilot had to stack on this PR | Normal work cuts from `portfolio` once this merges |
+| 9 | Copilot CLI cannot allow `gh pr create` without `gh pr merge` | Headless Copilot writes the PR body; the owner's executor runs `gh pr create` |
+
 ## Authority (D6)
 
 | Action | Needs asking? |
