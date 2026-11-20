@@ -1,7 +1,7 @@
 # 75 — `signals` Command + 3 Confluence Presets + Golden-Score Test
 
-**GitHub:** [#75](https://github.com/prajoria/OpenBB/issues/75) · **Phase:** P3 · **Sprint:** 3 · **Size:** M
-**Depends on:** [#74](https://github.com/prajoria/OpenBB/issues/74) · design: [`./74-confluence-voting-score.md`](./74-confluence-voting-score.md) (confluence voting engine — score + votes)
+**GitHub:** `legacy issue 75` · **Phase:** P3 · **Sprint:** 3 · **Size:** M
+**Depends on:** `legacy issue 74` · design: [`./74-confluence-voting-score.md`](./74-confluence-voting-score.md) (confluence voting engine — score + votes)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §12.3, §9.2, §20 Q4
 **Scope:** Wrap the #74 (confluence voting engine) in the `obb.techtrade.signals` command, ship three
 named confluence **presets** (`trend_follow` / `mean_revert` / `breakout`) under `strategies/`, populate
@@ -16,7 +16,7 @@ command.
 
 This issue adds the `signals` command and three confluence **presets** to the techtrade extension. `obb.techtrade.signals(...)` runs the confluence voting engine over a set of symbols or a whole market segment and returns ranked `MoverSignal`s — each carrying a symbol, a composite score, a direction (`long`/`short`/`flat`), and per-indicator vote attribution that explains *why* the engine voted the way it did. A **preset** is a named, curated weighting profile — `trend_follow`, `mean_revert`, or `breakout` — that re-tilts the same four indicator families toward a trading style, so the one engine produces different behavior depending on the preset you pick. A caller can also pass custom `weights=` to override a preset's tilt.
 
-Why it lives in this pipeline: the confluence engine from [#74](https://github.com/prajoria/OpenBB/issues/74) ([`./74-confluence-voting-score.md`](./74-confluence-voting-score.md)) is internal math with no user-facing entry point. This step exposes it as a usable `obb.techtrade.*` command — point it at a segment, pick a preset, and get back a ranked, explainable shortlist that feeds the downstream rules, sizing, and order-generation stages. `rank_in_segment` is just that ranking: it sorts the candidate signals by conviction *within* a segment (most-long first), producing a contiguous `1..N` ordering so the strongest ideas float to the top. Read this doc without the PRD: everything needed to understand the command is here.
+Why it lives in this pipeline: the confluence engine from `legacy issue 74` ([`./74-confluence-voting-score.md`](./74-confluence-voting-score.md)) is internal math with no user-facing entry point. This step exposes it as a usable `obb.techtrade.*` command — point it at a segment, pick a preset, and get back a ranked, explainable shortlist that feeds the downstream rules, sizing, and order-generation stages. `rank_in_segment` is just that ranking: it sorts the candidate signals by conviction *within* a segment (most-long first), producing a contiguous `1..N` ordering so the strongest ideas float to the top. Read this doc without the PRD: everything needed to understand the command is here.
 
 ---
 

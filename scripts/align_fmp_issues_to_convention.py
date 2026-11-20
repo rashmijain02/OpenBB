@@ -2,7 +2,7 @@
 (as used by epic #491 "[portfolio] [EPIC] ...").
 
 Changes (idempotent):
-  * Epic #844: set project #4 Type=Epic; retitle to
+  * Epic #844: set project 1 Type=Epic; retitle to
       "[fmp] [EPIC] FMP Cached Full API Coverage (openbb-fmp-cached)"
   * Waves #1028..: retitle to "[fmp] [WAVE n] <theme>"; add priority label
   * Endpoint tasks: retitle to "[fmp] [Wn][Category] <Endpoint> (<path>)"; add priority label
@@ -23,8 +23,8 @@ STATE = ROOT / "scripts" / "fmp_full_coverage_items.json"
 DATA = ROOT / "scripts" / "fmp_full_coverage_endpoints.json"
 
 REPO = "rashmijain02/OpenBB"
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"
-FIELD_TYPE = "PVTSSF_lAHOAOc7384BdSTgzhX06C4"
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"
+FIELD_TYPE = "PVTSSF_lAHOAE4h8M4BqDs2zhocevE"
 TYPE_EPIC = "6a4a1e4d"
 EPIC_NUMBER = 844
 EPIC_TITLE = "[fmp] [EPIC] FMP Cached Full API Coverage (openbb-fmp-cached)"
@@ -94,13 +94,13 @@ def apply(number: int, title: str | None, add_label: str | None) -> bool:
 
 
 def epic_item_id() -> str:
-    q = ('query{repository(owner:"prajoria",name:"OpenBB"){issue(number:%d)'
+    q = ('query{repository(owner:"rashmijain02",name:"OpenBB"){issue(number:%d)'
          '{projectItems(first:10){nodes{id project{number}}}}}}' % EPIC_NUMBER)
     data = gql(q)
     for n in data["repository"]["issue"]["projectItems"]["nodes"]:
         if n["project"]["number"] == 4:
             return n["id"]
-    raise RuntimeError("epic #844 not on project #4")
+    raise RuntimeError("epic #844 not on project 1")
 
 
 def set_type_epic(item_id: str) -> None:
@@ -136,7 +136,7 @@ def main() -> None:
     print("== epic #844 ==")
     item = epic_item_id()
     set_type_epic(item)
-    print("  set Type=Epic on project #4")
+    print("  set Type=Epic on project 1")
     t, _ = needs(EPIC_NUMBER, EPIC_TITLE, None)
     if apply(EPIC_NUMBER, t, None):
         print(f"  retitled -> {EPIC_TITLE}")

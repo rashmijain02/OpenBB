@@ -1,1436 +1,1436 @@
 {
   "waves": {
     "0": {
-      "number": 1028,
-      "node_id": "I_kwDOQVcbSs8AAAABJrg5Gg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIX8"
+      "number": 622,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSUeA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I2E"
     },
     "1": {
-      "number": 1029,
-      "node_id": "I_kwDOQVcbSs8AAAABJrg6mQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIZo"
+      "number": 623,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSVGA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I3A"
     },
     "2": {
-      "number": 1030,
-      "node_id": "I_kwDOQVcbSs8AAAABJrg8IQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIbY"
+      "number": 624,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSVww",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I3o"
     },
     "3": {
-      "number": 1031,
-      "node_id": "I_kwDOQVcbSs8AAAABJrg9pw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIdM"
+      "number": 625,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSWTQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I4w"
     },
     "4": {
-      "number": 1032,
-      "node_id": "I_kwDOQVcbSs8AAAABJrg_4Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIew"
+      "number": 626,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSaCQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I8E"
     },
     "5": {
-      "number": 1033,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhCDg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIgk"
+      "number": 627,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSapg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I8k"
     },
     "6": {
-      "number": 1034,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhDbQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIik"
+      "number": 628,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSbIw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I9U"
     },
     "7": {
-      "number": 1035,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhE5A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIkI"
+      "number": 629,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSbpw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I98"
     },
     "8": {
-      "number": 1036,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhG_g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIl8"
+      "number": 630,
+      "node_id": "I_kwDOVDLLJs8AAAABcSScFw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1I-c"
     },
     "9": {
-      "number": 1037,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhI0A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpInw"
+      "number": 631,
+      "node_id": "I_kwDOVDLLJs8AAAABcSSf7w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1JCo"
     }
   },
   "endpoints": {
     "Search::search-symbol": {
-      "number": 1038,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhVUQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpIz4"
+      "number": 828,
+      "node_id": "I_kwDOVDLLJs8AAAABcS9pOA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zR0"
     },
     "Search::search-name": {
-      "number": 1039,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhWvQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpI1Y"
+      "number": 829,
+      "node_id": "I_kwDOVDLLJs8AAAABcS9qJQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zSc"
     },
     "Search::search-cik": {
-      "number": 1040,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhe7Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpI8U"
+      "number": 830,
+      "node_id": "I_kwDOVDLLJs8AAAABcS9quw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zTU"
     },
     "Search::search-cusip": {
-      "number": 1041,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhgWA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpI90"
+      "number": 831,
+      "node_id": "I_kwDOVDLLJs8AAAABcS9rUQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zUY"
     },
     "Search::search-isin": {
-      "number": 1042,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhiJA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpI_Q"
+      "number": 832,
+      "node_id": "I_kwDOVDLLJs8AAAABcS9rzw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zVQ"
     },
     "Search::company-screener": {
-      "number": 1043,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhjjA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJBg"
+      "number": 833,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-DXA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zug"
     },
     "Search::search-exchange-variants": {
-      "number": 1044,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhlmw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJC0"
+      "number": 834,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-D1Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zvA"
     },
     "Directory::stock-list": {
-      "number": 1045,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhnAg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJEA"
+      "number": 835,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-ETQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zvk"
     },
     "Directory::financial-statement-symbol-list": {
-      "number": 1046,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhokQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJFY"
+      "number": 836,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-Ewg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zwE"
     },
     "Directory::cik-list": {
-      "number": 1047,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhp5A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJHE"
+      "number": 837,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-FNA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1zwo"
     },
     "Directory::symbol-change": {
-      "number": 1048,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhr3g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJJQ"
+      "number": 838,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-e7A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10Mk"
     },
     "Directory::etf-list": {
-      "number": 1049,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhtdQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJK0"
+      "number": 839,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-fdg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10NE"
     },
     "Directory::actively-trading-list": {
-      "number": 1050,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhvLw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJM8"
+      "number": 840,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-gDA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10No"
     },
     "Directory::earnings-transcript-list": {
-      "number": 1051,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhxNg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJOw"
+      "number": 841,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-gig",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10OM"
     },
     "Directory::available-exchanges": {
-      "number": 1052,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhypw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJQE"
+      "number": 842,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-hNw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10Oo"
     },
     "Directory::available-sectors": {
-      "number": 1053,
-      "node_id": "I_kwDOQVcbSs8AAAABJrhz_g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJRQ"
+      "number": 843,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-8TA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10v4"
     },
     "Directory::available-industries": {
-      "number": 1054,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh1YQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJSU"
+      "number": 844,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-8zQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10xA"
     },
     "Directory::available-countries": {
-      "number": 1055,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh2xw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJUI"
+      "number": 845,
+      "node_id": "I_kwDOVDLLJs8AAAABcS-9Vw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10x0"
     },
     "Analyst::analyst-estimates": {
-      "number": 1056,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh4Kg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJVw"
+      "number": 846,
+      "node_id": "I_kwDOVDLLJs8AAAABcS--DA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10yw"
     },
     "Analyst::ratings-snapshot": {
-      "number": 1057,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh5pA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJWk"
+      "number": 847,
+      "node_id": "I_kwDOVDLLJs8AAAABcS--vA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF10zU"
     },
     "Analyst::ratings-historical": {
-      "number": 1058,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh7EA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJYE"
+      "number": 848,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_ZOQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11TY"
     },
     "Analyst::price-target-summary": {
-      "number": 1059,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh8Rw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJZQ"
+      "number": 849,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_Z2A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11T8"
     },
     "Analyst::price-target-consensus": {
-      "number": 1060,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh9bg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJaI"
+      "number": 850,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_aUQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11U0"
     },
     "Analyst::grades": {
-      "number": 1061,
-      "node_id": "I_kwDOQVcbSs8AAAABJrh_FQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJco"
+      "number": 851,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_bCQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11VY"
     },
     "Analyst::grades-historical": {
-      "number": 1062,
-      "node_id": "I_kwDOQVcbSs8AAAABJriAjQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJds"
+      "number": 852,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_beA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11WI"
     },
     "Analyst::grades-consensus": {
-      "number": 1063,
-      "node_id": "I_kwDOQVcbSs8AAAABJriBxA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJek"
+      "number": 853,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_2Rw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF11zY"
     },
     "Calendar::dividends": {
-      "number": 1064,
-      "node_id": "I_kwDOQVcbSs8AAAABJriDIA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJf4"
+      "number": 854,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_3Mw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF110Q"
     },
     "Calendar::dividends-calendar": {
-      "number": 1065,
-      "node_id": "I_kwDOQVcbSs8AAAABJriEkg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJhs"
+      "number": 855,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_33A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1108"
     },
     "Calendar::earnings": {
-      "number": 1066,
-      "node_id": "I_kwDOQVcbSs8AAAABJriGFQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJjs"
+      "number": 856,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_4pQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF111s"
     },
     "Calendar::earnings-calendar": {
-      "number": 1067,
-      "node_id": "I_kwDOQVcbSs8AAAABJriHmw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJlI"
+      "number": 857,
+      "node_id": "I_kwDOVDLLJs8AAAABcS_5SA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF112g"
     },
     "Calendar::ipos-calendar": {
-      "number": 1068,
-      "node_id": "I_kwDOQVcbSs8AAAABJriI8Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJm0"
+      "number": 858,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAUJQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12SI"
     },
     "Calendar::ipos-disclosure": {
-      "number": 1069,
-      "node_id": "I_kwDOQVcbSs8AAAABJriKTw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJn8"
+      "number": 859,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAVFQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12Sw"
     },
     "Calendar::ipos-prospectus": {
-      "number": 1070,
-      "node_id": "I_kwDOQVcbSs8AAAABJriLrw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJps"
+      "number": 860,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAVmQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12Ts"
     },
     "Calendar::splits": {
-      "number": 1071,
-      "node_id": "I_kwDOQVcbSs8AAAABJriNAQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJrk"
+      "number": 861,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAWHA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12Uc"
     },
     "Calendar::splits-calendar": {
-      "number": 1072,
-      "node_id": "I_kwDOQVcbSs8AAAABJriOOQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJtQ"
+      "number": 862,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAXAQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12Us"
     },
     "Chart::historical-price-eod/light": {
-      "number": 1073,
-      "node_id": "I_kwDOQVcbSs8AAAABJriPqg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJuk"
+      "number": 863,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAw6w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12v0"
     },
     "Chart::historical-price-eod/full": {
-      "number": 1074,
-      "node_id": "I_kwDOQVcbSs8AAAABJriQ9g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJvw"
+      "number": 864,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAxfg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12wU"
     },
     "Chart::historical-price-eod/non-split-adjusted": {
-      "number": 1075,
-      "node_id": "I_kwDOQVcbSs8AAAABJriSMQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJxE"
+      "number": 865,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAyAA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12wo"
     },
     "Chart::historical-price-eod/dividend-adjusted": {
-      "number": 1076,
-      "node_id": "I_kwDOQVcbSs8AAAABJriTqA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJx4"
+      "number": 866,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAydw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12xM"
     },
     "Chart::historical-chart/1min": {
-      "number": 1077,
-      "node_id": "I_kwDOQVcbSs8AAAABJriVDw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJy8"
+      "number": 867,
+      "node_id": "I_kwDOVDLLJs8AAAABcTAy3Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF12xc"
     },
     "Chart::historical-chart/5min": {
-      "number": 1078,
-      "node_id": "I_kwDOQVcbSs8AAAABJriWXQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJz8"
+      "number": 868,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBJ3A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13Qg"
     },
     "Chart::historical-chart/15min": {
-      "number": 1079,
-      "node_id": "I_kwDOQVcbSs8AAAABJriX0g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ1M"
+      "number": 869,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBKew",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13Rg"
     },
     "Chart::historical-chart/30min": {
-      "number": 1080,
-      "node_id": "I_kwDOQVcbSs8AAAABJriZZw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ3A"
+      "number": 870,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBK_w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13SU"
     },
     "Chart::historical-chart/1hour": {
-      "number": 1081,
-      "node_id": "I_kwDOQVcbSs8AAAABJribGQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ3w"
+      "number": 871,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBLjg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13TQ"
     },
     "Chart::historical-chart/4hour": {
-      "number": 1082,
-      "node_id": "I_kwDOQVcbSs8AAAABJricbw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ5E"
+      "number": 872,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBMGA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13T4"
     },
     "Company::profile": {
-      "number": 1083,
-      "node_id": "I_kwDOQVcbSs8AAAABJridqg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ6Y"
+      "number": 873,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBi0g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13vY"
     },
     "Company::profile-cik": {
-      "number": 1084,
-      "node_id": "I_kwDOQVcbSs8AAAABJrifCA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ7o"
+      "number": 874,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBjWg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13wM"
     },
     "Company::company-notes": {
-      "number": 1085,
-      "node_id": "I_kwDOQVcbSs8AAAABJrigWw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ84"
+      "number": 875,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBjxQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13w0"
     },
     "Company::stock-peers": {
-      "number": 1086,
-      "node_id": "I_kwDOQVcbSs8AAAABJrihvw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ-Q"
+      "number": 876,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBkTw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13xo"
     },
     "Company::delisted-companies": {
-      "number": 1087,
-      "node_id": "I_kwDOQVcbSs8AAAABJrijMQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpJ_4"
+      "number": 877,
+      "node_id": "I_kwDOVDLLJs8AAAABcTBkyA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF13yM"
     },
     "Company::employee-count": {
-      "number": 1088,
-      "node_id": "I_kwDOQVcbSs8AAAABJrikdg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKBc"
+      "number": 878,
+      "node_id": "I_kwDOVDLLJs8AAAABcTB8Sg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14Ms"
     },
     "Company::historical-employee-count": {
-      "number": 1089,
-      "node_id": "I_kwDOQVcbSs8AAAABJrilww",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKCw"
+      "number": 879,
+      "node_id": "I_kwDOVDLLJs8AAAABcTB9Aw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14NM"
     },
     "Company::market-capitalization": {
-      "number": 1090,
-      "node_id": "I_kwDOQVcbSs8AAAABJrinCg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKDg"
+      "number": 880,
+      "node_id": "I_kwDOVDLLJs8AAAABcTB9qg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14OA"
     },
     "Company::market-capitalization-batch": {
-      "number": 1091,
-      "node_id": "I_kwDOQVcbSs8AAAABJriobA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKFM"
+      "number": 881,
+      "node_id": "I_kwDOVDLLJs8AAAABcTB-SQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14Os"
     },
     "Company::historical-market-capitalization": {
-      "number": 1092,
-      "node_id": "I_kwDOQVcbSs8AAAABJripzQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKGc"
+      "number": 882,
+      "node_id": "I_kwDOVDLLJs8AAAABcTB-8A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14PU"
     },
     "Company::shares-float": {
-      "number": 1093,
-      "node_id": "I_kwDOQVcbSs8AAAABJrirYg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKHc"
+      "number": 883,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCUpw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14m8"
     },
     "Company::shares-float-all": {
-      "number": 1094,
-      "node_id": "I_kwDOQVcbSs8AAAABJris4w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKIo"
+      "number": 884,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCVIg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14nQ"
     },
     "Company::mergers-acquisitions-latest": {
-      "number": 1095,
-      "node_id": "I_kwDOQVcbSs8AAAABJriubg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKJ0"
+      "number": 885,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCVrw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14n4"
     },
     "Company::mergers-acquisitions-search": {
-      "number": 1096,
-      "node_id": "I_kwDOQVcbSs8AAAABJrivww",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKLY"
+      "number": 886,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCWUw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14o8"
     },
     "Company::key-executives": {
-      "number": 1097,
-      "node_id": "I_kwDOQVcbSs8AAAABJrixNw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKMk"
+      "number": 887,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCWyQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF14pc"
     },
     "Company::governance-executive-compensation": {
-      "number": 1098,
-      "node_id": "I_kwDOQVcbSs8AAAABJriynw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKO0"
+      "number": 888,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCtWg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15Ag"
     },
     "Company::executive-compensation-benchmark": {
-      "number": 1099,
-      "node_id": "I_kwDOQVcbSs8AAAABJriz9A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKQM"
+      "number": 889,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCt8Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15A4"
     },
     "CommitmentOfTraders::commitment-of-traders-report": {
-      "number": 1100,
-      "node_id": "I_kwDOQVcbSs8AAAABJri1Mw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKRQ"
+      "number": 890,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCucA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15Bk"
     },
     "CommitmentOfTraders::commitment-of-traders-analysis": {
-      "number": 1101,
-      "node_id": "I_kwDOQVcbSs8AAAABJri2kg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKSc"
+      "number": 891,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCu7g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15CE"
     },
     "CommitmentOfTraders::commitment-of-traders-list": {
-      "number": 1102,
-      "node_id": "I_kwDOQVcbSs8AAAABJri4Gw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKTc"
+      "number": 892,
+      "node_id": "I_kwDOVDLLJs8AAAABcTCvbA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15Cg"
     },
     "DiscountedCashFlow::discounted-cash-flow": {
-      "number": 1103,
-      "node_id": "I_kwDOQVcbSs8AAAABJri5Tw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKUU"
+      "number": 893,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDHew",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15cM"
     },
     "DiscountedCashFlow::levered-discounted-cash-flow": {
-      "number": 1104,
-      "node_id": "I_kwDOQVcbSs8AAAABJri6lA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKVg"
+      "number": 894,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDH_g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15cs"
     },
     "DiscountedCashFlow::custom-discounted-cash-flow": {
-      "number": 1105,
-      "node_id": "I_kwDOQVcbSs8AAAABJri8dA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKW8"
+      "number": 895,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDIeg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15dY"
     },
     "DiscountedCashFlow::custom-levered-discounted-cash-flow": {
-      "number": 1106,
-      "node_id": "I_kwDOQVcbSs8AAAABJri9vA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKYQ"
+      "number": 896,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDJCA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15eM"
     },
     "Economics::treasury-rates": {
-      "number": 1107,
-      "node_id": "I_kwDOQVcbSs8AAAABJri-8g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKaE"
+      "number": 897,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDJmw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF15eo"
     },
     "Economics::economic-indicators": {
-      "number": 1108,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjA4Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKb4"
+      "number": 898,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDhlA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF152g"
     },
     "Economics::economic-calendar": {
-      "number": 1109,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjCJA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKec"
+      "number": 899,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDiOw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF153A"
     },
     "Economics::market-risk-premium": {
-      "number": 1110,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjDcw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKj4"
+      "number": 900,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDirQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1530"
     },
     "ESG::esg-disclosures": {
-      "number": 1111,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjFag",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKmk"
+      "number": 901,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDjGw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF154Q"
     },
     "ESG::esg-ratings": {
-      "number": 1112,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjGuQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKnU"
+      "number": 902,
+      "node_id": "I_kwDOVDLLJs8AAAABcTDjmw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF155A"
     },
     "ESG::esg-benchmark": {
-      "number": 1113,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjIFg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKpA"
+      "number": 903,
+      "node_id": "I_kwDOVDLLJs8AAAABcTD8rw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16Qk"
     },
     "EtfAndMutualFunds::etf/holdings": {
-      "number": 1114,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjKEQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKqU"
+      "number": 904,
+      "node_id": "I_kwDOVDLLJs8AAAABcTD9bw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16RA"
     },
     "EtfAndMutualFunds::etf/info": {
-      "number": 1115,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjLZg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKr4"
+      "number": 905,
+      "node_id": "I_kwDOVDLLJs8AAAABcTD-EA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16SE"
     },
     "EtfAndMutualFunds::etf/country-weightings": {
-      "number": 1116,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjM2Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKtU"
+      "number": 906,
+      "node_id": "I_kwDOVDLLJs8AAAABcTD-uA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16Sw"
     },
     "EtfAndMutualFunds::etf/asset-exposure": {
-      "number": 1117,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjOUw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKug"
+      "number": 907,
+      "node_id": "I_kwDOVDLLJs8AAAABcTD_TA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16Tk"
     },
     "EtfAndMutualFunds::etf/sector-weightings": {
-      "number": 1118,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjQSQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKvw"
+      "number": 908,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEVZA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16vI"
     },
     "EtfAndMutualFunds::funds/disclosure-holders-latest": {
-      "number": 1119,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjR0g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKxc"
+      "number": 909,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEWBw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16vo"
     },
     "EtfAndMutualFunds::funds/disclosure": {
-      "number": 1120,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjTZg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpKzM"
+      "number": 910,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEWiA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16wM"
     },
     "EtfAndMutualFunds::funds/disclosure-holders-search": {
-      "number": 1121,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjVPA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK0Y"
+      "number": 911,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEXCg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16ws"
     },
     "EtfAndMutualFunds::funds/disclosure-dates": {
-      "number": 1122,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjXAA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK2A"
+      "number": 912,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEXlA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF16xo"
     },
     "Statements::income-statement": {
-      "number": 1123,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjYVg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK3M"
+      "number": 913,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEuhw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17Kg"
     },
     "Statements::balance-sheet-statement": {
-      "number": 1124,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjaeg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK4k"
+      "number": 914,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEvKw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17LU"
     },
     "Statements::cash-flow-statement": {
-      "number": 1125,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjb1w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK5s"
+      "number": 915,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEvrw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17Lo"
     },
     "Statements::latest-financial-statements": {
-      "number": 1126,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjdTA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK64"
+      "number": 916,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEwKA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17Mc"
     },
     "Statements::income-statement-ttm": {
-      "number": 1127,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjekQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK8o"
+      "number": 917,
+      "node_id": "I_kwDOVDLLJs8AAAABcTEwmA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17M4"
     },
     "Statements::balance-sheet-statement-ttm": {
-      "number": 1128,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjgpw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpK-8"
+      "number": 918,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFIFg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17pE"
     },
     "Statements::cash-flow-statement-ttm": {
-      "number": 1129,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjh_g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLAE"
+      "number": 919,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFIzA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17qE"
     },
     "Statements::key-metrics": {
-      "number": 1130,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjjbw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLCY"
+      "number": 920,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFJYg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17qk"
     },
     "Statements::ratios": {
-      "number": 1131,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjk8Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLDw"
+      "number": 921,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFJ8Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17rA"
     },
     "Statements::key-metrics-ttm": {
-      "number": 1132,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjmUA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLFE"
+      "number": 922,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFKcw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF17r4"
     },
     "Statements::ratios-ttm": {
-      "number": 1133,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjntw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLGw"
+      "number": 923,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFjFg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18G4"
     },
     "Statements::financial-scores": {
-      "number": 1134,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjpGQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLHo"
+      "number": 924,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFj1Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18H0"
     },
     "Statements::owner-earnings": {
-      "number": 1135,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjqeQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLJI"
+      "number": 925,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFkTw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18IA"
     },
     "Statements::enterprise-values": {
-      "number": 1136,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjrvg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLKs"
+      "number": 926,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFk6A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18I8"
     },
     "Statements::income-statement-growth": {
-      "number": 1137,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjtuw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLMA"
+      "number": 927,
+      "node_id": "I_kwDOVDLLJs8AAAABcTFlpw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18Jk"
     },
     "Statements::balance-sheet-statement-growth": {
-      "number": 1138,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjvQg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLNY"
+      "number": 928,
+      "node_id": "I_kwDOVDLLJs8AAAABcTF_ZA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18fU"
     },
     "Statements::cash-flow-statement-growth": {
-      "number": 1139,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjwtg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLOo"
+      "number": 929,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGACg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18gI"
     },
     "Statements::financial-growth": {
-      "number": 1140,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjyDg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLQI"
+      "number": 930,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGAgQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18gs"
     },
     "Statements::financial-reports-dates": {
-      "number": 1141,
-      "node_id": "I_kwDOQVcbSs8AAAABJrjzaQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLRs"
+      "number": 931,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGA-A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18hQ"
     },
     "Statements::financial-reports-json": {
-      "number": 1142,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj1lw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLTY"
+      "number": 932,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGBiw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF18h0"
     },
     "Statements::financial-reports-xlsx": {
-      "number": 1143,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj3DA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLU8"
+      "number": 933,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGZgA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF183g"
     },
     "Statements::revenue-product-segmentation": {
-      "number": 1144,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj4aw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLWg"
+      "number": 934,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGaCQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF184Q"
     },
     "Statements::revenue-geographic-segmentation": {
-      "number": 1145,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj6Sg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLYI"
+      "number": 935,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGakg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF185Y"
     },
     "Statements::income-statement-as-reported": {
-      "number": 1146,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj7ww",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLZo"
+      "number": 936,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGbBw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1850"
     },
     "Statements::balance-sheet-statement-as-reported": {
-      "number": 1147,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj9Zw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLbw"
+      "number": 937,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGbgA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF186c"
     },
     "Statements::cash-flow-statement-as-reported": {
-      "number": 1148,
-      "node_id": "I_kwDOQVcbSs8AAAABJrj-0w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLd8"
+      "number": 938,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGzVQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF19YI"
     },
     "Statements::financial-statement-full-as-reported": {
-      "number": 1149,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkAZg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLfw"
+      "number": 939,
+      "node_id": "I_kwDOVDLLJs8AAAABcTGz7g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF19Yw"
     },
     "Form13F::institutional-ownership/latest": {
-      "number": 1150,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkB4g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLhI"
+      "number": 940,
+      "node_id": "I_kwDOVDLLJs8AAAABcTG0Yg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF19Zg"
     },
     "Form13F::institutional-ownership/extract": {
-      "number": 1151,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkDRA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLis"
+      "number": 941,
+      "node_id": "I_kwDOVDLLJs8AAAABcTG09g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF19Z8"
     },
     "Form13F::institutional-ownership/dates": {
-      "number": 1152,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkEmw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLkM"
+      "number": 942,
+      "node_id": "I_kwDOVDLLJs8AAAABcTG1bg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF19a0"
     },
     "Form13F::institutional-ownership/extract-analytics/holder": {
-      "number": 1153,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkF_A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLlU"
+      "number": 943,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHN7Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF194E"
     },
     "Form13F::institutional-ownership/holder-performance-summary": {
-      "number": 1154,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkHUg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLmg"
+      "number": 944,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHOdQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF194w"
     },
     "Form13F::institutional-ownership/holder-industry-breakdown": {
-      "number": 1155,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkIyA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLnw"
+      "number": 945,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHO9w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF195I"
     },
     "Form13F::institutional-ownership/symbol-positions-summary": {
-      "number": 1156,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkKLA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLpQ"
+      "number": 946,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHPYg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF195k"
     },
     "Form13F::institutional-ownership/industry-summary": {
-      "number": 1157,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkMKQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLqc"
+      "number": 947,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHP2Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF196I"
     },
     "Indexes::index-list": {
-      "number": 1158,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkNnw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLsE"
+      "number": 948,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHmrw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-R4"
     },
     "Indexes::quote": {
-      "number": 1159,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkPJA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLtc"
+      "number": 949,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHnKg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-Sk"
     },
     "Indexes::quote-short": {
-      "number": 1160,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkQ7w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLus"
+      "number": 950,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHnuQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-S8"
     },
     "Indexes::batch-index-quotes": {
-      "number": 1161,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkSVA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLwU"
+      "number": 951,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHoOQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-Tk"
     },
     "Indexes::historical-price-eod/light": {
-      "number": 1162,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkUIg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLxk"
+      "number": 952,
+      "node_id": "I_kwDOVDLLJs8AAAABcTHoug",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-T4"
     },
     "Indexes::historical-price-eod/full": {
-      "number": 1163,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkVdw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpLyw"
+      "number": 953,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIBUQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-uE"
     },
     "Indexes::historical-chart/1min": {
-      "number": 1164,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkW7A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpL0Q"
+      "number": 954,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIB7A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-uM"
     },
     "Indexes::historical-chart/5min": {
-      "number": 1165,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkY3A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpL1M"
+      "number": 955,
+      "node_id": "I_kwDOVDLLJs8AAAABcTICpQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-uo"
     },
     "Indexes::historical-chart/1hour": {
-      "number": 1166,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkaVA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpL3E"
+      "number": 956,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIDOw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-vA"
     },
     "Indexes::sp500-constituent": {
-      "number": 1167,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkcNg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpL6w"
+      "number": 957,
+      "node_id": "I_kwDOVDLLJs8AAAABcTID2w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1-v0"
     },
     "Indexes::nasdaq-constituent": {
-      "number": 1168,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkdmg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpL_Q"
+      "number": 958,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIeTg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_L4"
     },
     "Indexes::dowjones-constituent": {
-      "number": 1169,
-      "node_id": "I_kwDOQVcbSs8AAAABJrke9A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMBo"
+      "number": 959,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIfOA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_Mg"
     },
     "Indexes::historical-sp500-constituent": {
-      "number": 1170,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkgPQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMDs"
+      "number": 960,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIfzw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_Ng"
     },
     "Indexes::historical-nasdaq-constituent": {
-      "number": 1171,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkhpQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMFE"
+      "number": 961,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIgYw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_OM"
     },
     "Indexes::historical-dowjones-constituent": {
-      "number": 1172,
-      "node_id": "I_kwDOQVcbSs8AAAABJrki5g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMFw"
+      "number": 962,
+      "node_id": "I_kwDOVDLLJs8AAAABcTIhFQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_Os"
     },
     "Commodity::commodities-list": {
-      "number": 1173,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkk7g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMH8"
+      "number": 963,
+      "node_id": "I_kwDOVDLLJs8AAAABcTI7Pg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_mE"
     },
     "Commodity::quote": {
-      "number": 1174,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkmKg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMKs"
+      "number": 964,
+      "node_id": "I_kwDOVDLLJs8AAAABcTI77Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_mY"
     },
     "Commodity::quote-short": {
-      "number": 1175,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkn1Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMMo"
+      "number": 965,
+      "node_id": "I_kwDOVDLLJs8AAAABcTI8tQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_nE"
     },
     "Commodity::batch-commodity-quotes": {
-      "number": 1176,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkp1A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMN0"
+      "number": 966,
+      "node_id": "I_kwDOVDLLJs8AAAABcTI9Tg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_ns"
     },
     "Commodity::historical-price-eod/light": {
-      "number": 1177,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkrOg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMPA"
+      "number": 967,
+      "node_id": "I_kwDOVDLLJs8AAAABcTI96w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_oY"
     },
     "Commodity::historical-price-eod/full": {
-      "number": 1178,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkslg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMPk"
+      "number": 968,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJUww",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_-k"
     },
     "Commodity::historical-chart/1min": {
-      "number": 1179,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkt9A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMQ8"
+      "number": 969,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJVPw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_-w"
     },
     "Commodity::historical-chart/5min": {
-      "number": 1180,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkviA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMSE"
+      "number": 970,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJV6A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1_-8"
     },
     "Commodity::historical-chart/1hour": {
-      "number": 1181,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkw9w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMS8"
+      "number": 971,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJWXw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1__Y"
     },
     "Crypto::cryptocurrency-list": {
-      "number": 1182,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkyTQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMUE"
+      "number": 972,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJWzA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF1__0"
     },
     "Crypto::quote": {
-      "number": 1183,
-      "node_id": "I_kwDOQVcbSs8AAAABJrkzwQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMVw"
+      "number": 973,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJyoA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AXg"
     },
     "Crypto::quote-short": {
-      "number": 1184,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk1MQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMXA"
+      "number": 974,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJzpA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AX8"
     },
     "Crypto::batch-crypto-quotes": {
-      "number": 1185,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk2rA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMYM"
+      "number": 975,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJ0aw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AY8"
     },
     "Crypto::historical-price-eod/light": {
-      "number": 1186,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk3_g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMaQ"
+      "number": 976,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJ1Dg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AZg"
     },
     "Crypto::historical-price-eod/full": {
-      "number": 1187,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk5kQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMbs"
+      "number": 977,
+      "node_id": "I_kwDOVDLLJs8AAAABcTJ1og",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AaQ"
     },
     "Crypto::historical-chart/1min": {
-      "number": 1188,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk65Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMdM"
+      "number": 978,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKMdA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AwE"
     },
     "Crypto::historical-chart/5min": {
-      "number": 1189,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk8EQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMeE"
+      "number": 979,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKNAQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Awg"
     },
     "Crypto::historical-chart/1hour": {
-      "number": 1190,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk9Zg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMfs"
+      "number": 980,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKNgQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Aw8"
     },
     "Fundraisers::crowdfunding-offerings-latest": {
-      "number": 1191,
-      "node_id": "I_kwDOQVcbSs8AAAABJrk-xg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMiE"
+      "number": 981,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKN8w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Axo"
     },
     "Fundraisers::crowdfunding-offerings-search": {
-      "number": 1192,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlAGA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMjA"
+      "number": 982,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKOdA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2AyU"
     },
     "Fundraisers::crowdfunding-offerings": {
-      "number": 1193,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlBsw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMkg"
+      "number": 983,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKm6g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BIs"
     },
     "Fundraisers::fundraising-latest": {
-      "number": 1194,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlDEg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMm8"
+      "number": 984,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKnlg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BJI"
     },
     "Fundraisers::fundraising-search": {
-      "number": 1195,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlEXg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMow"
+      "number": 985,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKoQQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BJw"
     },
     "Fundraisers::fundraising": {
-      "number": 1196,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlF6Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMqM"
+      "number": 986,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKo2A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BKM"
     },
     "Forex::forex-list": {
-      "number": 1197,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlHbQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMrg"
+      "number": 987,
+      "node_id": "I_kwDOVDLLJs8AAAABcTKpYw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BKs"
     },
     "Forex::quote": {
-      "number": 1198,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlIpw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMs0"
+      "number": 988,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLDbQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BfY"
     },
     "Forex::quote-short": {
-      "number": 1199,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlJ2g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMvE"
+      "number": 989,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLEEA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Bfw"
     },
     "Forex::batch-forex-quotes": {
-      "number": 1200,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlLIg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMwc"
+      "number": 990,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLFHQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Bg0"
     },
     "Forex::historical-price-eod/light": {
-      "number": 1201,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlMmw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMyA"
+      "number": 991,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLFuA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2BhQ"
     },
     "Forex::historical-price-eod/full": {
-      "number": 1202,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlOAw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpMzY"
+      "number": 992,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLGYw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Bhk"
     },
     "Forex::historical-chart/1min": {
-      "number": 1203,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlPdg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM1I"
+      "number": 993,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLg7w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2B28"
     },
     "Forex::historical-chart/5min": {
-      "number": 1204,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlQrg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM2Q"
+      "number": 994,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLhpA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2B3o"
     },
     "Forex::historical-chart/1hour": {
-      "number": 1205,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlSAg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM3w"
+      "number": 995,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLiGQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2B4A"
     },
     "InsiderTrades::insider-trading/latest": {
-      "number": 1206,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlT4A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM44"
+      "number": 996,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLilA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2B4M"
     },
     "InsiderTrades::insider-trading/search": {
-      "number": 1207,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlVMg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM6U"
+      "number": 997,
+      "node_id": "I_kwDOVDLLJs8AAAABcTLjLg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2B4s"
     },
     "InsiderTrades::insider-trading/reporting-name": {
-      "number": 1208,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlWkw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM7c"
+      "number": 998,
+      "node_id": "I_kwDOVDLLJs8AAAABcTL_6g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CRU"
     },
     "InsiderTrades::insider-trading-transaction-type": {
-      "number": 1209,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlYcg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM8c"
+      "number": 999,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMAew",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CR0"
     },
     "InsiderTrades::insider-trading/statistics": {
-      "number": 1210,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlZ4g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM90"
+      "number": 1000,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMBLg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CSo"
     },
     "InsiderTrades::acquisition-of-beneficial-ownership": {
-      "number": 1211,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlbYg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpM_Y"
+      "number": 1001,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMB7Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CTQ"
     },
     "MarketPerformance::sector-performance-snapshot": {
-      "number": 1212,
-      "node_id": "I_kwDOQVcbSs8AAAABJrldeQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNAg"
+      "number": 1002,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMCbQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CUA"
     },
     "MarketPerformance::industry-performance-snapshot": {
-      "number": 1213,
-      "node_id": "I_kwDOQVcbSs8AAAABJrle0Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNB4"
+      "number": 1003,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMb3g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Csc"
     },
     "MarketPerformance::historical-sector-performance": {
-      "number": 1214,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlgKA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNDg"
+      "number": 1004,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMceA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2CtM"
     },
     "MarketPerformance::historical-industry-performance": {
-      "number": 1215,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlhgA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNFQ"
+      "number": 1005,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMdCQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Ctw"
     },
     "MarketPerformance::sector-pe-snapshot": {
-      "number": 1216,
-      "node_id": "I_kwDOQVcbSs8AAAABJrljiw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNGo"
+      "number": 1006,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMdlg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Cug"
     },
     "MarketPerformance::industry-pe-snapshot": {
-      "number": 1217,
-      "node_id": "I_kwDOQVcbSs8AAAABJrllHA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNIM"
+      "number": 1007,
+      "node_id": "I_kwDOVDLLJs8AAAABcTMeKg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Cvc"
     },
     "MarketPerformance::historical-sector-pe": {
-      "number": 1218,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlnLg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNJ4"
+      "number": 1008,
+      "node_id": "I_kwDOVDLLJs8AAAABcTM4Kw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DKE"
     },
     "MarketPerformance::historical-industry-pe": {
-      "number": 1219,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlpOw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNLI"
+      "number": 1009,
+      "node_id": "I_kwDOVDLLJs8AAAABcTM46g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DKw"
     },
     "MarketPerformance::biggest-gainers": {
-      "number": 1220,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlqsQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNMk"
+      "number": 1010,
+      "node_id": "I_kwDOVDLLJs8AAAABcTM5bA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DLk"
     },
     "MarketPerformance::biggest-losers": {
-      "number": 1221,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlsJg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNOU"
+      "number": 1011,
+      "node_id": "I_kwDOVDLLJs8AAAABcTM53g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DL8"
     },
     "MarketPerformance::most-actives": {
-      "number": 1222,
-      "node_id": "I_kwDOQVcbSs8AAAABJrltlg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNQQ"
+      "number": 1012,
+      "node_id": "I_kwDOVDLLJs8AAAABcTM6ZQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DMY"
     },
     "MarketHours::exchange-market-hours": {
-      "number": 1223,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlvvw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNS4"
+      "number": 1013,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNUMQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DmQ"
     },
     "MarketHours::holidays-by-exchange": {
-      "number": 1224,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlxSQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNUs"
+      "number": 1014,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNVCg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Dmg"
     },
     "MarketHours::all-exchange-market-hours": {
-      "number": 1225,
-      "node_id": "I_kwDOQVcbSs8AAAABJrlyzQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNXE"
+      "number": 1015,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNVlw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2DnA"
     },
     "TechnicalIndicators::technical-indicators/sma": {
-      "number": 1226,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl0QQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNZY"
+      "number": 1016,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNWJA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Dng"
     },
     "TechnicalIndicators::technical-indicators/ema": {
-      "number": 1227,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl2SQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNcE"
+      "number": 1017,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNWmQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Dn8"
     },
     "TechnicalIndicators::technical-indicators/wma": {
-      "number": 1228,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl3wA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNeU"
+      "number": 1018,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNunQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EAI"
     },
     "TechnicalIndicators::technical-indicators/dema": {
-      "number": 1229,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl5vQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNgw"
+      "number": 1019,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNvPw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EBE"
     },
     "TechnicalIndicators::technical-indicators/tema": {
-      "number": 1230,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl7Ug",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNjA"
+      "number": 1020,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNvyA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EBQ"
     },
     "TechnicalIndicators::technical-indicators/rsi": {
-      "number": 1231,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl8uw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNk0"
+      "number": 1021,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNwUg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EBo"
     },
     "TechnicalIndicators::technical-indicators/standarddeviation": {
-      "number": 1232,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl-LA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNm4"
+      "number": 1022,
+      "node_id": "I_kwDOVDLLJs8AAAABcTNw2A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2ECQ"
     },
     "TechnicalIndicators::technical-indicators/williams": {
-      "number": 1233,
-      "node_id": "I_kwDOQVcbSs8AAAABJrl_uQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNpE"
+      "number": 1023,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOOHw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EZk"
     },
     "TechnicalIndicators::technical-indicators/adx": {
-      "number": 1234,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmBGw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNq8"
+      "number": 1024,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOOog",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EaM"
     },
     "News::fmp-articles": {
-      "number": 1235,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmCuA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNtY"
+      "number": 1025,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOPNg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Eak"
     },
     "News::news/general-latest": {
-      "number": 1236,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmEVA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNvg"
+      "number": 1026,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOP5w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2EbA"
     },
     "News::news/press-releases-latest": {
-      "number": 1237,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmFqA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNw8"
+      "number": 1027,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOQpw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Ebg"
     },
     "News::news/stock-latest": {
-      "number": 1238,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmHGQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpNyk"
+      "number": 1028,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOuPg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2E1U"
     },
     "News::news/crypto-latest": {
-      "number": 1239,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmJBQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN0Q"
+      "number": 1029,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOu1A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2E18"
     },
     "News::news/forex-latest": {
-      "number": 1240,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmKgw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN2U"
+      "number": 1030,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOvWA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2E2s"
     },
     "News::news/press-releases": {
-      "number": 1241,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmMCA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN38"
+      "number": 1031,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOv4w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2E3E"
     },
     "News::news/stock": {
-      "number": 1242,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmNeA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN58"
+      "number": 1032,
+      "node_id": "I_kwDOVDLLJs8AAAABcTOweg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2E3k"
     },
     "News::news/crypto": {
-      "number": 1243,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmO6Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN7s"
+      "number": 1033,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPNIw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FOI"
     },
     "News::news/forex": {
-      "number": 1244,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmQWQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN9o"
+      "number": 1034,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPNsA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FOc"
     },
     "Quote::quote": {
-      "number": 1245,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmR1g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpN_Q"
+      "number": 1035,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPOVA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FPE"
     },
     "Quote::quote-short": {
-      "number": 1246,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmS_Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOAw"
+      "number": 1036,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPO0g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FPk"
     },
     "Quote::aftermarket-trade": {
-      "number": 1247,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmUbg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOBw"
+      "number": 1037,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPPYQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FQk"
     },
     "Quote::aftermarket-quote": {
-      "number": 1248,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmV5Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpODM"
+      "number": 1038,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPoRw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Fk4"
     },
     "Quote::stock-price-change": {
-      "number": 1249,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmXfQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOE0"
+      "number": 1039,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPozg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FlY"
     },
     "Quote::batch-quote": {
-      "number": 1250,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmZWg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOGM"
+      "number": 1040,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPpZg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2FmE"
     },
     "Quote::batch-quote-short": {
-      "number": 1251,
-      "node_id": "I_kwDOQVcbSs8AAAABJrma3g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOHw"
+      "number": 1041,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPp2A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Fmc"
     },
     "Quote::batch-aftermarket-trade": {
-      "number": 1252,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmcVQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOKI"
+      "number": 1042,
+      "node_id": "I_kwDOVDLLJs8AAAABcTPqRQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Fm4"
     },
     "Quote::batch-aftermarket-quote": {
-      "number": 1253,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmdpw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOLo"
+      "number": 1043,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQDHQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2F-A"
     },
     "Quote::batch-exchange-quote": {
-      "number": 1254,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmfMQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpONM"
+      "number": 1044,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQDvg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2F-o"
     },
     "Quote::batch-mutualfund-quotes": {
-      "number": 1255,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmg8g",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOO4"
+      "number": 1045,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQEYA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2F_Y"
     },
     "Quote::batch-etf-quotes": {
-      "number": 1256,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmiiw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOQk"
+      "number": 1046,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQE-g",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GAQ"
     },
     "Quote::batch-commodity-quotes": {
-      "number": 1257,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmkBw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOR4"
+      "number": 1047,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQFjQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GAk"
     },
     "Quote::batch-crypto-quotes": {
-      "number": 1258,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmldQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOTk"
+      "number": 1048,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQdoQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GWM"
     },
     "Quote::batch-forex-quotes": {
-      "number": 1259,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmm6A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOU8"
+      "number": 1049,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQeSQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GWg"
     },
     "Quote::batch-index-quotes": {
-      "number": 1260,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmoQA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOW0"
+      "number": 1050,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQe4A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GXA"
     },
     "SecFilings::sec-filings-8k": {
-      "number": 1261,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmpsA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOYY"
+      "number": 1051,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQfZg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GXU"
     },
     "SecFilings::sec-filings-financials": {
-      "number": 1262,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmrOA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOac"
+      "number": 1052,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQgCg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GX0"
     },
     "SecFilings::sec-filings-search/form-type": {
-      "number": 1263,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmswg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOcY"
+      "number": 1053,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQ5vg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2GzY"
     },
     "SecFilings::sec-filings-search/symbol": {
-      "number": 1264,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmuJw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOeE"
+      "number": 1054,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQ6SQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2G0c"
     },
     "SecFilings::sec-filings-search/cik": {
-      "number": 1265,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmv3A",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOf0"
+      "number": 1055,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQ69Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2G1A"
     },
     "SecFilings::sec-filings-company-search/name": {
-      "number": 1266,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmxbQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOh8"
+      "number": 1056,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQ7kw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2G1o"
     },
     "SecFilings::sec-filings-company-search/symbol": {
-      "number": 1267,
-      "node_id": "I_kwDOQVcbSs8AAAABJrmzDg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOmc"
+      "number": 1057,
+      "node_id": "I_kwDOVDLLJs8AAAABcTQ8RA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2G2I"
     },
     "SecFilings::sec-filings-company-search/cik": {
-      "number": 1268,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm0fQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOoI"
+      "number": 1058,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRVxQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2HPM"
     },
     "SecFilings::sec-profile": {
-      "number": 1269,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm18w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOqE"
+      "number": 1059,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRW2w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2HPw"
     },
     "SecFilings::standard-industrial-classification-list": {
-      "number": 1270,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm3Rg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOrs"
+      "number": 1060,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRXcw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2HRA"
     },
     "SecFilings::industry-classification-search": {
-      "number": 1271,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm42w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOtg"
+      "number": 1061,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRYIQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2HRQ"
     },
     "SecFilings::all-industry-classification": {
-      "number": 1272,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm6Tg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOvc"
+      "number": 1062,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRYqQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2HSY"
     },
     "EarningsTranscript::earning-call-transcript-latest": {
-      "number": 1273,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm7eQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOw0"
+      "number": 1063,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRuAQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Hss"
     },
     "EarningsTranscript::earning-call-transcript": {
-      "number": 1274,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm8-Q",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOx8"
+      "number": 1064,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRulQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Hs8"
     },
     "EarningsTranscript::earning-call-transcript-dates": {
-      "number": 1275,
-      "node_id": "I_kwDOQVcbSs8AAAABJrm-Yw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpOz0"
+      "number": 1065,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRvEw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Ht0"
     },
     "EarningsTranscript::earnings-transcript-list": {
-      "number": 1276,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnABw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpO2k"
+      "number": 1066,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRvkg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Hu0"
     },
     "Senate::senate-latest": {
-      "number": 1277,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnCAQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpO5w"
+      "number": 1067,
+      "node_id": "I_kwDOVDLLJs8AAAABcTRwPA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Hvc"
     },
     "Senate::house-latest": {
-      "number": 1278,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnDpQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpO8k"
+      "number": 1068,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSKLw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IM4"
     },
     "Senate::senate-trades": {
-      "number": 1279,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnFNg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpO-c"
+      "number": 1069,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSKyA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IOE"
     },
     "Senate::senate-trades-by-name": {
-      "number": 1280,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnGpQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPA4"
+      "number": 1070,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSLmg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IOw"
     },
     "Senate::senate-trades-by-id": {
-      "number": 1281,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnINw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPCk"
+      "number": 1071,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSMHQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IQg"
     },
     "Senate::house-trades": {
-      "number": 1282,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnJyg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPEs"
+      "number": 1072,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSMrQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IQ4"
     },
     "Senate::house-trades-by-name": {
-      "number": 1283,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnLfw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPG4"
+      "number": 1073,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSkbA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Ips"
     },
     "Senate::house-trades-by-id": {
-      "number": 1284,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnNFQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPI4"
+      "number": 1074,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSlUA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Iq4"
     },
     "Senate::senate-profile": {
-      "number": 1285,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnOaw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPKo"
+      "number": 1075,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSlyw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IrA"
     },
     "Senate::senate-positions": {
-      "number": 1286,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnQfg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPMk"
+      "number": 1076,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSmRg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Irk"
     },
     "Senate::senate-net-worth": {
-      "number": 1287,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnSLA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPOM"
+      "number": 1077,
+      "node_id": "I_kwDOVDLLJs8AAAABcTSmxA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2IsI"
     },
     "Senate::senate-net-worth-aggregated": {
-      "number": 1288,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnT4w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPQI"
+      "number": 1078,
+      "node_id": "I_kwDOVDLLJs8AAAABcTS-AQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JCc"
     },
     "Bulk::profile-bulk": {
-      "number": 1289,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnWmA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPRY"
+      "number": 1079,
+      "node_id": "I_kwDOVDLLJs8AAAABcTS-dQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JC8"
     },
     "Bulk::rating-bulk": {
-      "number": 1290,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnYOg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPTQ"
+      "number": 1080,
+      "node_id": "I_kwDOVDLLJs8AAAABcTS-3w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JDM"
     },
     "Bulk::dcf-bulk": {
-      "number": 1291,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnaAg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPVA"
+      "number": 1081,
+      "node_id": "I_kwDOVDLLJs8AAAABcTS_Xg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JD4"
     },
     "Bulk::scores-bulk": {
-      "number": 1292,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnbfA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPWo"
+      "number": 1082,
+      "node_id": "I_kwDOVDLLJs8AAAABcTS_2Q",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JEo"
     },
     "Bulk::price-target-summary-bulk": {
-      "number": 1293,
-      "node_id": "I_kwDOQVcbSs8AAAABJrndkQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPYU"
+      "number": 1083,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTW2w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JgY"
     },
     "Bulk::etf-holder-bulk": {
-      "number": 1294,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnfBQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPaA"
+      "number": 1084,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTXng",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Jhc"
     },
     "Bulk::upgrades-downgrades-consensus-bulk": {
-      "number": 1295,
-      "node_id": "I_kwDOQVcbSs8AAAABJrngwA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPbo"
+      "number": 1085,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTYQA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2JiU"
     },
     "Bulk::key-metrics-ttm-bulk": {
-      "number": 1296,
-      "node_id": "I_kwDOQVcbSs8AAAABJrni1w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPdU"
+      "number": 1086,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTY-w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Ji8"
     },
     "Bulk::ratios-ttm-bulk": {
-      "number": 1297,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnkLg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPfM"
+      "number": 1087,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTZpA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Jjk"
     },
     "Bulk::peers-bulk": {
-      "number": 1298,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnlqw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPhI"
+      "number": 1088,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTwhQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2J6A"
     },
     "Bulk::earnings-surprises-bulk": {
-      "number": 1299,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnnAg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPjg"
+      "number": 1089,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTxFA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2J6c"
     },
     "Bulk::income-statement-bulk": {
-      "number": 1300,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnpDA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPlg"
+      "number": 1090,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTxmQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2J7E"
     },
     "Bulk::income-statement-growth-bulk": {
-      "number": 1301,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnqag",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPnk"
+      "number": 1091,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTyNQ",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2J7Q"
     },
     "Bulk::balance-sheet-statement-bulk": {
-      "number": 1302,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnrsQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPpI"
+      "number": 1092,
+      "node_id": "I_kwDOVDLLJs8AAAABcTTyuw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2J7k"
     },
     "Bulk::balance-sheet-statement-growth-bulk": {
-      "number": 1303,
-      "node_id": "I_kwDOQVcbSs8AAAABJrntog",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPqU"
+      "number": 1093,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUKnA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KR4"
     },
     "Bulk::cash-flow-statement-bulk": {
-      "number": 1304,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnvvw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPsA"
+      "number": 1094,
+      "node_id": "I_kwDOVDLLJs8AAAABcTULQA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KSk"
     },
     "Bulk::cash-flow-statement-growth-bulk": {
-      "number": 1305,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnxQg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPs0"
+      "number": 1095,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUL4A",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KTY"
     },
     "Bulk::eod-bulk": {
-      "number": 1306,
-      "node_id": "I_kwDOQVcbSs8AAAABJrnzTg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPuY"
+      "number": 1096,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUMXw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KUM"
     },
     "Partners::tipranks-search": {
-      "number": 1307,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn04w",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpPxI"
+      "number": 1097,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUNBA",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KU8"
     },
     "Partners::tipranks-pit-symbol": {
-      "number": 1308,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn2OQ",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP0M"
+      "number": 1098,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUk-w",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KrQ"
     },
     "Partners::tipranks-pit-analyst": {
-      "number": 1309,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn4Jg",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP1w"
+      "number": 1099,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUluw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Kro"
     },
     "Partners::tipranks-symbol-summary": {
-      "number": 1310,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn5kw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP3Q"
+      "number": 1100,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUmTg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KsM"
     },
     "Partners::tipranks-analyst-summary": {
-      "number": 1311,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn7SA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP4w"
+      "number": 1101,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUnAg",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2KtU"
     },
     "Partners::tipranks-firm-summary": {
-      "number": 1312,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn8tA",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP6M"
+      "number": 1102,
+      "node_id": "I_kwDOVDLLJs8AAAABcTUnmw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2Kt8"
     },
     "Partners::tipranks-analysts": {
-      "number": 1313,
-      "node_id": "I_kwDOQVcbSs8AAAABJrn-sw",
-      "item_id": "PVTI_lAHOAOc7384BdSTgzgzpP7s"
+      "number": 1103,
+      "node_id": "I_kwDOVDLLJs8AAAABcTVBgw",
+      "item_id": "PVTI_lAHOAE4h8M4BqDs2zhF2LKY"
     }
   },
   "epic": {

@@ -1,6 +1,6 @@
 # 08 — Validation & Robustness Framework
 
-**GitHub:** [#45](https://github.com/prajoria/OpenBB/issues/45) · **Depends on:** [#41](https://github.com/prajoria/OpenBB/issues/41), [#42](https://github.com/prajoria/OpenBB/issues/42)
+**GitHub:** `legacy issue 45` · **Depends on:** `legacy issue 41`, `legacy issue 42`
 **Beads:** OpenBB-4gu, OpenBB-cgs
 
 The `validation/` package guards against the #1 failure mode of backtesting: **overfitting**.

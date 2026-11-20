@@ -1,6 +1,6 @@
 # 05 — Event-Driven Engine (zipline-reloaded + Pipeline)
 
-**GitHub:** [#42](https://github.com/prajoria/OpenBB/issues/42) · **Depends on:** [#39](https://github.com/prajoria/OpenBB/issues/39), [#40](https://github.com/prajoria/OpenBB/issues/40), [#43](https://github.com/prajoria/OpenBB/issues/43)
+**GitHub:** `legacy issue 42` · **Depends on:** `legacy issue 39`, `legacy issue 40`, `legacy issue 43`
 **Beads:** OpenBB-3e8, OpenBB-5wj, OpenBB-dqe
 
 The **source-of-truth** engine (`engine/event_driven.py`). Wraps `zipline-reloaded`

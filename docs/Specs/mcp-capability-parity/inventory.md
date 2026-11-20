@@ -1,8 +1,8 @@
 # MCP metadata-only capability inventory
 
 Status: implementation specification for
-[#2153 (metadata-only inventory CLI)](https://github.com/prajoria/OpenBB/issues/2153),
-under [#2132 (versioned source/API/MCP inventory)](https://github.com/prajoria/OpenBB/issues/2132).
+[#1216 (metadata-only inventory CLI)](https://github.com/rashmijain02/OpenBB/issues/1216),
+under [#1186 (versioned source/API/MCP inventory)](https://github.com/rashmijain02/OpenBB/issues/1186).
 Integration target: `portfolio`.
 
 This specification builds on the

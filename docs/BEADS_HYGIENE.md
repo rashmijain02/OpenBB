@@ -118,7 +118,7 @@ bd github sync --pull-only --dry-run
 bd github sync --pull-only
 
 # 3. Find claimable work
-gh issue list --repo prajoria/OpenBB \
+gh issue list --repo rashmijain02/OpenBB \
   --state open \
   --search "no:assignee -label:status:blocked" \
   --limit 20

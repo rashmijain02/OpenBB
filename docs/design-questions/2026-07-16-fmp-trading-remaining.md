@@ -10,9 +10,9 @@ it blocks, lists options with trade-offs, notes my recommendation, and
 provides an answer template. Reply in-line under `## Decision:` and
 open a PR (or comment on the referenced issue) to unblock the work.
 
-Source of failures: https://github.com/prajoria/OpenBB/issues/821 —
+Source of failures: `legacy issue 821` —
 see the comment
-[#4996870803](https://github.com/prajoria/OpenBB/issues/821#issuecomment-4996870803)
+`legacy issue 821`
 for the numeric summary.
 
 ---

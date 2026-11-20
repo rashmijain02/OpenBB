@@ -225,7 +225,7 @@ REVIEWED_BINDINGS: dict[tuple[str, str], tuple[tuple[str, ...], bool]] = {
             ),
             (
                 "portfolio/05",
-                "3-what-if-diff-pr-905-https-github-com-prajoria",
+                "3-what-if-diff-pr-905-https-github-com-rashmijain02",
                 (_WHATIF,),
             ),
             ("portfolio/05", "4-reading-a-what-if", (_WHATIF,)),

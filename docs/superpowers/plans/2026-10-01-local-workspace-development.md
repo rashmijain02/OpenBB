@@ -26,8 +26,8 @@
 
 ## GitHub Delivery Sequence
 
-**Program epic:** [#2096 Local OpenBB Workspace development environment](https://github.com/prajoria/OpenBB/issues/2096)
-**Project board:** [Portfolio Intelligence Engine — Board](https://github.com/users/prajoria/projects/4/views/2)
+**Program epic:** [#724 Local OpenBB Workspace development environment](https://github.com/rashmijain02/OpenBB/issues/724)
+**Project board:** [Portfolio Intelligence Engine — Board](https://github.com/users/rashmijain02/projects/1/views/1)
 **Integration branch:** `portfolio`
 
 Work is strictly sequential. Each issue starts only after the preceding issue is
@@ -35,16 +35,16 @@ verified, reviewed, merged to `portfolio`, and marked Done.
 
 | Order | Issue | Deliverable | Branch | Project fields |
 | --- | --- | --- | --- | --- |
-| 1 | [#2097](https://github.com/prajoria/OpenBB/issues/2097) | Pin reference repositories and this execution plan | `chore/workspace-dev-foundation-gh-2097` | M0 / PM / Task |
-| 2 | [#2098](https://github.com/prajoria/OpenBB/issues/2098) | Idempotent Windows setup preflight | `build/workspace-dev-setup-gh-2098` | P0 / D-Widgets+QA / Feature |
-| 3 | [#2099](https://github.com/prajoria/OpenBB/issues/2099) | Portfolio Intelligence launcher | `feat/workspace-intel-launcher-gh-2099` | P0 / D-Widgets+QA / Feature |
-| 4 | [#2100](https://github.com/prajoria/OpenBB/issues/2100) | Privacy-safe smoke checks and operator runbook | `docs/workspace-dev-runbook-gh-2100` | P0 / QA / Feature |
-| 5 | [#2108](https://github.com/prajoria/OpenBB/issues/2108) | Pin and audit self-hosted Workspace source | `chore/self-hosted-workspace-source-gh-2108` | P1 / Workspace+Tools / Task |
-| 6 | [#2110](https://github.com/prajoria/OpenBB/issues/2110) | Deploy self-hosted Workspace development stack | `feat/self-hosted-workspace-deploy-gh-2110` | P1 / Workspace+Tools / Feature |
-| 7 | [#2111](https://github.com/prajoria/OpenBB/issues/2111) | Add authoritative verifier, report, and replay skill | `feat/workspace-replay-skill-gh-2111` | P1 / Workspace+Tools / Feature |
-| 8 | [#2101](https://github.com/prajoria/OpenBB/issues/2101) | Hosted Workspace and browser-harness validation | `test/workspace-hosted-browser-gh-2101` | P1 / QA / Task |
-| 9 | [#2102](https://github.com/prajoria/OpenBB/issues/2102) | Workspace Bench and hosted MCP certification | `test/workspace-bench-mcp-gh-2102` | P1 / QA / Task |
-| 10 | [#2103](https://github.com/prajoria/OpenBB/issues/2103) | Optional Portfolio Copilot proxy validation | `test/workspace-copilot-proxy-gh-2103` | P1 / B-Analytics / Task |
+| 1 | [#1154](https://github.com/rashmijain02/OpenBB/issues/1154) | Pin reference repositories and this execution plan | `chore/workspace-dev-foundation-gh-2097` | M0 / PM / Task |
+| 2 | [#1155](https://github.com/rashmijain02/OpenBB/issues/1155) | Idempotent Windows setup preflight | `build/workspace-dev-setup-gh-2098` | P0 / D-Widgets+QA / Feature |
+| 3 | [#1156](https://github.com/rashmijain02/OpenBB/issues/1156) | Portfolio Intelligence launcher | `feat/workspace-intel-launcher-gh-2099` | P0 / D-Widgets+QA / Feature |
+| 4 | [#1157](https://github.com/rashmijain02/OpenBB/issues/1157) | Privacy-safe smoke checks and operator runbook | `docs/workspace-dev-runbook-gh-2100` | P0 / QA / Feature |
+| 5 | [#1161](https://github.com/rashmijain02/OpenBB/issues/1161) | Pin and audit self-hosted Workspace source | `chore/self-hosted-workspace-source-gh-2108` | P1 / Workspace+Tools / Task |
+| 6 | [#1162](https://github.com/rashmijain02/OpenBB/issues/1162) | Deploy self-hosted Workspace development stack | `feat/self-hosted-workspace-deploy-gh-2110` | P1 / Workspace+Tools / Feature |
+| 7 | [#1163](https://github.com/rashmijain02/OpenBB/issues/1163) | Add authoritative verifier, report, and replay skill | `feat/workspace-replay-skill-gh-2111` | P1 / Workspace+Tools / Feature |
+| 8 | [#1158](https://github.com/rashmijain02/OpenBB/issues/1158) | Hosted Workspace and browser-harness validation | `test/workspace-hosted-browser-gh-2101` | P1 / QA / Task |
+| 9 | [#1159](https://github.com/rashmijain02/OpenBB/issues/1159) | Workspace Bench and hosted MCP certification | `test/workspace-bench-mcp-gh-2102` | P1 / QA / Task |
+| 10 | [#1160](https://github.com/rashmijain02/OpenBB/issues/1160) | Optional Portfolio Copilot proxy validation | `test/workspace-copilot-proxy-gh-2103` | P1 / B-Analytics / Task |
 
 For each issue:
 
@@ -108,7 +108,7 @@ For each issue:
 - Add: `third_party/openbb-workspace-bench`
 
 **Interfaces:**
-- Consumes: Git submodule support and the `prajoria` GitHub forks.
+- Consumes: Git submodule support and the `rashmijain02` GitHub forks.
 - Produces: reproducible source pins available to documentation, tests, and developers.
 
 - [ ] **Step 1: Verify the staged submodule definitions**

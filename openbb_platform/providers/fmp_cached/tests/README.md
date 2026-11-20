@@ -26,7 +26,7 @@ tests/record/http/test_fmp_cached_fetchers/
 
 Coverage: **10 of 75 registered fetchers** — the portfolio_intel
 critical path. The other 65 are tracked in
-[#955](https://github.com/prajoria/OpenBB/issues/955) for phased
+[#252](https://github.com/rashmijain02/OpenBB/issues/252) for phased
 draining. The coverage-gate test
 `test_fetcher_dict_coverage.py::test_every_registered_endpoint_has_cassette_or_is_allowlisted`
 regresses loudly if you add a new endpoint without either recording a

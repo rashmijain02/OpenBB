@@ -283,7 +283,7 @@ def _bare_refs_in_markdown(nb: dict) -> list[tuple[int, str]]:
 )
 def test_no_bare_issue_refs_in_markdown(nb_name: str) -> None:
     """#1461: every ``#NNNN`` in a markdown cell must be a real link
-    (``[#NNNN](https://github.com/prajoria/OpenBB/issues/NNNN)``).
+    (``[#NNNN](https://github.com/rashmijain02/OpenBB/issues/NNNN)``).
 
     A bare ``#1234`` renders as inert text in nbviewer / GitHub notebook
     preview, so readers can't click through to see what shipped. The

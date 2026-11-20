@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | **Status** | v0.2 — Draft, awaiting user approval |
-| **Program** | Portfolio Intelligence Engine (GH Project #4) |
+| **Program** | Portfolio Intelligence Engine (GH Project 1) |
 | **Long-lived branch** | `portfolio` |
 | **Proposed side-branch** | `feat/pi-importer/snapshot-append-only` |
 | **Author** | Claude (drafted 2026-07-18, revised same-day for interop) |
-| **Reviewer** | @prajoria (approval required per section) |
+| **Reviewer** | Rashmi Jain (approval required per section) |
 | **Complementary to** | [`docs/Specs/Portfolio-Intelligence-Engine-PRD.md`](../../Specs/Portfolio-Intelligence-Engine-PRD.md) (main PI PRD — analytics consumer of this store) · [`docs/designs/quant_trading/78-paperbroker-fill-sim.md`](../../designs/quant_trading/78-paperbroker-fill-sim.md) (paper-broker fill sim — a peer, NOT overridden) · [`portfolio_app/README.md`](../../../portfolio_app/README.md) (existing MySQL-backed positions service — this importer produces a parallel local snapshot store, does NOT replace) · [`portfolio_export/README.md`](../../../openbb_platform/tools/portfolio_export/README.md) (upstream producer of the CSVs we consume) |
 
 ---
@@ -103,23 +103,23 @@ peer artifact.
 ```
 $ pi import ~/portfolio_exports/
 Scanned 12 CSVs under ~/portfolio_exports/
-  ✓ 2026-07-18  prajoria  Portfolio_Positions_Jul-18-2026_prajoria.csv  (23 rows)
+  ✓ 2026-07-18  rashmijain02  Portfolio_Positions_Jul-18-2026_rashmijain02.csv  (23 rows)
   ✓ 2026-07-18  rashmi    Portfolio_Positions_Jul-18-2026_rashmi.csv   (17 rows)
-  ✓ 2026-07-11  prajoria  Portfolio_Positions_Jul-11-2026_prajoria.csv (22 rows)
+  ✓ 2026-07-11  rashmijain02  Portfolio_Positions_Jul-11-2026_rashmijain02.csv (22 rows)
   ⚠ 2026-07-11  rashmi    Portfolio_Positions_Jul-11-2026_rashmi.csv  (16 rows, 1 skipped: footer)
-  ↻ 2026-07-04  prajoria  Portfolio_Positions_Jul-04-2026_prajoria.csv (already imported, skipped)
+  ↻ 2026-07-04  rashmijain02  Portfolio_Positions_Jul-04-2026_rashmijain02.csv (already imported, skipped)
   ...
 Imported 4 new snapshots, 156 position rows. 1 CSV skipped (duplicate content
 digest). 3 rows skipped (bad shape or non-position footer).
 
-$ pi as-of 2026-07-11 --user prajoria
+$ pi as-of 2026-07-11 --user rashmijain02
 Account X99999999 (Individual - TOD)
   XYZ  1.234 sh  @ $12.34  ($99.99 mkt / $88.88 cost)
   ABC  10.00 sh  @ $45.67  ...
   ...
 17 positions, $XX,XXX market value, $YY,YYY cost basis.
 
-$ pi diff 2026-07-04 2026-07-18 --user prajoria
+$ pi diff 2026-07-04 2026-07-18 --user rashmijain02
 Between 2026-07-04 → 2026-07-18 (2 snapshots apart):
   + Added:    2 symbols  (XYZ, ABC)
   - Removed:  1 symbol   (DEF)
@@ -613,6 +613,6 @@ need before writing code.
 
 ## Sign-off
 
-- [ ] Reviewer: @prajoria
+- [ ] Reviewer: Rashmi Jain
 - [ ] Approved to move to implementation plan (`docs/superpowers/plans/2026-07-18-portfolio-snapshot-importer-plan.md`)
 - [ ] Any of the 5 [Q1]–[Q5] open questions answered inline before plan drafting

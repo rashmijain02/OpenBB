@@ -413,7 +413,7 @@ the MCP request executed the job.
 
 ## 11. Portfolio branch and pull-request direction
 
-All integration pull requests target `portfolio` in `prajoria/OpenBB`. Start
+All integration pull requests target `portfolio` in `rashmijain02/OpenBB`. Start
 from the fetched integration ref in an isolated worktree:
 
 ```powershell
@@ -426,7 +426,7 @@ Push the explicit feature ref without changing any existing upstream tracking:
 ```powershell
 git push origin HEAD:refs/heads/<feature-branch>
 gh pr create `
-    --repo prajoria/OpenBB `
+    --repo rashmijain02/OpenBB `
     --base portfolio `
     --head <feature-branch>
 ```

@@ -1,6 +1,6 @@
 # 04 — Vectorized In-House Engine (NumPy/Numba)
 
-**GitHub:** [#41](https://github.com/prajoria/OpenBB/issues/41) · **Depends on:** [#39](https://github.com/prajoria/OpenBB/issues/39), [#40](https://github.com/prajoria/OpenBB/issues/40), [#43](https://github.com/prajoria/OpenBB/issues/43)
+**GitHub:** `legacy issue 41` · **Depends on:** `legacy issue 39`, `legacy issue 40`, `legacy issue 43`
 **Beads:** OpenBB-wzl, OpenBB-5bt, OpenBB-3rr
 
 The high-throughput research engine (`engine/vectorized.py`). Implements the `Engine`

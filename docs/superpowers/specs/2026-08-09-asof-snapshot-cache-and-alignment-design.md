@@ -2,11 +2,11 @@
 
 - **Status:** Ready for implementation hand-off (spec only — no code in this workflow)
 - **Author / workflow:** Portfolio Intelligence Engine — validation/verification/recommendation session (2026-08-09)
-- **Program:** Portfolio Intelligence Engine (GitHub Project #4)
+- **Program:** Portfolio Intelligence Engine (GitHub Project 1)
 - **Parent epic / blocker:** #1932 (architecture blocker: data-bearing techtrade widgets need a persisted scan-snapshot layer)
 - **Implements issues:** #1963, #1964, #1965, #1966, #1967, #1968, #1969 (+ two new Phase-A foundation issues, see §9)
 - **Design sources (scratch, gitignored):** `.dev-cycle/brainstorm-asof-snapshot-cache.md`, `.dev-cycle/plan-techtrade-portfolio-alignment.md`
-- **Target branch for the implementing team:** feature branches off `portfolio`, PR **into `portfolio`** (`--repo prajoria/OpenBB`, never cross-fork, never `develop`)
+- **Target branch for the implementing team:** feature branches off `portfolio`, PR **into `portfolio`** (`--repo rashmijain02/OpenBB`, never cross-fork, never `develop`)
 
 > This document is the durable, checked-in specification. The two `.dev-cycle/*`
 > docs are the brainstorming/analysis that produced it and are not part of the

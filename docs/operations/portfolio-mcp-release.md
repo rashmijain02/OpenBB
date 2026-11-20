@@ -151,7 +151,7 @@ is the merged task suites (#2191, #2192, #2193) and the CI jobs that run them.
 - Future provider persistence conversions need their own storage, TTL,
   entitlement, and atomic-write review.
 - The Notebook Companion program (#2195) starts after this release gate
-  merges and is tracked separately on Project #4.
+  merges and is tracked separately on Project 1.
 
 See the [Portfolio MCP operator runbook](./portfolio-mcp.md), the
 [coverage report](../cross_repo_workflow/mcp-coverage-report.md), and the

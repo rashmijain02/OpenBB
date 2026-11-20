@@ -1,4 +1,4 @@
-"""Regression tests for the Project #4 claim lifecycle helper."""
+"""Regression tests for the Project 1 claim lifecycle helper."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def test_list_stale_paginates_every_project_item(monkeypatch, capsys):
         "latest_heartbeat",
         lambda _issue: (
             {
-                "owner": "prajoria",
+                "owner": "Rashmi Jain",
                 "hb": "2026-08-01T00:00:00Z",
                 "action": "heartbeat",
             },

@@ -1,6 +1,6 @@
 # 10 — Strategy Library & Plugin Mechanism
 
-**GitHub:** [#47](https://github.com/prajoria/OpenBB/issues/47) · **Depends on:** [#41](https://github.com/prajoria/OpenBB/issues/41), [#42](https://github.com/prajoria/OpenBB/issues/42)
+**GitHub:** `legacy issue 47` · **Depends on:** `legacy issue 41`, `legacy issue 42`
 **Beads:** OpenBB-m3w, OpenBB-3u4
 
 The `strategies/` package: a small set of base templates plus reference strategies that run

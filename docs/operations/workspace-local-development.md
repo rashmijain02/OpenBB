@@ -342,7 +342,7 @@ hosted or non-exact Workspace URLs. See the browser harness
 Issue #2101 validation on 2026-10-02 proved both first-run managed login and a
 second run that reused the profile without submitting the login form. The
 authoritative self-hosted verifier remained healthy. Issue #2115 then fixed the
-empty authenticated `/app` shell in `prajoria/workspace` PR #1: on-prem login
+empty authenticated `/app` shell in `rashmijain02/workspace` PR #1: on-prem login
 had incorrectly required hosted onboarding data, causing `AuthGuard` to return
 `null`. The fixed source renders the app layout after both fresh login and
 profile reuse. The source-excluded TradingView UDF bundle still returns 404 but

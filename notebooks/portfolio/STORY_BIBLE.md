@@ -6,7 +6,7 @@
 > If a narrative choice contradicts this file, either the notebook needs
 > revision or this file does — no drift without an update here first.
 >
-> Closes: **prajoria/OpenBB#1353** (Phase 0 of epic [#1352](https://github.com/prajoria/OpenBB/issues/1352)).
+> Closes: **rashmijain02/OpenBB#635** (Phase 0 of epic [#274](https://github.com/rashmijain02/OpenBB/issues/274)).
 
 ---
 
@@ -152,7 +152,7 @@ only. Round-number synthetic weights (never a real portfolio).
 **Guaranteed narrative outcomes on this basket:**
 1. NB03: raw sector view says "36% Tech" — after look-through, closer
    to 60% Tech. That is the pivot moment. (Fixture-locked from the
-   Phase B fulfillment run: 36.0% → 60.3%, per [#1403](https://github.com/prajoria/OpenBB/issues/1403).)
+   Phase B fulfillment run: 36.0% → 60.3%, per [#281](https://github.com/rashmijain02/OpenBB/issues/281).)
 2. NB03: per-name concentration goes the OTHER direction — HHI drops
    from 0.1206 to 0.0693 and Effective-N rises from 8.3 to 14.4,
    because ETFs decompose into many small sub-positions. Both
@@ -172,7 +172,7 @@ only. Round-number synthetic weights (never a real portfolio).
 
 If any of these outcomes fail to reproduce during Phase B code
 fulfillment, the response is to open a follow-up sub-issue against
-epic [#1352](https://github.com/prajoria/OpenBB/issues/1352), **not** to rewrite the narrative. The narrative is the
+epic [#274](https://github.com/rashmijain02/OpenBB/issues/274), **not** to rewrite the narrative. The narrative is the
 product.
 
 ---
@@ -317,7 +317,7 @@ Rules the sample encodes:
 
 - Not a design doc for `portfolio_intel`, `backtest`, or any router.
 - Not a rewrite target — locked once approved. Revisions require a
-  new sub-issue against epic [#1352](https://github.com/prajoria/OpenBB/issues/1352) with a rationale.
+  new sub-issue against epic [#274](https://github.com/rashmijain02/OpenBB/issues/274) with a rationale.
 - Not a checklist the reader ever sees.
 - Not an inventory of every feature. Anything not needed for Sam's
   arc stays out, per §5.

@@ -1,6 +1,6 @@
 # 13 — Hardware Acceleration & Scalability Tiers
 
-**Related:** [#41](https://github.com/prajoria/OpenBB/issues/41) (vectorized engine), [#45](https://github.com/prajoria/OpenBB/issues/45) (validation), [#48](https://github.com/prajoria/OpenBB/issues/48) (adapters), [#49](https://github.com/prajoria/OpenBB/issues/49) (NFRs)
+**Related:** `legacy issue 41` (vectorized engine), `legacy issue 45` (validation), `legacy issue 48` (adapters), `legacy issue 49` (NFRs)
 
 The engine must run on anything from a **CPU-only laptop** to a **high-end GPU workstation**
 without code changes. GPU is an **optional accelerator**, never a requirement: every operation

@@ -4,20 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Fork independence (since 2026-11-02)
 
-This repository (`rashmijain02/OpenBB`) was forked from `prajoria/OpenBB` and is
-now developed **independently**. Nothing is ever pushed, opened as a PR, or
-merged to `prajoria/*`, `openbq-org/*` or `OpenBB-finance/*`; the previous owner
-may pull from here if they choose.
+`rashmijain02/OpenBB` is owned by Rashmi Jain and developed **independently**.
+Work is pushed, reviewed and merged only inside `rashmijain02/*`. Never push,
+open a PR, or merge to a repository under any other owner (including
+`openbq-org/*` and `OpenBB-finance/*`).
 
-- Remote `upstream` (= `prajoria/OpenBB`) is **read-only**: fetch only. Run
-  `gh repo set-default rashmijain02/OpenBB` once per clone so `gh pr create`
-  and `gh issue` never default to the parent fork.
-- All `--repo prajoria/OpenBB` rules below now read `--repo rashmijain02/OpenBB`.
-- Issue and PR numbers cited in docs, old commit messages and `gh-NNNN` branch
-  names refer to the **old `prajoria/OpenBB` numbering**. Open issues were
-  re-created here with new numbers; see `docs/migration/prajoria-issue-map.md`.
-- GitHub Project #4 is owned by `prajoria` and is not part of this repo. Rules
-  below that mention Project #4 are pending a replacement Project.
+- Remote `upstream` is **fetch-only** (its push URL is
+  `DISABLED_never_push_upstream`). Run `gh repo set-default rashmijain02/OpenBB`
+  once per clone so `gh pr` / `gh issue` never default to a parent repo.
+- Issue and PR numbers in older docs, commit messages and `gh-NNNN` branch
+  names use the **legacy numbering** from before the fork.
+  `docs/migration/legacy-issue-map.md` maps each legacy issue to its new
+  number; legacy PRs were not recreated.
+- The tracking board is
+  [Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)
+  (Project 1, owner `rashmijain02`). It is the single source of truth for status.
 
 ## Required Agent Model
 
@@ -62,7 +63,7 @@ Portfolio work is tracked in a single GitHub Project bound to a single repo,
 against a single long-lived integration branch. Recorded here so it survives
 session context loss.
 
-- **GitHub Project:** [Portfolio Intelligence Engine (#4)](https://github.com/users/prajoria/projects/4) — private, owned by `prajoria`, 90 items, all Issues
+- **GitHub Project:** [Portfolio Intelligence Engine (Project 1)](https://github.com/users/rashmijain02/projects/1/views/1) — private, owned by `rashmijain02` (Rashmi Jain), all items are Issues in `rashmijain02/OpenBB`
 - **Repo (only one):** [`rashmijain02/OpenBB`](https://github.com/rashmijain02/OpenBB) — fork of `OpenBB-finance/OpenBB` (upstream)
 - **Long-lived integration branch:** [`portfolio`](https://github.com/rashmijain02/OpenBB/tree/portfolio) — published on origin, this is where all portfolio-intel work converges
 - **Base of `portfolio`:** `develop` (origin/HEAD)
@@ -83,7 +84,7 @@ session context loss.
    which PR **into `portfolio`**. `portfolio` is a merge target, not a
    worktop.
 3. **Every unit of work is a tracked GitHub Issue in `rashmijain02/OpenBB`.**
-   Every such issue is added to Project #4 (Portfolio Intelligence Engine).
+   Every such issue is added to Project 1 (Portfolio Intelligence Engine).
    No issue → no work. Commits/PRs cite the issue per the "Communication
    Conventions" and "Coordination — GitHub Issues primary, bd fallback"
    sections below.
@@ -108,8 +109,8 @@ session context loss.
 ### Cross-check commands
 
 ```bash
-gh project view 4 --owner prajoria
-gh project item-list 4 --owner prajoria --format json | jq '.items | group_by(.repository) | map({repo:.[0].repository,count:length})'
+gh project view 1 --owner rashmijain02
+gh project item-list 1 --owner rashmijain02 --format json | jq '.items | group_by(.repository) | map({repo:.[0].repository,count:length})'
 git -C H:/masterswork/git/OpenBB-Portfolio/OpenBB remote -v
 git ls-remote origin refs/heads/portfolio            # confirms origin/portfolio exists
 git -C H:/masterswork/git/OpenBB-Portfolio/OpenBB log origin/portfolio -5 --oneline
@@ -138,12 +139,12 @@ cite `bd-XX` identifiers in new work.
 **Workflow:**
 
 1. Every unit of work has a GitHub Issue. Find work with `gh issue list`.
-2. Claim by self-assigning **AND** setting the Project #4 Status to
+2. Claim by self-assigning **AND** setting the Project 1 Status to
    `In Progress`:
 
    ```bash
    gh issue edit <NN> --add-assignee @me
-   python scripts/pi_claim.py <NN> in-progress    # sets Project #4 Status
+   python scripts/pi_claim.py <NN> in-progress    # sets Project 1 Status
    ```
 
    The Project Status update is **mandatory, not optional**. Without it,
@@ -200,7 +201,7 @@ cite `bd-XX` identifiers in new work.
    line. Auto-close then satisfies the check without prematurely
    closing the backlog.
 8. When the PR merges, the auto-close workflow closes the issue AND the
-   Project #4 Status auto-transitions to `Done` (via the "closes an
+   Project 1 Status auto-transitions to `Done` (via the "closes an
    issue" workflow rule). No manual Status update needed on completion —
    just at claim time.
 
@@ -251,8 +252,8 @@ per-call user approval):**
 - **`TaskCreate` / `TaskUpdate` / `TaskGet` / `TaskList`** — the local
   agent-task tool is PROHIBITED for any planning, code-work tracking,
   notebook-authoring tracking, review-cycle tracking, or ANY unit of
-  work that belongs on Project #4. Default is `gh issue create` + add
-  to Project #4. If an agent believes `TaskCreate` genuinely saves
+  work that belongs on Project 1. Default is `gh issue create` + add
+  to Project 1. If an agent believes `TaskCreate` genuinely saves
   time on a specific, isolated purpose (e.g. tracking a five-step
   in-turn refactor that will never outlive the turn), the agent MUST
   ask the user for explicit approval BEFORE calling it and MUST cite
@@ -1142,19 +1143,19 @@ print(p7.action_label, p7.composite_score)
 
 **`fmp_cached` preferred, `fmp` is fallback, never yfinance.**
 
-**Scope update (2026-07-21):** Project #7 ("FMP Cache") has been merged into Project #4 ("Portfolio Intelligence Engine"); Project #7 is deleted. The prior "portfolio team does NOT PR to `providers/fmp_cached/`" rule is LIFTED — portfolio-team cycles now own the fmp_cached scope too. Rules 1-3 below still apply for the fallback-when-necessary path; rule 4 no longer applies.
+**Scope update (2026-07-21):** Project #7 ("FMP Cache") has been merged into Project 1 ("Portfolio Intelligence Engine"); Project #7 is deleted. The prior "portfolio team does NOT PR to `providers/fmp_cached/`" rule is LIFTED — portfolio-team cycles now own the fmp_cached scope too. Rules 1-3 below still apply for the fallback-when-necessary path; rule 4 no longer applies.
 
 - Always use `fmp_cached` when the endpoint exists there. `PRIMARY_PROVIDER = "fmp_cached"` remains the default constant in `stock_analysis.py`.
 - Fall back to raw `fmp` **only** when `fmp_cached` genuinely does not cover the endpoint. In that case:
   1. Use `fmp` for the immediate work so the roadmap isn't blocked. Same escape valve applies to any future provider swap (e.g. if we start pulling FRED, EOD-HD, etc.): use whatever is available, keep moving.
-  2. **File a GH issue** in `rashmijain02/OpenBB`, add it to Project #4, label `area:fmp-cached-gap`. Body must include: missing endpoint, calling context, what needs to be added to `providers/fmp_cached/`.
+  2. **File a GH issue** in `rashmijain02/OpenBB`, add it to Project 1, label `area:fmp-cached-gap`. Body must include: missing endpoint, calling context, what needs to be added to `providers/fmp_cached/`.
   3. Reference that issue from the code path with a `# TODO(gh-<NN>): migrate to fmp_cached once endpoint lands` comment so the debt is visible in every future diff.
   4. ~~**Do NOT implement the `fmp_cached` extension yourself.**~~ **LIFTED 2026-07-21.** Portfolio-team cycles may now add
      endpoints, fetchers, and fixtures directly to `providers/fmp_cached/` under the same PR-review discipline as the
      rest of the fork. The `area:fmp-cached-gap` label is still the right tracker for surfacing debt; but the fix can
      now land in the same session that surfaces the gap.
 - **Reviewer discipline** (Mira gate, Zev veto): any PR introducing an `fmp` fallback that does *not* have a paired `area:fmp-cached-gap` GH issue is rejected. Codified rule, no judgment required.
-- Rationale: `fmp_cached` gives reproducible tests, deterministic dev loops, and cost control. The fallback exists so a missing endpoint never blocks the roadmap — but every use of the fallback is tracked debt on Project #4.
+- Rationale: `fmp_cached` gives reproducible tests, deterministic dev loops, and cost control. The fallback exists so a missing endpoint never blocks the roadmap — but every use of the fallback is tracked debt on Project 1.
 
 ### FMP subscription tier — mark tests when our key can't call an endpoint
 

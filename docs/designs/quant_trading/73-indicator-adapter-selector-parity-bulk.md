@@ -1,7 +1,7 @@
 # 73 — OpenBB `technical` Adapter + Reuse-First Selector + Parity Oracle + Bulk Strategy
 
-**GitHub:** [#73](https://github.com/prajoria/OpenBB/issues/73) · **Phase:** P2 · **Sprint:** 2 · **Size:** L
-**Depends on:** [#72](https://github.com/prajoria/OpenBB/issues/72) (pandas-ta-classic → IndicatorPanel adapter, **CLOSED**)
+**GitHub:** `legacy issue 73` · **Phase:** P2 · **Sprint:** 2 · **Size:** L
+**Depends on:** `legacy issue 72` (pandas-ta-classic → IndicatorPanel adapter, **CLOSED**)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §8, §11, §19
 **Scope:** Add the OpenBB `technical`-extension adapter, a single reuse-first **selector**, a
 **parity oracle** test, and a bulk multiprocessing **Strategy** path to the `openbb-techtrade`

@@ -1,6 +1,6 @@
 # 11 — Optional External-Engine Adapters
 
-**GitHub:** [#48](https://github.com/prajoria/OpenBB/issues/48) · **Depends on:** [#39](https://github.com/prajoria/OpenBB/issues/39)
+**GitHub:** `legacy issue 48` · **Depends on:** `legacy issue 39`
 **Beads:** OpenBB-wh0, OpenBB-dna
 
 `adapters/` lets power users run their strategy through a **third-party** engine while keeping

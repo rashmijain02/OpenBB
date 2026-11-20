@@ -48,7 +48,7 @@
 - Consumes: Task 1 presentation metadata.
 - Produces: explicit `columnsDefs`, chart series names, metric labels, and `metricGlossary` mappings for each issue below.
 
-For each row, first claim the issue and set Project #4 to In Progress. Write a failing widget contract for the exact labels/help keys, implement only that widget and required glossary records, run the focused contract plus Node renderer suite, commit with the row's issue number, then close/release the claim before starting the next row.
+For each row, first claim the issue and set Project 1 to In Progress. Write a failing widget contract for the exact labels/help keys, implement only that widget and required glossary records, run the focused contract plus Node renderer suite, commit with the row's issue number, then close/release the claim before starting the next row.
 
 | Order | Issue | Widget | Approved presentation | Help terms |
 | --- | --- | --- | --- | --- |
@@ -100,4 +100,4 @@ For each row, first claim the issue and set Project #4 to In Progress. Write a f
 - [ ] Fail the sweep if a user-facing label contains snake_case, any expected help control is absent, a widget is empty/failed, or the console reports an error.
 - [ ] Run the Node viewer suite and full `portfolio_intel/tests/unit` non-integration suite.
 - [ ] Post the 19 passing-widget inventory and final 20-widget fix evidence to #1987.
-- [ ] Push the branch and open a PR in `prajoria/OpenBB` targeting `feat/pi-f2-metric-help-gh-1984`.
+- [ ] Push the branch and open a PR in `rashmijain02/OpenBB` targeting `feat/pi-f2-metric-help-gh-1984`.

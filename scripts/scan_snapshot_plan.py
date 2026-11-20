@@ -29,7 +29,7 @@ import sys
 from dataclasses import dataclass
 
 REPO = "rashmijain02/OpenBB"
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # Project #4
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"  # Project 1
 PARENT = 1934
 DEPENDENCY_MARKER = re.compile(r"\[\[([A-Z]\d+)\]\]")
 PLAN_BREAKDOWN_HEADING = "## Plan breakdown (filed 2026-08-05)"
@@ -112,7 +112,7 @@ def node_id_for(num: int) -> str:
 
 
 def add_to_project(num: int, dry: bool) -> None:
-    """Add an issue to Portfolio Intelligence Engine Project #4."""
+    """Add an issue to Portfolio Intelligence Engine Project 1."""
     if dry or num == 0:
         return
     nid = node_id_for(num)

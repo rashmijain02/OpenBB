@@ -1,6 +1,6 @@
 # Design — Drop FinanceToolkit fork/path dep; converge on PyPI `financetoolkit`
 
-**Tracking:** GitHub issue [#19](https://github.com/prajoria/OpenBB/issues/19)
+**Tracking:** GitHub issue `legacy issue 19`
 **Date:** 2026-06-24
 **Phase:** 1 (Design) — approved 2026-06-24
 
@@ -12,10 +12,10 @@
 financetoolkit = { path = "../../../FinanceToolkit", develop = true }
 ```
 
-against a submodule of `prajoria/FinanceToolkit` (pinned to `e51f1c8`, a fork
+against a submodule of `rashmijain02/FinanceToolkit` (pinned to `e51f1c8`, a fork
 of `JerBouma/FinanceToolkit 2.0.6`). Two release blockers:
 
-1. **Fork coupling.** Clones require `prajoria/FinanceToolkit` to stay
+1. **Fork coupling.** Clones require `rashmijain02/FinanceToolkit` to stay
    available; divergence from canonical upstream is hard to audit.
 2. **Non-distributable.** `path =` only resolves for editable installs from a
    submodule-initialized checkout; no wheel/sdist for `pip install
@@ -34,7 +34,7 @@ of `JerBouma/FinanceToolkit 2.0.6`). Two release blockers:
 | Current venv state | `import financetoolkit` fails — editable install is broken anyway |
 
 The 3-tier fallback is real value, but it lives in `fmp_model.py` and the
-extension does not use it. The fallback can stay in `prajoria/FinanceToolkit`
+extension does not use it. The fallback can stay in `rashmijain02/FinanceToolkit`
 or be relocated separately.
 
 ## 2. Goals
@@ -49,7 +49,7 @@ or be relocated separately.
 
 - Upstream the 3-tier fallback to `JerBouma/FinanceToolkit` (separate effort).
 - Re-architect the fallback as an extension-level wrapper (separate effort).
-- Delete `prajoria/FinanceToolkit` from GitHub.
+- Delete `rashmijain02/FinanceToolkit` from GitHub.
 - Delete the local `FinanceToolkit/` working tree.
 
 ## 4. Design decisions
@@ -75,9 +75,9 @@ absorbs API drift on `tickers`/`symbols`.
 
 ### D3. 3-tier fallback follow-up
 File a bd issue: "Decide disposition of 3-tier fallback in
-`prajoria/FinanceToolkit:financetoolkit/fmp_model.py` — upstream to
+`rashmijain02/FinanceToolkit:financetoolkit/fmp_model.py` — upstream to
 JerBouma, port to openbb-financialtoolkit adapter layer, or keep
-standalone." Link to `prajoria/FinanceToolkit@8b75664` for reference.
+standalone." Link to `rashmijain02/FinanceToolkit@8b75664` for reference.
 
 ### D4. Verification
 - `pip install -e openbb_platform/extensions/financialtoolkit` in `.venv_win`
@@ -94,7 +94,7 @@ standalone." Link to `prajoria/FinanceToolkit@8b75664` for reference.
 - Grep-and-clean any other references to the submodule
   (`openbb_platform/providers/fmp_cached/docs/DATABASE_CONFIGURATION.md`
   and the two `IMPLEMENTATION_PLAN.md` files are known suspects).
-- Don't touch `prajoria/FinanceToolkit`'s own README.
+- Don't touch `rashmijain02/FinanceToolkit`'s own README.
 
 ### D6. Acceptance criteria
 1. `openbb_platform/extensions/financialtoolkit/pyproject.toml` has

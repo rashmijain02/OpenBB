@@ -1,6 +1,6 @@
 # 06 — Execution Realism Model
 
-**GitHub:** [#43](https://github.com/prajoria/OpenBB/issues/43) · **Depends on:** [#39](https://github.com/prajoria/OpenBB/issues/39)
+**GitHub:** `legacy issue 43` · **Depends on:** `legacy issue 39`
 **Beads:** OpenBB-d49, OpenBB-2qt, OpenBB-urr
 
 Pluggable execution components (`engine/execution.py`) implementing the `Broker` Protocol

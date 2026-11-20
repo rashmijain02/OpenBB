@@ -2,8 +2,8 @@
 
 **Author:** Nadia (PM, AI agent)
 **Date:** 2026-07-16
-**Branch:** `portfolio` on `prajoria/OpenBB`
-**Project:** [#4 Portfolio Intelligence Engine](https://github.com/users/prajoria/projects/4)
+**Branch:** `portfolio` on `rashmijain02/OpenBB`
+**Project:** [#4 Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)
 **Basis:** `docs/superpowers/audits/2026-07-16-project4-baseline-and-dedup.md` (post-audit state: 9 Done / 81 Todo)
 **Companion:** `docs/superpowers/plans/2026-07-16-portfolio-intel-planning-approach.md` (umbrella plan) — supersedes any pre-audit cadence sketches there.
 
@@ -197,7 +197,7 @@ Stage 4 executed on Daisy's blanket approval. Actions taken:
 5. ✅ **Filed #826** — `[portfolio] [ops] CI: reject PRs whose Closes clause doesn't cite a real #NN`. Set `Phase=M0` / `Lane=C-App+Paper`, linked as sub-issue of #492 (PHASE M0 epic). Prevents recurrence of the tracker drift Stage 2 fixed.
 6. ✅ **Filed #827** — `[portfolio] [M1-preflight] fmp_cached endpoint audit for P0 data-layer clusters`. Set `Phase=P0` / `Lane=A-Data`, linked as sub-issue of #493 (PHASE P0 epic). Rohan owns; must close before Kai starts on any P0 cluster.
 
-**Additional label infrastructure created:** `pm:blocked-on-decision`, `area:fmp-cached-gap`, `milestone:M0`/`M1`/`M2`/`M3`/`M4` (five milestone labels; Project #4 already had a proper `Phase` single-select field so milestone labels are redundant for now — kept for cross-repo consistency if the epic ever spans repos).
+**Additional label infrastructure created:** `pm:blocked-on-decision`, `area:fmp-cached-gap`, `milestone:M0`/`M1`/`M2`/`M3`/`M4` (five milestone labels; Project 1 already had a proper `Phase` single-select field so milestone labels are redundant for now — kept for cross-repo consistency if the epic ever spans repos).
 
 ## Standing next actions (post-Stage 4)
 

@@ -1,6 +1,6 @@
 """One-shot: file EPIC + Features + underlying issues for the VS Code
 Trading Terminal Extension, wire parent/child references, and add all
-to Project #4.
+to Project 1.
 
 Run once. Idempotent-ish: skips creation if the title already exists
 open on rashmijain02/OpenBB (checks by exact title match).
@@ -18,7 +18,7 @@ import sys
 from dataclasses import dataclass, field
 
 REPO = "rashmijain02/OpenBB"
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # Project #4
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"  # Project 1
 PRD = "docs/Specs/VSCode-Trading-Terminal-Extension-PRD.md"
 PARENT_TRACKER = 1804  # docs tracker for the PRD itself
 

@@ -3341,8 +3341,8 @@ Implemented across 7 commits on branch `trading_technicals`:
 - bd `OpenBBTechnical-950` **CLOSED**
 - 7-task TDD cycle; per-file pytest run shows every unit + integration green
 - Whole-tree `pytest openbb_platform/extensions/techtrade` still blocked by `bd OpenBBTechnical-46y` (pre-existing pytest collection collision — unrelated to #83, tracked separately)
-- Design doc: [`docs/designs/quant_trading/83-tuneta-adapter-tune-gated-validation.md`](https://github.com/prajoria/OpenBB/blob/trading_technicals/docs/designs/quant_trading/83-tuneta-adapter-tune-gated-validation.md)
-- Implementation plan: [`docs/superpowers/plans/2026-06-21-83-tuneta-adapter-tune-gated-validation.md`](https://github.com/prajoria/OpenBB/blob/trading_technicals/docs/superpowers/plans/2026-06-21-83-tuneta-adapter-tune-gated-validation.md)
+- Design doc: [`docs/designs/quant_trading/83-tuneta-adapter-tune-gated-validation.md`](https://github.com/rashmijain02/OpenBB/blob/trading_technicals/docs/designs/quant_trading/83-tuneta-adapter-tune-gated-validation.md)
+- Implementation plan: [`docs/superpowers/plans/2026-06-21-83-tuneta-adapter-tune-gated-validation.md`](https://github.com/rashmijain02/OpenBB/blob/trading_technicals/docs/superpowers/plans/2026-06-21-83-tuneta-adapter-tune-gated-validation.md)
 
 Closing as **complete**.
 EOF

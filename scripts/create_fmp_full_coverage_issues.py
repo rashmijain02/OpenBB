@@ -1,5 +1,5 @@
 """Create the FMP full-coverage issue hierarchy on rashmijain02/OpenBB and link it to
-GitHub Project #4 (Portfolio Intelligence Engine).
+GitHub Project 1 (Portfolio Intelligence Engine).
 
 Hierarchy:
     Epic #844 "[EPIC] FMP Cache"  (existing root; body gets a generated plan section)
@@ -8,7 +8,7 @@ Hierarchy:
                                     sub-issues of their wave, both providers as a
                                     two-provider checklist)
 
-Every issue is added to Project #4 with Type (Epic/Feature/Task) and Status=Todo.
+Every issue is added to Project 1 with Type (Epic/Feature/Task) and Status=Todo.
 
 Idempotent: progress recorded in scripts/fmp_full_coverage_items.json; re-runs skip
 anything already created/linked. Safe to resume after a rate-limit interruption.
@@ -35,11 +35,11 @@ DATA = ROOT / "scripts" / "fmp_full_coverage_endpoints.json"
 STATE = ROOT / "scripts" / "fmp_full_coverage_items.json"
 
 REPO = "rashmijain02/OpenBB"
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # project #4
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"  # project 1
 EPIC_NUMBER = 844
 
-FIELD_TYPE = "PVTSSF_lAHOAOc7384BdSTgzhX06C4"
-FIELD_STATUS = "PVTSSF_lAHOAOc7384BdSTgzhX058Y"
+FIELD_TYPE = "PVTSSF_lAHOAE4h8M4BqDs2zhocevE"
+FIELD_STATUS = "PVTSSF_lAHOAE4h8M4BqDs2zhocetk"
 TYPE_OPTION = {"Epic": "6a4a1e4d", "Feature": "9e7e5af3", "Task": "16a0f716"}
 STATUS_TODO = "f75ad846"
 

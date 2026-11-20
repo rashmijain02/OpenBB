@@ -2,7 +2,7 @@
 
 Portfolio-adjacent ad-hoc utilities — brokerage import, ETF/13F ingest, quant-strategy scraper.
 
-Rehomed from the top-level `Tools/` directory in [gh-1628](https://github.com/prajoria/OpenBB/issues/1628). Nothing about the scripts themselves changed; only the package location, the import path in tests, and the sys.path bootstrap in the tests moved.
+Rehomed from the top-level `Tools/` directory in [gh-1628](https://github.com/rashmijain02/OpenBB/issues/460). Nothing about the scripts themselves changed; only the package location, the import path in tests, and the sys.path bootstrap in the tests moved.
 
 ## Install
 

@@ -259,7 +259,7 @@ The sections below are for people changing techtrade, not using it.
 ### Vendored indicator engine (`external/pandas-ta-classic`)
 
 The indicator engine is powered by the first-party MIT fork
-[`prajoria/pandas-ta-classic`](https://github.com/prajoria/pandas-ta-classic), vendored
+[`rashmijain02/pandas-ta-classic`](https://github.com/rashmijain02/pandas-ta-classic), vendored
 as a **commit-pinned git submodule** at `external/pandas-ta-classic` and editable-installed
 into the dev venv.
 

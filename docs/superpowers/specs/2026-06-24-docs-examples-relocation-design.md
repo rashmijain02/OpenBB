@@ -1,6 +1,6 @@
 # Design — Relocate example notebooks to `docs/examples/` with stripped outputs
 
-**Tracking:** GitHub issue [#22](https://github.com/prajoria/OpenBB/issues/22)
+**Tracking:** GitHub issue `legacy issue 22`
 **Date:** 2026-06-24
 **Phase:** 1 (Design) — approved 2026-06-24
 

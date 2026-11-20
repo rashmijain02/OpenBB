@@ -3,7 +3,7 @@
 **Decision:** DROP
 **Author:** Trading Automation working group (via Phase 0 Task 7)
 **Date:** 2026-07-08
-**Refs:** [`docs/superpowers/plans/2026-07-06-fmp-trading-phase0.md`](../plans/2026-07-06-fmp-trading-phase0.md) Task 7 · [GH Epic #91](https://github.com/prajoria/OpenBB/issues/91) · fmp-day-trading PRD [`docs/superpowers/specs/2026-07-06-fmp-day-trading-automation-design.md`](../specs/2026-07-06-fmp-day-trading-automation-design.md) §1.1
+**Refs:** [`docs/superpowers/plans/2026-07-06-fmp-trading-phase0.md`](../plans/2026-07-06-fmp-trading-phase0.md) Task 7 · [GH Epic #10](https://github.com/rashmijain02/OpenBB/issues/10) · fmp-day-trading PRD [`docs/superpowers/specs/2026-07-06-fmp-day-trading-automation-design.md`](../specs/2026-07-06-fmp-day-trading-automation-design.md) §1.1
 
 ---
 
@@ -58,7 +58,7 @@ Deciding to port because "the code exists" is the sunk-cost fallacy. The code co
 - **#91 stays open** with a comment linking to this disposition. Anyone who lands here in six months sees the reasoning without having to reconstruct it.
 - **Phase 2's intraday caching (P2.1, P2.2)** is written fresh against `equity_historical.py`'s pattern, not `#91`'s fallback chain.
 - **If CBOE integration lands via Analysis Phase-D2**, that team can independently evaluate whether `#91`'s CBOE tier is worth reviving *for CBOE specifically*. Its historical-data shape may fit CBOE's options-context data better than it fits intraday equity bars.
-- **The 1088 LoC on the `prajoria/FinanceToolkit` fork** stays orphaned. No effort to delete it. If it ever needs resurrection, it's still in git history and this doc explains why we skipped it once.
+- **The 1088 LoC on the `rashmijain02/FinanceToolkit` fork** stays orphaned. No effort to delete it. If it ever needs resurrection, it's still in git history and this doc explains why we skipped it once.
 
 ## What This Does NOT Foreclose
 

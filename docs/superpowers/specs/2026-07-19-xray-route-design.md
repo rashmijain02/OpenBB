@@ -1,7 +1,7 @@
 # Design — /portfolio/intel/xray route (`openbb_portfolio_intel.routers.xray_router`)
 
 - **Date:** 2026-07-19
-- **Issue:** [#541 `[portfolio] [P1][App] /portfolio/intel/xray route + portfolio_basket join`](https://github.com/prajoria/OpenBB/issues/541)
+- **Issue:** [#541 `[portfolio] [P1][App] /portfolio/intel/xray route + portfolio_basket join`](https://github.com/rashmijain02/OpenBB/issues/782)
 - **Parent epic:** #491 Portfolio Intelligence Engine
 - **Branch:** `feat/pi-app/xray-route-gh-541`
 - **Base:** `portfolio` @ f08436c25 (post-#512)

@@ -1,9 +1,9 @@
 # 77 — Order Generation + plan/orders → TradePlan
 
-**GitHub:** [#77](https://github.com/prajoria/OpenBB/issues/77) · **Phase:** P4 · **Sprint:** 4 · **Size:** M
-**Depends on:** [#76](https://github.com/prajoria/OpenBB/issues/76) (EntryExitRule + sizing → levels + size)
+**GitHub:** `legacy issue 77` · **Phase:** P4 · **Sprint:** 4 · **Size:** M
+**Depends on:** `legacy issue 76` (EntryExitRule + sizing → levels + size)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §13 (order generation), §9.2 (command surface), §9.3 (models)
-**Scope:** Turn a `MoverSignal` + `EntryExitRule` + the sized levels from [#76](https://github.com/prajoria/OpenBB/issues/76) into a deterministic `Order` list (entry + intent-tagged exits), assemble the per-symbol `TradePlan`, and expose `plan(symbols|segment, preset=…, risk=…)` and `orders(plan)` on `obb.techtrade.*`.
+**Scope:** Turn a `MoverSignal` + `EntryExitRule` + the sized levels from `legacy issue 76` into a deterministic `Order` list (entry + intent-tagged exits), assemble the per-symbol `TradePlan`, and expose `plan(symbols|segment, preset=…, risk=…)` and `orders(plan)` on `obb.techtrade.*`.
 
 > **Repo note:** code and docs live in the same `OpenBBTechnical` checkout. Implementation:
 > [`../../../openbb_platform/extensions/techtrade/`](../../../openbb_platform/extensions/techtrade/).
@@ -34,13 +34,13 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 
 | # | Decision | Choice | Consequence |
 |---|---|---|---|
-| L1 | Models | `Order` + `TradePlan` **already exist** in [`models.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/models.py) (scaffolded by [#71](https://github.com/prajoria/OpenBB/issues/71)). #77 **populates**, does not define them | No new Pydantic models; one possible *Optional* tweak to `TradePlan.recommendation` — see **Q-A** |
+| L1 | Models | `Order` + `TradePlan` **already exist** in [`models.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/models.py) (scaffolded by `legacy issue 71`). #77 **populates**, does not define them | No new Pydantic models; one possible *Optional* tweak to `TradePlan.recommendation` — see **Q-A** |
 | L2 | `intent` enum | Fixed `{entry, exit_stop, exit_target, exit_time, exit_signal}`; every emitted order carries exactly one | Acceptance "every exit order has a correct `intent`" is a direct enum-mapping check (§2) |
 | L3 | Order ordering | **Entry first**, then contingent `exit_stop`, `exit_target`, `exit_time`, `exit_signal` (canonical, enum-order) per §13 | Deterministic list → golden-stable (§5) |
 | L4 | Entry default | `market` next-bar-open; `limit`-with-offset is the configurable alternative (§13) | Entry order has no price by default; limit offset is opt-in (**Q-C**) |
-| L5 | Look-ahead | Signal on bar *t* → orders **fill at t+1** (paper). #77 emits **planned** levels off the `as_of` reference bar; realized prices land at [#78](https://github.com/prajoria/OpenBB/issues/78) (paper fill sim) | #77 prices are *planned*, not *filled* (**Q-F**) |
-| L6 | Module boundary | #77 **consumes** [#76](https://github.com/prajoria/OpenBB/issues/76)'s levels (`entry_ref`, `stop`, `target`) + `position_size`; it does **not** recompute ATR/stop/target/sizing math | [`orders.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/engine/orders.py) is a pure mapper: levels → `Order` rows. No indicator compute, no network |
-| L7 | Types | `Decimal` for every `quantity`/`limit_price`/`stop_price`; signal/levels chain reuses [#73](https://github.com/prajoria/OpenBB/issues/73) bulk panels + [#75](https://github.com/prajoria/OpenBB/issues/75) signals | No float drift in emitted prices; one provider path (`fmp_cached`) |
+| L5 | Look-ahead | Signal on bar *t* → orders **fill at t+1** (paper). #77 emits **planned** levels off the `as_of` reference bar; realized prices land at `legacy issue 78` (paper fill sim) | #77 prices are *planned*, not *filled* (**Q-F**) |
+| L6 | Module boundary | #77 **consumes** `legacy issue 76`'s levels (`entry_ref`, `stop`, `target`) + `position_size`; it does **not** recompute ATR/stop/target/sizing math | [`orders.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/engine/orders.py) is a pure mapper: levels → `Order` rows. No indicator compute, no network |
+| L7 | Types | `Decimal` for every `quantity`/`limit_price`/`stop_price`; signal/levels chain reuses `legacy issue 73` bulk panels + `legacy issue 75` signals | No float drift in emitted prices; one provider path (`fmp_cached`) |
 
 ### 0.2 Open questions (please review / brainstorm)
 
@@ -53,21 +53,21 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 > validation:      Data | None      = Field(default=None)           # #82 fills — Optional
 > ```
 > `simulated_fills` and `validation` are downstream-filled **and** default, so a `TradePlan` constructs
-> fine without them. **`recommendation` is downstream-filled by [#80](https://github.com/prajoria/OpenBB/issues/80) (Recommendation builder) but has *no default*** — so `TradePlan(signal=…, rule=…, orders=…)`
+> fine without them. **`recommendation` is downstream-filled by `legacy issue 80` (Recommendation builder) but has *no default*** — so `TradePlan(signal=…, rule=…, orders=…)`
 > raises a pydantic `ValidationError` today. And per PRD §14.2 a `Recommendation` is derived from the
-> **realized paper fill** ([#78](https://github.com/prajoria/OpenBB/issues/78)), so it genuinely *cannot* be built at #77. #77 cannot emit any `TradePlan` until this is resolved. Options:
+> **realized paper fill** (`legacy issue 78`), so it genuinely *cannot* be built at #77. #77 cannot emit any `TradePlan` until this is resolved. Options:
 >
 > | Opt | Approach | Cost |
 > |---|---|---|
-> | **(i) — RECOMMEND** | Make `recommendation: Recommendation \| None = None` in `models.py` | 1-line model edit on the [#71](https://github.com/prajoria/OpenBB/issues/71) scaffold; mirrors the `simulated_fills`/`validation` downstream-fill pattern; #77 ships the **plan skeleton** (signal+rule+size+orders), [#80](https://github.com/prajoria/OpenBB/issues/80) populates `recommendation`. Touches the shared contract that #78/#80/#81 read → needs sign-off |
+> | **(i) — RECOMMEND** | Make `recommendation: Recommendation \| None = None` in `models.py` | 1-line model edit on the `legacy issue 71` scaffold; mirrors the `simulated_fills`/`validation` downstream-fill pattern; #77 ships the **plan skeleton** (signal+rule+size+orders), `legacy issue 80` populates `recommendation`. Touches the shared contract that #78/#80/#81 read → needs sign-off |
 > | (ii) | #77 builds a **placeholder** `Recommendation` from data it already has (entry/stop/target/size/atr are known via #76) with neutral narrative (`reasoning=""`, action from direction) | Emits half-true narrative fields #80 must overwrite; placeholder strings leak if #80 slips; golden churn |
-> | (iii) | Gate `plan` on [#80](https://github.com/prajoria/OpenBB/issues/80); #77 ships only the `orders` builder + tests | **Breaks the issue DAG** (#77 depends on #76 only) and leaves #77's "`plan` returns a complete TradePlan" acceptance unmet |
+> | (iii) | Gate `plan` on `legacy issue 80`; #77 ships only the `orders` builder + tests | **Breaks the issue DAG** (#77 depends on #76 only) and leaves #77's "`plan` returns a complete TradePlan" acceptance unmet |
 >
 > **Recommendation: (i).** It is the honest separation — the issue acceptance lists "complete `TradePlan`
 > **(signal+rule+size+orders)**", which is exactly the skeleton, *omitting* `recommendation`/`simulated_fills`.
 > Confirm we may make the one-line `models.py` change (out of #77's "no new models" remit, so flagged).
 >
-> - **Recommendation:** option (i) — make `recommendation: Recommendation | None = None` in `models.py`, so #77 ships the plan skeleton and [#80](https://github.com/prajoria/OpenBB/issues/80) populates `recommendation`.
+> - **Recommendation:** option (i) — make `recommendation: Recommendation | None = None` in `models.py`, so #77 ships the plan skeleton and `legacy issue 80` populates `recommendation`.
 > - **Answer (Review):** ✅ **Approved — option (i).**
 >
 >   Option (i) is the only honest separation. `recommendation` is derived from the **realized paper
@@ -104,7 +104,7 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 > field in the `Order` model to hold the trigger. Two readings:
 > - **(a) — RECOMMEND:** materialize **all four** exits as `Order` rows now. `exit_time`/`exit_signal` are
 >   `order_type="market"`, `limit_price=stop_price=None`; their *trigger* is carried by the `EntryExitRule`
->   (`max_holding_bars`, `exit_on_opposite`) and **realized at [#78](https://github.com/prajoria/OpenBB/issues/78)**. This is the only reading that ever
+>   (`max_holding_bars`, `exit_on_opposite`) and **realized at `legacy issue 78`**. This is the only reading that ever
 >   *uses* the `exit_time`/`exit_signal` enum members, satisfying "every exit order has a correct `intent`".
 > - (b) emit only `exit_stop` + `exit_target` as orders; treat time/signal purely as rule conditions
 >   evaluated during simulate (no `Order` rows). Then two `intent` values are never produced at #77.
@@ -112,7 +112,7 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 > Also (Q-C'): entry `limit`-with-offset — is the offset a `plan`/preset param (e.g. `entry_limit_bps`)?
 > Recommend it stays a preset/rule knob, **default `market`** (L4), offset deferred unless a preset sets it.
 >
-> - **Recommendation:** option (a) — materialize **all four** exits as `Order` rows now (`exit_time`/`exit_signal` as `market` rows, triggers carried by the `EntryExitRule` and realized at [#78](https://github.com/prajoria/OpenBB/issues/78)); for Q-C', keep the entry-limit offset a preset/rule knob, **default `market`**, offset deferred unless a preset sets it.
+> - **Recommendation:** option (a) — materialize **all four** exits as `Order` rows now (`exit_time`/`exit_signal` as `market` rows, triggers carried by the `EntryExitRule` and realized at `legacy issue 78`); for Q-C', keep the entry-limit offset a preset/rule knob, **default `market`**, offset deferred unless a preset sets it.
 > - **Answer (Review):** ✅ **Approved — option (a) for exits; default `market` entry.**
 >
 >   1. **Materialize all four exits — correct.** This is the only reading that ever *uses* the
@@ -131,7 +131,7 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 >      (basis points) that's preset-specific — keeping it out of the default avoids premature
 >      complexity.
 
-> **Q-D — `risk=…` param shape.** Maps to [#76](https://github.com/prajoria/OpenBB/issues/76)'s sizing config (`account_size` + `risk_per_trade`),
+> **Q-D — `risk=…` param shape.** Maps to `legacy issue 76`'s sizing config (`account_size` + `risk_per_trade`),
 > which fixes `position_size`. What does `plan(risk=…)` accept?
 > - (i) a **float** `risk_per_trade` fraction (e.g. `0.01` = risk 1% per trade), `account_size` from a
 >   normalized-notional default (PRD §4.7 forbids emitting personal dollar amounts) — simplest, CLI/REST-friendly;
@@ -150,8 +150,8 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 >   `risk` is a `float` or a `dict`/`SizingConfig` is trivial — `isinstance` dispatch. The param name
 >   `risk` is clean and CLI-friendly; confirm it stays as-is.
 
-> **Q-E — `plan(segment=…)` fan-out & return shape.** `segment` reuses [#70](https://github.com/prajoria/OpenBB/issues/70) movers → [#73](https://github.com/prajoria/OpenBB/issues/73) bulk
-> panels → [#75](https://github.com/prajoria/OpenBB/issues/75) signals → one `TradePlan` per symbol. `symbols=[…]` plans an explicit list.
+> **Q-E — `plan(segment=…)` fan-out & return shape.** `segment` reuses `legacy issue 70` movers → `legacy issue 73` bulk
+> panels → `legacy issue 75` signals → one `TradePlan` per symbol. `symbols=[…]` plans an explicit list.
 > Return shape: `OBBject[list[TradePlan]]` (single symbol ⇒ a length-1 list, mirroring `movers`/`signals`).
 > Confirm: list-always (no scalar special-case), and `symbols` **xor** `segment` is required (one of the two).
 >
@@ -166,13 +166,13 @@ discipline applies throughout: orders planned on today's bar are meant to fill o
 
 > **Q-F — where pre-fill prices come from.** Entry is `market` (no price). `exit_stop`/`exit_target` need
 > prices, derived from an **entry reference**; pre-fill we don't know the realized next-bar-open, so the
-> reference = the `as_of` bar (last known close) used by [#76](https://github.com/prajoria/OpenBB/issues/76) to compute `entry_ref`/`stop`/`target`. So
-> #77's `stop_price`/`limit_price` are **planned** `Decimal` levels off `entry_ref`. [#78](https://github.com/prajoria/OpenBB/issues/78) fills entry at
-> realized next-bar-open; [#80](https://github.com/prajoria/OpenBB/issues/80) reports the realized `entry_price`. **Open:** does #78 **re-anchor**
+> reference = the `as_of` bar (last known close) used by `legacy issue 76` to compute `entry_ref`/`stop`/`target`. So
+> #77's `stop_price`/`limit_price` are **planned** `Decimal` levels off `entry_ref`. `legacy issue 78` fills entry at
+> realized next-bar-open; `legacy issue 80` reports the realized `entry_price`. **Open:** does #78 **re-anchor**
 > stop/target off the realized fill, or freeze #77's planned levels? Recommend: #77 freezes planned levels;
 > #78/#80 reconcile and report any drift (keeps #77 deterministic and offline-testable).
 >
-> - **Recommendation:** #77 freezes planned levels off the `as_of` reference bar; [#78](https://github.com/prajoria/OpenBB/issues/78)/[#80](https://github.com/prajoria/OpenBB/issues/80) reconcile and report any drift (keeps #77 deterministic and offline-testable).
+> - **Recommendation:** #77 freezes planned levels off the `as_of` reference bar; `legacy issue 78`/`legacy issue 80` reconcile and report any drift (keeps #77 deterministic and offline-testable).
 > - **Answer (Review):** ✅ **Approved — freeze planned levels; report drift downstream.**
 >
 >   This is the right boundary. #77 is a pure mapper — it takes levels from #76 and maps them onto
@@ -210,7 +210,7 @@ openbb_platform/extensions/techtrade/tests/
   No indicator compute, no `obb.*`, no network — fully unit-testable without `openbb.build()`.
 - `orders.py` does **not** encode stop/target/sizing math — that is #76's [`rules.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/engine/rules.py) (L6). It only assigns
   `side`/`order_type`/`intent`/prices/`quantity` per the §2 table.
-- [`plan_router.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/engine/plan_router.py) is thin: it calls `signals` ([#75](https://github.com/prajoria/OpenBB/issues/75)) → `rules` ([#76](https://github.com/prajoria/OpenBB/issues/76)) → `orders.build_plan`, wraps in
+- [`plan_router.py`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/engine/plan_router.py) is thin: it calls `signals` (`legacy issue 75`) → `rules` (`legacy issue 76`) → `orders.build_plan`, wraps in
   `OBBject`. The sub-router wires up automatically — [`techtrade_router`](../../../openbb_platform/extensions/techtrade/openbb_techtrade/techtrade_router.py)`._include_subrouters` already lists
   `openbb_techtrade.engine.plan_router` (skipped until this file exists).
 - No cycles: `orders` → `models`; `plan_router` → `orders`, `rules`, `signals`, `models`.
@@ -245,22 +245,22 @@ leg (exits close the full position).
 
 > **Why time/signal are `market` rows with `None` prices (Q-C(a)):** they are **event-driven**, not price
 > levels. The `Order` model has no trigger field, so the trigger lives in the `EntryExitRule`
-> (`max_holding_bars`, `exit_on_opposite`) and the row is realized by [#78](https://github.com/prajoria/OpenBB/issues/78) (paper fill sim). Materializing
+> (`max_holding_bars`, `exit_on_opposite`) and the row is realized by `legacy issue 78` (paper fill sim). Materializing
 > them now is what gives the `exit_time` / `exit_signal` enum members an emitter and satisfies the acceptance
 > "every exit order has a correct `intent`".
 
 > **`tif`:** entry `day` (next-bar-open fills same session); resting exits `gtc` (live until triggered). This
-> is the proposed default mapping, not a hard lock — adjust if simulate ([#78](https://github.com/prajoria/OpenBB/issues/78)) wants day-scoped exits.
+> is the proposed default mapping, not a hard lock — adjust if simulate (`legacy issue 78`) wants day-scoped exits.
 
 > **OCO note:** `exit_stop` and `exit_target` both carry the full `qty`; in a live broker they would be an
 > OCO pair (one fill cancels the other). At #77 they are independent rows; the **first-touch-wins / single-exit**
-> invariant is enforced by the [#78](https://github.com/prajoria/OpenBB/issues/78) PaperBroker, not here. Flag if #77 should instead tag an `oco_group`.
+> invariant is enforced by the `legacy issue 78` PaperBroker, not here. Flag if #77 should instead tag an `oco_group`.
 
 ### 2.3 Level provenance (Q-F)
 
 `E`/`S`/`T` are **planned** levels off the `as_of` reference bar (last close), exactly as #76 computes them —
 `S = E ∓ atr_stop_mult·ATR(14)`, `T = E ± target_r_multiple·(E−S)`, signs by direction. They are the prices a
-reader/broker sees *before* the fill; the **realized** entry is finalized at [#78](https://github.com/prajoria/OpenBB/issues/78) and reported by [#80](https://github.com/prajoria/OpenBB/issues/80).
+reader/broker sees *before* the fill; the **realized** entry is finalized at `legacy issue 78` and reported by `legacy issue 80`.
 
 ---
 
@@ -286,11 +286,11 @@ TradePlan(
 The plan composes four already-built parts: the **signal** (#75 confluence), the **rule** (#76, with `preset`/
 `risk` applied), the **size** (#76 sizing), and the **orders** (§2). `simulated_fills` and `validation` take
 their model defaults; **`recommendation` is the lone blocker (Q-A)** — under the recommended option (i) it is
-`None` here and populated by [#80](https://github.com/prajoria/OpenBB/issues/80).
+`None` here and populated by `legacy issue 80`.
 
 > **Downstream-fill contract (make explicit in the PR):** #77 emits a *plan skeleton* —
 > `{signal, rule, position_size, orders}` populated; `{simulated_fills, recommendation, validation}` filled by
-> [#78](https://github.com/prajoria/OpenBB/issues/78) / [#80](https://github.com/prajoria/OpenBB/issues/80) / [#82](https://github.com/prajoria/OpenBB/issues/82) respectively. The skeleton round-trips through Python/REST/CLI as a valid `Data` object.
+> `legacy issue 78` / `legacy issue 80` / `legacy issue 82` respectively. The skeleton round-trips through Python/REST/CLI as a valid `Data` object.
 
 ---
 
@@ -316,7 +316,7 @@ def orders(plan) -> OBBject:            # plan: TradePlan | dict
 
 | Command | Input | `results` payload | Notes |
 |---|---|---|---|
-| `obb.techtrade.plan(...)` | `symbols` **xor** `segment`, `preset`, `risk`, `as_of` | `list[TradePlan]` | fan-out via [#73](https://github.com/prajoria/OpenBB/issues/73) bulk panels + [#75](https://github.com/prajoria/OpenBB/issues/75) signals (Q-E) |
+| `obb.techtrade.plan(...)` | `symbols` **xor** `segment`, `preset`, `risk`, `as_of` | `list[TradePlan]` | fan-out via `legacy issue 73` bulk panels + `legacy issue 75` signals (Q-E) |
 | `obb.techtrade.orders(plan)` | a `TradePlan` (or its dict) | `list[Order]` | re-validates a (possibly deserialized) plan and returns `plan.orders` |
 
 **Chaining (the P3→P4 pipeline):**
@@ -365,7 +365,7 @@ Run:
 .venv_win\Scripts\python.exe -m pytest openbb_platform/extensions/techtrade/tests/unit/test_orders.py openbb_platform/extensions/techtrade/tests/unit/test_plan.py -m "not integration" -v
 ```
 
-> A golden `TradePlan` fixture (via `testing.assert_matches_golden`, [#71](https://github.com/prajoria/OpenBB/issues/71)) can lock the full skeleton once
+> A golden `TradePlan` fixture (via `testing.assert_matches_golden`, `legacy issue 71`) can lock the full skeleton once
 > Q-A is settled — deferred here to avoid churning the golden when `recommendation` flips to Optional.
 
 ---
@@ -383,5 +383,5 @@ Run:
 | Every exit order has a correct `intent` | §2 enum mapping + §5 intent test | Q-C (all four intents emitted) |
 
 > **Net new risk surfaced:** #77 cannot construct *any* `TradePlan` until **Q-A** is resolved, because
-> `TradePlan.recommendation` is a required field owned by a *later* issue ([#80](https://github.com/prajoria/OpenBB/issues/80)). Recommended fix is the
+> `TradePlan.recommendation` is a required field owned by a *later* issue (`legacy issue 80`). Recommended fix is the
 > one-line `recommendation: Recommendation | None = None` edit — please confirm before implementation starts.

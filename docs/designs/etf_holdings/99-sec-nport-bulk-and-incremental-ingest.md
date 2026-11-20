@@ -1,14 +1,14 @@
 # #99 — SEC Form N-PORT ingest (bulk historical + per-CIK incremental)
 
-**GitHub:** [#99](https://github.com/prajoria/OpenBB/issues/99) · **Phase:** Provider infra · **Sprint:** TBD · **Size:** L
+**GitHub:** [#13](https://github.com/rashmijain02/OpenBB/issues/13) · **Phase:** Provider infra · **Sprint:** TBD · **Size:** L
 **Status:** Phase 1 refined (2026-06-27) — §6.2 G1–G6 + Q-D 2026-regime verification folded into the locked sections. **Phase-2-ready.**
-**Parent context:** [#97](https://github.com/prajoria/OpenBB/issues/97) — ETF holdings free-fallback tier; N-PORT half (T2+T3) was **deferred** at v1 ship after the assumed bulk-dataset URL 404'd and the SEC data-sets HTML page 403'd a default Python User-Agent. This doc un-parks T2+T3 with a verified fetch strategy.
+**Parent context:** `legacy issue 97` — ETF holdings free-fallback tier; N-PORT half (T2+T3) was **deferred** at v1 ship after the assumed bulk-dataset URL 404'd and the SEC data-sets HTML page 403'd a default Python User-Agent. This doc un-parks T2+T3 with a verified fetch strategy.
 **Depends on:** the #97 MVP (issuer-file tier shipped on `trading_technicals` via PR #100) for the `_try_nport` slot in the fmp_cached fetcher chain — currently a stub returning `[]`.
 **Related:**
-- [#89](https://github.com/prajoria/OpenBB/issues/89) — SEC 13F bulk-ingest pattern is the architectural sibling (same `Tools/ingest_*` + MySQL `IF NOT EXISTS` shape, same User-Agent + rate-limit discipline).
-- [#93](https://github.com/prajoria/OpenBB/issues/93) — OpenFIGI CUSIP→ticker bridge; this work needs an `ID_ISIN` extension of the same helper so non-CUSIP N-PORT holdings (foreign equities, FX/swaps with ISIN only) can be resolved to tickers.
-- [#94](https://github.com/prajoria/OpenBB/issues/94) — submodule standardization (if we vendor an N-PORT parser, it goes under `third_party/`).
-- [#96](https://github.com/prajoria/OpenBB/issues/96) — FIGI staleness refresh (the same logic applies to N-PORT-derived identifiers).
+- `legacy issue 89` — SEC 13F bulk-ingest pattern is the architectural sibling (same `Tools/ingest_*` + MySQL `IF NOT EXISTS` shape, same User-Agent + rate-limit discipline).
+- `legacy issue 93` — OpenFIGI CUSIP→ticker bridge; this work needs an `ID_ISIN` extension of the same helper so non-CUSIP N-PORT holdings (foreign equities, FX/swaps with ISIN only) can be resolved to tickers.
+- [#11](https://github.com/rashmijain02/OpenBB/issues/11) — submodule standardization (if we vendor an N-PORT parser, it goes under `third_party/`).
+- [#12](https://github.com/rashmijain02/OpenBB/issues/12) — FIGI staleness refresh (the same logic applies to N-PORT-derived identifiers).
 **Source:** no PRD. This design doc is the primary artifact. Problem statement in §"What this is."
 
 > **Repo note:** new code lives under

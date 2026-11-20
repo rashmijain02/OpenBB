@@ -1,7 +1,7 @@
 # OpenBB Windows Service Host Design
 
 **Status:** Approved for implementation  
-**Program:** Portfolio Intelligence Engine, Project #4  
+**Program:** Portfolio Intelligence Engine, Project 1  
 **Integration branch:** `feat/pi-jobs-service-gh-1934`
 
 ## Purpose

@@ -40,7 +40,7 @@ example, not live-availability evidence.
 
 These documents were written against audit baseline `39f17160`. Their counts
 and issue states are a record of that audit, not current status; GitHub Issues
-on Project #4 are the source of truth.
+on Project 1 are the source of truth.
 
 - [MCP capability-parity plan](../superpowers/plans/2026-10-03-portfolio-mcp-capability-parity.md)
   (program #2123) and

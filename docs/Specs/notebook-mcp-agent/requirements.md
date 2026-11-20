@@ -1,6 +1,6 @@
 # Notebook MCP Companion: product and acceptance specification
 
-**Status:** Approved for planning and Project #4 tracking; implementation is
+**Status:** Approved for planning and Project 1 tracking; implementation is
 sequenced after the base MCP parity release, not delivered by this document.
 **Baseline:** Portfolio `39f171603c9bc4a28778e668ba981cf0e4358b9a`, plus the
 preserved, pre-existing working-copy notebook edit.
@@ -170,7 +170,7 @@ cannot return a valid structured tool call.
 | AC-N07 | Required tables, chart data/specifications, XLSX sheets/cells, JSON replay records and Markdown citations meet story-specific schemas. A narrative-only answer cannot pass an artifact-producing stage. |
 | AC-N08 | CLI and Workspace invoke the same orchestration engine and emit equivalent run IDs/evidence. An absent browser session yields an explicit publication error without falsifying analytical completion. |
 | AC-N09 | CI detects changed source-only notebook hashes and `origin/portfolio` capability drift. New or changed stories fail classification until reviewed. |
-| AC-N10 | T44 and all follow-on bridge, safety, parity, model and release tasks have verified evidence linked in Project #4. Branch/PR integration remains `portfolio`. |
+| AC-N10 | T44 and all follow-on bridge, safety, parity, model and release tasks have verified evidence linked in Project 1. Branch/PR integration remains `portfolio`. |
 
 ## 8. Showcase journeys
 

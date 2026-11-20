@@ -1,7 +1,7 @@
 # Design — FMP fixture-record harness for fmp_cached (#508)
 
 - **Date:** 2026-07-21
-- **Issue:** [#508 `[portfolio] [M0] Recorded-fixture harness for FMP (tests/fixtures/fmp/)`](https://github.com/prajoria/OpenBB/issues/508)
+- **Issue:** [#508 `[portfolio] [M0] Recorded-fixture harness for FMP (tests/fixtures/fmp/)`](https://github.com/rashmijain02/OpenBB/issues/749)
 - **Parent epic:** #491 Portfolio Intelligence Engine
 - **Branch:** `feat/pi-data/fmp-fixture-harness-gh-508`
 - **Author:** Claude (openbb-dev-cycle v3, Phase 1)

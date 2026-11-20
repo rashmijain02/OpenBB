@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Planning and Project #4 tracking are authorized now; this document is not an implemented or running agent.
+- Planning and Project 1 tracking are authorized now; this document is not an implemented or running agent.
 - Every N01-N24 implementation task is directly blocked by MCP T44. Agent orchestration also waits for the notebook-specific MCP bridges.
-- Repository `prajoria/OpenBB`; feature PRs target `portfolio`; preserve the existing branch's `origin/portfolio` upstream.
+- Repository `rashmijain02/OpenBB`; feature PRs target `portfolio`; preserve the existing branch's `origin/portfolio` upstream.
 - Preserve base OpenBB Python `>=3.10,<3.14`; qualify the existing Python 3.12 Portfolio and supported Python 3.13 launcher environments.
 - All 25 notebooks are acceptance inputs; preserve the pre-existing modified Portfolio deep-dive notebook.
 - No notebook outputs/attachments, private records, credentials or machine-specific absolute paths in manifests, issues, fixtures or logs.
@@ -27,11 +27,11 @@
 
 ## 1. Source specification and approval boundary
 
-**Tracking:** [#2195 (Python Notebook MCP Companion)](https://github.com/prajoria/OpenBB/issues/2195)
+**Tracking:** [#210 (Python Notebook MCP Companion)](https://github.com/rashmijain02/OpenBB/issues/210)
 is the program root; all 40 items are recorded in the
 [complete issue map](../../cross_repo_workflow/project-issue-map.md).
 Every N-task is blocked by
-[#2194 (T44 base MCP release)](https://github.com/prajoria/OpenBB/issues/2194).
+[#1257 (T44 base MCP release)](https://github.com/rashmijain02/OpenBB/issues/1257).
 Issue creation does not mean the Python agent is implemented or running.
 
 - [Product and acceptance specification](../../Specs/notebook-mcp-agent/requirements.md)
@@ -60,14 +60,14 @@ already run.
 6. All safety/authorization/idempotency cases pass; zero live trades/cloud fallback.
 7. CLI and Workspace share the same runner/evidence and report missing browser
    capabilities separately.
-8. Portfolio/source/catalog drift is tracked in CI and Project #4.
+8. Portfolio/source/catalog drift is tracked in CI and Project 1.
 
 ## 2. Hierarchy, metadata and schedule
 
 The program contains one program epic, five delivery epics, ten features and
 24 tasks: **40 new logical items**. With the base MCP program this is 113
 logical items: at most 112 new issues plus reused Daytrade issue
-[#386 (MCP tool server)](https://github.com/prajoria/OpenBB/issues/386).
+[#241 (MCP tool server)](https://github.com/rashmijain02/OpenBB/issues/241).
 
 All new issues start **Todo**, unassigned. The existing Project Phase vocabulary
 is reused for workflow categorization, not chronology: M0/P0 labels here do not

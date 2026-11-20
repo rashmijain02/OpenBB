@@ -307,7 +307,7 @@ back-end.
 {
   "name": "openbb-terminal-vscode",
   "displayName": "OpenBB Trading Terminal",
-  "publisher": "prajoria",
+  "publisher": "Rashmi Jain",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other", "Data Science", "Visualization"],
   "activationEvents": [

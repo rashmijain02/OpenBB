@@ -18,6 +18,30 @@ v2 used `bd` (beads) as the primary tracker. v3 replaces that with **GitHub Issu
 
 If a repo has no active GH Project for the program, the skill halts and asks the user to create one (or points at `docs/prompts/create-*-project.md` templates).
 
+## Tracking board (source of truth)
+
+All work is tracked on **[Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)**,
+owned by Rashmi Jain (`rashmijain02`). Every item is an issue in `rashmijain02/OpenBB`. The original program epic,
+#242 (Portfolio Intelligence Engine epic), is closed; new work attaches to its own program epic on this board.
+Do not use any other project.
+
+| Setting | Value |
+|---|---|
+| `gh` owner / number | `--owner rashmijain02` / `1` |
+| Project ID | `PVT_kwHOAE4h8M4BqDs2` |
+| Status field | `PVTSSF_lAHOAE4h8M4BqDs2zhocetk` (Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`) |
+| Phase / Lane / Type fields | `PVTSSF_lAHOAE4h8M4BqDs2zhoceu4` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevA` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevE` |
+| Start / End fields | `PVTF_lAHOAE4h8M4BqDs2zhocevM` / `PVTF_lAHOAE4h8M4BqDs2zhocevU` |
+| Field option IDs | `scripts/proj_fields.json`; item IDs by issue number in `scripts/pi_project_items.json` |
+
+```bash
+gh project item-add 1 --owner rashmijain02 --url https://github.com/rashmijain02/OpenBB/issues/<NN>
+.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> in-progress   # status + heartbeat
+```
+
+Issue numbers written before 2026-11-02 use the legacy numbering; resolve them with
+`docs/migration/legacy-issue-map.md`.
+
 ## Phase list (10 phases, 10 gates)
 
 | # | Phase | Gate |
@@ -45,7 +69,7 @@ If a repo has no active GH Project for the program, the skill halts and asks the
 ### Phase 2: Planning + GH Issues
 
 1. Invoke `superpowers:writing-plans`. Numbered steps; review checkpoints every ~3 steps. Use `feature-dev:code-architect` for architecture depth.
-2. **Identify the program**: find the GH Project + program epic issue for this work (e.g. Portfolio Intelligence Engine → Project #4, epic issue #491). If no program exists, halt and ask the user which project to attach to, or point at a `docs/prompts/create-*-project.md` template to spin one up.
+2. **Identify the program**: find the GH Project + program epic issue for this work (e.g. Portfolio Intelligence Engine → [Project 1](https://github.com/users/rashmijain02/projects/1/views/1), find the current program epic on the board). If no program exists, halt and ask the user which project to attach to, or point at a `docs/prompts/create-*-project.md` template to spin one up.
 3. **File a GH issue for each deliverable**:
    ```bash
    gh issue create --repo <owner>/<repo> \
@@ -71,7 +95,7 @@ If a repo has no active GH Project for the program, the skill halts and asks the
    ```
 5. **Add each issue to the program project** and set custom fields (Phase/Lane/Type/Start/End as applicable):
    ```bash
-   gh project item-add <project-number> --owner <owner> --url <issue-url>
+   gh project item-add 1 --owner rashmijain02 --url <issue-url>
    ```
 6. Present the plan + issue URLs; wait for user approval.
 
@@ -101,7 +125,7 @@ If a repo has no active GH Project for the program, the skill halts and asks the
 3. **Mark the first issue as In Progress** on the program project:
    ```bash
    # Find item_id for the issue in the project (from scripts/<program>_project_items.json,
-   # or via `gh project item-list <n> --owner <owner> --format json | jq ...`)
+   # or via `gh project item-list 1 --owner rashmijain02 --format json | jq ...`)
    # Then update the "Status" single-select field to "In Progress":
    gh api graphql -f query='
      mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
@@ -110,14 +134,14 @@ If a repo has no active GH Project for the program, the skill halts and asks the
          value: { singleSelectOptionId: $option }
        }) { projectV2Item { id } }
      }' \
-     -f project=<PROJECT_ID> \
+     -f project=PVT_kwHOAE4h8M4BqDs2 \
      -f item=<ITEM_ID> \
-     -f field=<STATUS_FIELD_ID> \
-     -f option=<IN_PROGRESS_OPTION_ID>
+     -f field=PVTSSF_lAHOAE4h8M4BqDs2zhocetk \
+     -f option=47fc9ee4
    ```
    For Portfolio Intelligence work, prefer the atomic lifecycle command:
    `.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> in-progress`.
-   It updates Project #4 and records the initial heartbeat.
+   It updates Project 1 and records the initial heartbeat.
 
 4. **Maintain ownership while working.** Run
    `.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> heartbeat`

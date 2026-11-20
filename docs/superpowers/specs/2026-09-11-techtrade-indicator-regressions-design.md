@@ -2,7 +2,7 @@
 
 ## Scope
 
-Resolve Project #4 issue #2078 without changing the public classic-panel contract:
+Resolve Project 1 issue #2078 without changing the public classic-panel contract:
 
 - a classic request remains byte-compatible with the existing classic panel;
 - an extended request remains a strict superset where extended indicators are available;

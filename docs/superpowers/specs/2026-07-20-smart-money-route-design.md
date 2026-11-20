@@ -1,7 +1,7 @@
 # Design — /portfolio_intel/smart_money route
 
 - **Date:** 2026-07-20
-- **Issue:** [#527](https://github.com/prajoria/OpenBB/issues/527)
+- **Issue:** [#768](https://github.com/rashmijain02/OpenBB/issues/768)
 - **Parent epic:** #491
 - **Branch:** `feat/pi-app/smart-money-route-gh-527`
 - **Base:** `portfolio` @ 37c6dced8 (post-#542)

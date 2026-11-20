@@ -1,7 +1,7 @@
 # Design — What-If cash line + funding modes (#903)
 
 - **Date:** 2026-07-20
-- **Issue:** [#903](https://github.com/prajoria/OpenBB/issues/903)
+- **Issue:** [#248](https://github.com/rashmijain02/OpenBB/issues/248)
 - **Parent:** #558 (initial What-If diff engine, shipped as PR #905)
 - **Branch:** `feat/pi-analytics/whatif-cash-line-gh-903`
 - **Base:** `portfolio` (post-#558)
