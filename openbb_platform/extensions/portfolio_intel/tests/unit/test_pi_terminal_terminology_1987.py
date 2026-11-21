@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -28,6 +29,33 @@ def _widget(widget_id: str) -> dict:
     return _widgets()[widget_id]
 
 
+def _viewer_label_glossary() -> dict[str, str]:
+    """Return the Local Viewer's rendered-label -> glossary-key map (#1268).
+
+    Workspace manifests cannot carry ``metricGlossary``; the viewer keys help
+    on the labels the backend renders (``metricLabelGlossaryData``).
+    """
+    text = _VIEWER.read_text(encoding="utf-8")
+    start = text.index("function metricLabelGlossaryData()")
+    body = text[start : text.index("    };", start)]
+    return dict(re.findall(r'^\s+"([^"]+)": "([a-z0-9_]+)",$', body, re.MULTILINE))
+
+
+def _summary(key: str) -> str:
+    """Return the Local Viewer glossary record's one-line summary."""
+    text = _VIEWER.read_text(encoding="utf-8")
+    marker = f"    {key}: Object.freeze({{"
+    start = text.index(marker)
+    record = text[start : text.index("    }),", start)]
+    return record.split('summary: "', 1)[1].split('"', 1)[0]
+
+
+def _metric_labels(path: str) -> list[str]:
+    response = _CLIENT.get(path)
+    assert response.status_code == 200
+    return [card["label"] for card in response.json()]
+
+
 def test_1989_statement_period_headers_match_backend_semantics() -> None:
     columns = _widget("pi_financial_statements")["data"]["table"]["columnsDefs"]
     assert {column["field"]: column["headerName"] for column in columns} == {
@@ -46,7 +74,7 @@ def test_1998_lookthrough_fraction_uses_workspace_percent_formatter() -> None:
     assert column == {
         "field": "effective_weight",
         "headerName": "Effective Weight (%)",
-        "glossaryKey": "effective_weight",
+        "headerTooltip": _summary("effective_weight"),
         "formatterFn": "normalizedPercent",
     }
     response = _CLIENT.get("/pi/lookthrough/top25?account_id=demo")
@@ -75,73 +103,52 @@ def test_widget_formatter_metadata_uses_workspace_supported_names() -> None:
 
 
 def test_1999_single_value_concentration_card_has_label_and_help_mapping() -> None:
-    metric = _widget("pi_concentration_gauge")["data"]["metric"]
-    assert metric == {
-        "labels": {"value": "Concentration (HHI)"},
-        "metricGlossary": {"Concentration (HHI)": "herfindahl_hirschman_index"},
-    }
+    """#1268: the endpoint serves the card label; the viewer keys help on it."""
+    assert "data" not in _widget("pi_concentration_gauge")
+    labels = _metric_labels("/pi/concentration?account_id=demo")
+    assert labels[0] == "Concentration (HHI)"
+    assert _viewer_label_glossary()[labels[0]] == "herfindahl_hirschman_index"
 
 
 def test_1993_technical_rows_match_actual_classic_pivot_strings() -> None:
-    widget = _widget("pi_equity_technicals")
+    """#1268: Classic pivot codes are labelled server-side; help keys on labels."""
     response = _CLIENT.get("/pi/equity/technicals?symbol=AAPL")
     assert response.status_code == 200
     rows = response.json()
     expected = {
-        "Consensus": ("Analyst Consensus", "analyst_consensus"),
-        "R3 (Classic)": ("Resistance 3", "resistance"),
-        "R2 (Classic)": ("Resistance 2", "resistance"),
-        "R1 (Classic)": ("Resistance 1", "resistance"),
-        "P (Classic)": ("Pivot", "pivot"),
-        "S1 (Classic)": ("Support 1", "support"),
-        "S2 (Classic)": ("Support 2", "support"),
-        "S3 (Classic)": ("Support 3", "support"),
-        "ATM IV term structure": (
-            "ATM Implied Volatility Term Structure",
-            "atm_implied_volatility",
-        ),
+        "Analyst Consensus": "analyst_consensus",
+        "Resistance 3": "resistance",
+        "Resistance 2": "resistance",
+        "Resistance 1": "resistance",
+        "Pivot": "pivot",
+        "Support 1": "support",
+        "Support 2": "support",
+        "Support 3": "support",
+        "ATM Implied Volatility Term Structure": "atm_implied_volatility",
     }
     assert {row["metric"] for row in rows} == set(expected)
-    labels = widget["data"]["table"]["rowLabels"]
-    glossary = widget["data"]["metricGlossary"]
-    for raw, (rendered, key) in expected.items():
-        assert labels[raw] == rendered
-        assert glossary[raw] == key
+    glossary = _viewer_label_glossary()
+    for label, key in expected.items():
+        assert glossary[label] == key
 
 
-def test_1996_forecast_endpoint_keeps_raw_contract_with_pattern_metadata() -> None:
+def test_1996_forecast_endpoint_serves_rendered_labels() -> None:
+    """#1268: forecast rows arrive labelled; no manifest row-label metadata."""
     widget = _widget("pi_equity_analyst_forecasts")
     response = _CLIENT.get("/pi/equity/analyst-forecasts?symbol=AAPL")
     assert response.status_code == 200
     labels = {row["metric"] for row in response.json()}
     assert {
-        "1Y target (consensus)",
-        "Target range",
-        "Upside vs current",
-        "Rating: Strong Buy / Buy",
-        "Rating: Hold / Sell / Strong Sell",
+        "12-Month Price Target",
+        "Target Range",
+        "Upside vs Current Price",
+        "Rating Distribution: Strong Buy / Buy",
+        "Rating Distribution: Hold / Sell / Strong Sell",
         "Q3 2025 EPS Surprise",
         "Q2 2025 EPS Surprise",
+        "Historical Revenue Estimate",
     } <= labels
-    table = widget["data"]["table"]
-    assert table["rowLabels"] == {
-        "1Y target (consensus)": "12-Month Price Target",
-        "Target range": "Target Range",
-        "Upside vs current": "Upside vs Current Price",
-        "Historical rev estimate (last Q)": "Historical Revenue Estimate",
-    }
-    assert table["rowLabelPatterns"] == [
-        {
-            "pattern": r"^Rating:\s*(.+)$",
-            "labelTemplate": "Rating Distribution: $1",
-            "glossaryKey": "rating_distribution",
-        },
-        {
-            "pattern": r"^(Q\d\s+\d{4})\s+EPS Surprise$",
-            "labelTemplate": "$1 EPS Surprise",
-            "glossaryKey": "eps_surprise",
-        },
-    ]
+    assert not {"rowLabels", "rowLabelPatterns"} & set(widget["data"]["table"])
 
 
 def test_time_series_widgets_have_exact_labels_and_glossary_keys() -> None:
@@ -187,8 +194,15 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
     text = _VIEWER.read_text(encoding="utf-8")
     assert "A curated portfolio-analysis term" not in text
     assert "financial-term-dictionary" not in text
-    records = _widgets()["pi_equity_analyst_forecasts"]["data"]["metricGlossary"]
-    for key in records.values():
+    records = (
+        "twelve_month_price_target",
+        "target_range",
+        "implied_upside",
+        "rating_distribution",
+        "eps_surprise",
+        "revenue_estimate",
+    )
+    for key in records:
         marker = f"{key}: Object.freeze({{"
         record = text[text.index(marker) : text.index("    }),", text.index(marker))]
         assert (
@@ -197,6 +211,20 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
             and "interpretation:" in record
         )
         assert 'source: "https://' in record
+
+
+# Rendered rows/cards per widget whose labels come from the response (#1268).
+_RESPONSE_LABEL_URLS = {
+    "pi_equity_technicals": ("/pi/equity/technicals?symbol=AAPL", "metric"),
+    "pi_equity_analyst_forecasts": (
+        "/pi/equity/analyst-forecasts?symbol=AAPL",
+        "metric",
+    ),
+    "pi_whatif_card": ("/pi/whatif/card?symbol=AAPL&delta_shares=100", "metric"),
+    "pi_concentration_gauge": ("/pi/concentration?account_id=demo", "label"),
+    "pi_risk_dashboard": ("/pi/risk/dashboard?account_id=demo", "label"),
+    "pi_paper_perf_kpis": ("/pi/paper/perf-kpis?account_id=demo", "label"),
+}
 
 
 @pytest.mark.parametrize(
@@ -271,9 +299,9 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
                 "S3 (Classic)": "Support 3",
             },
             {
-                "R3 (Classic)": "resistance",
-                "P (Classic)": "pivot",
-                "S3 (Classic)": "support",
+                "Resistance 3": "resistance",
+                "Pivot": "pivot",
+                "Support 3": "support",
             },
         ),
         (
@@ -308,8 +336,8 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
                 "Upside vs current": "Upside vs Current Price",
             },
             {
-                "Rating Distribution": "rating_distribution",
-                "EPS Surprise": "eps_surprise",
+                "Rating Distribution: Strong Buy / Buy": "rating_distribution",
+                "Q3 2025 EPS Surprise": "eps_surprise",
                 "Historical Revenue Estimate": "revenue_estimate",
             },
         ),
@@ -346,13 +374,13 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
         (
             "pi_risk_dashboard",
             {
-                "vol_annualized": "Annualized Volatility",
-                "var_95_1d": "1-Day VaR (95%)",
+                "vol_annualized": "Annualized Volatility (%)",
+                "var_95_1d": "1-Day 95% VaR (%)",
                 "beta_spy": "Beta vs SPY",
             },
             {
-                "Annualized Volatility": "annualized_volatility",
-                "1-Day VaR (95%)": "one_day_var_95",
+                "Annualized Volatility (%)": "annualized_volatility",
+                "1-Day 95% VaR (%)": "one_day_var_95",
                 "Beta vs SPY": "beta_vs_spy",
             },
         ),
@@ -365,10 +393,10 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
                 "beta_spy": "Beta vs SPY",
             },
             {
-                "symbol_weight_%": "symbol_weight",
-                "sector_weight_%": "sector_weight",
-                "cash_%": "cash_weight",
-                "beta_spy": "beta_vs_spy",
+                "Symbol Weight (%)": "symbol_weight",
+                "Sector Weight (%)": "sector_weight",
+                "Cash Weight (%)": "cash_weight",
+                "Beta vs SPY": "beta_vs_spy",
             },
         ),
         (
@@ -412,27 +440,34 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
 def test_all_21_widgets_have_exact_label_and_glossary_contracts(
     widget_id: str, labels: dict[str, str], glossary: dict[str, str]
 ) -> None:
+    """Labels are column headers or served row/card labels; help keys on them.
+
+    #1268: the old raw-identifier keys of ``labels`` (e.g. ``R3 (Classic)``)
+    no longer reach the client; only the rendered label is checked for them.
+    """
     widget = _widget(widget_id)
-    data = widget["data"]
-    if widget["type"] == "metric":
-        actual_labels = data["metric"]["labels"]
-        actual_glossary = data["metric"]["metricGlossary"]
-    elif "rowLabels" in data.get("table", {}):
-        actual_labels = data["table"]["rowLabels"]
-        actual_glossary = data["metricGlossary"]
-    elif "columnsDefs" in data.get("table", {}):
-        actual_labels = {
-            column["field"]: column["headerName"]
-            for column in data["table"]["columnsDefs"]
-        }
-        actual_glossary = data["metricGlossary"]
+    columns = ((widget.get("data") or {}).get("table") or {}).get("columnsDefs")
+    if widget_id in _RESPONSE_LABEL_URLS:
+        path, field = _RESPONSE_LABEL_URLS[widget_id]
+        response = _CLIENT.get(path)
+        assert response.status_code == 200
+        served = {row[field] for row in response.json()}
+        for label in labels.values():
+            assert label in served, (widget_id, label)
     else:
-        actual_labels = {}
-        actual_glossary = data["metricGlossary"]
-    for raw, label in labels.items():
-        assert actual_labels[raw] == label
+        headers = {column["field"]: column["headerName"] for column in columns}
+        for field, label in labels.items():
+            assert headers[field] == label
+    viewer = _viewer_label_glossary()
     for label, key in glossary.items():
-        assert actual_glossary[label] == key
+        if label in viewer:
+            assert viewer[label] == key, (widget_id, label)
+        else:
+            # Pattern-labelled forecast rows resolve in the viewer by pattern.
+            assert widget_id == "pi_equity_analyst_forecasts", (widget_id, label)
+            assert re.match(
+                r"^(Rating Distribution: \S|Q[1-4] \d{4} EPS Surprise$)", label
+            )
 
 
 def test_brinson_figure_carries_exact_labels_and_glossary_keys() -> None:
@@ -469,36 +504,18 @@ def test_1997_basket_consensus_columns_match_endpoint_shape() -> None:
     assert fields == {"symbol", "avg_target", "buy", "hold", "sell", "consensus"}
     assert all(fields <= set(row) for row in rows)
     assert "buy_hold_sell" not in fields
-    consensus = next(
-        row["consensus"] for row in rows if row["consensus"] == "STRONG_BUY"
-    )
-    assert consensus == "STRONG_BUY"
-    mapping = next(
-        column["valueLabels"]
-        for column in widget["data"]["table"]["columnsDefs"]
-        if column["field"] == "consensus"
-    )
-    assert mapping == {"STRONG_BUY": "Strong Buy"}
+    # #1268: the response carries the display label, not the enum code.
+    assert {row["consensus"] for row in rows} == {"Buy", "Strong Buy"}
 
 
 def test_2007_smart_money_activity_labels_are_explicit() -> None:
-    widget = _widget("pi_smart_money_ribbon")
+    """#1268: activity types are labelled in the response."""
     response = _CLIENT.get("/pi/smart-money/ribbon?account_id=demo")
     assert response.status_code == 200
     assert {row["kind"] for row in response.json()} == {
-        "insider_buy",
-        "13F_increase",
-        "insider_sell",
-    }
-    kind_column = next(
-        column
-        for column in widget["data"]["table"]["columnsDefs"]
-        if column["field"] == "kind"
-    )
-    assert kind_column["valueLabels"] == {
-        "insider_buy": "Insider Buy",
-        "13F_increase": "13F Increase",
-        "insider_sell": "Insider Sell",
+        "Insider Buy",
+        "13F Increase",
+        "Insider Sell",
     }
 
 
@@ -611,21 +628,18 @@ def test_2012_event_calendar_columns_and_values_match_endpoint_shape() -> None:
         ("detail", "Details"),
     ]
     event_type = columns[1]
-    assert event_type["glossaryKey"] == "event_type"
-    assert event_type["valueLabels"] == {
-        "earnings": "Earnings",
-        "ex_dividend": "Ex-Dividend",
-        "form_8k": "Form 8-K",
-        "info": "Information",
-    }
+    assert event_type["headerTooltip"] == _summary("event_type")
     for account_id in ("demo", "fixture"):
         response = _CLIENT.get(
             f"/pi/events/calendar?account_id={account_id}&horizon_days=14"
         )
         assert response.status_code == 200
-        assert {row["type"] for row in response.json()} <= set(
-            event_type["valueLabels"]
-        )
+        assert {row["type"] for row in response.json()} <= {
+            "Earnings",
+            "Ex-Dividend",
+            "Form 8-K",
+            "Information",
+        }
 
 
 def test_2013_forecast_columns_match_endpoint_shape() -> None:
@@ -675,13 +689,12 @@ def test_2015_alert_columns_and_values_match_endpoint_shape() -> None:
         ("detail", "Details"),
     ]
     alert_type = columns[1]
-    assert alert_type["glossaryKey"] == "alert_type"
-    assert alert_type["valueLabels"] == {
-        "form_8k_for_held": "Held-Security Form 8-K",
-        "earnings_upcoming": "Upcoming Earnings",
-        "news_material": "Material News",
-    }
-    assert set(alert_type["valueLabels"]) <= {row["kind"] for row in rows}
+    assert alert_type["headerTooltip"] == _summary("alert_type")
+    assert {
+        "Held-Security Form 8-K",
+        "Upcoming Earnings",
+        "Material News",
+    } <= {row["kind"] for row in rows}
 
 
 def test_2016_news_columns_match_endpoint_shape_without_glossary() -> None:
@@ -697,22 +710,17 @@ def test_2016_news_columns_match_endpoint_shape_without_glossary() -> None:
         ("title", "Headline"),
         ("severity", "Severity"),
     ]
-    assert all("glossaryKey" not in column for column in columns)
+    assert all("headerTooltip" not in column for column in columns)
     assert rows and all(
         {"symbol", "when", "title", "severity"} <= set(row) for row in rows
     )
 
 
 def test_2017_sentiment_label_and_glossary_match_endpoint_shape() -> None:
-    """Sentiment metadata must relabel, but not change, the endpoint value."""
-    widget = _widget("pi_sentiment_gauge")
+    """#1268: the endpoint serves the labelled card; the value is unchanged."""
     response = _CLIENT.get("/pi/sentiment?account_id=demo")
     assert response.status_code == 200
-    payload = response.json()
-    metric = widget["data"]["metric"]
-    assert metric == {
-        "labels": {"value": "News Sentiment Score (-1 to +1)"},
-        "metricGlossary": {"News Sentiment Score (-1 to +1)": "news_sentiment_score"},
-    }
-    assert payload["label"] == "Sentiment (-1..+1)"
-    assert -1 <= payload["value"] <= 1
+    card = response.json()[0]
+    assert card["label"] == "News Sentiment Score (-1 to +1)"
+    assert _viewer_label_glossary()[card["label"]] == "news_sentiment_score"
+    assert -1 <= card["value"] <= 1

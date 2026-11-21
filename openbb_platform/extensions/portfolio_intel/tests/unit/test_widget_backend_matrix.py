@@ -112,3 +112,24 @@ def test_plotly_route_detection_reads_the_decorator_and_raw_parameter() -> None:
     assert {"/pi/xray/sector", "/pi/attribution", "/pi/equity/charting"} <= routes
     assert "/tt/scan/segment-movers" not in routes
     assert "/pi/lookthrough/top25" not in routes
+
+
+def test_metric_widgets_take_labels_from_the_endpoint() -> None:
+    """Metric labels are served as Workspace cards, not ``data.metric`` (#1268).
+
+    The static builder cannot see response labels, so it no longer reports
+    ``metricLabels``; a metric manifest is native-ready on its own and the
+    endpoint contract test checks the ``[{label, value}]`` response.
+    """
+    builder = _load_builder()
+    rows = [
+        widget
+        for widget in builder.build_matrix(BACKEND)["widgets"]
+        if widget["type"] == "metric"
+    ]
+    assert len(rows) == 4
+    assert all("metricLabels" not in widget for widget in rows)
+    state = builder._baseline_state(  # pylint: disable=protected-access
+        "pi_metric", {"type": "metric"}, False
+    )
+    assert state == "native-ready"

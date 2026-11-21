@@ -116,3 +116,94 @@ pi_brinson_attribution 200 | traces ['bar', 'bar', 'bar', 'scatter'] | meta {'st
 
 - Not verified in a real self-hosted Workspace browser render (plan Step 4.5).
 - Live harness drift check (`BROWSER_HARNESS_LIVE=1`) not run.
+
+## Batch B: table, metric, and Markdown contracts
+
+HEAD `3895214dd` (batch A, local); batch B is uncommitted on top of it (the lead commits).
+
+### What changed
+
+All 50 remaining #1268 debt entries are cleared (`workspace_contract_debt.json` 58 -> 8; the
+8 left belong to #1270 and #1271). The served manifests carry no `data.metricGlossary`,
+`data.metric`, `columnsDefs[].glossaryKey` / `valueLabels`, or `data.table.rowLabels` /
+`rowLabelPatterns`.
+
+- **Glossary (lead decision 1).** The 19 columns that had `glossaryKey` now carry the
+  schema-native `headerTooltip`, set to the Local Viewer glossary record's one-line summary
+  (verbatim; a test compares each to `index.html`). Widget-level glossary that mattered moved
+  into `description` (technicals pivot/resistance/support; metric units and demo state;
+  revenue units).
+- **Value labels (decision 2).** Workspace has no value-label renderer (`renderFn` values are
+  `greenRed`, `titleCase`, `hoverCard`, `cellOnClick`, `columnColor`, `showCellChange`, and
+  `titleCase` cannot produce `Form 8-K` / `13F Increase`), so the endpoint returns the label:
+  event type, smart-money activity, alert type, basket consensus (`BUY` -> `Buy`, `STRONG_BUY`
+  -> `Strong Buy`, ...). Unknown codes pass through unchanged.
+- **Row labels (decision 3).** Technicals, analyst forecasts (exact labels plus the
+  `Rating Distribution: ...` and `Qn YYYY EPS Surprise` patterns) and the What-If card are
+  labelled in the response. New `widget_backend/table_contracts.py`: `relabel(field, labels,
+  patterns)` wraps the `with_chain` endpoint, so a future provider tier is labelled too, and
+  `label_rows` copies rows (the shared demo basket keeps its codes).
+- **Metrics (decision 4).** The four metric endpoints return Workspace cards
+  `[{label, value}]` plus a trailing `{"label": "Data State", "value": "Demo: ..."}` card.
+  A non-demo account returns `"Unavailable"` for every value and
+  `Data State = "Unavailable: account resolver not wired for this account"` instead of the
+  old fabricated `0.0`. Risk values are percentage points (`Annualized Volatility (%)` 18.4,
+  `1-Day 95% VaR (%)` -2.1; beta stays a ratio). No `raw=true` dict form: no consumer needed it.
+- **Units (decision 5).** `_shape_revenue_geography` / `_shape_revenue_business_line` convert
+  provider absolute currency to millions (`_to_millions`, 2 dp), matching the stub. Pie hover
+  says `Revenue (millions)`; both descriptions say millions of the reporting currency.
+  `test_live_and_demo_revenue_rows_share_one_unit` fails on mixed units.
+- **Markdown (decision 6).** The eight `pi_*` Markdown widgets already returned non-empty
+  text; a new test pins that every one is non-blank and every data-bearing one says demo /
+  stub / preview / sample / unavailable in words (the two context widgets are exempt).
+- `scripts/build_portfolio_workspace_matrix.py`: dropped `metricLabels` (labels now live in the
+  response); a metric manifest is `native-ready`. Fixture regenerated (only `metricLabels`
+  lines removed; no baseline state changed).
+
+### Consumers found and how each keeps working
+
+| Consumer | Change |
+|---|---|
+| Local Viewer `index.html` | Header help from `headerTooltip` via `metricGlossaryKeyForSummary` (reverse lookup; summaries are unique) and the tooltip as an escaped `title`; first-column row and metric-card help from a viewer-side `metricLabelGlossaryData` map keyed on rendered labels plus the two forecast patterns; `metricModel` reads `[{label,value,delta}]` (legacy dict forms kept); `rowLabels` / `valueLabels` / `data.metric` code removed. Escaping unchanged (`escapeHtml` on every label, value, tooltip). |
+| `viewer_render.test.mjs` | 18 tests rewritten to served labels / cards / `headerTooltip`; 3 new (tooltip XSS escaping, every manifest tooltip resolves to a record, every label-map key is curated). 113 pass (was 110). |
+| `test_pi_terminal_terminology_1987.py` | Label/glossary contracts now read the response and the viewer label map; `headerTooltip` asserted against the glossary summary. |
+| `test_widget_backend_batch.py`, `test_widget_backend_equity_profile.py`, `test_pi_terminal_tier1.py`, `test_tier_calls.py` | Card shape; served labels; `headerTooltip`; revenue fixtures in absolute currency (expected millions unchanged). |
+| `test_widget_backend_matrix.py` + matrix fixture | New metric test; fixture regenerated. |
+| Harness fixtures (13 steps) | Re-recorded in-process, tiers cleared, temp HOME: W3.concentration, W4.risk-dashboard, W5.calendar, W5.alerts, W6.paper-kpis, W9.basket-consensus, CX.equity-technicals, CX.sentiment-gauge, CX.smart-money-ribbon, CX.whatif-card, CX.revenue-geography, CX.revenue-business-line; CX.equity-analyst-forecasts relabelled only (keeps its recorded live rating values; the step is nondeterministic). |
+| Harness stories + manual guide | `human_expected` for W3/W4/W5.calendar/W6/W9; the same 5 lines edited in `portfolio-manual-guide.md` (a full regeneration also rewrites unrelated stale sections, so it was not used). |
+| `widget_backend/README.md` | Table and metric contract notes. |
+| MCP adapter / capability CSVs | Path-based; no change. `test_portfolio_intel_adapter.py` 15 passed. |
+| Agents, notebook-guide stories, notebooks | No dependency on these endpoint shapes found. |
+| VS Code `apps/vscode-terminal-extension/fixtures/widgets.sample.json` | Static sample copy; left unchanged (as batch A). |
+
+### Evidence (Batch B)
+
+- **Red first** (`.dev-cycle/red-gh-1268-batch-b.log`): new test file + contract suites before
+  any production change -> `81 failed, 130 passed`; the markdown tests and the basket
+  copy test passed first (behaviour already right / not yet observable), proven by mutation
+  below. Viewer -> whole file red (`function metricLabelGlossaryData not found`). Matrix ->
+  `2 failed, 4 passed`.
+- **Mutation** (`.dev-cycle/mutation-gh-1268.log`, 16/16 KILLED, each restored): relabel no-op;
+  forecast patterns ignored; `label_rows` mutates shared rows (after tightening that test to
+  inspect `_DEMO_BASKET_CONSENSUS`); unavailable keeps placeholder; no data-state card; risk as
+  fractions; live revenue not converted; hover drops unit; markdown blank; markdown stub loses
+  state wording; matrix requires `data.metric`; viewer: tooltip never resolves (7 fail),
+  tooltip unescaped (1), EPS pattern dropped (1), metric arrays ignored (5), row help dropped (9).
+- **Results** (`.dev-cycle/verify-gh-1268.log`): see the Batch B section there.
+- **Real-path check** (`.dev-cycle/realpath-gh-1268.log`): 12 changed endpoints 200 with 0
+  contract issues; `NOT_WIRED` risk dashboard -> all `Unavailable`; served manifest has no
+  viewer-only keys.
+
+### Open questions for the lead
+
+- Data-state card: Workspace metric objects have no state field, so the state is a visible
+  `Data State` card. Alternative: drop it and rely on `description`.
+- Values are numbers with units in labels (`18.4` under `(%)`), not pre-formatted strings.
+- `pi_equity_analyst_forecasts` still opens a MySQL connection for the revenue-estimate
+  snapshot in unit tests (pre-existing; it fails closed to `insufficient history`).
+
+### Not done / follow-ups
+
+- Not verified in a real self-hosted Workspace browser render.
+- `portfolio-manual-guide.md` is stale beyond this batch (W0 health strip, W9 basket guard 422
+  -> 403, missing CX.data-provenance); a full `emit_guide` regeneration fixes it.

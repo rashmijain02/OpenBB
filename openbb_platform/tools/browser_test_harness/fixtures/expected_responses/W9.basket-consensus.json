@@ -3,7 +3,7 @@
     {
       "avg_target": 200.0,
       "buy": 24,
-      "consensus": "BUY",
+      "consensus": "Buy",
       "hold": 8,
       "sell": 1,
       "symbol": "AAPL"
@@ -11,7 +11,7 @@
     {
       "avg_target": 465.0,
       "buy": 28,
-      "consensus": "STRONG_BUY",
+      "consensus": "Strong Buy",
       "hold": 4,
       "sell": 0,
       "symbol": "MSFT"
@@ -19,7 +19,7 @@
     {
       "avg_target": 210.0,
       "buy": 22,
-      "consensus": "BUY",
+      "consensus": "Buy",
       "hold": 10,
       "sell": 2,
       "symbol": "GOOGL"
@@ -27,7 +27,7 @@
     {
       "avg_target": 175.0,
       "buy": 32,
-      "consensus": "STRONG_BUY",
+      "consensus": "Strong Buy",
       "hold": 3,
       "sell": 0,
       "symbol": "NVDA"
@@ -35,7 +35,7 @@
     {
       "avg_target": 530.0,
       "buy": 26,
-      "consensus": "BUY",
+      "consensus": "Buy",
       "hold": 5,
       "sell": 1,
       "symbol": "META"

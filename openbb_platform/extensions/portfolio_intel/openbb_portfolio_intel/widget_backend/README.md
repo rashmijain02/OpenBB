@@ -57,11 +57,11 @@ Widget → HTTP endpoint → analytics.<module> → JSON response
 
 1. Add an entry to `widgets.json` (name, description, type, endpoint, gridData, params).
 2. Add the FastAPI route to `main.py` returning data matching the declared `type`:
-   - `markdown` → return a str.
+   - `markdown` → return a non-empty str that says when it is a demo, stub or unavailable.
    - `chart` → return a Plotly figure dict by default, with no `layout.title` (Workspace shows the widget name); put the data state in `layout.meta.state` and a demo/empty/unavailable annotation.
    - `chart` with `raw: true` → also return the underlying rows when called with `raw=true`. For a row endpoint, wrap it with `terminal_charts.plotly_chart(builder)` (#1268), which adds the `raw` parameter.
-   - `table` → return a list of dicts.
-   - `metric` → return `{"value": <scalar>, "delta": <scalar>, ...}`.
+   - `table` → return a list of dicts. Label enum codes and row identifiers in the response (`table_contracts.relabel`); a column's glossary is its `headerTooltip` (the Local Viewer glossary summary). Workspace's schema rejects `glossaryKey`, `valueLabels`, `rowLabels` and `data.metricGlossary` (#1268).
+   - `metric` → return Workspace metric cards `[{"label": ..., "value": ..., "delta"?: ...}]`; use `table_contracts.metric_cards`, which adds a `Data State` card and shows `Unavailable` instead of placeholder numbers (#1268).
 3. Reference the analytics module rather than reimplementing math.
 4. Add a smoke test in `tests/unit/test_widget_backend.py` that hits the endpoint via `TestClient` and asserts the shape matches the widget type contract.
 

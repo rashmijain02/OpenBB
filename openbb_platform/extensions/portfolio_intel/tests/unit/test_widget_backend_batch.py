@@ -46,14 +46,19 @@ def test_lookthrough_top25_returns_ranked_rows() -> None:
     assert ranks == sorted(ranks), "rank column must be monotonically increasing"
 
 
-def test_concentration_returns_metric_dict_with_value_field() -> None:
-    """Metric contract: dict with a numeric value."""
+def _metric_values(body: list[dict]) -> dict[str, object]:
+    """Index Workspace metric cards (#1268) by label."""
+    assert isinstance(body, list) and body
+    return {card["label"]: card["value"] for card in body}
+
+
+def test_concentration_returns_metric_card_with_value() -> None:
+    """Metric contract: a labelled card with a numeric HHI (#1268 card shape)."""
     resp = _client.get("/pi/concentration?account_id=demo")
     assert resp.status_code == 200
-    body = resp.json()
-    assert isinstance(body, dict)
-    assert isinstance(body.get("value"), (int, float))
-    assert 0.0 <= body["value"] <= 1.0, "HHI must be in [0, 1]"
+    value = _metric_values(resp.json())["Concentration (HHI)"]
+    assert isinstance(value, (int, float))
+    assert 0.0 <= value <= 1.0, "HHI must be in [0, 1]"
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +72,8 @@ def test_events_calendar_returns_rows_with_type_field() -> None:
     assert resp.status_code == 200
     rows = resp.json()
     assert rows
-    valid_types = {"earnings", "ex_dividend", "form_8k", "info"}
+    # #1268: the response carries display labels, not the raw codes.
+    valid_types = {"Earnings", "Ex-Dividend", "Form 8-K", "Information"}
     for r in rows:
         assert r["type"] in valid_types
 
@@ -102,9 +108,9 @@ def test_risk_dashboard_returns_named_metrics() -> None:
     """Metric contract with vol/var/beta."""
     resp = _client.get("/pi/risk/dashboard?account_id=demo")
     assert resp.status_code == 200
-    body = resp.json()
-    for key in ("vol_annualized", "var_95_1d", "beta_spy"):
-        assert key in body
+    values = _metric_values(resp.json())
+    for label in ("Annualized Volatility (%)", "1-Day 95% VaR (%)", "Beta vs SPY"):
+        assert label in values
 
 
 def test_risk_vol_chart_returns_percentage_point_time_series_rows() -> None:
@@ -186,9 +192,13 @@ def test_paper_perf_kpis_returns_named_scalars() -> None:
     """Metric contract with total_return / Sharpe / max_drawdown."""
     resp = _client.get("/pi/paper/perf-kpis?account_id=demo")
     assert resp.status_code == 200
-    body = resp.json()
-    for key in ("total_return_pct", "sharpe_annualized", "max_drawdown_pct"):
-        assert key in body
+    values = _metric_values(resp.json())
+    for label in (
+        "Total Return (%)",
+        "Annualized Sharpe Ratio",
+        "Maximum Drawdown (%)",
+    ):
+        assert label in values
 
 
 # ---------------------------------------------------------------------------
@@ -231,8 +241,9 @@ def test_sentiment_returns_scalar_metric_in_range() -> None:
     """Metric contract; value in [-1, 1]."""
     resp = _client.get("/pi/sentiment?account_id=demo")
     assert resp.status_code == 200
-    body = resp.json()
-    assert -1.0 <= body["value"] <= 1.0
+    value = _metric_values(resp.json())["News Sentiment Score (-1 to +1)"]
+    assert isinstance(value, (int, float))
+    assert -1.0 <= value <= 1.0
 
 
 def test_alerts_returns_rows_with_severity_and_kind() -> None:

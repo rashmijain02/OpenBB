@@ -593,15 +593,17 @@ def _geo_rows() -> list[dict]:
     present so the shaper's latest-period selection is exercised; the latest
     period (2026-09-30) also has a **split** Americas segment to exercise
     per-region aggregation, plus a null-revenue row to exercise the skip.
+    Revenue is absolute currency, as the provider returns it; the shaper
+    reports millions (#1268), so 125_000_000_000 becomes 125_000.
     """
     old = _dt.date(2025, 9, 30)
     new = _dt.date(2026, 9, 30)
     return [
-        {"period_ending": old, "region": "Americas", "revenue": 100_000},
-        {"period_ending": old, "region": "Europe", "revenue": 50_000},
-        {"period_ending": new, "region": "Americas", "revenue": 120_000},
-        {"period_ending": new, "region": "Americas", "revenue": 5_000},
-        {"period_ending": new, "region": "Europe", "revenue": 60_000},
+        {"period_ending": old, "region": "Americas", "revenue": 100_000_000_000},
+        {"period_ending": old, "region": "Europe", "revenue": 50_000_000_000},
+        {"period_ending": new, "region": "Americas", "revenue": 120_000_000_000},
+        {"period_ending": new, "region": "Americas", "revenue": 5_000_000_000},
+        {"period_ending": new, "region": "Europe", "revenue": 60_000_000_000},
         {"period_ending": new, "region": "Greater China", "revenue": None},
     ]
 
@@ -724,16 +726,17 @@ def _seg_rows() -> list[dict]:
     fiscal_year, filing_date, business_line, revenue``. Two periods are present
     (latest-period selection); the latest period splits ``iPhone`` across two
     rows (per-segment aggregation) and includes a null-business_line row (skip).
+    Revenue is absolute currency; the shaper reports millions (#1268).
     """
     old = _dt.date(2025, 9, 30)
     new = _dt.date(2026, 9, 30)
     return [
-        {"period_ending": old, "business_line": "iPhone", "revenue": 190_000},
-        {"period_ending": old, "business_line": "Services", "revenue": 80_000},
-        {"period_ending": new, "business_line": "iPhone", "revenue": 200_000},
-        {"period_ending": new, "business_line": "iPhone", "revenue": 3_000},
-        {"period_ending": new, "business_line": "Services", "revenue": 96_000},
-        {"period_ending": new, "business_line": None, "revenue": 1_000},
+        {"period_ending": old, "business_line": "iPhone", "revenue": 190_000_000_000},
+        {"period_ending": old, "business_line": "Services", "revenue": 80_000_000_000},
+        {"period_ending": new, "business_line": "iPhone", "revenue": 200_000_000_000},
+        {"period_ending": new, "business_line": "iPhone", "revenue": 3_000_000_000},
+        {"period_ending": new, "business_line": "Services", "revenue": 96_000_000_000},
+        {"period_ending": new, "business_line": None, "revenue": 1_000_000_000},
     ]
 
 

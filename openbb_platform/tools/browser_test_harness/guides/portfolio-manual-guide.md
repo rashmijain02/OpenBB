@@ -158,7 +158,7 @@ Read pi_xray_country on the X-Ray tab.
 
 Read pi_concentration_gauge.
 
-**Expected:** HHI metric between 0 and 1; demo value ~0.26.
+**Expected:** Metric card 'Concentration (HHI)' between 0 and 1 (demo value ~0.24) and a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -178,7 +178,7 @@ Read pi_concentration_gauge.
 
 Read pi_risk_dashboard.
 
-**Expected:** vol_annualized, var_95_1d, beta_spy numeric values present, note field = 'demo book'.
+**Expected:** Metric cards 'Annualized Volatility (%)', '1-Day 95% VaR (%)' and 'Beta vs SPY' with numeric values, and a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -218,7 +218,7 @@ Read pi_brinson_attribution.
 
 Read pi_event_calendar on the Calendar tab.
 
-**Expected:** 5+ rows covering earnings, ex_dividend, form_8k events.
+**Expected:** 5+ rows covering Earnings, Ex-Dividend and Form 8-K events (labelled by the endpoint).
 
 **Params:** `account_id=demo` · `horizon_days=30`
 
@@ -258,7 +258,7 @@ Read pi_alerts_panel on the Alerts tab.
 
 Read pi_paper_perf_kpis on the Paper Trading tab.
 
-**Expected:** Total return, Sharpe, max drawdown numeric values.
+**Expected:** Metric cards for total return (%), annualized Sharpe ratio and maximum drawdown (%), plus a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -314,7 +314,7 @@ Navigate to the Morning Review tab. It composes 5 REUSE widgets: concentration +
 
 Read pi_basket_analyst_consensus with basket_id=demo.
 
-**Expected:** 5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, hold, sell, consensus fields.
+**Expected:** 5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, hold, sell, consensus fields; consensus reads Buy or Strong Buy.
 
 **Params:** `basket_id=demo`
 

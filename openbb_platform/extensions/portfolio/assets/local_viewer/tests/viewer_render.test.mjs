@@ -10,7 +10,8 @@
 // Fixtures below mirror the ACTUAL 6120 backend response shapes
 // (widgets_endpoints.py): pie rows {sector,weight}, raw multi-series rows
 // {date,vol_20d,vol_60d}, markdown strings, and metric dicts
-// {value,label,note} / {vol_annualized,var_95_1d,beta_spy,note}.
+// {value,label,note} / {vol_annualized,var_95_1d,beta_spy,note}, and (#1268)
+// Workspace metric cards [{label,value}] with server-side labels.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -54,7 +55,8 @@ function loadHelpers() {
   const src = scriptBody(HTML);
   const names = ["escapeHtml", "mdToHtml", "inferChartModel", "svgForChart", "xAxisTicksSvg",
     "isDateLabel", "isTimeSeriesModel", "toLwcSeries", "fmtCell", "cellClass", "renderTable",
-    "metricModel", "renderMetric", "metricGlossaryData", "metricGlossaryEntry", "metricGlossaryForLabel", "metricHelpButtonHtml", "metricLabelHtml", "metricHelpPageHtml", "metricHelpLayerPosition", "hideMetricHelpLayer", "hideMetricHelpLayerWithin", "inlineOptionsHtml",
+    "metricModel", "renderMetric", "metricGlossaryData", "metricGlossaryEntry", "metricGlossaryForLabel",
+    "metricLabelGlossaryData", "metricLabelGlossaryKey", "metricGlossaryKeyForSummary", "glossaryKeyForLabel", "metricHelpButtonHtml", "metricLabelHtml", "metricHelpPageHtml", "metricHelpLayerPosition", "hideMetricHelpLayer", "hideMetricHelpLayerWithin", "inlineOptionsHtml",
     "sidebarAppsHtml", "pxToGridRect", "clampGridItem", "gridItemStyle", "mergeLayout", "widgetRefString",
     "helpText", "helpButtonHtml", "dataSourceBadge", "resolveParams", "contextParamLabel", "chartLegendLabelHtml", "renderTab",
     "syncMetricHelpLayer", "bindMetricHelpLayerEvents", "bindMetricHelpButtons",
@@ -333,27 +335,20 @@ test("metricModel keeps raw snake_case keys when labels are absent", () => {
   assert.doesNotMatch(container.innerHTML, /Beta Spy/);
 });
 
-test("metricModel uses explicit metric labels and glossary keys when configured", () => {
-  const m = H.metricModel(
-    { market_cap: 3_200_000_000_000, opaque_field: 42, plain_metric: 7, note: "demo book" },
-    {
-      labels: {
-        market_cap: "Market Cap",
-        opaque_field: "Opaque Field",
-        plain_metric: "Plain Metric",
-      },
-      metricGlossary: {
-        "Market Cap": "market_cap",
-        "Opaque Field": "unreviewed_metric",
-      },
-    },
-  );
-  const marketCap = m.cards.find((c) => c.label === "Market Cap");
-  const opaque = m.cards.find((c) => c.label === "Opaque Field");
-  const plain = m.cards.find((c) => c.label === "Plain Metric");
-  assert.equal(marketCap.glossaryKey, "market_cap");
-  assert.equal(opaque.glossaryKey, "unreviewed_metric");
-  assert.equal(plain.glossaryKey, null);
+test("metricModel maps Workspace metric cards and keys help on the label (#1268)", () => {
+  const m = H.metricModel([
+    { label: "Market Cap", value: 3_200_000_000_000 },
+    { label: "1-Day 95% VaR (%)", value: -2.1, delta: "-0.3" },
+    { label: "Plain Metric", value: 7 },
+    { value: 1 },
+  ]);
+  assert.equal(m.cards.length, 3, "cards without a label are dropped");
+  assert.equal(m.cards[0].glossaryKey, "market_cap");
+  assert.equal(m.cards[1].glossaryKey, "one_day_var_95");
+  assert.equal(m.cards[1].cls, "neg");
+  assert.equal(m.cards[1].delta, "-0.3");
+  assert.equal(m.cards[2].glossaryKey, null);
+  assert.equal(m.note, "");
 });
 
 test("metricModel loud-empty: {} -> no cards", () => {
@@ -447,11 +442,11 @@ test("metricHelpLayerPosition flips above when there is no room below", () => {
   assert.equal(pos.top, 98);
 });
 
-test("F2 key stats declare glossary mappings; financial chart keys ride on traces", () => {
-  const keyStats = WIDGETS.pi_equity_key_stats.data.metricGlossary;
-  assert.equal(keyStats["P/E (TTM)"], "pe_ttm");
-  assert.equal(keyStats["Market Cap"], "market_cap");
-  // #1268: the chart's glossary keys moved from the manifest into the figure.
+test("F2 key-stat help is keyed on rendered labels; financial chart keys ride on traces", () => {
+  // #1268: Workspace manifests carry no viewer-only glossary maps.
+  assert.equal(WIDGETS.pi_equity_key_stats.data.metricGlossary, undefined);
+  assert.equal(H.metricLabelGlossaryKey("P/E (TTM)"), "pe_ttm");
+  assert.equal(H.metricLabelGlossaryKey("Market Cap"), "market_cap");
   assert.equal(WIDGETS.pi_equity_financial_charts.data, undefined);
   const glossary = H.plotlyFigureModel(FINANCIALS_FIGURE).glossary;
   assert.equal(glossary["Revenue ($B)"], "revenue_b");
@@ -465,21 +460,21 @@ test("look-through effective-weight formatter converts fractions to displayed pe
   assert.equal(H.fmtCell(0.078, col), "7.80%");
 });
 
-test("risk dashboard formats fraction metrics as signed percentages while beta stays a ratio", () => {
-  const metric = WIDGETS.pi_risk_dashboard.data.metric;
-  assert.deepEqual(metric.formatters, {
-    vol_annualized: "normalizedPercent",
-    var_95_1d: "normalizedPercent",
-  });
+test("risk dashboard cards show percentage points as served; beta stays a ratio (#1268)", () => {
+  assert.equal(WIDGETS.pi_risk_dashboard.data, undefined, "no data.metric in the manifest");
   const container = { innerHTML: "" };
-  H.renderMetric(
-    container,
-    { vol_annualized: 0.184, var_95_1d: -0.021, beta_spy: 1.08 },
-    WIDGETS.pi_risk_dashboard,
-  );
-  assert.match(container.innerHTML, />18\.40%</);
-  assert.match(container.innerHTML, />-2\.10%</);
+  H.renderMetric(container, [
+    { label: "Annualized Volatility (%)", value: 18.4 },
+    { label: "1-Day 95% VaR (%)", value: -2.1 },
+    { label: "Beta vs SPY", value: 1.08 },
+    { label: "Data State", value: "Demo: synthetic sample book" },
+  ], WIDGETS.pi_risk_dashboard);
+  assert.match(container.innerHTML, />18\.4</);
+  assert.match(container.innerHTML, />-2\.1</);
   assert.match(container.innerHTML, />1\.08</);
+  assert.match(container.innerHTML, /Annualized Volatility \(%\)[\s\S]*data-metric-help="annualized_volatility"/);
+  assert.match(container.innerHTML, /Beta vs SPY[\s\S]*data-metric-help="beta_vs_spy"/);
+  assert.match(container.innerHTML, />Demo: synthetic sample book</);
 });
 
 // Brinson and X-Ray sector are native Workspace Plotly figures (#1267). The
@@ -579,59 +574,100 @@ test("trace-free Plotly figure renders its state message, not a blank chart", ()
   assert.doesNotMatch(container.innerHTML, /<svg/);
 });
 
-test("single-value metric cards apply explicit labels and glossary metadata", () => {
-  const model = H.metricModel(
-    { value: 0.076, label: "HHI (0..1; higher = more concentrated)" },
-    WIDGETS.pi_concentration_gauge.data.metric,
-  );
+test("single-value metric cards carry the served label and glossary help (#1268)", () => {
+  const model = H.metricModel([
+    { label: "Concentration (HHI)", value: 0.2374 },
+    { label: "Data State", value: "Demo: synthetic sample book" },
+  ]);
   assert.equal(model.cards[0].label, "Concentration (HHI)");
   assert.equal(model.cards[0].glossaryKey, "herfindahl_hirschman_index");
+  assert.equal(model.cards[1].glossaryKey, null);
 });
 
-test("technical row labels cover the actual Classic pivot strings with help", () => {
+test("server-labelled technical rows get glossary help (#1268)", () => {
   const container = { innerHTML: "" };
-  H.renderTable(container, [{ metric: "R3 (Classic)", value: 234.6, note: "" }],
+  H.renderTable(container, [{ metric: "Resistance 3", value: 234.6, note: "" }],
     WIDGETS.pi_equity_technicals);
   assert.match(container.innerHTML, /Resistance 3[\s\S]*data-metric-help="resistance"/);
 });
 
-test("canonical analyst-forecast labels map to focused glossary help", () => {
+test("server-labelled analyst-forecast rows map to focused glossary help (#1268)", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { metric: "Rating: Strong Buy / Buy", value: "12 / 8", note: "as of today" },
-    { metric: "Rating: Hold / Sell / Strong Sell", value: "3 / 2 / 1", note: "" },
+    { metric: "Rating Distribution: Strong Buy / Buy", value: "12 / 8", note: "as of today" },
+    { metric: "Rating Distribution: Hold / Sell / Strong Sell", value: "3 / 2 / 1", note: "" },
     { metric: "Q3 2025 EPS Surprise", value: "+3.2%", note: "reported" },
     { metric: "Q2 2025 EPS Surprise", value: "+1.9%", note: "reported" },
-    { metric: "Historical rev estimate (last Q)", value: "n/a", note: "unavailable" },
+    { metric: "Historical Revenue Estimate", value: "n/a", note: "unavailable" },
   ], WIDGETS.pi_equity_analyst_forecasts);
   for (const key of ["rating_distribution", "eps_surprise", "revenue_estimate"]) {
     assert.match(container.innerHTML, new RegExp(`data-metric-help="${key}"`));
   }
-  assert.match(container.innerHTML, /Rating Distribution: Strong Buy \/ Buy/);
-  assert.match(container.innerHTML, /Rating Distribution: Hold \/ Sell \/ Strong Sell/);
-  assert.match(container.innerHTML, /Q3 2025 EPS Surprise/);
-  assert.match(container.innerHTML, /Q2 2025 EPS Surprise/);
-  assert.match(container.innerHTML, /Historical Revenue Estimate/);
+  assert.equal(H.metricLabelGlossaryKey("Rating Distribution: "), null);
+  assert.equal(H.metricLabelGlossaryKey("Q5 2025 EPS Surprise"), null);
+  assert.equal(H.metricLabelGlossaryKey("Rating: Buy"), null, "raw identifiers carry no help");
 });
 
-test("explicit enum labels preserve API values without global humanization", () => {
+test("server-labelled enum values render verbatim and escaped (#1268)", () => {
   const smartMoney = { innerHTML: "" };
   H.renderTable(smartMoney, [
-    { symbol: "NVDA", kind: "insider_buy", actor: "CFO", value_usd: 1, date: "2026-08-15" },
-    { symbol: "AAPL", kind: "13F_increase", actor: "Fund", value_usd: 1, date: "2026-08-15" },
-    { symbol: "TSLA", kind: "insider_sell", actor: "Director", value_usd: 1, date: "2026-08-15" },
+    { symbol: "NVDA", kind: "Insider Buy", actor: "CFO", value_usd: 1, date: "2026-08-15" },
+    { symbol: "AAPL", kind: "13F Increase", actor: "<b>Fund</b>", value_usd: 1, date: "2026-08-15" },
   ], WIDGETS.pi_smart_money_ribbon);
-  for (const label of ["Insider Buy", "13F Increase", "Insider Sell"]) {
+  for (const label of ["Insider Buy", "13F Increase"]) {
     assert.match(smartMoney.innerHTML, new RegExp(`>${label}</td>`));
   }
-  assert.doesNotMatch(smartMoney.innerHTML, /insider_buy|13F_increase|insider_sell/);
+  assert.match(smartMoney.innerHTML, /&lt;b&gt;Fund&lt;\/b&gt;/);
+  assert.doesNotMatch(smartMoney.innerHTML, /<b>Fund/);
 
   const consensus = { innerHTML: "" };
   H.renderTable(consensus, [
-    { symbol: "MSFT", avg_target: 465, buy: 28, hold: 4, sell: 0, consensus: "STRONG_BUY" },
+    { symbol: "MSFT", avg_target: 465, buy: 28, hold: 4, sell: 0, consensus: "Strong Buy" },
   ], WIDGETS.pi_basket_analyst_consensus);
-  assert.match(consensus.innerHTML, /Strong Buy/);
-  assert.doesNotMatch(consensus.innerHTML, /STRONG_BUY/);
+  assert.match(consensus.innerHTML, />Strong Buy<\/td>/);
+  assert.match(consensus.innerHTML, /Consensus Rating[\s\S]*data-metric-help="consensus_rating"/);
+});
+
+test("column headerTooltip is escaped and only a curated summary adds help (#1268)", () => {
+  const container = { innerHTML: "" };
+  H.renderTable(container, [{ a: 1, b: 2 }], {
+    data: {
+      table: {
+        columnsDefs: [
+          { field: "a", headerName: "A", headerTooltip: '"><script>alert(1)</script>' },
+          { field: "b", headerName: "B", headerTooltip: H.metricGlossaryEntry("pe_ttm").summary },
+        ],
+      },
+    },
+  });
+  assert.doesNotMatch(container.innerHTML, /<script>/);
+  assert.match(container.innerHTML, /title="&quot;&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;"/);
+  assert.doesNotMatch(container.innerHTML, /<th[^>]*>A[\s\S]*?data-metric-help=[\s\S]*?<\/th><th/);
+  assert.match(container.innerHTML, /<th title="[^"]+"><span class="metric-label">B[\s\S]*data-metric-help="pe_ttm"/);
+  assert.equal(H.metricGlossaryKeyForSummary(""), null);
+  assert.equal(H.metricGlossaryKeyForSummary(undefined), null);
+  assert.equal(H.metricGlossaryKeyForSummary("not a summary"), null);
+});
+
+test("every manifest headerTooltip resolves to a curated glossary record (#1268)", () => {
+  let seen = 0;
+  for (const [id, widget] of Object.entries(WIDGETS)) {
+    const columns = (widget.data && widget.data.table && widget.data.table.columnsDefs) || [];
+    for (const column of columns) {
+      if (!("headerTooltip" in column)) continue;
+      seen += 1;
+      assert.ok(H.metricGlossaryKeyForSummary(column.headerTooltip), `${id}.${column.field}`);
+    }
+  }
+  assert.equal(seen, 19);
+});
+
+test("every rendered-label glossary key is a curated record", () => {
+  const labels = H.metricLabelGlossaryData();
+  assert.ok(Object.keys(labels).length >= 70);
+  for (const [label, key] of Object.entries(labels)) {
+    assert.ok(H.metricGlossaryEntry(key), `${label} -> ${key}`);
+  }
 });
 
 test("TradingView legend keeps chart gestures transparent but binds help controls", () => {
@@ -649,13 +685,13 @@ test("TradingView legend keeps chart gestures transparent but binds help control
   assert.equal(btn.dataset.metricHelpBound, "1");
 });
 
-test("What-If raw row identifiers resolve approved labels and glossary help", () => {
+test("What-If server-labelled rows resolve glossary help (#1268)", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { metric: "symbol_weight_%", before: 4.8, after: 5.0, delta: 0.2 },
-    { metric: "sector_weight_%", before: 37.2, after: 37.4, delta: 0.2 },
-    { metric: "cash_%", before: 5, after: 4.8, delta: -0.2 },
-    { metric: "beta_spy", before: 1.08, after: 1.1, delta: 0.02 },
+    { metric: "Symbol Weight (%)", before: 4.8, after: 5.0, delta: 0.2 },
+    { metric: "Sector Weight (%)", before: 37.2, after: 37.4, delta: 0.2 },
+    { metric: "Cash Weight (%)", before: 5, after: 4.8, delta: -0.2 },
+    { metric: "Beta vs SPY", before: 1.08, after: 1.1, delta: 0.02 },
   ], WIDGETS.pi_whatif_card);
   for (const [label, key] of [
     ["Symbol Weight (%)", "symbol_weight"],
@@ -668,10 +704,15 @@ test("What-If raw row identifiers resolve approved labels and glossary help", ()
   }
 });
 
-test("earnings Surprise header uses the earnings-surprise glossary record", () => {
+test("earnings Surprise header tooltip is the earnings-surprise glossary summary (#1268)", () => {
   const column = WIDGETS.pi_earnings_history.data.table.columnsDefs
     .find((item) => item.field === "surprise_pct");
-  assert.equal(column.glossaryKey, "earnings_surprise");
+  assert.equal(column.glossaryKey, undefined);
+  assert.equal(H.metricGlossaryKeyForSummary(column.headerTooltip), "earnings_surprise");
+  const container = { innerHTML: "" };
+  H.renderTable(container, [{ quarter: "Q3 2025", eps_actual: 1.55, eps_estimate: 1.5, surprise_pct: 3.3 }],
+    WIDGETS.pi_earnings_history);
+  assert.match(container.innerHTML, /Surprise \(%\)[\s\S]*data-metric-help="earnings_surprise"/);
 });
 
 test("time-series legend labels expose help from the figure's trace glossary keys", () => {
@@ -742,7 +783,7 @@ test("renderTable adds help only for mapped first-column metrics", () => {
   assert.doesNotMatch(container.innerHTML, /Unmapped Metric[\s\S]*data-metric-help=/);
 });
 
-test("renderTable adds help buttons to configured glossary-backed headers only", () => {
+test("renderTable adds help buttons to glossary-backed header tooltips only", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
     { market_cap: 3_200_000_000_000, opaque_field: 42, status: "active" },
@@ -750,46 +791,29 @@ test("renderTable adds help buttons to configured glossary-backed headers only",
     data: {
       table: {
         columnsDefs: [
-          { field: "market_cap", headerName: "Market Cap", glossaryKey: "market_cap" },
-          { field: "opaque_field", headerName: "Opaque Field", glossaryKey: "unreviewed_metric" },
+          { field: "market_cap", headerName: "Market Cap", headerTooltip: H.metricGlossaryEntry("market_cap").summary },
+          { field: "opaque_field", headerName: "Opaque Field", headerTooltip: "An unreviewed note." },
           { field: "status", headerName: "Status" },
         ],
       },
     },
   });
-  assert.match(container.innerHTML, /<th><span class="metric-label">Market Cap[\s\S]*data-metric-help="market_cap"/);
-  assert.match(container.innerHTML, /<th>Opaque Field<\/th>/);
-  assert.doesNotMatch(container.innerHTML, /<th>Opaque Field[\s\S]*data-metric-help=/);
+  assert.match(container.innerHTML, /<th title="[^"]*"><span class="metric-label">Market Cap[\s\S]*data-metric-help="market_cap"/);
+  assert.match(container.innerHTML, /<th title="An unreviewed note\.">Opaque Field<\/th>/);
   assert.match(container.innerHTML, /<th>Status<\/th>/);
-  assert.doesNotMatch(container.innerHTML, /<th>Status[\s\S]*data-metric-help=/);
 });
 
-test("renderMetric adds help buttons to configured metric-card labels only", () => {
+test("renderMetric adds help buttons to glossary-backed card labels only", () => {
   const container = { innerHTML: "" };
-  H.renderMetric(container, {
-    market_cap: 3_200_000_000_000,
-    opaque_field: 42,
-    plain_metric: 7,
-  }, {
-    data: {
-      metric: {
-        labels: {
-          market_cap: "Market Cap",
-          opaque_field: "Opaque Field",
-          plain_metric: "Plain Metric",
-        },
-        metricGlossary: {
-          "Market Cap": "market_cap",
-          "Opaque Field": "unreviewed_metric",
-        },
-      },
-    },
-  });
+  H.renderMetric(container, [
+    { label: "Market Cap", value: 3_200_000_000_000 },
+    { label: "Opaque Field", value: 42 },
+    { label: "Plain Metric", value: 7 },
+  ], { type: "metric" });
   assert.match(container.innerHTML, /<div class="mlabel"[^>]*><span class="metric-label">Market Cap[\s\S]*data-metric-help="market_cap"/);
   assert.match(container.innerHTML, /<div class="mlabel"[^>]*>Opaque Field<\/div>/);
   assert.doesNotMatch(container.innerHTML, /Opaque Field[\s\S]*data-metric-help=/);
   assert.match(container.innerHTML, /<div class="mlabel"[^>]*>Plain Metric<\/div>/);
-  assert.doesNotMatch(container.innerHTML, /Plain Metric[\s\S]*data-metric-help=/);
 });
 
 test("2010 key stats renders explicit financial table headers", () => {
@@ -803,7 +827,7 @@ test("2010 key stats renders explicit financial table headers", () => {
 
 test("2011 technicals render explicit indicator table headers", () => {
   const container = { innerHTML: "" };
-  H.renderTable(container, [{ metric: "R3 (Classic)", value: 234.6, note: "Classic pivot" }],
+  H.renderTable(container, [{ metric: "Resistance 3", value: 234.6, note: "Classic pivot" }],
     WIDGETS.pi_equity_technicals);
   assert.match(container.innerHTML, /<th>Technical Indicator<\/th>/);
   assert.match(container.innerHTML, /<th>Value<\/th>/);
@@ -811,22 +835,21 @@ test("2011 technicals render explicit indicator table headers", () => {
   assert.match(container.innerHTML, /Resistance 3[\s\S]*data-metric-help="resistance"/);
 });
 
-test("2012 event calendar renders mapped event types and header help", () => {
+test("2012 event calendar renders served event labels and header help", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { symbol: "AAPL", type: "ex_dividend", date: "2026-08-08", detail: "$0.24/sh" },
-    { symbol: "NVDA", type: "form_8k", date: "2026-07-22", detail: "Item 7.01" },
+    { symbol: "AAPL", type: "Ex-Dividend", date: "2026-08-08", detail: "$0.24/sh" },
+    { symbol: "NVDA", type: "Form 8-K", date: "2026-07-22", detail: "Item 7.01" },
   ], WIDGETS.pi_event_calendar);
-  assert.match(container.innerHTML, /<th><span class="metric-label">Event Type[\s\S]*data-metric-help="event_type"/);
+  assert.match(container.innerHTML, /<th[^>]*><span class="metric-label">Event Type[\s\S]*data-metric-help="event_type"/);
   assert.match(container.innerHTML, />Ex-Dividend<\/td>/);
   assert.match(container.innerHTML, />Form 8-K<\/td>/);
-  assert.doesNotMatch(container.innerHTML, /ex_dividend|form_8k/);
 });
 
 test("2013 forecasts render explicit forecast table headers", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { metric: "1Y target (consensus)", value: "$240", note: "12 months" },
+    { metric: "12-Month Price Target", value: "$240", note: "12 months" },
   ], WIDGETS.pi_equity_analyst_forecasts);
   assert.match(container.innerHTML, /<th>Forecast Measure<\/th>/);
   assert.match(container.innerHTML, /<th>Value<\/th>/);
@@ -837,7 +860,7 @@ test("2013 forecasts render explicit forecast table headers", () => {
 test("2014 what-if card renders explicit before-and-after headers", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { metric: "symbol_weight_%", before: 4.8, after: 5.0, delta: 0.2 },
+    { metric: "Symbol Weight (%)", before: 4.8, after: 5.0, delta: 0.2 },
   ], WIDGETS.pi_whatif_card);
   assert.match(container.innerHTML, /<th>Portfolio Metric<\/th>/);
   assert.match(container.innerHTML, /<th>Before Trade<\/th>/);
@@ -846,18 +869,17 @@ test("2014 what-if card renders explicit before-and-after headers", () => {
   assert.match(container.innerHTML, /Symbol Weight \(%\)[\s\S]*data-metric-help="symbol_weight"/);
 });
 
-test("2015 alerts render mapped alert categories and header help", () => {
+test("2015 alerts render served alert categories and header help", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [
-    { severity: "warning", kind: "form_8k_for_held", symbol: "NVDA", detail: "Item 7.01" },
-    { severity: "info", kind: "earnings_upcoming", symbol: "AAPL", detail: "Earnings" },
-    { severity: "critical", kind: "news_material", symbol: "TSLA", detail: "Recall" },
+    { severity: "warning", kind: "Held-Security Form 8-K", symbol: "NVDA", detail: "Item 7.01" },
+    { severity: "info", kind: "Upcoming Earnings", symbol: "AAPL", detail: "Earnings" },
+    { severity: "critical", kind: "Material News", symbol: "TSLA", detail: "Recall" },
   ], WIDGETS.pi_alerts_panel);
-  assert.match(container.innerHTML, /<th><span class="metric-label">Alert Type[\s\S]*data-metric-help="alert_type"/);
+  assert.match(container.innerHTML, /<th[^>]*><span class="metric-label">Alert Type[\s\S]*data-metric-help="alert_type"/);
   for (const label of ["Held-Security Form 8-K", "Upcoming Earnings", "Material News"]) {
     assert.match(container.innerHTML, new RegExp(`>${label}</td>`));
   }
-  assert.doesNotMatch(container.innerHTML, /form_8k_for_held|earnings_upcoming|news_material/);
 });
 
 test("2016 news ribbon renders operational headers without glossary controls", () => {
@@ -871,15 +893,14 @@ test("2016 news ribbon renders operational headers without glossary controls", (
   assert.doesNotMatch(container.innerHTML, /data-metric-help=/);
 });
 
-test("2017 sentiment gauge renders its explicit label and glossary help", () => {
+test("2017 sentiment gauge renders its served label, glossary help and data state", () => {
   const container = { innerHTML: "" };
-  H.renderMetric(container, {
-    value: 0.62,
-    label: "Sentiment (-1..+1)",
-    note: "demo — 7d window",
-  }, WIDGETS.pi_sentiment_gauge);
+  H.renderMetric(container, [
+    { label: "News Sentiment Score (-1 to +1)", value: 0.62 },
+    { label: "Data State", value: "Demo: synthetic sample, 7-day window" },
+  ], WIDGETS.pi_sentiment_gauge);
   assert.match(container.innerHTML, /News Sentiment Score \(-1 to \+1\)[\s\S]*data-metric-help="news_sentiment_score"/);
-  assert.doesNotMatch(container.innerHTML, /Sentiment \(-1\.\.\+1\)/);
+  assert.match(container.innerHTML, />Demo: synthetic sample, 7-day window</);
 });
 
 test("renderTable hides an active floating metric tooltip before replacing widget body", () => {

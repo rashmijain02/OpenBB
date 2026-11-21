@@ -83,7 +83,9 @@ def test_dividend_payment_widget_declared() -> None:
         {
             "field": "ex_date",
             "headerName": "Ex-Dividend Date",
-            "glossaryKey": "ex_dividend_date",
+            "headerTooltip": (
+                "First trading day when a buyer is not entitled to the next dividend."
+            ),
         },
         {
             "field": "payment_date",
@@ -92,7 +94,7 @@ def test_dividend_payment_widget_declared() -> None:
         {
             "field": "amount",
             "headerName": "Dividend Amount ($/share)",
-            "glossaryKey": "dividend_amount_per_share",
+            "headerTooltip": "Cash dividend declared for each share.",
         },
     ]
 

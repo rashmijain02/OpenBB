@@ -248,7 +248,7 @@ def revenue_geography_figure(rows: Rows, ctx: ChartContext) -> Figure:
         "region",
         "revenue",
         "Revenue by Region",
-        "Revenue: %{value:,.0f}<br>Share: %{percent}",
+        "Revenue (millions): %{value:,.0f}<br>Share: %{percent}",
     )
     return _finish(
         [trace],
@@ -269,7 +269,7 @@ def revenue_business_line_figure(rows: Rows, ctx: ChartContext) -> Figure:
         "segment",
         "revenue",
         "Revenue by Segment",
-        "Revenue: %{value:,.0f}<br>Share: %{percent}",
+        "Revenue (millions): %{value:,.0f}<br>Share: %{percent}",
     )
     return _finish(
         [trace],

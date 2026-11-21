@@ -73,7 +73,7 @@ def test_historical_forecast_uses_exact_provider_fiscal_period_and_release_date(
     rows = _client.get("/pi/equity/analyst-forecasts?symbol=AAPL").json()
     snapshot_row = next(row for row in rows if row["value"] == 123_456.0)
 
-    assert snapshot_row["metric"] == "Historical rev estimate (last Q)"
+    assert snapshot_row["metric"] == "Historical Revenue Estimate"
     assert observed == {
         "symbol": "AAPL",
         "fiscal_period_end": fiscal_period_end,
@@ -121,10 +121,10 @@ def test_equity_technicals_pivot_rows_math() -> None:
     resp = _client.get("/pi/equity/technicals?symbol=AAPL")
     assert resp.status_code == 200
     rows = resp.json()
-    p_row = next(r for r in rows if r["metric"].startswith("P "))
+    p_row = next(r for r in rows if r["metric"] == "Pivot")
     assert isinstance(p_row["value"], float)
     # BLOCKED IV row must be present so the widget documents the gap.
-    iv_row = next(r for r in rows if "IV" in r["metric"])
+    iv_row = next(r for r in rows if "Implied Volatility" in r["metric"])
     assert iv_row["value"] == "BLOCKED" and "999" in iv_row["note"]
 
 
@@ -153,7 +153,7 @@ def test_equity_analyst_forecasts_gaps_documented(
     rows = resp.json()
 
     # #997 rating rows must be present
-    rating_rows = [r for r in rows if r["metric"].startswith("Rating:")]
+    rating_rows = [r for r in rows if r["metric"].startswith("Rating Distribution:")]
     assert len(rating_rows) == 2
     rating_notes = " ".join(str(r["note"]) for r in rating_rows)
     assert (
@@ -166,7 +166,7 @@ def test_equity_analyst_forecasts_gaps_documented(
     #   "insufficient history" | "snapshot <date>" | "lookup failed"
     # It must NOT still say "BLOCKED gap 998" (that'd mean the wiring
     # didn't land).
-    rev_row = next(r for r in rows if r["metric"] == "Historical rev estimate (last Q)")
+    rev_row = next(r for r in rows if r["metric"] == "Historical Revenue Estimate")
     rev_state = f"{rev_row['value']} {rev_row['note']}".lower()
     assert (
         "insufficient history" in rev_state
@@ -176,17 +176,17 @@ def test_equity_analyst_forecasts_gaps_documented(
     # And explicitly, the value must NOT be the old BLOCKED marker
     assert str(rev_row["value"]).upper() != "BLOCKED"
     assert rev_row["value"] == "insufficient history"
-    assert rev_row["metric"] == "Historical rev estimate (last Q)"
+    assert rev_row["metric"] == "Historical Revenue Estimate"
     assert "historical estimate snapshot" in str(rev_row["note"]).lower()
     assert "revenue surprise" in str(rev_row["note"]).lower()
     assert "#" not in str(rev_row["note"])
     assert not re.search(r"\b[a-z]+(?:_[a-z0-9]+)+\b", str(rev_row["note"]))
 
 
-def test_equity_analyst_forecasts_snapshot_uses_stable_raw_identifier(
+def test_equity_analyst_forecasts_snapshot_uses_stable_display_label(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Snapshot success retains the identifier that manifest metadata translates."""
+    """Snapshot success keeps the server-side display label (#1268)."""
     from openbb_fmp_cached.models import analyst_estimates
 
     fiscal_period_end = date(2026, 6, 27)
@@ -226,7 +226,7 @@ def test_equity_analyst_forecasts_snapshot_uses_stable_raw_identifier(
     )
     rows = _client.get("/pi/equity/analyst-forecasts?symbol=AAPL").json()
     snapshot_row = next(row for row in rows if row["value"] == 123_456.0)
-    assert snapshot_row["metric"] == "Historical rev estimate (last Q)"
+    assert snapshot_row["metric"] == "Historical Revenue Estimate"
 
 
 def test_equity_analyst_forecasts_is_loud_when_latest_period_has_no_snapshot(
@@ -262,9 +262,7 @@ def test_equity_analyst_forecasts_is_loud_when_latest_period_has_no_snapshot(
     )
 
     rows = _client.get("/pi/equity/analyst-forecasts?symbol=AAPL").json()
-    row = next(
-        row for row in rows if row["metric"] == "Historical rev estimate (last Q)"
-    )
+    row = next(row for row in rows if row["metric"] == "Historical Revenue Estimate")
     assert row["value"] == "insufficient history"
     assert "no historical estimate snapshot" in str(row["note"]).lower()
 

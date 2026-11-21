@@ -62,6 +62,19 @@ from openbb_portfolio_intel.widget_backend._shared import (
     require_live_trading_principal,
     validate_account,
 )
+from openbb_portfolio_intel.widget_backend.table_contracts import (
+    ALERT_KIND_LABELS,
+    CONSENSUS_LABELS,
+    EVENT_TYPE_LABELS,
+    FORECAST_ROW_LABELS,
+    FORECAST_ROW_PATTERNS,
+    SMART_MONEY_KIND_LABELS,
+    TECHNICAL_ROW_LABELS,
+    WHATIF_ROW_LABELS,
+    label_rows,
+    metric_cards,
+    relabel,
+)
 from openbb_portfolio_intel.widget_backend.terminal_charts import plotly_chart
 
 logger = logging.getLogger(__name__)
@@ -351,6 +364,11 @@ def lookthrough_top25(
     ]
 
 
+# Data-state card text for the metric widgets (#1268).
+_DEMO_BOOK_STATE = "Demo: synthetic sample book"
+_UNWIRED_STATE = "Unavailable: account resolver not wired for this account"
+
+
 @app.get("/pi/concentration")
 @with_chain(
     endpoint="pi/concentration",
@@ -360,8 +378,13 @@ def lookthrough_top25(
     require_auth=_require_auth_from_call,
     validate_kwargs=_validate_account_from_call,
 )
-def concentration(request: Request, account_id: str = "demo") -> dict[str, float | str]:
-    """Herfindahl-Hirschman concentration index for the effective book (#530)."""
+def concentration(
+    request: Request, account_id: str = "demo"
+) -> list[dict[str, float | str]]:
+    """Herfindahl-Hirschman concentration index for the effective book (#530).
+
+    Workspace metric cards (#1268): ``[{label, value}]`` plus a data-state card.
+    """
     _require_auth(request)
     _validate_account(account_id)
     if account_id == "demo":
@@ -394,13 +417,15 @@ def concentration(request: Request, account_id: str = "demo") -> dict[str, float
             0.464,
         ]
         hhi = sum(w * w for w in weights)
-        return {
-            "value": round(hhi, 4),
-            "label": "HHI (0..1; higher = more concentrated)",
-            "note": "demo book",
-        }
+        return metric_cards(
+            [("Concentration (HHI)", round(hhi, 4))],
+            available=True,
+            state=_DEMO_BOOK_STATE,
+        )
     logger.warning("concentration: account resolver not wired for %r", account_id)
-    return {"value": 0.0, "label": "HHI", "note": "account resolver not wired"}
+    return metric_cards(
+        [("Concentration (HHI)", 0.0)], available=False, state=_UNWIRED_STATE
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -409,6 +434,7 @@ def concentration(request: Request, account_id: str = "demo") -> dict[str, float
 
 
 @app.get("/pi/events/calendar")
+@relabel("type", EVENT_TYPE_LABELS)
 @with_chain(
     endpoint="pi/events/calendar",
     family="events/calendar",
@@ -481,6 +507,7 @@ def events_calendar(
 
 
 @app.get("/pi/smart-money/ribbon")
+@relabel("kind", SMART_MONEY_KIND_LABELS)
 @with_chain(
     endpoint="pi/smart-money/ribbon",
     family="smart-money/ribbon",
@@ -546,23 +573,19 @@ def smart_money_ribbon(
 )
 def risk_dashboard(
     request: Request, account_id: str = "demo"
-) -> dict[str, float | str]:
-    """Number-grid risk metrics for the paper account."""
+) -> list[dict[str, float | str]]:
+    """Risk metric cards for the paper account (percentage points + beta)."""
     _require_auth(request)
     _validate_account(account_id)
+    vol_annualized, var_95_1d, beta_spy = 0.184, -0.021, 1.08
+    values: list[tuple[str, float | str]] = [
+        ("Annualized Volatility (%)", round(vol_annualized * 100, 2)),
+        ("1-Day 95% VaR (%)", round(var_95_1d * 100, 2)),
+        ("Beta vs SPY", beta_spy),
+    ]
     if account_id == "demo":
-        return {
-            "vol_annualized": 0.184,
-            "var_95_1d": -0.021,
-            "beta_spy": 1.08,
-            "note": "demo book",
-        }
-    return {
-        "vol_annualized": 0.0,
-        "var_95_1d": 0.0,
-        "beta_spy": 0.0,
-        "note": "not wired",
-    }
+        return metric_cards(values, available=True, state=_DEMO_BOOK_STATE)
+    return metric_cards(values, available=False, state=_UNWIRED_STATE)
 
 
 @app.get("/pi/risk/vol")
@@ -731,23 +754,22 @@ def paper_performance(
 )
 def paper_perf_kpis(
     request: Request, account_id: str = "demo"
-) -> dict[str, float | str]:
-    """Total return, Sharpe, max drawdown."""
+) -> list[dict[str, float | str]]:
+    """Total return, Sharpe, max drawdown as Workspace metric cards."""
     _require_auth(request)
     _validate_account(account_id)
+    values: list[tuple[str, float | str]] = [
+        ("Total Return (%)", 3.24),
+        ("Annualized Sharpe Ratio", 1.42),
+        ("Maximum Drawdown (%)", -1.87),
+    ]
     if account_id == "demo":
-        return {
-            "total_return_pct": 3.24,
-            "sharpe_annualized": 1.42,
-            "max_drawdown_pct": -1.87,
-            "note": "demo book — 30 trading days",
-        }
-    return {
-        "total_return_pct": 0.0,
-        "sharpe_annualized": 0.0,
-        "max_drawdown_pct": 0.0,
-        "note": "not wired",
-    }
+        return metric_cards(
+            values,
+            available=True,
+            state="Demo: synthetic sample book, 30 trading days",
+        )
+    return metric_cards(values, available=False, state=_UNWIRED_STATE)
 
 
 # ---------------------------------------------------------------------------
@@ -756,6 +778,7 @@ def paper_perf_kpis(
 
 
 @app.get("/pi/whatif/card")
+@relabel("metric", WHATIF_ROW_LABELS)
 @with_chain(
     endpoint="pi/whatif/card",
     family="whatif/card",
@@ -876,20 +899,22 @@ def pi_news(
     require_auth=_require_auth_from_call,
     validate_kwargs=_validate_account_from_call,
 )
-def pi_sentiment(request: Request, account_id: str = "demo") -> dict[str, float | str]:
-    """Aggregate sentiment score across recent held-symbol news."""
+def pi_sentiment(
+    request: Request, account_id: str = "demo"
+) -> list[dict[str, float | str]]:
+    """Aggregate sentiment score across recent held-symbol news (metric cards)."""
     _require_auth(request)
     _validate_account(account_id)
+    values: list[tuple[str, float | str]] = [("News Sentiment Score (-1 to +1)", 0.62)]
     if account_id == "demo":
-        return {
-            "value": 0.62,
-            "label": "Sentiment (-1..+1)",
-            "note": "demo — 7d window",
-        }
-    return {"value": 0.0, "label": "Sentiment", "note": "not wired"}
+        return metric_cards(
+            values, available=True, state="Demo: synthetic sample, 7-day window"
+        )
+    return metric_cards(values, available=False, state=_UNWIRED_STATE)
 
 
 @app.get("/pi/alerts")
+@relabel("kind", ALERT_KIND_LABELS)
 @with_chain(
     endpoint="pi/alerts",
     family="alerts",
@@ -1062,6 +1087,7 @@ def equity_financials(
 
 
 @app.get("/pi/equity/technicals")
+@relabel("metric", TECHNICAL_ROW_LABELS)
 @with_chain(
     endpoint="pi/equity/technicals",
     family="equity/technicals",
@@ -1153,6 +1179,7 @@ def _latest_issuer_fiscal_period_and_release_date(
 
 
 @app.get("/pi/equity/analyst-forecasts")
+@relabel("metric", FORECAST_ROW_LABELS, FORECAST_ROW_PATTERNS)
 @with_chain(
     endpoint="pi/equity/analyst-forecasts",
     family="equity/analyst-forecasts",
@@ -3076,7 +3103,7 @@ def equity_basket_analyst_consensus(
     _require_auth(request)
     _validate_basket_id(basket_id)
     if basket_id == "demo":
-        return _DEMO_BASKET_CONSENSUS
+        return label_rows(_DEMO_BASKET_CONSENSUS, "consensus", CONSENSUS_LABELS)
 
     if os.environ.get("PI_ALLOW_CROSS_USER_BASKET", "").strip().lower() != "true":
         raise HTTPException(
@@ -3117,7 +3144,7 @@ def equity_basket_analyst_consensus(
             "buy": 0,
             "hold": 0,
             "sell": 0,
-            "consensus": "PENDING",
+            "consensus": CONSENSUS_LABELS["PENDING"],
             "note": (
                 f"weight={p.weight:.4f} — per-symbol consensus wiring is "
                 "#1715 Phase 2B"

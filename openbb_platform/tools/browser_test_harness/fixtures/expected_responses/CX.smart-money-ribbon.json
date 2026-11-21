@@ -3,21 +3,21 @@
     {
       "actor": "CFO",
       "date": "2026-07-18",
-      "kind": "insider_buy",
+      "kind": "Insider Buy",
       "symbol": "NVDA",
       "value_usd": 2400000.0
     },
     {
       "actor": "Berkshire Hathaway",
       "date": "2026-07-15",
-      "kind": "13F_increase",
+      "kind": "13F Increase",
       "symbol": "AAPL",
       "value_usd": 180000000.0
     },
     {
       "actor": "Director",
       "date": "2026-07-17",
-      "kind": "insider_sell",
+      "kind": "Insider Sell",
       "symbol": "TSLA",
       "value_usd": 1100000.0
     }

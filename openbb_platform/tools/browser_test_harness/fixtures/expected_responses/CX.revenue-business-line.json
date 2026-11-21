@@ -2,7 +2,7 @@
   "body": {
     "data": [
       {
-        "hovertemplate": "%{label}<br>Revenue: %{value:,.0f}<br>Share: %{percent}<extra></extra>",
+        "hovertemplate": "%{label}<br>Revenue (millions): %{value:,.0f}<br>Share: %{percent}<extra></extra>",
         "labels": [
           "iPhone",
           "Services",

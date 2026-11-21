@@ -124,7 +124,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W3 — Concentration gauge (HHI)",
         human_description="Read pi_concentration_gauge.",
-        human_expected="HHI metric between 0 and 1; demo value ~0.26.",
+        human_expected=(
+            "Metric card 'Concentration (HHI)' between 0 and 1 (demo value "
+            "~0.24) and a 'Data State' card that says Demo."
+        ),
         endpoint="pi/concentration",
         params={"account_id": "demo"},
     ),
@@ -141,8 +144,9 @@ _STEPS: tuple[Step, ...] = (
         human_title="Step W4 — Read the risk dashboard",
         human_description="Read pi_risk_dashboard.",
         human_expected=(
-            "vol_annualized, var_95_1d, beta_spy numeric values present, note "
-            "field = 'demo book'."
+            "Metric cards 'Annualized Volatility (%)', '1-Day 95% VaR (%)' and "
+            "'Beta vs SPY' with numeric values, and a 'Data State' card that "
+            "says Demo."
         ),
         endpoint="pi/risk/dashboard",
         params={"account_id": "demo"},
@@ -175,7 +179,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W5 — Read the event calendar",
         human_description="Read pi_event_calendar on the Calendar tab.",
-        human_expected="5+ rows covering earnings, ex_dividend, form_8k events.",
+        human_expected=(
+            "5+ rows covering Earnings, Ex-Dividend and Form 8-K events "
+            "(labelled by the endpoint)."
+        ),
         endpoint="pi/events/calendar",
         params={"account_id": "demo", "horizon_days": "30"},
     ),
@@ -204,7 +211,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W6 — Read the paper account KPIs",
         human_description="Read pi_paper_perf_kpis on the Paper Trading tab.",
-        human_expected="Total return, Sharpe, max drawdown numeric values.",
+        human_expected=(
+            "Metric cards for total return (%), annualized Sharpe ratio and "
+            "maximum drawdown (%), plus a 'Data State' card that says Demo."
+        ),
         endpoint="pi/paper/perf-kpis",
         params={"account_id": "demo"},
     ),
@@ -261,7 +271,7 @@ _STEPS: tuple[Step, ...] = (
         human_description="Read pi_basket_analyst_consensus with basket_id=demo.",
         human_expected=(
             "5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, "
-            "hold, sell, consensus fields."
+            "hold, sell, consensus fields; consensus reads Buy or Strong Buy."
         ),
         endpoint="pi/equity/basket-analyst-consensus",
         params={"basket_id": "demo"},

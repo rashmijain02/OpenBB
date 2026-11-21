@@ -114,16 +114,6 @@ def _table_fields(widget: dict[str, Any]) -> list[str]:
     ]
 
 
-def _metric_labels(widget: dict[str, Any]) -> list[str]:
-    """Return metric labels declared by the Workspace manifest."""
-    data = widget.get("data") or {}
-    metric = data.get("metric") or {}
-    labels = metric.get("labels") or {}
-    if isinstance(labels, dict):
-        return list(labels.values())
-    return []
-
-
 def _baseline_state(widget_id: str, widget: dict[str, Any], plotly: bool) -> str:
     """Classify the static manifest without claiming runtime provider behavior."""
     if "execute" in widget_id or widget_id == "pi_backtest_button":
@@ -152,9 +142,9 @@ def _baseline_state(widget_id: str, widget: dict[str, Any], plotly: bool) -> str
         )
     if widget_type == "table":
         return "native-ready" if _table_fields(widget) else "contract-repair"
-    if widget_type == "metric":
-        return "native-ready" if _metric_labels(widget) else "contract-repair"
-    if widget_type == "markdown":
+    if widget_type in ("metric", "markdown"):
+        # Metric cards carry their own labels (#1268); the endpoint contract
+        # test checks the ``[{label, value}]`` response, not the manifest.
         return "native-ready"
     return "contract-repair"
 
@@ -281,9 +271,6 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
                 ),
                 "tableFields": (
                     _table_fields(widget) if widget.get("type") == "table" else []
-                ),
-                "metricLabels": (
-                    _metric_labels(widget) if widget.get("type") == "metric" else []
                 ),
                 "placements": placements[widget_id],
             }
