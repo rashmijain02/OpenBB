@@ -111,7 +111,7 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W3 — Country composition pie",
         human_description="Read pi_xray_country on the X-Ray tab.",
-        human_expected="6 country rows; United States ~0.72.",
+        human_expected="Pie of 6 countries labelled as the synthetic demo portfolio; United States ~72%.",
         endpoint="pi/xray/country",
         params={"account_id": "demo"},
     ),
@@ -124,7 +124,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W3 — Concentration gauge (HHI)",
         human_description="Read pi_concentration_gauge.",
-        human_expected="HHI metric between 0 and 1; demo value ~0.26.",
+        human_expected=(
+            "Metric card 'Concentration (HHI)' between 0 and 1 (demo value "
+            "~0.24) and a 'Data State' card that says Demo."
+        ),
         endpoint="pi/concentration",
         params={"account_id": "demo"},
     ),
@@ -141,8 +144,9 @@ _STEPS: tuple[Step, ...] = (
         human_title="Step W4 — Read the risk dashboard",
         human_description="Read pi_risk_dashboard.",
         human_expected=(
-            "vol_annualized, var_95_1d, beta_spy numeric values present, note "
-            "field = 'demo book'."
+            "Metric cards 'Annualized Volatility (%)', '1-Day 95% VaR (%)' and "
+            "'Beta vs SPY' with numeric values, and a 'Data State' card that "
+            "says Demo."
         ),
         endpoint="pi/risk/dashboard",
         params={"account_id": "demo"},
@@ -175,7 +179,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W5 — Read the event calendar",
         human_description="Read pi_event_calendar on the Calendar tab.",
-        human_expected="5+ rows covering earnings, ex_dividend, form_8k events.",
+        human_expected=(
+            "5+ rows covering Earnings, Ex-Dividend and Form 8-K events "
+            "(labelled by the endpoint)."
+        ),
         endpoint="pi/events/calendar",
         params={"account_id": "demo", "horizon_days": "30"},
     ),
@@ -204,7 +211,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W6 — Read the paper account KPIs",
         human_description="Read pi_paper_perf_kpis on the Paper Trading tab.",
-        human_expected="Total return, Sharpe, max drawdown numeric values.",
+        human_expected=(
+            "Metric cards for total return (%), annualized Sharpe ratio and "
+            "maximum drawdown (%), plus a 'Data State' card that says Demo."
+        ),
         endpoint="pi/paper/perf-kpis",
         params={"account_id": "demo"},
     ),
@@ -261,7 +271,7 @@ _STEPS: tuple[Step, ...] = (
         human_description="Read pi_basket_analyst_consensus with basket_id=demo.",
         human_expected=(
             "5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, "
-            "hold, sell, consensus fields."
+            "hold, sell, consensus fields; consensus reads Buy or Strong Buy."
         ),
         endpoint="pi/equity/basket-analyst-consensus",
         params={"basket_id": "demo"},
@@ -380,7 +390,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_equity_financial_charts",
-        "Chart rows for 5-yr revenue + net income + margin.",
+        "Chart: revenue and net income bars ($B) with net margin (%) on a right axis.",
     ),
     _coverage(
         "CX.equity-technicals",
@@ -430,7 +440,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_equity_price_history (line mode)",
-        "OHLC rows with date+close in line-chart mode.",
+        "Line chart of the daily closing price (6M default).",
     ),
     _coverage(
         "CX.charting",
@@ -440,7 +450,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_charting (3M window)",
-        "OHLC + SMA20/SMA50/RSI14 overlays.",
+        "OHLC candles with SMA20/SMA50 overlays and an RSI14 pane.",
     ),
     # --- F5 Ownership ---
     _coverage(
@@ -461,7 +471,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/04-events-and-smart-money.ipynb",
         Persona.PM,
         "Coverage — pi_stock_ownership (bucket pie)",
-        "Ownership bucket rows (Institutions/Retail/ETFs/Insiders).",
+        "Pie of ownership by holder type (Institutions/Retail/ETFs/Insiders).",
     ),
     _coverage(
         "CX.insider-trading",
@@ -543,7 +553,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_revenue_geography (pie)",
-        "Region/revenue rows totaling ~total revenue.",
+        "Pie of latest-period revenue by region.",
     ),
     _coverage(
         "CX.revenue-business-line",
@@ -553,7 +563,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_revenue_business_line (pie)",
-        "Segment/revenue rows totaling ~total revenue.",
+        "Pie of latest-period revenue by business segment.",
     ),
     _coverage(
         "CX.price-performance",
@@ -583,7 +593,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/02-single-name-deep-dive.ipynb",
         Persona.ANALYST,
         "Coverage — pi_price_target_history",
-        "Target-vs-close time series rows.",
+        "Lines: analyst price target vs. the close when each target was published.",
     ),
     # --- F8 X-Ray extras ---
     _coverage(
@@ -605,7 +615,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/03-basket-xray-and-risk.ipynb",
         Persona.PM,
         "Coverage — pi_risk_vol_chart",
-        "20d/60d rolling realized volatility rows.",
+        "Lines: 20d/60d rolling realized volatility in percent.",
     ),
     _coverage(
         "CX.whatif-card",
@@ -652,7 +662,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/05-whatif-attribution-and-paper.ipynb",
         Persona.PM,
         "Coverage — pi_paper_performance",
-        "Paper account equity-curve rows.",
+        "Line: paper account equity curve.",
     ),
     _coverage(
         "CX.backtest-button",

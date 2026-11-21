@@ -66,7 +66,7 @@ def _manifest() -> dict:
 
 def test_price_history_default_is_line_shape() -> None:
     """Omitting ``chart_type`` returns line shape ``{date, close}``."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "line shape must return non-empty rows"
@@ -78,7 +78,7 @@ def test_price_history_default_is_line_shape() -> None:
 
 def test_price_history_line_explicit() -> None:
     """Explicit ``chart_type=line`` returns the same shape as default."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows and all(set(r.keys()) == {"date", "close"} for r in rows)
@@ -86,7 +86,7 @@ def test_price_history_line_explicit() -> None:
 
 def test_price_history_candle_returns_ohlc_shape() -> None:
     """``chart_type=candle`` returns ``{date, open, high, low, close}``."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=candle")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=candle&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "candle shape must return non-empty rows"
@@ -103,7 +103,7 @@ def test_price_history_candle_returns_ohlc_shape() -> None:
 
 def test_price_history_rejects_invalid_chart_type() -> None:
     """Unknown ``chart_type`` returns 400 with a discriminating error."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikinashi")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikinashi&raw=true")
     assert resp.status_code == 400
     detail = resp.json().get("detail", "")
     assert "chart_type" in detail
@@ -112,7 +112,7 @@ def test_price_history_rejects_invalid_chart_type() -> None:
 
 def test_price_history_symbol_validation() -> None:
     """XSS-shaped symbol is rejected pre-fetch (shared _SYMBOL_RE)."""
-    resp = _client.get("/pi/equity/price-history?symbol=<script>")
+    resp = _client.get("/pi/equity/price-history?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -129,7 +129,7 @@ def test_price_history_default_range_spans_months() -> None:
     report: the old stub emitted only 20 rows over 3 weeks, which rendered as
     a short valley rather than a price trend.
     """
-    rows = _client.get("/pi/equity/price-history?symbol=AAPL").json()
+    rows = _client.get("/pi/equity/price-history?symbol=AAPL&raw=true").json()
     assert len(rows) >= 100, f"default range should span months, got {len(rows)} rows"
     # Dates strictly ascending and unique (LWC requires ascending unique time).
     dates = [r["date"] for r in rows]
@@ -147,7 +147,7 @@ def test_price_history_range_controls_length() -> None:
 
     def _n(rng: str) -> int:
         return len(
-            _client.get(f"/pi/equity/price-history?symbol=AAPL&range={rng}").json()
+            _client.get(f"/pi/equity/price-history?symbol=AAPL&range={rng}&raw=true").json()
         )
 
     n1m, n3m, n1y, n5y = _n("1M"), _n("3M"), _n("1Y"), _n("5Y")
@@ -162,7 +162,7 @@ def test_price_history_range_dates_are_business_days() -> None:
     """Every date is a weekday (Mon–Fri) — no weekend bars in the series."""
     from datetime import date as _date
 
-    rows = _client.get("/pi/equity/price-history?symbol=AAPL&range=3M").json()
+    rows = _client.get("/pi/equity/price-history?symbol=AAPL&range=3M&raw=true").json()
     for r in rows:
         wd = _date.fromisoformat(r["date"]).weekday()
         assert wd < 5, f"{r['date']} is a weekend (weekday={wd})"
@@ -174,7 +174,7 @@ def test_price_history_reads_as_upward_trend() -> None:
     Asserts the last close is materially above the first (drift-dominant),
     which is the property that makes the line "look like a trend line".
     """
-    rows = _client.get("/pi/equity/price-history?symbol=AAPL&range=1Y").json()
+    rows = _client.get("/pi/equity/price-history?symbol=AAPL&range=1Y&raw=true").json()
     closes = [r["close"] for r in rows]
     assert (
         closes[-1] > closes[0] * 1.10
@@ -183,7 +183,7 @@ def test_price_history_reads_as_upward_trend() -> None:
 
 def test_price_history_rejects_invalid_range() -> None:
     """Unknown ``range`` returns 400 with a discriminating error."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&range=10Y")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&range=10Y&raw=true")
     assert resp.status_code == 400
     detail = resp.json().get("detail", "")
     assert "range" in detail.lower()
@@ -192,10 +192,10 @@ def test_price_history_rejects_invalid_range() -> None:
 def test_price_history_candle_range_row_count_matches_line() -> None:
     """Candle and line honor the same range window (same row count)."""
     line = _client.get(
-        "/pi/equity/price-history?symbol=AAPL&range=3M&chart_type=line"
+        "/pi/equity/price-history?symbol=AAPL&range=3M&chart_type=line&raw=true"
     ).json()
     candle = _client.get(
-        "/pi/equity/price-history?symbol=AAPL&range=3M&chart_type=candle"
+        "/pi/equity/price-history?symbol=AAPL&range=3M&chart_type=candle&raw=true"
     ).json()
     assert len(line) == len(candle), "line and candle must span the same range"
 
@@ -212,7 +212,7 @@ def test_price_history_candle_volume_varies_meaningfully() -> None:
     import statistics
 
     rows = _client.get(
-        "/pi/equity/price-history?symbol=AAPL&range=6M&chart_type=candle"
+        "/pi/equity/price-history?symbol=AAPL&range=6M&chart_type=candle&raw=true"
     ).json()
     vols = [r["volume"] for r in rows]
     assert len(vols) > 20
@@ -232,7 +232,7 @@ def test_price_history_candle_volume_is_not_monotonic() -> None:
     interior local maxima AND minima), i.e. it is not monotonic.
     """
     rows = _client.get(
-        "/pi/equity/price-history?symbol=MSFT&range=6M&chart_type=candle"
+        "/pi/equity/price-history?symbol=MSFT&range=6M&chart_type=candle&raw=true"
     ).json()
     vols = [r["volume"] for r in rows]
     ups = sum(1 for a, b in zip(vols, vols[1:]) if b > a)
@@ -256,7 +256,7 @@ def test_price_history_candle_body_sizes_vary() -> None:
     import statistics
 
     rows = _client.get(
-        "/pi/equity/price-history?symbol=NVDA&range=6M&chart_type=candle"
+        "/pi/equity/price-history?symbol=NVDA&range=6M&chart_type=candle&raw=true"
     ).json()
     bodies = [abs(r["close"] - r["open"]) for r in rows]
     nontrivial = sorted(b for b in bodies if b > 0)

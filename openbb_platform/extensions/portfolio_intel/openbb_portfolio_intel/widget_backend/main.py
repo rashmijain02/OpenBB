@@ -168,16 +168,15 @@ def xray_sector(
         if raw:
             return rows
         return xray_sector_figure(
-            rows, state="demo", title="Sector Weights - Demo portfolio (synthetic)"
+            rows, state="demo", label="Demo portfolio (synthetic); not your account."
         )
 
     logger.warning("xray/sector: account resolver not wired for %r", account_id)
     if raw:
         return [{"sector": "(no data — account resolver not wired)", "weight": 0.0}]
     return state_figure(
-        "Sector Weights - Unavailable",
         "unavailable",
-        "No sector data: account resolver not wired for this account.",
+        "Unavailable: no sector data, account resolver not wired for this account.",
     )
 
 

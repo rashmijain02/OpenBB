@@ -67,29 +67,8 @@ def test_apps_manifest_advertises_utf8() -> None:
 
 
 # ---------------------------------------------------------------------------
-# #1633 — X-Ray pies render (either Plotly-fig OR data.chart mapping)
+# #1633 — X-Ray pies render as Plotly figures (#1267, #1268)
 # ---------------------------------------------------------------------------
-
-
-def _has_pie_chart_hint(widget_spec: dict) -> bool:
-    """One of two acceptable contracts must be present.
-
-    Contract A: widget declares a ``data.chart`` mapping with a pie shape.
-    Contract B: widget's endpoint returns a Plotly figure dict (assertable
-    at request time — see ``test_xray_endpoints_return_pie_hint`` below).
-    """
-    data = widget_spec.get("data") or {}
-    chart = data.get("chart") or widget_spec.get("chart") or {}
-    if not chart:
-        return False
-    ctype = (chart.get("type") or chart.get("chartType") or "").lower()
-    if ctype != "pie":
-        return False
-    # Must name both the label column and the value column so Workspace
-    # can wire the axes without guessing.
-    label = chart.get("labelColumn") or chart.get("label")
-    value = chart.get("valueColumn") or chart.get("value")
-    return bool(label and value)
 
 
 def test_xray_sector_returns_plotly_pie_figure() -> None:
@@ -106,14 +85,18 @@ def test_xray_sector_returns_plotly_pie_figure() -> None:
     assert figure["data"][0]["labels"] and figure["data"][0]["values"]
 
 
-def test_xray_country_declares_pie_chart_mapping() -> None:
-    """#1633 — pi_xray_country widget carries a pie chart mapping."""
-    m = _read("widgets.json")
-    spec = m.get("pi_xray_country", {})
-    assert _has_pie_chart_hint(spec), (
-        "pi_xray_country must carry chart.type=pie with labelColumn+valueColumn."
-        " See #1633."
-    )
+def test_xray_country_returns_plotly_pie_figure() -> None:
+    """#1633 / #1268 — pi_xray_country renders as a pie via Contract B.
+
+    The non-schema ``data.chart`` mapping was removed (#1268); the endpoint's
+    default response is a Plotly figure whose single trace is a pie.
+    """
+    r = _client.get("/pi/xray/country?account_id=demo")
+    assert r.status_code == 200
+    figure = r.json()
+    assert isinstance(figure, dict) and isinstance(figure.get("data"), list)
+    assert [trace.get("type") for trace in figure["data"]] == ["pie"]
+    assert figure["data"][0]["labels"] and figure["data"][0]["values"]
 
 
 # ---------------------------------------------------------------------------

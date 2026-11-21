@@ -2,19 +2,19 @@
   "body": [
     {
       "detail": "8-K Item 7.01 filed 2026-07-22",
-      "kind": "form_8k_for_held",
+      "kind": "Held-Security Form 8-K",
       "severity": "warning",
       "symbol": "NVDA"
     },
     {
       "detail": "Earnings 2026-07-25",
-      "kind": "earnings_upcoming",
+      "kind": "Upcoming Earnings",
       "severity": "info",
       "symbol": "AAPL"
     },
     {
       "detail": "Recall notice",
-      "kind": "news_material",
+      "kind": "Material News",
       "severity": "critical",
       "symbol": "TSLA"
     }

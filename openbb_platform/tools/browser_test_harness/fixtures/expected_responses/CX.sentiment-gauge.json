@@ -1,9 +1,14 @@
 {
-  "body": {
-    "label": "Sentiment (-1..+1)",
-    "note": "demo \u2014 7d window",
-    "value": 0.62
-  },
+  "body": [
+    {
+      "label": "News Sentiment Score (-1 to +1)",
+      "value": 0.62
+    },
+    {
+      "label": "Data State",
+      "value": "Demo: synthetic sample, 7-day window"
+    }
+  ],
   "endpoint": "pi/sentiment",
   "params": {
     "account_id": "demo"

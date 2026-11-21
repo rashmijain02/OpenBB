@@ -72,3 +72,64 @@ def test_native_workspace_matrix_classifies_every_manifest_contract() -> None:
     assert not [
         widget["id"] for widget in matrix["widgets"] if not widget["baselineState"]
     ]
+
+
+_PLOTLY_CHARTS = {
+    # Native Plotly figure by default, raw rows with raw=true (#1267, #1268).
+    "pi_brinson_attribution": "native-ready",
+    "pi_charting": "native-ready",
+    "pi_equity_financial_charts": "native-ready",
+    "pi_equity_price_history": "native-ready",
+    "pi_price_target_history": "native-ready",
+    "pi_revenue_business_line": "native-ready",
+    "pi_revenue_geography": "native-ready",
+    "pi_stock_ownership": "native-ready",
+    # Account-scoped demo widgets keep their demo classification.
+    "pi_paper_performance": "explicit-demo",
+    "pi_risk_vol_chart": "explicit-demo",
+    "pi_xray_country": "explicit-demo",
+    "pi_xray_sector": "explicit-demo",
+}
+
+
+def test_native_plotly_chart_widgets_are_recognised() -> None:
+    """Plotly-figure endpoints count as native charts without ``data.chart``."""
+    builder = _load_builder()
+    by_id = {w["id"]: w for w in builder.build_matrix(BACKEND)["widgets"]}
+    for widget_id, state in _PLOTLY_CHARTS.items():
+        assert by_id[widget_id]["chart"]["plotly"] is True, widget_id
+        assert by_id[widget_id]["baselineState"] == state, widget_id
+    # TechTrade charts still return row envelopes (#1271): not Plotly yet.
+    for widget_id in ("tt_segment_movers", "tt_simulate_result"):
+        assert by_id[widget_id]["chart"]["plotly"] is False, widget_id
+        assert by_id[widget_id]["baselineState"] == "contract-repair", widget_id
+
+
+def test_plotly_route_detection_reads_the_decorator_and_raw_parameter() -> None:
+    """Routes are Plotly when wrapped by ``plotly_chart`` or taking ``raw``."""
+    builder = _load_builder()
+    routes = builder._plotly_routes(BACKEND)  # pylint: disable=protected-access
+    assert {"/pi/xray/sector", "/pi/attribution", "/pi/equity/charting"} <= routes
+    assert "/tt/scan/segment-movers" not in routes
+    assert "/pi/lookthrough/top25" not in routes
+
+
+def test_metric_widgets_take_labels_from_the_endpoint() -> None:
+    """Metric labels are served as Workspace cards, not ``data.metric`` (#1268).
+
+    The static builder cannot see response labels, so it no longer reports
+    ``metricLabels``; a metric manifest is native-ready on its own and the
+    endpoint contract test checks the ``[{label, value}]`` response.
+    """
+    builder = _load_builder()
+    rows = [
+        widget
+        for widget in builder.build_matrix(BACKEND)["widgets"]
+        if widget["type"] == "metric"
+    ]
+    assert len(rows) == 4
+    assert all("metricLabels" not in widget for widget in rows)
+    state = builder._baseline_state(  # pylint: disable=protected-access
+        "pi_metric", {"type": "metric"}, False
+    )
+    assert state == "native-ready"

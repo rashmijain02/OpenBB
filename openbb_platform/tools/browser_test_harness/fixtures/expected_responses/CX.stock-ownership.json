@@ -1,22 +1,47 @@
 {
-  "body": [
-    {
-      "bucket": "Institutions",
-      "pct": 61.4
-    },
-    {
-      "bucket": "Retail",
-      "pct": 32.5
-    },
-    {
-      "bucket": "ETFs",
-      "pct": 5.4
-    },
-    {
-      "bucket": "Insiders",
-      "pct": 0.7
+  "body": {
+    "data": [
+      {
+        "hovertemplate": "%{label}<br>Held: %{value:.1f}% of shares<br>Share of chart: %{percent}<extra></extra>",
+        "labels": [
+          "Institutions",
+          "Retail",
+          "ETFs",
+          "Insiders"
+        ],
+        "name": "Ownership Share",
+        "sort": false,
+        "type": "pie",
+        "values": [
+          61.4,
+          32.5,
+          5.4,
+          0.7
+        ]
+      }
+    ],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Demo data: no live provider answered, so these are sample values, not live AAPL data.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 1.08,
+          "yref": "paper"
+        }
+      ],
+      "legend": {
+        "title": {
+          "text": "Holder type"
+        }
+      },
+      "meta": {
+        "source": "stub",
+        "state": "demo"
+      }
     }
-  ],
+  },
   "endpoint": "pi/equity/stock-ownership",
   "params": {
     "symbol": "AAPL"

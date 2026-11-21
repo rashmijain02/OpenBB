@@ -1,10 +1,22 @@
 {
-  "body": {
-    "max_drawdown_pct": -1.87,
-    "note": "demo book \u2014 30 trading days",
-    "sharpe_annualized": 1.42,
-    "total_return_pct": 3.24
-  },
+  "body": [
+    {
+      "label": "Total Return (%)",
+      "value": 3.24
+    },
+    {
+      "label": "Annualized Sharpe Ratio",
+      "value": 1.42
+    },
+    {
+      "label": "Maximum Drawdown (%)",
+      "value": -1.87
+    },
+    {
+      "label": "Data State",
+      "value": "Demo: synthetic sample book, 30 trading days"
+    }
+  ],
   "endpoint": "pi/paper/perf-kpis",
   "params": {
     "account_id": "demo"

@@ -1,10 +1,22 @@
 {
-  "body": {
-    "beta_spy": 1.08,
-    "note": "demo book",
-    "var_95_1d": -0.021,
-    "vol_annualized": 0.184
-  },
+  "body": [
+    {
+      "label": "Annualized Volatility (%)",
+      "value": 18.4
+    },
+    {
+      "label": "1-Day 95% VaR (%)",
+      "value": -2.1
+    },
+    {
+      "label": "Beta vs SPY",
+      "value": 1.08
+    },
+    {
+      "label": "Data State",
+      "value": "Demo: synthetic sample book"
+    }
+  ],
   "endpoint": "pi/risk/dashboard",
   "params": {
     "account_id": "demo"

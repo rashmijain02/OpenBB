@@ -65,7 +65,7 @@
   },
   "pi_xray_country": {
     "name": "X-Ray - Country Weights",
-    "description": "Portfolio country weights (pie), look-through into ETF holdings.",
+    "description": "Portfolio country weights after ETF look-through, as a pie of shares of the book. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {country, weight} rows (weights as fractions).",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/xray/country",
@@ -75,13 +75,6 @@
       "h": 9
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "country",
-        "valueColumn": "weight"
-      }
-    },
     "params": [
       {
         "paramName": "account_id",
@@ -113,10 +106,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Effective Weight": "effective_weight",
-        "Effective Weight (%)": "effective_weight"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -130,7 +119,7 @@
           {
             "field": "effective_weight",
             "headerName": "Effective Weight (%)",
-            "glossaryKey": "effective_weight",
+            "headerTooltip": "Look-through economic exposure as a portfolio share.",
             "formatterFn": "normalizedPercent"
           },
           {
@@ -143,7 +132,7 @@
   },
   "pi_concentration_gauge": {
     "name": "Concentration Gauge",
-    "description": "Herfindahl-Hirschman concentration index (0..1) for the effective book.",
+    "description": "Herfindahl-Hirschman concentration index (HHI, 0 to 1; higher means more concentrated) for the effective book. account_id=demo returns a synthetic demo book, labelled by the Data State card; other accounts show Unavailable until the account resolver is wired.",
     "category": "Portfolio Intelligence",
     "type": "metric",
     "endpoint": "pi/concentration",
@@ -160,20 +149,7 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Herfindahl-Hirschman Index": "herfindahl_hirschman_index"
-      },
-      "metric": {
-        "labels": {
-          "value": "Concentration (HHI)"
-        },
-        "metricGlossary": {
-          "Concentration (HHI)": "herfindahl_hirschman_index"
-        }
-      }
-    }
+    ]
   },
   "pi_event_calendar": {
     "name": "Event Calendar",
@@ -196,13 +172,7 @@
           {
             "field": "type",
             "headerName": "Event Type",
-            "glossaryKey": "event_type",
-            "valueLabels": {
-              "earnings": "Earnings",
-              "ex_dividend": "Ex-Dividend",
-              "form_8k": "Form 8-K",
-              "info": "Information"
-            }
+            "headerTooltip": "Classifies a scheduled company event, such as earnings, an ex-dividend date, or a Form 8-K filing."
           },
           {
             "field": "date",
@@ -253,10 +223,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Transaction Value": "transaction_value",
-        "Transaction Value ($)": "transaction_value"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -265,12 +231,7 @@
           },
           {
             "field": "kind",
-            "headerName": "Activity Type",
-            "valueLabels": {
-              "insider_buy": "Insider Buy",
-              "13F_increase": "13F Increase",
-              "insider_sell": "Insider Sell"
-            }
+            "headerName": "Activity Type"
           },
           {
             "field": "actor",
@@ -279,7 +240,7 @@
           {
             "field": "value_usd",
             "headerName": "Transaction Value ($)",
-            "glossaryKey": "transaction_value"
+            "headerTooltip": "Dollar value represented by a transaction."
           },
           {
             "field": "date",
@@ -291,7 +252,7 @@
   },
   "pi_risk_dashboard": {
     "name": "Risk Dashboard",
-    "description": "Annualized volatility and 1-Day VaR are shown as signed percentages; beta is a unitless ratio.",
+    "description": "Annualized volatility and 1-day 95% VaR in signed percentage points; beta vs SPY is a unitless ratio. account_id=demo returns a synthetic demo book, labelled by the Data State card; other accounts show Unavailable until the account resolver is wired.",
     "category": "Portfolio Intelligence",
     "type": "metric",
     "endpoint": "pi/risk/dashboard",
@@ -308,34 +269,11 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Annualized Volatility": "annualized_volatility",
-        "1-Day VaR (95%)": "one_day_var_95",
-        "Beta vs SPY": "beta_vs_spy"
-      },
-      "metric": {
-        "labels": {
-          "vol_annualized": "Annualized Volatility",
-          "var_95_1d": "1-Day VaR (95%)",
-          "beta_spy": "Beta vs SPY"
-        },
-        "metricGlossary": {
-          "Annualized Volatility": "annualized_volatility",
-          "1-Day VaR (95%)": "one_day_var_95",
-          "Beta vs SPY": "beta_vs_spy"
-        },
-        "formatters": {
-          "vol_annualized": "normalizedPercent",
-          "var_95_1d": "normalizedPercent"
-        }
-      }
-    }
+    ]
   },
   "pi_risk_vol_chart": {
     "name": "Risk - Rolling Volatility",
-    "description": "Rolling 20/60d realized volatility of the effective book.",
+    "description": "Rolling 20-day and 60-day realized volatility of the effective book, in percent. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {date, vol_20d, vol_60d} rows in percentage points.",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/risk/vol",
@@ -353,19 +291,7 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "20-Day Volatility (%)": "twenty_day_volatility",
-        "60-Day Volatility (%)": "sixty_day_volatility"
-      },
-      "chart": {
-        "labels": {
-          "vol_20d": "20-Day Volatility (%)",
-          "vol_60d": "60-Day Volatility (%)"
-        }
-      }
-    }
+    ]
   },
   "pi_paper_ticket": {
     "name": "Paper Order Ticket (PAPER)",
@@ -437,9 +363,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Average Execution Price": "average_execution_price"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -465,7 +388,7 @@
           {
             "field": "avg_price",
             "headerName": "Average Execution Price",
-            "glossaryKey": "average_execution_price"
+            "headerTooltip": "Quantity-weighted average price across fills."
           }
         ]
       }
@@ -473,7 +396,7 @@
   },
   "pi_paper_performance": {
     "name": "Paper Performance (PAPER)",
-    "description": "Paper account equity curve + KPI summary.",
+    "description": "Paper account equity curve (Portfolio Equity, account currency) by date. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {date, equity} rows.",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/paper/performance",
@@ -491,22 +414,11 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Portfolio Equity": "portfolio_equity"
-      },
-      "chart": {
-        "labels": {
-          "date": "Date",
-          "equity": "Portfolio Equity"
-        }
-      }
-    }
+    ]
   },
   "pi_paper_perf_kpis": {
     "name": "Paper Performance KPIs (PAPER)",
-    "description": "Total return, Sharpe, max drawdown for the paper account.",
+    "description": "Total return (%), annualized Sharpe ratio and maximum drawdown (%) for the paper account. account_id=demo returns a synthetic demo book, labelled by the Data State card; other accounts show Unavailable until the account resolver is wired.",
     "category": "Portfolio Intelligence",
     "type": "metric",
     "endpoint": "pi/paper/perf-kpis",
@@ -523,26 +435,7 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Total Return": "total_return",
-        "Sharpe Ratio": "sharpe_ratio",
-        "Maximum Drawdown": "maximum_drawdown"
-      },
-      "metric": {
-        "labels": {
-          "total_return_pct": "Total Return (%)",
-          "sharpe_annualized": "Annualized Sharpe Ratio",
-          "max_drawdown_pct": "Maximum Drawdown (%)"
-        },
-        "metricGlossary": {
-          "Total Return (%)": "total_return",
-          "Annualized Sharpe Ratio": "sharpe_ratio",
-          "Maximum Drawdown (%)": "maximum_drawdown"
-        }
-      }
-    }
+    ]
   },
   "pi_whatif_diff": {
     "name": "What-If - Trade Impact",
@@ -600,26 +493,7 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Symbol Weight": "symbol_weight",
-        "Sector Weight": "sector_weight",
-        "Cash Weight": "cash_weight",
-        "Beta vs SPY": "beta_vs_spy",
-        "Symbol Weight (%)": "symbol_weight",
-        "Sector Weight (%)": "sector_weight",
-        "Cash Weight (%)": "cash_weight",
-        "symbol_weight_%": "symbol_weight",
-        "sector_weight_%": "sector_weight",
-        "cash_%": "cash_weight",
-        "beta_spy": "beta_vs_spy"
-      },
       "table": {
-        "rowLabels": {
-          "symbol_weight_%": "Symbol Weight (%)",
-          "sector_weight_%": "Sector Weight (%)",
-          "cash_%": "Cash Weight (%)",
-          "beta_spy": "Beta vs SPY"
-        },
         "columnsDefs": [
           {
             "field": "metric",
@@ -722,7 +596,7 @@
   },
   "pi_sentiment_gauge": {
     "name": "Sentiment Gauge",
-    "description": "Aggregate sentiment score across recent news for held symbols.",
+    "description": "Aggregate news sentiment score across recent news for held symbols, from -1 (negative) to +1 (positive). account_id=demo returns a synthetic demo sample, labelled by the Data State card; other accounts show Unavailable until the account resolver is wired.",
     "category": "Portfolio Intelligence",
     "type": "metric",
     "endpoint": "pi/sentiment",
@@ -731,16 +605,6 @@
       "h": 6
     },
     "source": "portfolio-intel",
-    "data": {
-      "metric": {
-        "labels": {
-          "value": "News Sentiment Score (-1 to +1)"
-        },
-        "metricGlossary": {
-          "News Sentiment Score (-1 to +1)": "news_sentiment_score"
-        }
-      }
-    },
     "params": [
       {
         "paramName": "account_id",
@@ -772,12 +636,7 @@
           {
             "field": "kind",
             "headerName": "Alert Type",
-            "glossaryKey": "alert_type",
-            "valueLabels": {
-              "form_8k_for_held": "Held-Security Form 8-K",
-              "earnings_upcoming": "Upcoming Earnings",
-              "news_material": "Material News"
-            }
+            "headerTooltip": "Classifies the portfolio event that triggered an alert."
           },
           {
             "field": "symbol",
@@ -854,18 +713,6 @@
     },
     "source": "portfolio-intel",
     "data": {
-      "metricGlossary": {
-        "Market Cap": "market_cap",
-        "P/E (TTM)": "pe_ttm",
-        "EV/EBITDA": "ev_ebitda",
-        "P/S (TTM)": "ps_ttm",
-        "EPS (TTM)": "eps_ttm",
-        "Beta": "beta",
-        "Dividend Yield": "dividend_yield",
-        "Volume": "volume",
-        "52-Week High": "fifty_two_week_high",
-        "52-Week Low": "fifty_two_week_low"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -891,7 +738,7 @@
   },
   "pi_equity_financial_charts": {
     "name": "Equity Profile - Financial Statement Charts",
-    "description": "5-yr Revenue + Net Income ($B, grouped bars, left axis) vs Net Margin (%, line, right axis). Dual-axis combo so the margin line isn't crushed by the revenue scale (#1978).",
+    "description": "5-yr Revenue and Net Income ($B, grouped bars, left axis) vs Net Margin (%, line, right axis). Dual axis so the margin line isn't crushed by the revenue scale (#1978). Hover shows each metric's definition; sample data is labelled demo. raw=true returns {year, revenue_b, net_income_b, net_margin_pct} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/financials",
@@ -901,35 +748,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "metricGlossary": {
-        "Revenue ($B)": "revenue_b",
-        "Net Income ($B)": "net_income_b",
-        "Net Margin (%)": "net_margin_pct"
-      },
-      "chart": {
-        "type": "combo",
-        "x": "year",
-        "bars": [
-          {
-            "column": "revenue_b",
-            "name": "Revenue ($B)"
-          },
-          {
-            "column": "net_income_b",
-            "name": "Net Income ($B)"
-          }
-        ],
-        "lines": [
-          {
-            "column": "net_margin_pct",
-            "name": "Net Margin (%)"
-          }
-        ],
-        "leftLabel": "$B",
-        "rightLabel": "%"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -942,7 +760,7 @@
   },
   "pi_equity_technicals": {
     "name": "Equity Profile - Technicals + Pivots (IV blocked on #999)",
-    "description": "Consensus speedometer, pivot matrix. ATM IV term structure blocked on #999.",
+    "description": "Analyst consensus and classic floor-trader pivot levels: the pivot is the average of the prior session's high, low and close, with resistance levels R1-R3 above it and support levels S1-S3 below it. ATM IV term structure blocked on #999.",
     "category": "Equity Profile",
     "type": "table",
     "endpoint": "pi/equity/technicals",
@@ -961,48 +779,7 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Analyst Consensus": "analyst_consensus",
-        "Resistance": "resistance",
-        "Pivot": "pivot",
-        "Support": "support",
-        "ATM Implied Volatility": "atm_implied_volatility",
-        "Consensus": "analyst_consensus",
-        "R3": "resistance",
-        "R2": "resistance",
-        "R1": "resistance",
-        "P": "pivot",
-        "S1": "support",
-        "S2": "support",
-        "S3": "support",
-        "ATM IV term structure": "atm_implied_volatility",
-        "R3 (Classic)": "resistance",
-        "R2 (Classic)": "resistance",
-        "R1 (Classic)": "resistance",
-        "P (Classic)": "pivot",
-        "S1 (Classic)": "support",
-        "S2 (Classic)": "support",
-        "S3 (Classic)": "support"
-      },
       "table": {
-        "rowLabels": {
-          "Consensus": "Analyst Consensus",
-          "R3": "Resistance 3",
-          "R2": "Resistance 2",
-          "R1": "Resistance 1",
-          "P": "Pivot",
-          "S1": "Support 1",
-          "S2": "Support 2",
-          "S3": "Support 3",
-          "ATM IV term structure": "ATM Implied Volatility Term Structure",
-          "R3 (Classic)": "Resistance 3",
-          "R2 (Classic)": "Resistance 2",
-          "R1 (Classic)": "Resistance 1",
-          "P (Classic)": "Pivot",
-          "S1 (Classic)": "Support 1",
-          "S2 (Classic)": "Support 2",
-          "S3 (Classic)": "Support 3"
-        },
         "columnsDefs": [
           {
             "field": "metric",
@@ -1041,33 +818,7 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "12-Month Price Target": "twelve_month_price_target",
-        "Target Range": "target_range",
-        "Upside vs Current Price": "implied_upside",
-        "Rating Distribution": "rating_distribution",
-        "EPS Surprise": "eps_surprise",
-        "Historical Revenue Estimate": "revenue_estimate"
-      },
       "table": {
-        "rowLabels": {
-          "1Y target (consensus)": "12-Month Price Target",
-          "Target range": "Target Range",
-          "Upside vs current": "Upside vs Current Price",
-          "Historical rev estimate (last Q)": "Historical Revenue Estimate"
-        },
-        "rowLabelPatterns": [
-          {
-            "pattern": "^Rating:\\s*(.+)$",
-            "labelTemplate": "Rating Distribution: $1",
-            "glossaryKey": "rating_distribution"
-          },
-          {
-            "pattern": "^(Q\\d\\s+\\d{4})\\s+EPS Surprise$",
-            "labelTemplate": "$1 EPS Surprise",
-            "glossaryKey": "eps_surprise"
-          }
-        ],
         "columnsDefs": [
           {
             "field": "metric",
@@ -1106,12 +857,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Portfolio Weight": "portfolio_weight",
-        "Market Value": "market_value",
-        "Portfolio Weight (%)": "portfolio_weight",
-        "Market Value ($)": "market_value"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1129,12 +874,12 @@
           {
             "field": "weight_pct",
             "headerName": "Portfolio Weight (%)",
-            "glossaryKey": "portfolio_weight"
+            "headerTooltip": "A holding\u2019s proportion of portfolio value."
           },
           {
             "field": "value_usd",
             "headerName": "Market Value ($)",
-            "glossaryKey": "market_value"
+            "headerTooltip": "Current value based on market prices."
           }
         ]
       }
@@ -1161,10 +906,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Percentage Price Change": "percentage_price_change",
-        "Change (%)": "percentage_price_change"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1182,7 +923,7 @@
           {
             "field": "change_pct",
             "headerName": "Change (%)",
-            "glossaryKey": "percentage_price_change"
+            "headerTooltip": "Price movement relative to a reference price."
           }
         ]
       }
@@ -1190,8 +931,7 @@
   },
   "pi_equity_price_history": {
     "name": "Equity Price History (line / candle)",
-    "description": "Historical price series with a runtime line/candle toggle (#1702). Line mode returns date/close; candle mode returns full OHLC.",
-    "help": "### How to read this chart\n\nThis shows the **historical market price** of the selected ticker over time. The **x-axis is time** (older on the left, most recent on the right); the **y-axis is price** in the stock's currency.\n\n**Controls**\n- **Symbol** \u2014 the ticker to plot (e.g. `AAPL`).\n- **Chart type** \u2014 `Line` draws a single line of the daily *closing* price; `Candlestick` draws one bar per day showing the full trading range.\n- **Range** \u2014 the time window: `1M`, `3M`, `6M`, `YTD` (Jan 1 \u2192 today), `1Y`, `5Y`. A wider range shows more history and a longer-term trend.\n\n**Line mode** \u2014 the line connects each day's closing price. An upward slope means the price rose over the window; a downward slope means it fell. Read it as the overall *trend*.\n\n**Candlestick mode** \u2014 each candle is one trading day:\n- The thick **body** spans the **open** and **close**. **Green** = closed higher than it opened (up day); **red** = closed lower (down day).\n- The thin **wicks** above/below the body reach the day's **high** and **low**.\n- Tall candles = a big daily move; small candles = a quiet day.\n\n**Hover** anywhere on the chart to see the exact values for that day (O/H/L/C and volume) in the legend at the top-left. The lower **volume** pane shows how many shares traded that day \u2014 spikes often mark important news or events.\n\nData comes from the live `fmp_cached` provider when available; if the provider is offline you'll see a deterministic demo series so the widget still renders.",
+    "description": "Historical price of the selected ticker (#1702). Line mode plots the daily closing price. Candlestick mode plots one candle per trading day (the body spans open to close, green for an up day and red for a down day; the wicks reach the day's high and low) with a volume pane below. Range sets the window (1M, 3M, 6M, YTD, 1Y, 5Y); hover for exact values. Live fmp_cached data when available, otherwise a deterministic demo series labelled demo in the chart. raw=true returns date/close (line) or OHLCV (candle) rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/price-history",
@@ -1305,7 +1045,7 @@
   },
   "pi_revenue_geography": {
     "name": "Revenue Per Geography",
-    "description": "Revenue split by geographic region (#1649). Stub-shaped over FMPRevenueGeographicFetcher.",
+    "description": "Revenue split by geographic region for the latest fiscal period (#1649), as a pie of shares of total revenue. Sample data is labelled demo. raw=true returns {region, revenue} rows. Revenue is in millions of the reporting currency on both the live and the demo path.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/revenue-geography",
@@ -1315,13 +1055,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "region",
-        "valueColumn": "revenue"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1334,7 +1067,7 @@
   },
   "pi_revenue_business_line": {
     "name": "Revenue Per Business Line",
-    "description": "Revenue split by product/business segment (#1650). Stub-shaped over FMPRevenueBusinessLineFetcher.",
+    "description": "Revenue split by product/business segment for the latest fiscal period (#1650), as a pie of shares of total revenue. Sample data is labelled demo. raw=true returns {segment, revenue} rows. Revenue is in millions of the reporting currency on both the live and the demo path.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/revenue-business-line",
@@ -1344,13 +1077,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "segment",
-        "valueColumn": "revenue"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1384,7 +1110,7 @@
   },
   "pi_stock_ownership": {
     "name": "Stock Ownership Breakdown",
-    "description": "Ownership split by bucket: Institutions / Retail / ETFs / Insiders (#1660). Stub-shaped over FMPCachedEquityOwnershipFetcher.",
+    "description": "Ownership split by holder type: Institutions / Retail / ETFs / Insiders, in percent of shares (#1660), as a pie. Sample data is labelled demo. raw=true returns {bucket, pct} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/stock-ownership",
@@ -1394,13 +1120,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "bucket",
-        "valueColumn": "pct"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1453,12 +1172,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Actual EPS": "actual_eps",
-        "Estimated EPS": "estimated_eps",
-        "Earnings Surprise": "earnings_surprise",
-        "Surprise (%)": "earnings_surprise"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1468,17 +1181,17 @@
           {
             "field": "eps_actual",
             "headerName": "Actual EPS",
-            "glossaryKey": "actual_eps"
+            "headerTooltip": "Reported earnings allocated to each common share."
           },
           {
             "field": "eps_estimate",
             "headerName": "Estimated EPS",
-            "glossaryKey": "estimated_eps"
+            "headerTooltip": "Analysts\u2019 forecast earnings per share."
           },
           {
             "field": "surprise_pct",
             "headerName": "Surprise (%)",
-            "glossaryKey": "earnings_surprise"
+            "headerTooltip": "Percentage difference between reported EPS and estimated EPS."
           }
         ]
       }
@@ -1526,16 +1239,12 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Ex-Dividend Date": "ex_dividend_date",
-        "Dividend Amount ($/share)": "dividend_amount_per_share"
-      },
       "table": {
         "columnsDefs": [
           {
             "field": "ex_date",
             "headerName": "Ex-Dividend Date",
-            "glossaryKey": "ex_dividend_date"
+            "headerTooltip": "First trading day when a buyer is not entitled to the next dividend."
           },
           {
             "field": "payment_date",
@@ -1544,7 +1253,7 @@
           {
             "field": "amount",
             "headerName": "Dividend Amount ($/share)",
-            "glossaryKey": "dividend_amount_per_share"
+            "headerTooltip": "Cash dividend declared for each share."
           }
         ]
       }
@@ -1594,7 +1303,7 @@
   },
   "pi_price_target_history": {
     "name": "Price Target vs. Close",
-    "description": "Analyst price target evolution vs. close (#1669). Stub-shaped over FMPCachedPriceTargetConsensusFetcher.",
+    "description": "Analyst price targets vs. the closing price when each target was published (#1669), as dated lines. Sample data is labelled demo. raw=true returns {date, close, target} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/price-target-history",
@@ -1612,20 +1321,7 @@
         "type": "text",
         "description": "Ticker"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Closing Price": "closing_price",
-        "Analyst Price Target": "analyst_price_target"
-      },
-      "chart": {
-        "labels": {
-          "date": "Date",
-          "close": "Closing Price",
-          "target": "Analyst Price Target"
-        }
-      }
-    }
+    ]
   },
   "pi_financial_statements": {
     "name": "Financial Statements",
@@ -1665,17 +1361,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Revenue": "revenue",
-        "Gross Profit": "gross_profit",
-        "Operating Income": "operating_income",
-        "Net Income": "net_income",
-        "Total Assets": "total_assets",
-        "Total Debt": "total_debt",
-        "Cash & Equivalents": "cash_and_equivalents",
-        "Operating Cash Flow": "operating_cash_flow",
-        "Free Cash Flow": "free_cash_flow"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1696,7 +1381,7 @@
   },
   "pi_charting": {
     "name": "Charting (OHLC + Indicators)",
-    "description": "Historical OHLC + SMA20/SMA50/RSI14 overlays with window enum (#1655). Stub-shaped over FMPCachedHistoricalPriceFetcher + indicator overlays.",
+    "description": "Historical OHLC candles with SMA20/SMA50 overlays and RSI14 (0-100) in a lower pane (#1655); Window picks 1M to 1Y. Live fmp_cached data when available, otherwise sample rows labelled demo in the chart. raw=true returns the OHLC + indicator rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/charting",
@@ -1766,12 +1451,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "P/E (TTM)": "pe_ttm",
-        "P/E (Forward)": "pe_forward",
-        "EV/EBITDA": "ev_ebitda",
-        "P/S (TTM)": "ps_ttm"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1781,22 +1460,22 @@
           {
             "field": "pe_ttm",
             "headerName": "P/E (TTM)",
-            "glossaryKey": "pe_ttm"
+            "headerTooltip": "Price divided by trailing twelve-month earnings per share."
           },
           {
             "field": "pe_fwd",
             "headerName": "P/E (Forward)",
-            "glossaryKey": "pe_forward"
+            "headerTooltip": "Share price relative to forecast earnings per share."
           },
           {
             "field": "ev_ebitda",
             "headerName": "EV/EBITDA",
-            "glossaryKey": "ev_ebitda"
+            "headerTooltip": "Enterprise value compared with operating cash earnings before depreciation and amortization."
           },
           {
             "field": "ps_ttm",
             "headerName": "P/S (TTM)",
-            "glossaryKey": "ps_ttm"
+            "headerTooltip": "Price divided by trailing twelve-month sales per share."
           }
         ]
       }
@@ -1929,10 +1608,6 @@
       }
     ],
     "data": {
-      "metricGlossary": {
-        "Average Price Target": "average_price_target",
-        "Consensus Rating": "consensus_rating"
-      },
       "table": {
         "columnsDefs": [
           {
@@ -1942,7 +1617,7 @@
           {
             "field": "avg_target",
             "headerName": "Average Price Target",
-            "glossaryKey": "average_price_target"
+            "headerTooltip": "Mean of available analyst target prices."
           },
           {
             "field": "buy",
@@ -1959,10 +1634,7 @@
           {
             "field": "consensus",
             "headerName": "Consensus Rating",
-            "glossaryKey": "consensus_rating",
-            "valueLabels": {
-              "STRONG_BUY": "Strong Buy"
-            }
+            "headerTooltip": "Aggregate analyst buy, hold, or sell view."
           }
         ]
       }
