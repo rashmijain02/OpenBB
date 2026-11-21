@@ -65,7 +65,7 @@
   },
   "pi_xray_country": {
     "name": "X-Ray - Country Weights",
-    "description": "Portfolio country weights (pie), look-through into ETF holdings.",
+    "description": "Portfolio country weights after ETF look-through, as a pie of shares of the book. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {country, weight} rows (weights as fractions).",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/xray/country",
@@ -75,13 +75,6 @@
       "h": 9
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "country",
-        "valueColumn": "weight"
-      }
-    },
     "params": [
       {
         "paramName": "account_id",
@@ -335,7 +328,7 @@
   },
   "pi_risk_vol_chart": {
     "name": "Risk - Rolling Volatility",
-    "description": "Rolling 20/60d realized volatility of the effective book.",
+    "description": "Rolling 20-day and 60-day realized volatility of the effective book, in percent. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {date, vol_20d, vol_60d} rows in percentage points.",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/risk/vol",
@@ -353,19 +346,7 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "20-Day Volatility (%)": "twenty_day_volatility",
-        "60-Day Volatility (%)": "sixty_day_volatility"
-      },
-      "chart": {
-        "labels": {
-          "vol_20d": "20-Day Volatility (%)",
-          "vol_60d": "60-Day Volatility (%)"
-        }
-      }
-    }
+    ]
   },
   "pi_paper_ticket": {
     "name": "Paper Order Ticket (PAPER)",
@@ -473,7 +454,7 @@
   },
   "pi_paper_performance": {
     "name": "Paper Performance (PAPER)",
-    "description": "Paper account equity curve + KPI summary.",
+    "description": "Paper account equity curve (Portfolio Equity, account currency) by date. The demo account is synthetic and labelled demo; other accounts show an unavailable state until the account resolver is wired. raw=true returns {date, equity} rows.",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/paper/performance",
@@ -491,18 +472,7 @@
         "type": "text",
         "description": "Paper account id"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Portfolio Equity": "portfolio_equity"
-      },
-      "chart": {
-        "labels": {
-          "date": "Date",
-          "equity": "Portfolio Equity"
-        }
-      }
-    }
+    ]
   },
   "pi_paper_perf_kpis": {
     "name": "Paper Performance KPIs (PAPER)",
@@ -891,7 +861,7 @@
   },
   "pi_equity_financial_charts": {
     "name": "Equity Profile - Financial Statement Charts",
-    "description": "5-yr Revenue + Net Income ($B, grouped bars, left axis) vs Net Margin (%, line, right axis). Dual-axis combo so the margin line isn't crushed by the revenue scale (#1978).",
+    "description": "5-yr Revenue and Net Income ($B, grouped bars, left axis) vs Net Margin (%, line, right axis). Dual axis so the margin line isn't crushed by the revenue scale (#1978). Hover shows each metric's definition; sample data is labelled demo. raw=true returns {year, revenue_b, net_income_b, net_margin_pct} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/financials",
@@ -901,35 +871,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "metricGlossary": {
-        "Revenue ($B)": "revenue_b",
-        "Net Income ($B)": "net_income_b",
-        "Net Margin (%)": "net_margin_pct"
-      },
-      "chart": {
-        "type": "combo",
-        "x": "year",
-        "bars": [
-          {
-            "column": "revenue_b",
-            "name": "Revenue ($B)"
-          },
-          {
-            "column": "net_income_b",
-            "name": "Net Income ($B)"
-          }
-        ],
-        "lines": [
-          {
-            "column": "net_margin_pct",
-            "name": "Net Margin (%)"
-          }
-        ],
-        "leftLabel": "$B",
-        "rightLabel": "%"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1190,8 +1131,7 @@
   },
   "pi_equity_price_history": {
     "name": "Equity Price History (line / candle)",
-    "description": "Historical price series with a runtime line/candle toggle (#1702). Line mode returns date/close; candle mode returns full OHLC.",
-    "help": "### How to read this chart\n\nThis shows the **historical market price** of the selected ticker over time. The **x-axis is time** (older on the left, most recent on the right); the **y-axis is price** in the stock's currency.\n\n**Controls**\n- **Symbol** \u2014 the ticker to plot (e.g. `AAPL`).\n- **Chart type** \u2014 `Line` draws a single line of the daily *closing* price; `Candlestick` draws one bar per day showing the full trading range.\n- **Range** \u2014 the time window: `1M`, `3M`, `6M`, `YTD` (Jan 1 \u2192 today), `1Y`, `5Y`. A wider range shows more history and a longer-term trend.\n\n**Line mode** \u2014 the line connects each day's closing price. An upward slope means the price rose over the window; a downward slope means it fell. Read it as the overall *trend*.\n\n**Candlestick mode** \u2014 each candle is one trading day:\n- The thick **body** spans the **open** and **close**. **Green** = closed higher than it opened (up day); **red** = closed lower (down day).\n- The thin **wicks** above/below the body reach the day's **high** and **low**.\n- Tall candles = a big daily move; small candles = a quiet day.\n\n**Hover** anywhere on the chart to see the exact values for that day (O/H/L/C and volume) in the legend at the top-left. The lower **volume** pane shows how many shares traded that day \u2014 spikes often mark important news or events.\n\nData comes from the live `fmp_cached` provider when available; if the provider is offline you'll see a deterministic demo series so the widget still renders.",
+    "description": "Historical price of the selected ticker (#1702). Line mode plots the daily closing price. Candlestick mode plots one candle per trading day (the body spans open to close, green for an up day and red for a down day; the wicks reach the day's high and low) with a volume pane below. Range sets the window (1M, 3M, 6M, YTD, 1Y, 5Y); hover for exact values. Live fmp_cached data when available, otherwise a deterministic demo series labelled demo in the chart. raw=true returns date/close (line) or OHLCV (candle) rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/price-history",
@@ -1305,7 +1245,7 @@
   },
   "pi_revenue_geography": {
     "name": "Revenue Per Geography",
-    "description": "Revenue split by geographic region (#1649). Stub-shaped over FMPRevenueGeographicFetcher.",
+    "description": "Revenue split by geographic region for the latest fiscal period (#1649), as a pie of shares of total revenue. Sample data is labelled demo. raw=true returns {region, revenue} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/revenue-geography",
@@ -1315,13 +1255,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "region",
-        "valueColumn": "revenue"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1334,7 +1267,7 @@
   },
   "pi_revenue_business_line": {
     "name": "Revenue Per Business Line",
-    "description": "Revenue split by product/business segment (#1650). Stub-shaped over FMPRevenueBusinessLineFetcher.",
+    "description": "Revenue split by product/business segment for the latest fiscal period (#1650), as a pie of shares of total revenue. Sample data is labelled demo. raw=true returns {segment, revenue} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/revenue-business-line",
@@ -1344,13 +1277,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "segment",
-        "valueColumn": "revenue"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1384,7 +1310,7 @@
   },
   "pi_stock_ownership": {
     "name": "Stock Ownership Breakdown",
-    "description": "Ownership split by bucket: Institutions / Retail / ETFs / Insiders (#1660). Stub-shaped over FMPCachedEquityOwnershipFetcher.",
+    "description": "Ownership split by holder type: Institutions / Retail / ETFs / Insiders, in percent of shares (#1660), as a pie. Sample data is labelled demo. raw=true returns {bucket, pct} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/stock-ownership",
@@ -1394,13 +1320,6 @@
       "h": 10
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "bucket",
-        "valueColumn": "pct"
-      }
-    },
     "params": [
       {
         "paramName": "symbol",
@@ -1594,7 +1513,7 @@
   },
   "pi_price_target_history": {
     "name": "Price Target vs. Close",
-    "description": "Analyst price target evolution vs. close (#1669). Stub-shaped over FMPCachedPriceTargetConsensusFetcher.",
+    "description": "Analyst price targets vs. the closing price when each target was published (#1669), as dated lines. Sample data is labelled demo. raw=true returns {date, close, target} rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/price-target-history",
@@ -1612,20 +1531,7 @@
         "type": "text",
         "description": "Ticker"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Closing Price": "closing_price",
-        "Analyst Price Target": "analyst_price_target"
-      },
-      "chart": {
-        "labels": {
-          "date": "Date",
-          "close": "Closing Price",
-          "target": "Analyst Price Target"
-        }
-      }
-    }
+    ]
   },
   "pi_financial_statements": {
     "name": "Financial Statements",
@@ -1696,7 +1602,7 @@
   },
   "pi_charting": {
     "name": "Charting (OHLC + Indicators)",
-    "description": "Historical OHLC + SMA20/SMA50/RSI14 overlays with window enum (#1655). Stub-shaped over FMPCachedHistoricalPriceFetcher + indicator overlays.",
+    "description": "Historical OHLC candles with SMA20/SMA50 overlays and RSI14 (0-100) in a lower pane (#1655); Window picks 1M to 1Y. Live fmp_cached data when available, otherwise sample rows labelled demo in the chart. raw=true returns the OHLC + indicator rows.",
     "category": "Equity Profile",
     "type": "chart",
     "endpoint": "pi/equity/charting",

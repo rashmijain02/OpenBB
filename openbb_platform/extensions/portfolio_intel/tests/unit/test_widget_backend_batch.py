@@ -30,7 +30,7 @@ _client = TestClient(app)
 
 def test_xray_country_demo_returns_non_empty_country_rows() -> None:
     """chart+raw contract: list of {country, weight}."""
-    resp = _client.get("/pi/xray/country?account_id=demo")
+    resp = _client.get("/pi/xray/country?account_id=demo&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows and all("country" in r and "weight" in r for r in rows)
@@ -109,7 +109,7 @@ def test_risk_dashboard_returns_named_metrics() -> None:
 
 def test_risk_vol_chart_returns_percentage_point_time_series_rows() -> None:
     """chart+raw contract uses percentage points, not decimal fractions."""
-    resp = _client.get("/pi/risk/vol?account_id=demo")
+    resp = _client.get("/pi/risk/vol?account_id=demo&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows and all("date" in r and "vol_20d" in r for r in rows)
@@ -174,7 +174,7 @@ def test_paper_blotter_returns_orders_table() -> None:
 
 def test_paper_performance_returns_equity_curve() -> None:
     """chart+raw contract: list of {date, equity}."""
-    resp = _client.get("/pi/paper/performance?account_id=demo")
+    resp = _client.get("/pi/paper/performance?account_id=demo&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows and all("date" in r and "equity" in r for r in rows)

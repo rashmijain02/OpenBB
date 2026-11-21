@@ -6,9 +6,10 @@ rows the endpoints already compute into that figure. They add no financial
 math: every plotted value is a row value, unchanged.
 
 Every figure carries its data state in ``layout.meta.state`` and shows it in
-the title or an annotation, so demo, empty, and unavailable states are visible
-rather than looking like real data. An empty or unavailable figure has no
-traces; the annotation explains why.
+an annotation, so demo, empty, and unavailable states are visible rather than
+looking like real data. An empty or unavailable figure has no traces; the
+annotation explains why. Figures never set ``layout.title``: Workspace shows
+the widget name as the title (#1268).
 """
 
 from __future__ import annotations
@@ -49,11 +50,15 @@ BRINSON_SERIES: tuple[tuple[str, str, str, str], ...] = (
 )
 
 
-def _layout(title: str, state: str, **extra: Any) -> dict[str, Any]:
-    return {"title": {"text": title}, "meta": {"state": state}, **extra}
+def layout(state: str, *, source: str | None = None, **extra: Any) -> dict[str, Any]:
+    """Return a title-free layout that records the data state (and source)."""
+    meta: dict[str, Any] = {"state": state}
+    if source is not None:
+        meta["source"] = source
+    return {"meta": meta, **extra}
 
 
-def _note(text: str) -> dict[str, Any]:
+def note(text: str) -> dict[str, Any]:
     """Return a centred paper-space annotation for state messages."""
     return {
         "text": text,
@@ -65,14 +70,19 @@ def _note(text: str) -> dict[str, Any]:
     }
 
 
-def state_figure(title: str, state: str, message: str) -> Figure:
+def header_note(text: str) -> dict[str, Any]:
+    """Return a state annotation placed above the plot area."""
+    return {**note(text), "y": 1.08}
+
+
+def state_figure(state: str, message: str, *, source: str | None = None) -> Figure:
     """Return a trace-free figure that states why there is nothing to plot."""
     return {
         "data": [],
-        "layout": _layout(
-            title,
+        "layout": layout(
             state,
-            annotations=[_note(message)],
+            source=source,
+            annotations=[note(message)],
             xaxis={"visible": False},
             yaxis={"visible": False},
         ),
@@ -80,11 +90,15 @@ def state_figure(title: str, state: str, message: str) -> Figure:
 
 
 def xray_sector_figure(
-    rows: Sequence[Mapping[str, Any]], *, state: str, title: str
+    rows: Sequence[Mapping[str, Any]], *, state: str, label: str
 ) -> Figure:
-    """Return a sector-weight pie from ``{sector, weight}`` rows."""
+    """Return a sector-weight pie from ``{sector, weight}`` rows.
+
+    ``label`` names the book (e.g. the synthetic demo portfolio) in a header
+    annotation, since the figure carries no title.
+    """
     if not rows:
-        return state_figure(title, "empty", "No sector weights returned.")
+        return state_figure("empty", "No sector weights returned.")
     return {
         "data": [
             {
@@ -96,7 +110,11 @@ def xray_sector_figure(
                 "hovertemplate": "%{label}<br>Weight: %{percent}<extra></extra>",
             }
         ],
-        "layout": _layout(title, state, legend={"title": {"text": "Sector"}}),
+        "layout": layout(
+            state,
+            legend={"title": {"text": "Sector"}},
+            annotations=[header_note(label)],
+        ),
     }
 
 
@@ -108,11 +126,11 @@ def brinson_attribution_figure(
     Allocation, selection, and interaction are stacked bars (``relative``
     barmode, so negative effects stack below zero); total active return is a
     marker series. The book is the synthetic Brinson reference fixture, which
-    the title and an annotation say.
+    an annotation says, together with the window and benchmark.
     """
-    title = f"Brinson-Fachler Attribution - Demo book, {window} vs {benchmark_symbol}"
+    book = f"Synthetic demo book, {window} vs {benchmark_symbol}; not your portfolio."
     if not rows:
-        return state_figure(title, "empty", "No attribution rows were produced.")
+        return state_figure("empty", f"No attribution rows were produced. {book}")
     sectors = [row["sector"] for row in rows]
     traces: list[dict[str, Any]] = []
     for field, label, glossary_key, summary in BRINSON_SERIES:
@@ -132,17 +150,11 @@ def brinson_attribution_figure(
         traces.append(trace)
     return {
         "data": traces,
-        "layout": _layout(
-            title,
+        "layout": layout(
             "demo",
             barmode="relative",
             xaxis={"title": {"text": "Sector"}},
             yaxis={"title": {"text": "Effect (percentage points)"}},
-            annotations=[
-                {
-                    **_note("Synthetic reference book; not your portfolio."),
-                    "y": 1.08,
-                }
-            ],
+            annotations=[header_note(book)],
         ),
     }

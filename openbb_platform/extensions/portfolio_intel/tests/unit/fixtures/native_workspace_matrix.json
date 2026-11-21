@@ -344,7 +344,7 @@
       "endpoint": "pi/attribution",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "window",
@@ -360,6 +360,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -398,7 +399,7 @@
       "endpoint": "pi/equity/charting",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -414,6 +415,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -855,7 +857,7 @@
       "endpoint": "pi/equity/financials",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -865,8 +867,9 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "combo",
+        "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
@@ -949,7 +952,7 @@
       "endpoint": "pi/equity/price-history",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -971,6 +974,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -1431,6 +1435,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -1577,7 +1582,7 @@
       "endpoint": "pi/equity/price-target-history",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -1587,6 +1592,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -1768,10 +1774,11 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "segment",
-        "valueColumn": "revenue"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
       "metricLabels": [],
@@ -1806,10 +1813,11 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "region",
-        "valueColumn": "revenue"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
       "metricLabels": [],
@@ -1891,6 +1899,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -2003,10 +2012,11 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "bucket",
-        "valueColumn": "pct"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
       "metricLabels": [],
@@ -2238,10 +2248,11 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "country",
-        "valueColumn": "weight"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
       "metricLabels": [],
@@ -2276,6 +2287,7 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -2549,6 +2561,7 @@
       "baselineState": "contract-repair",
       "parameters": [],
       "chart": {
+        "plotly": false,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -2620,6 +2633,7 @@
         }
       ],
       "chart": {
+        "plotly": false,
         "raw": true,
         "type": null,
         "labelColumn": null,

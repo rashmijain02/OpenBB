@@ -4,11 +4,6 @@
   "issues": [
     {
       "code": "widget.data.unknown_key",
-      "path": "widgets.pi_xray_country.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
       "path": "widgets.pi_lookthrough_top25.data.metricGlossary",
       "tracking": "#1268"
     },
@@ -64,32 +59,12 @@
     },
     {
       "code": "widget.data.unknown_key",
-      "path": "widgets.pi_risk_vol_chart.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_risk_vol_chart.data.metricGlossary",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
       "path": "widgets.pi_paper_blotter.data.metricGlossary",
       "tracking": "#1268"
     },
     {
       "code": "widget.table.column.unknown_key",
       "path": "widgets.pi_paper_blotter.data.table.columnsDefs[5].glossaryKey",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_paper_performance.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_paper_performance.data.metricGlossary",
       "tracking": "#1268"
     },
     {
@@ -130,16 +105,6 @@
     {
       "code": "widget.data.unknown_key",
       "path": "widgets.pi_equity_key_stats.data.metricGlossary",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_equity_financial_charts.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_equity_financial_charts.data.metricGlossary",
       "tracking": "#1268"
     },
     {
@@ -193,26 +158,6 @@
       "tracking": "#1268"
     },
     {
-      "code": "widget.unknown_key",
-      "path": "widgets.pi_equity_price_history.help",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_revenue_geography.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_revenue_business_line.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_stock_ownership.data.chart",
-      "tracking": "#1268"
-    },
-    {
       "code": "widget.data.unknown_key",
       "path": "widgets.pi_earnings_history.data.metricGlossary",
       "tracking": "#1268"
@@ -245,16 +190,6 @@
     {
       "code": "widget.table.column.unknown_key",
       "path": "widgets.pi_dividend_payment.data.table.columnsDefs[2].glossaryKey",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_price_target_history.data.chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_price_target_history.data.metricGlossary",
       "tracking": "#1268"
     },
     {
@@ -333,63 +268,13 @@
       "tracking": "#1270"
     },
     {
-      "code": "response.shape.chart",
-      "path": "responses.pi_xray_country",
-      "tracking": "#1268"
-    },
-    {
       "code": "response.shape.metric",
       "path": "responses.pi_risk_dashboard",
       "tracking": "#1268"
     },
     {
-      "code": "response.shape.chart",
-      "path": "responses.pi_risk_vol_chart",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_paper_performance",
-      "tracking": "#1268"
-    },
-    {
       "code": "response.shape.metric",
       "path": "responses.pi_paper_perf_kpis",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_equity_financial_charts",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_equity_price_history",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_revenue_geography",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_revenue_business_line",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_stock_ownership",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_price_target_history",
-      "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_charting",
       "tracking": "#1268"
     },
     {

@@ -53,11 +53,6 @@ def _get(path: str) -> Any:
     return response.json()
 
 
-def _title(figure: dict[str, Any]) -> str:
-    title = figure["layout"]["title"]
-    return title["text"] if isinstance(title, dict) else str(title)
-
-
 def _annotation_text(figure: dict[str, Any]) -> str:
     return " ".join(a["text"] for a in figure["layout"].get("annotations", []))
 
@@ -84,7 +79,9 @@ def test_xray_sector_default_is_a_plotly_pie_of_the_demo_rows() -> None:
     assert trace["labels"] == [sector for sector, _ in _DEMO_SECTORS]
     assert trace["values"] == [weight for _, weight in _DEMO_SECTORS]
     assert figure["layout"]["meta"]["state"] == "demo"
-    assert "demo" in _title(figure).lower()
+    # Workspace supplies the widget title (#1268); the state is an annotation.
+    assert "title" not in figure["layout"]
+    assert "demo" in _annotation_text(figure).lower()
     _assert_contract_clean("pi_xray_sector", "/pi/xray/sector?account_id=demo")
 
 
@@ -98,9 +95,9 @@ def test_xray_sector_unwired_account_is_an_explicit_unavailable_figure() -> None
     """An unwired account is an explicit unavailable figure, not fake data."""
     figure = _get("/pi/xray/sector?account_id=NOT_WIRED_YET")
     assert figure["layout"]["meta"]["state"] == "unavailable"
-    # No trace pretends to be data: the state is carried by title + annotation.
+    # No trace pretends to be data: the state is carried by meta + annotation.
     assert figure["data"] == []
-    assert "unavailable" in _title(figure).lower()
+    assert "title" not in figure["layout"]
     assert "account resolver not wired" in _annotation_text(figure)
     _assert_contract_clean("pi_xray_sector", "/pi/xray/sector?account_id=NOT_WIRED")
     rows = _get("/pi/xray/sector?account_id=NOT_WIRED_YET&raw=true")
@@ -144,12 +141,16 @@ def test_brinson_default_is_a_plotly_figure_built_from_the_same_rows() -> None:
 
 
 def test_brinson_figure_labels_the_synthetic_demo_book_and_parameters() -> None:
-    """Title and annotation say the book is synthetic and echo the params."""
+    """The annotation says the book is synthetic and echoes the params.
+
+    Workspace supplies the widget title, so the figure sets none (#1268).
+    """
     figure = _get("/pi/attribution?window=3M&benchmark_symbol=QQQ")
     assert figure["layout"]["meta"]["state"] == "demo"
-    title = _title(figure)
-    assert "demo" in title.lower() and "3M" in title and "QQQ" in title
-    assert "synthetic" in _annotation_text(figure).lower()
+    assert "title" not in figure["layout"]
+    note = _annotation_text(figure)
+    assert "demo" in note.lower() and "3M" in note and "QQQ" in note
+    assert "synthetic" in note.lower()
 
 
 def test_brinson_hover_carries_the_glossary_summaries() -> None:

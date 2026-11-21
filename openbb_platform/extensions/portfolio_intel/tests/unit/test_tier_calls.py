@@ -211,7 +211,7 @@ def test_endpoint_serves_from_tier_not_stub(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _fixture_rows()
     )
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows == [
@@ -234,7 +234,7 @@ def test_endpoint_rejects_invalid_chart_type_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _fixture_rows()
     )
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikin")
+    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikin&raw=true")
     assert resp.status_code == 400
     detail = resp.json().get("detail", "")
     assert "chart_type" in detail and "line" in detail and "candle" in detail
@@ -247,7 +247,7 @@ def test_endpoint_rejects_bad_symbol_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _fixture_rows()
     )
-    resp = _client.get("/pi/equity/price-history?symbol=<script>")
+    resp = _client.get("/pi/equity/price-history?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -269,7 +269,7 @@ def test_endpoint_forwards_normalized_symbol_to_tier(
         return _fixture_rows()
 
     monkeypatch.setattr(tier_calls, "_fetch_price_history_rows", _capture)
-    resp = _client.get("/pi/equity/price-history?symbol=+aapl+&chart_type=line")
+    resp = _client.get("/pi/equity/price-history?symbol=+aapl+&chart_type=line&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", (
         "live tier must be queried with the normalized ticker, not the raw "
@@ -663,7 +663,7 @@ def test_geo_endpoint_serves_from_tier_not_stub(
     monkeypatch.setattr(
         tier_calls, "_fetch_revenue_geography_rows", lambda symbol: _geo_rows()
     )
-    resp = _client.get("/pi/equity/revenue-geography?symbol=AAPL")
+    resp = _client.get("/pi/equity/revenue-geography?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert {"region": "Americas", "revenue": 125_000} in rows
@@ -681,7 +681,7 @@ def test_geo_endpoint_forwards_normalized_symbol_to_tier(
         return _geo_rows()
 
     monkeypatch.setattr(tier_calls, "_fetch_revenue_geography_rows", _capture)
-    resp = _client.get("/pi/equity/revenue-geography?symbol=+aapl+")
+    resp = _client.get("/pi/equity/revenue-geography?symbol=+aapl+&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", f"raw symbol leaked: {seen['symbol']!r}"
 
@@ -693,7 +693,7 @@ def test_geo_endpoint_rejects_bad_symbol_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_revenue_geography_rows", lambda symbol: _geo_rows()
     )
-    resp = _client.get("/pi/equity/revenue-geography?symbol=<script>")
+    resp = _client.get("/pi/equity/revenue-geography?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -799,7 +799,7 @@ def test_seg_endpoint_serves_from_tier_not_stub(
     monkeypatch.setattr(
         tier_calls, "_fetch_revenue_business_line_rows", lambda symbol: _seg_rows()
     )
-    resp = _client.get("/pi/equity/revenue-business-line?symbol=AAPL")
+    resp = _client.get("/pi/equity/revenue-business-line?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert {"segment": "iPhone", "revenue": 203_000} in rows
@@ -817,7 +817,7 @@ def test_seg_endpoint_forwards_normalized_symbol_to_tier(
         return _seg_rows()
 
     monkeypatch.setattr(tier_calls, "_fetch_revenue_business_line_rows", _capture)
-    resp = _client.get("/pi/equity/revenue-business-line?symbol=+aapl+")
+    resp = _client.get("/pi/equity/revenue-business-line?symbol=+aapl+&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", f"raw symbol leaked: {seen['symbol']!r}"
 
@@ -829,7 +829,7 @@ def test_seg_endpoint_rejects_bad_symbol_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_revenue_business_line_rows", lambda symbol: _seg_rows()
     )
-    resp = _client.get("/pi/equity/revenue-business-line?symbol=<script>")
+    resp = _client.get("/pi/equity/revenue-business-line?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -1872,7 +1872,7 @@ def test_charting_endpoint_serves_from_tier_not_stub(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _charting_rows(60)
     )
-    resp = _client.get("/pi/equity/charting?symbol=AAPL")
+    resp = _client.get("/pi/equity/charting?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "empty response"
@@ -1891,7 +1891,7 @@ def test_charting_endpoint_forwards_normalized_symbol_to_tier(
         return _charting_rows(60)
 
     monkeypatch.setattr(tier_calls, "_fetch_price_history_rows", _capture)
-    resp = _client.get("/pi/equity/charting?symbol=+aapl+&window=6M")
+    resp = _client.get("/pi/equity/charting?symbol=+aapl+&window=6M&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", f"raw symbol leaked: {seen['symbol']!r}"
 
@@ -1903,7 +1903,7 @@ def test_charting_endpoint_rejects_bad_window_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _charting_rows(60)
     )
-    resp = _client.get("/pi/equity/charting?symbol=AAPL&window=2D")
+    resp = _client.get("/pi/equity/charting?symbol=AAPL&window=2D&raw=true")
     assert resp.status_code == 400
 
 
@@ -1914,7 +1914,7 @@ def test_charting_endpoint_rejects_bad_symbol_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _charting_rows(60)
     )
-    resp = _client.get("/pi/equity/charting?symbol=<script>")
+    resp = _client.get("/pi/equity/charting?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -2349,7 +2349,7 @@ def test_financials_endpoint_serves_from_tier_not_stub(
     monkeypatch.setattr(
         tier_calls, "_fetch_income_annual", lambda symbol: _income_fixtures()
     )
-    resp = _client.get("/pi/equity/financials?symbol=AAPL")
+    resp = _client.get("/pi/equity/financials?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "empty response"
@@ -2369,7 +2369,7 @@ def test_financials_endpoint_forwards_normalized_symbol(
         return _income_fixtures()
 
     monkeypatch.setattr(tier_calls, "_fetch_income_annual", _capture)
-    resp = _client.get("/pi/equity/financials?symbol=+aapl+")
+    resp = _client.get("/pi/equity/financials?symbol=+aapl+&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", f"raw symbol leaked: {seen.get('symbol')!r}"
 
@@ -2381,7 +2381,7 @@ def test_financials_endpoint_rejects_bad_symbol_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_income_annual", lambda symbol: _income_fixtures()
     )
-    resp = _client.get("/pi/equity/financials?symbol=<script>")
+    resp = _client.get("/pi/equity/financials?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 
@@ -2705,7 +2705,7 @@ def test_price_target_history_endpoint_serves_from_tier_not_stub(
             }
         ],
     )
-    resp = _client.get("/pi/equity/price-target-history?symbol=AAPL")
+    resp = _client.get("/pi/equity/price-target-history?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "empty response"
@@ -2724,7 +2724,7 @@ def test_price_target_history_endpoint_forwards_normalized_symbol_to_tier(
         return [{"published_date": "2026-01-01", "price_target": 1.0}]
 
     monkeypatch.setattr(tier_calls, "_fetch_price_target_rows", _capture)
-    resp = _client.get("/pi/equity/price-target-history?symbol=+aapl+")
+    resp = _client.get("/pi/equity/price-target-history?symbol=+aapl+&raw=true")
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", f"raw symbol leaked: {seen['symbol']!r}"
 
@@ -2734,7 +2734,7 @@ def test_price_target_history_endpoint_rejects_bad_symbol_with_tier_registered(
 ) -> None:
     """Symbol validation runs pre-dispatch (not bypassed by the live tier)."""
     monkeypatch.setattr(tier_calls, "_fetch_price_target_rows", lambda symbol: [])
-    resp = _client.get("/pi/equity/price-target-history?symbol=<script>")
+    resp = _client.get("/pi/equity/price-target-history?symbol=<script>&raw=true")
     assert resp.status_code == 400
 
 

@@ -147,7 +147,7 @@
       "annotations": [
         {
           "showarrow": false,
-          "text": "Synthetic reference book; not your portfolio.",
+          "text": "Synthetic demo book, 1Y vs SPY; not your portfolio.",
           "x": 0.5,
           "xref": "paper",
           "y": 1.08,
@@ -157,9 +157,6 @@
       "barmode": "relative",
       "meta": {
         "state": "demo"
-      },
-      "title": {
-        "text": "Brinson-Fachler Attribution - Demo book, 1Y vs SPY"
       },
       "xaxis": {
         "title": {

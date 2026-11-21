@@ -1249,17 +1249,58 @@
       }
       return out;
     }
+    // Candlestick/OHLC (#1268): price candles plus, when present, the volume
+    // bars from the lower pane. Other overlays (SMA lines, an RSI pane) are not
+    // drawn, matching the row renderer's candle model.
+    const candle = traces.find((t) => t.type === "candlestick" || t.type === "ohlc");
+    if (candle) {
+      const xs = Array.isArray(candle.x) ? candle.x : [];
+      const at = (arr, i) => (Array.isArray(arr) && arr[i] != null ? Number(arr[i]) : NaN);
+      const candles = xs.map((_, i) => ({
+        x: i, o: at(candle.open, i), h: at(candle.high, i), l: at(candle.low, i), c: at(candle.close, i),
+      })).filter((d) => [d.o, d.h, d.l, d.c].every(Number.isFinite));
+      const vol = traces.find((t) => t !== candle && t.type === "bar"
+        && ((t.meta && t.meta.glossaryKey === "volume") || /^volume$/i.test(String(t.name || ""))));
+      const volume = vol && Array.isArray(vol.y)
+        ? vol.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null }))
+        : null;
+      if (candles.length) {
+        out.model = { kind: "candle", xKey: null, candles, volume, xLabels: xs.map((x) => String(x)) };
+      }
+      return out;
+    }
     const xy = traces.filter((t) => Array.isArray(t.y) && t.y.length);
     if (!xy.length) return out;
     const xs = Array.isArray(xy[0].x) ? xy[0].x : xy[0].y.map((_, i) => i);
+    const toSeries = (t, si) => ({
+      key: t.name ? String(t.name) : "Series " + (si + 1),
+      points: t.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null })),
+    });
+    // Dual axis (#1268): bars on the left axis and series on yaxis "y2" map to
+    // the combo model, so a percent line is not crushed by a $B bar scale.
+    const right = xy.filter((t) => t.yaxis === "y2");
+    const bars = xy.filter((t) => t.type === "bar" && t.yaxis !== "y2");
+    if (right.length && bars.length) {
+      const axisTitle = (axis) => {
+        const title = axis && axis.title;
+        return String((title && typeof title === "object" ? title.text : title) || "");
+      };
+      out.model = {
+        kind: "combo",
+        xKey: null,
+        xLabels: xs.map((x) => String(x)),
+        bars: bars.map(toSeries),
+        lines: right.map(toSeries),
+        leftLabel: axisTitle(layout.yaxis),
+        rightLabel: axisTitle(layout.yaxis2),
+      };
+      return out;
+    }
     out.model = {
       kind: "line",
       xKey: null,
       xLabels: xs.map((x) => String(x)),
-      series: xy.map((t, si) => ({
-        key: t.name ? String(t.name) : "Series " + (si + 1),
-        points: t.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null })),
-      })),
+      series: xy.map(toSeries),
     };
     return out;
   }
@@ -1274,7 +1315,17 @@
     }
     const data = Object.assign({}, (widgetDef && widgetDef.data) || {}, { metricGlossary: parsed.glossary });
     const def = Object.assign({}, widgetDef || {}, { data });
-    container.innerHTML = (caption ? `<div class="state">${caption}</div>` : "") + svgForChart(parsed.model, def);
+    const captionHtml = caption ? `<div class="state">${caption}</div>` : "";
+    // Dated candle/line figures use TradingView Lightweight Charts, like raw
+    // rows do (#1268); any failure falls back to the inline SVG renderer.
+    if (isTimeSeriesModel(parsed.model) && typeof tvChartAvailable === "function" && tvChartAvailable()) {
+      try {
+        renderTradingViewChart(container, parsed.model, def);
+        if (captionHtml) container.insertAdjacentHTML("afterbegin", captionHtml);
+        return;
+      } catch (e) { tvDispose(container); /* fall through to SVG */ }
+    }
+    container.innerHTML = captionHtml + svgForChart(parsed.model, def);
     if (typeof bindMetricHelpButtons === "function") bindMetricHelpButtons(container);
   }
 

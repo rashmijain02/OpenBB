@@ -1,26 +1,49 @@
 {
-  "body": [
-    {
-      "revenue": 28023000000.0,
-      "segment": "iPad"
-    },
-    {
-      "revenue": 33708000000.0,
-      "segment": "Mac"
-    },
-    {
-      "revenue": 35686000000.0,
-      "segment": "Wearables, Home and Accessories"
-    },
-    {
-      "revenue": 109158000000.0,
-      "segment": "Service"
-    },
-    {
-      "revenue": 209586000000.0,
-      "segment": "iPhone"
+  "body": {
+    "data": [
+      {
+        "hovertemplate": "%{label}<br>Revenue: %{value:,.0f}<br>Share: %{percent}<extra></extra>",
+        "labels": [
+          "iPhone",
+          "Services",
+          "Wearables, Home & Accessories",
+          "Mac",
+          "iPad"
+        ],
+        "name": "Revenue by Segment",
+        "sort": false,
+        "type": "pie",
+        "values": [
+          200583.0,
+          96169.0,
+          39845.0,
+          29357.0,
+          28300.0
+        ]
+      }
+    ],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Demo data: no live provider answered, so these are sample values, not live AAPL data.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 1.08,
+          "yref": "paper"
+        }
+      ],
+      "legend": {
+        "title": {
+          "text": "Segment"
+        }
+      },
+      "meta": {
+        "source": "stub",
+        "state": "demo"
+      }
     }
-  ],
+  },
   "endpoint": "pi/equity/revenue-business-line",
   "params": {
     "symbol": "AAPL"

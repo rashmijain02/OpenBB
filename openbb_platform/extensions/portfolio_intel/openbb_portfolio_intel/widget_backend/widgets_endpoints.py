@@ -54,6 +54,7 @@ from openbb_portfolio_intel.providers.registry import (
     TRACK_A_DEFAULT,
 )
 from openbb_portfolio_intel.providers.retrofit import with_chain
+from openbb_portfolio_intel.widget_backend import terminal_charts
 from openbb_portfolio_intel.widget_backend._app import app
 from openbb_portfolio_intel.widget_backend._shared import (
     _SYMBOL_RE,
@@ -61,6 +62,7 @@ from openbb_portfolio_intel.widget_backend._shared import (
     require_live_trading_principal,
     validate_account,
 )
+from openbb_portfolio_intel.widget_backend.terminal_charts import plotly_chart
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +90,12 @@ def record_tier_used(endpoint: str, tier: str) -> None:
     Called by the ChainedFetcher wiring after every successful fetch so
     the provider-health widget can render "endpoint X: currently served
     by tier Y". Kept module-level so the retrofit sites are one-liners.
+
+    Also stamps the per-request ``SERVING_TIER`` context so a native chart
+    endpoint labels its figure live vs demo from its own request (#1268).
     """
     _TIER_IN_USE[endpoint] = tier
+    terminal_charts.SERVING_TIER.set(tier)
 
 
 # Human-readable role for each Track A tier — rendered in the provider-health
@@ -259,6 +265,7 @@ def _validate_price_history_from_call(
 
 
 @app.get("/pi/xray/country")
+@plotly_chart(terminal_charts.xray_country_figure)
 @with_chain(
     endpoint="pi/xray/country",
     family="xray/country",
@@ -559,6 +566,7 @@ def risk_dashboard(
 
 
 @app.get("/pi/risk/vol")
+@plotly_chart(terminal_charts.risk_vol_figure)
 @with_chain(
     endpoint="pi/risk/vol",
     family="risk/vol",
@@ -686,6 +694,7 @@ def paper_blotter(
 
 
 @app.get("/pi/paper/performance")
+@plotly_chart(terminal_charts.paper_performance_figure)
 @with_chain(
     endpoint="pi/paper/performance",
     family="paper/performance",
@@ -1017,6 +1026,7 @@ def equity_key_stats(
 
 
 @app.get("/pi/equity/financials")
+@plotly_chart(terminal_charts.equity_financials_figure)
 @with_chain(
     endpoint="pi/equity/financials",
     family="equity/financials",
@@ -1517,6 +1527,7 @@ def _demo_ohlc_series(symbol: str, days: int = 126) -> list[dict]:
 
 
 @app.get("/pi/equity/price-history")
+@plotly_chart(terminal_charts.price_history_figure)
 @with_chain(
     endpoint="pi/equity/price-history",
     family="equity/price-history",
@@ -1680,6 +1691,7 @@ def equity_management_team(
 
 
 @app.get("/pi/equity/revenue-geography")
+@plotly_chart(terminal_charts.revenue_geography_figure)
 @with_chain(
     endpoint="pi/equity/revenue-geography",
     family="equity/revenue-geography",
@@ -1708,6 +1720,7 @@ def equity_revenue_geography(
 
 
 @app.get("/pi/equity/revenue-business-line")
+@plotly_chart(terminal_charts.revenue_business_line_figure)
 @with_chain(
     endpoint="pi/equity/revenue-business-line",
     family="equity/revenue-business-line",
@@ -1768,6 +1781,7 @@ def equity_institutional_ownership(
 
 
 @app.get("/pi/equity/stock-ownership")
+@plotly_chart(terminal_charts.stock_ownership_figure)
 @with_chain(
     endpoint="pi/equity/stock-ownership",
     family="equity/stock-ownership",
@@ -2017,6 +2031,7 @@ def equity_earnings_transcripts(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/pi/equity/price-target-history")
+@plotly_chart(terminal_charts.price_target_history_figure)
 @with_chain(
     endpoint="pi/equity/price-target-history",
     family="equity/price-target-history",
@@ -2192,6 +2207,7 @@ def _validate_charting_from_call(
 
 
 @app.get("/pi/equity/charting")
+@plotly_chart(terminal_charts.charting_figure)
 @with_chain(
     endpoint="pi/equity/charting",
     family="charting",

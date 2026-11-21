@@ -101,7 +101,7 @@ def test_equity_key_stats_table_shape() -> None:
 
 def test_equity_financials_5yr_records() -> None:
     """Section 3 — chart raw with 5 year rows carrying rev/net_income/margin."""
-    resp = _client.get("/pi/equity/financials?symbol=AAPL")
+    resp = _client.get("/pi/equity/financials?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert len(rows) == 5

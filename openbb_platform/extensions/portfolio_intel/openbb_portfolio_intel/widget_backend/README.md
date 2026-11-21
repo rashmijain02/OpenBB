@@ -58,8 +58,8 @@ Widget → HTTP endpoint → analytics.<module> → JSON response
 1. Add an entry to `widgets.json` (name, description, type, endpoint, gridData, params).
 2. Add the FastAPI route to `main.py` returning data matching the declared `type`:
    - `markdown` → return a str.
-   - `chart` with `raw: true` → return a list of dicts.
-   - `chart` without `raw` → return a Plotly figure dict.
+   - `chart` → return a Plotly figure dict by default, with no `layout.title` (Workspace shows the widget name); put the data state in `layout.meta.state` and a demo/empty/unavailable annotation.
+   - `chart` with `raw: true` → also return the underlying rows when called with `raw=true`. For a row endpoint, wrap it with `terminal_charts.plotly_chart(builder)` (#1268), which adds the `raw` parameter.
    - `table` → return a list of dicts.
    - `metric` → return `{"value": <scalar>, "delta": <scalar>, ...}`.
 3. Reference the analytics module rather than reimplementing math.

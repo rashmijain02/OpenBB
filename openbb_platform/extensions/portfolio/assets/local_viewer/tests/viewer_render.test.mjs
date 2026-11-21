@@ -447,13 +447,15 @@ test("metricHelpLayerPosition flips above when there is no room below", () => {
   assert.equal(pos.top, 98);
 });
 
-test("F2 widgets declare glossary mappings for key stats and financial charts", () => {
+test("F2 key stats declare glossary mappings; financial chart keys ride on traces", () => {
   const keyStats = WIDGETS.pi_equity_key_stats.data.metricGlossary;
-  const financials = WIDGETS.pi_equity_financial_charts.data.metricGlossary;
   assert.equal(keyStats["P/E (TTM)"], "pe_ttm");
   assert.equal(keyStats["Market Cap"], "market_cap");
-  assert.equal(financials["Revenue ($B)"], "revenue_b");
-  assert.equal(financials["Net Margin (%)"], "net_margin_pct");
+  // #1268: the chart's glossary keys moved from the manifest into the figure.
+  assert.equal(WIDGETS.pi_equity_financial_charts.data, undefined);
+  const glossary = H.plotlyFigureModel(FINANCIALS_FIGURE).glossary;
+  assert.equal(glossary["Revenue ($B)"], "revenue_b");
+  assert.equal(glossary["Net Margin (%)"], "net_margin_pct");
 });
 
 test("look-through effective-weight formatter converts fractions to displayed percentages", () => {
@@ -490,7 +492,47 @@ const BRINSON_FIGURE = {
     { type: "bar", name: "Interaction Effect (%)", x: ["Technology", "Energy"], y: [0.1, 0.0], meta: { glossaryKey: "interaction_effect" } },
     { type: "scatter", mode: "markers", name: "Total Active Return (%)", x: ["Technology", "Energy"], y: [2.6, -0.2], meta: { glossaryKey: "total_active_return" } },
   ],
-  layout: { title: { text: "Brinson-Fachler Attribution - Demo book, 1Y vs SPY" }, meta: { state: "demo" } },
+  layout: {
+    meta: { state: "demo" },
+    annotations: [{ text: "Synthetic demo book, 1Y vs SPY; not your portfolio." }],
+  },
+};
+
+// #1268 Terminal chart figures (shapes mirror terminal_charts.py output).
+const FINANCIALS_FIGURE = {
+  data: [
+    { type: "bar", name: "Revenue ($B)", x: [2023, 2024, 2025], y: [383.3, 391.0, 400.5], meta: { glossaryKey: "revenue_b" } },
+    { type: "bar", name: "Net Income ($B)", x: [2023, 2024, 2025], y: [97.0, 93.0, 102.3], meta: { glossaryKey: "net_income_b" } },
+    { type: "scatter", mode: "lines+markers", name: "Net Margin (%)", x: [2023, 2024, 2025], y: [25.31, 23.79, 25.54], yaxis: "y2", meta: { glossaryKey: "net_margin_pct" } },
+  ],
+  layout: {
+    meta: { state: "live", source: "fmp_cached" },
+    barmode: "group",
+    yaxis: { title: { text: "Billions ($B)" } },
+    yaxis2: { title: { text: "Net margin (%)" }, overlaying: "y", side: "right" },
+  },
+};
+const CANDLE_FIGURE = {
+  data: [
+    { type: "candlestick", name: "OHLC", x: ["2026-07-01", "2026-07-02", "2026-07-03"], open: [10, 11, 12], high: [12, 13, 14], low: [9, 10, 11], close: [11, 12, 11.5] },
+    { type: "bar", name: "Volume", x: ["2026-07-01", "2026-07-02", "2026-07-03"], y: [1000, 2500, 1800], yaxis: "y2", meta: { glossaryKey: "volume" } },
+  ],
+  layout: { meta: { state: "demo", source: "stub" }, annotations: [{ text: "Demo data: sample values, not live AAPL data." }] },
+};
+const CHARTING_FIGURE = {
+  data: [
+    { type: "candlestick", name: "OHLC", x: ["2026-04-01", "2026-04-15"], open: [170.1, 172.0], high: [172.5, 174.3], low: [169.2, 171.2], close: [171.35, 173.1] },
+    { type: "scatter", name: "SMA 20", x: ["2026-04-01", "2026-04-15"], y: [168.4, 170.1] },
+    { type: "scatter", name: "RSI 14", x: ["2026-04-01", "2026-04-15"], y: [58.2, 62.4], yaxis: "y2" },
+  ],
+  layout: { meta: { state: "demo", source: "stub" } },
+};
+const VOL_FIGURE = {
+  data: [
+    { type: "scatter", mode: "lines", name: "20-Day Volatility (%)", x: ["2026-06-01", "2026-06-02"], y: [16.0, 16.67], meta: { glossaryKey: "twenty_day_volatility" } },
+    { type: "scatter", mode: "lines", name: "60-Day Volatility (%)", x: ["2026-06-01", "2026-06-02"], y: [18.0, 18.33], meta: { glossaryKey: "sixty_day_volatility" } },
+  ],
+  layout: { meta: { state: "demo", source: "stub" }, annotations: [{ text: "Demo portfolio (synthetic); not your account." }] },
 };
 
 test("Brinson Plotly figure maps to percentage-point series that retain help keys", () => {
@@ -508,14 +550,14 @@ test("Brinson Plotly figure maps to percentage-point series that retain help key
   assert.equal(parsed.glossary["Total Active Return (%)"], "total_active_return");
   const container = { innerHTML: "", querySelectorAll: () => [] };
   H.renderPlotlyFigure(container, BRINSON_FIGURE, { type: "chart" });
-  assert.match(container.innerHTML, /Demo book, 1Y vs SPY/);
+  assert.match(container.innerHTML, /demo book, 1Y vs SPY/);
   assert.match(container.innerHTML, /data-metric-help="allocation_effect"/);
 });
 
 test("X-Ray sector Plotly pie maps to a pie model", () => {
   const parsed = H.plotlyFigureModel({
     data: [{ type: "pie", labels: ["Information Technology", "Energy"], values: [0.38, 0.08] }],
-    layout: { title: { text: "Sector Weights - Demo portfolio (synthetic)" } },
+    layout: { annotations: [{ text: "Demo portfolio (synthetic); not your account." }] },
   });
   assert.equal(parsed.model.kind, "pie");
   assert.deepEqual(parsed.model.slices.map((s) => s.label), ["Information Technology", "Energy"]);
@@ -527,8 +569,8 @@ test("trace-free Plotly figure renders its state message, not a blank chart", ()
   H.renderPlotlyFigure(container, {
     data: [],
     layout: {
-      title: { text: "Sector Weights - Unavailable" },
-      annotations: [{ text: "No sector data: account resolver not wired for this account." }],
+      meta: { state: "unavailable" },
+      annotations: [{ text: "Unavailable: no sector data, account resolver not wired for this account." }],
     },
   }, { type: "chart" });
   assert.match(container.innerHTML, /class="state"/);
@@ -632,15 +674,60 @@ test("earnings Surprise header uses the earnings-surprise glossary record", () =
   assert.equal(column.glossaryKey, "earnings_surprise");
 });
 
-test("time-series legend labels expose help for price, volatility, and equity", () => {
-  for (const [widget, label, key] of [
-    [WIDGETS.pi_price_target_history, "Closing Price", "closing_price"],
-    [WIDGETS.pi_risk_vol_chart, "20-Day Volatility (%)", "twenty_day_volatility"],
-    [WIDGETS.pi_paper_performance, "Portfolio Equity", "portfolio_equity"],
-  ]) {
-    const html = H.chartLegendLabelHtml(label, widget);
+test("time-series legend labels expose help from the figure's trace glossary keys", () => {
+  const figures = [
+    [{ data: [{ type: "scatter", name: "Closing Price", x: ["2026-01-01"], y: [1], meta: { glossaryKey: "closing_price" } }], layout: {} }, "Closing Price", "closing_price"],
+    [VOL_FIGURE, "20-Day Volatility (%)", "twenty_day_volatility"],
+    [{ data: [{ type: "scatter", name: "Portfolio Equity", x: ["2026-01-01"], y: [1], meta: { glossaryKey: "portfolio_equity" } }], layout: {} }, "Portfolio Equity", "portfolio_equity"],
+  ];
+  for (const [figure, label, key] of figures) {
+    const def = { data: { metricGlossary: H.plotlyFigureModel(figure).glossary } };
+    const html = H.chartLegendLabelHtml(label, def);
     assert.match(html, new RegExp(`data-metric-help="${key}"`));
   }
+});
+
+test("Plotly candlestick figure maps to a candle model with its volume pane (#1268)", () => {
+  const parsed = H.plotlyFigureModel(CANDLE_FIGURE);
+  assert.equal(parsed.model.kind, "candle");
+  assert.deepEqual([...parsed.model.xLabels], ["2026-07-01", "2026-07-02", "2026-07-03"]);
+  assert.deepEqual(parsed.model.candles.map((c) => [c.o, c.h, c.l, c.c]), [[10, 12, 9, 11], [11, 13, 10, 12], [12, 14, 11, 11.5]]);
+  assert.deepEqual(parsed.model.volume.map((p) => p.y), [1000, 2500, 1800]);
+  assert.equal(H.isTimeSeriesModel(parsed.model), true);
+  assert.equal(H.toLwcSeries(parsed.model).kind, "candle");
+  const container = { innerHTML: "", querySelectorAll: () => [] };
+  H.renderPlotlyFigure(container, CANDLE_FIGURE, { type: "chart" });
+  assert.match(container.innerHTML, /Demo data/);
+  assert.match(container.innerHTML, /aria-label="candlestick chart"/);
+});
+
+test("Plotly charting figure keeps candles; the RSI pane is not read as volume (#1268)", () => {
+  const parsed = H.plotlyFigureModel(CHARTING_FIGURE);
+  assert.equal(parsed.model.kind, "candle");
+  assert.equal(parsed.model.volume, null);
+  assert.deepEqual(parsed.model.candles.map((c) => c.c), [171.35, 173.1]);
+});
+
+test("Plotly dual-axis figure maps to the combo model with help keys (#1268)", () => {
+  const parsed = H.plotlyFigureModel(FINANCIALS_FIGURE);
+  assert.equal(parsed.model.kind, "combo");
+  assert.deepEqual([...parsed.model.xLabels], ["2023", "2024", "2025"]);
+  assert.deepEqual(parsed.model.bars.map((s) => s.key), ["Revenue ($B)", "Net Income ($B)"]);
+  assert.deepEqual(parsed.model.lines.map((s) => s.key), ["Net Margin (%)"]);
+  // the margin series keeps its own (percent) values, never rescaled into $B
+  assert.deepEqual(parsed.model.lines[0].points.map((p) => p.y), [25.31, 23.79, 25.54]);
+  const container = { innerHTML: "", querySelectorAll: () => [] };
+  H.renderPlotlyFigure(container, FINANCIALS_FIGURE, { type: "chart" });
+  assert.match(container.innerHTML, /aria-label="combo bar and line chart"/);
+  assert.match(container.innerHTML, /data-metric-help="revenue_b"/);
+  assert.match(container.innerHTML, /data-metric-help="net_margin_pct"/);
+});
+
+test("dated Plotly line figure is a time-series model for the TradingView path (#1268)", () => {
+  const parsed = H.plotlyFigureModel(VOL_FIGURE);
+  assert.equal(parsed.model.kind, "line");
+  assert.equal(H.isTimeSeriesModel(parsed.model), true);
+  assert.deepEqual(parsed.model.series[1].points.map((p) => p.y), [18.0, 18.33]);
 });
 
 test("renderTable adds help only for mapped first-column metrics", () => {
@@ -864,7 +951,7 @@ test("renderTab hides an active floating metric tooltip before clearing the widg
 test("svgForChart combo legend adds help buttons for mapped series", () => {
   const svg = H.svgForChart(
     H.inferChartModel(_COMBO_ROWS, _COMBO_CFG),
-    WIDGETS.pi_equity_financial_charts,
+    { data: { metricGlossary: H.plotlyFigureModel(FINANCIALS_FIGURE).glossary } },
   );
   assert.match(svg, /Revenue \(\$B\)[\s\S]*data-metric-help="revenue_b"/);
   assert.match(svg, /Net Income \(\$B\)[\s\S]*data-metric-help="net_income_b"/);

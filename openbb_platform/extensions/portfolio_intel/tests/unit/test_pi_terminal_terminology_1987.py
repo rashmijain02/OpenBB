@@ -145,37 +145,42 @@ def test_1996_forecast_endpoint_keeps_raw_contract_with_pattern_metadata() -> No
 
 
 def test_time_series_widgets_have_exact_labels_and_glossary_keys() -> None:
+    """#1268 moved chart labels/glossary from manifest keys into the figures.
+
+    Workspace's schema rejects ``data.chart`` / ``data.metricGlossary``, so
+    series labels are Plotly trace names, the date axis is the x-axis, and each
+    trace carries its glossary key in ``meta.glossaryKey``.
+    """
     expected = {
-        "pi_price_target_history": (
-            {
-                "date": "Date",
-                "close": "Closing Price",
-                "target": "Analyst Price Target",
-            },
-            {
-                "Closing Price": "closing_price",
-                "Analyst Price Target": "analyst_price_target",
-            },
-        ),
-        "pi_risk_vol_chart": (
-            {
-                "vol_20d": "20-Day Volatility (%)",
-                "vol_60d": "60-Day Volatility (%)",
-            },
-            {
-                "20-Day Volatility (%)": "twenty_day_volatility",
-                "60-Day Volatility (%)": "sixty_day_volatility",
-            },
-        ),
-        "pi_paper_performance": (
-            {"date": "Date", "equity": "Portfolio Equity"},
-            {"Portfolio Equity": "portfolio_equity"},
-        ),
+        "/pi/equity/price-target-history?symbol=AAPL": {
+            "Closing Price": "closing_price",
+            "Analyst Price Target": "analyst_price_target",
+        },
+        "/pi/risk/vol?account_id=demo": {
+            "20-Day Volatility (%)": "twenty_day_volatility",
+            "60-Day Volatility (%)": "sixty_day_volatility",
+        },
+        "/pi/paper/performance?account_id=demo": {
+            "Portfolio Equity": "portfolio_equity",
+        },
     }
-    for widget_id, (labels, glossary) in expected.items():
-        data = _widget(widget_id)["data"]
-        assert data["chart"]["labels"] == labels
-        assert data["metricGlossary"] == glossary
+    text = _VIEWER.read_text(encoding="utf-8")
+    for url, glossary in expected.items():
+        response = _CLIENT.get(url)
+        assert response.status_code == 200
+        figure = response.json()
+        assert figure["layout"]["xaxis"]["title"]["text"] == "Date"
+        assert {
+            trace["name"]: trace["meta"]["glossaryKey"] for trace in figure["data"]
+        } == glossary
+        for key in glossary.values():
+            assert f"{key}: Object.freeze({{" in text
+    for widget_id in (
+        "pi_price_target_history",
+        "pi_risk_vol_chart",
+        "pi_paper_performance",
+    ):
+        assert "data" not in _widget(widget_id)
 
 
 def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
@@ -255,18 +260,6 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
             {
                 "Ex-Dividend Date": "ex_dividend_date",
                 "Dividend Amount ($/share)": "dividend_amount_per_share",
-            },
-        ),
-        (
-            "pi_price_target_history",
-            {
-                "date": "Date",
-                "close": "Closing Price",
-                "target": "Analyst Price Target",
-            },
-            {
-                "Closing Price": "closing_price",
-                "Analyst Price Target": "analyst_price_target",
             },
         ),
         (
@@ -364,17 +357,6 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
             },
         ),
         (
-            "pi_risk_vol_chart",
-            {
-                "vol_20d": "20-Day Volatility (%)",
-                "vol_60d": "60-Day Volatility (%)",
-            },
-            {
-                "20-Day Volatility (%)": "twenty_day_volatility",
-                "60-Day Volatility (%)": "sixty_day_volatility",
-            },
-        ),
-        (
             "pi_whatif_card",
             {
                 "symbol_weight_%": "Symbol Weight (%)",
@@ -401,11 +383,6 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
                 "Annualized Sharpe Ratio": "sharpe_ratio",
                 "Maximum Drawdown (%)": "maximum_drawdown",
             },
-        ),
-        (
-            "pi_paper_performance",
-            {"date": "Date", "equity": "Portfolio Equity"},
-            {"Portfolio Equity": "portfolio_equity"},
         ),
         (
             "pi_paper_blotter",
@@ -440,9 +417,6 @@ def test_all_21_widgets_have_exact_label_and_glossary_contracts(
     if widget["type"] == "metric":
         actual_labels = data["metric"]["labels"]
         actual_glossary = data["metric"]["metricGlossary"]
-    elif widget["type"] == "chart":
-        actual_labels = data["chart"]["labels"]
-        actual_glossary = data["metricGlossary"]
     elif "rowLabels" in data.get("table", {}):
         actual_labels = data["table"]["rowLabels"]
         actual_glossary = data["metricGlossary"]

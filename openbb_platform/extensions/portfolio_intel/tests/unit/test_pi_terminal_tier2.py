@@ -107,7 +107,7 @@ def test_charting_widget_declared() -> None:
 
 def test_charting_default_returns_ohlc_plus_indicators() -> None:
     """#1655 — default window returns OHLC + RSI + SMA20 + SMA50 fields."""
-    r = _client.get("/pi/equity/charting?symbol=AAPL")
+    r = _client.get("/pi/equity/charting?symbol=AAPL&raw=true")
     assert r.status_code == 200
     rows = r.json()
     assert rows
@@ -118,7 +118,7 @@ def test_charting_default_returns_ohlc_plus_indicators() -> None:
 
 def test_charting_rejects_bad_window() -> None:
     """Invalid window enum must be rejected."""
-    r = _client.get("/pi/equity/charting?symbol=AAPL&window=42Q")
+    r = _client.get("/pi/equity/charting?symbol=AAPL&window=42Q&raw=true")
     assert r.status_code == 400
 
 

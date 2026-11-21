@@ -1,30 +1,51 @@
 {
-  "body": [
-    {
-      "country": "United States",
-      "weight": 0.72
-    },
-    {
-      "country": "China",
-      "weight": 0.08
-    },
-    {
-      "country": "Japan",
-      "weight": 0.05
-    },
-    {
-      "country": "United Kingdom",
-      "weight": 0.04
-    },
-    {
-      "country": "Germany",
-      "weight": 0.03
-    },
-    {
-      "country": "Other",
-      "weight": 0.08
+  "body": {
+    "data": [
+      {
+        "hovertemplate": "%{label}<br>Weight: %{percent}<extra></extra>",
+        "labels": [
+          "United States",
+          "China",
+          "Japan",
+          "United Kingdom",
+          "Germany",
+          "Other"
+        ],
+        "name": "Country Weight",
+        "sort": false,
+        "type": "pie",
+        "values": [
+          0.72,
+          0.08,
+          0.05,
+          0.04,
+          0.03,
+          0.08
+        ]
+      }
+    ],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Demo portfolio (synthetic); not your account.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 1.08,
+          "yref": "paper"
+        }
+      ],
+      "legend": {
+        "title": {
+          "text": "Country"
+        }
+      },
+      "meta": {
+        "source": "stub",
+        "state": "demo"
+      }
     }
-  ],
+  },
   "endpoint": "pi/xray/country",
   "params": {
     "account_id": "demo"
