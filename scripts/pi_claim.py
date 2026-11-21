@@ -10,6 +10,7 @@ Usage:
   python scripts/pi_claim.py <issue> todo          # reset
   python scripts/pi_claim.py --list-stale          # In Progress items w/ last hb > 2h
   python scripts/pi_claim.py --status <issue>      # show current claim state
+  python scripts/pi_claim.py --mine                # my In Progress claims: ok / DUE / STALE
 
 Heartbeat protocol (see CLAUDE.md 'Coordination'):
   - Claimed items MUST heartbeat every <=10 min while owned
@@ -55,6 +56,7 @@ STALE_HOURS = 2
 HB_MARKER_RE = re.compile(
     r"<!--\s*pi-claim:\s*owner=(?P<owner>\S+)\s+hb=(?P<hb>\S+)\s+action=(?P<action>\S+)\s*-->"
 )
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 # ---------------------------------------------------------------------------
@@ -338,12 +340,8 @@ def cmd_list_stale() -> int:
         num = c.get("number")
         if not num:
             continue
-        st = None
-        for fv in (n.get("fieldValues") or {}).get("nodes", []):
-            if (fv.get("field") or {}).get("name") == "Status":
-                st = fv.get("name")
-        if st == "In Progress":
-            in_progress.append((num, c.get("title", "")[:60]))
+        if _item_status(n) == "In Progress":
+            in_progress.append((num, _display_title(c)))
 
     printed = 0
     for num, title in in_progress:
@@ -362,6 +360,63 @@ def cmd_list_stale() -> int:
     if not printed:
         print(
             f"no stale claims (all {len(in_progress)} In Progress items heartbeat within {STALE_HOURS}h)"
+        )
+    return 0
+
+
+def _display_title(content: dict) -> str:
+    """Return an issue title safe to print: 60 chars, control chars as '?'.
+
+    Titles are remote input; raw C0/C1 control characters could carry
+    terminal escape sequences (title spoofing, screen clears).
+    """
+    return _CONTROL_CHARS_RE.sub("?", content.get("title") or "")[:60]
+
+
+def _item_status(item: dict) -> str | None:
+    """Return a project item's single-select Status value, if any."""
+    for fv in (item.get("fieldValues") or {}).get("nodes", []):
+        if (fv.get("field") or {}).get("name") == "Status":
+            return fv.get("name")
+    return None
+
+
+def _urgency(age: timedelta) -> str:
+    """Classify a heartbeat age on the unrounded value: ok, DUE or STALE."""
+    if age > timedelta(hours=STALE_HOURS):
+        return "STALE"
+    if age > timedelta(minutes=HEARTBEAT_INTERVAL_MIN):
+        return "DUE"
+    return "ok"
+
+
+def cmd_mine() -> int:
+    """List In Progress items whose latest trusted heartbeat owner is me.
+
+    Read-only: identity, project items and issue comments are fetched;
+    nothing is written. Ownership follows the latest trusted marker
+    (even a release/done marker), not issue assignment. Each row shows
+    the heartbeat age and whether a heartbeat is due.
+    """
+    me = whoami()
+    rows = []
+    for item in _project_items():
+        content = item.get("content") or {}
+        number = content.get("number")
+        if not number or _item_status(item) != "In Progress":
+            continue
+        hb, _ = latest_heartbeat(str(number))
+        if not hb or hb["owner"] != me:
+            continue
+        rows.append((number, _display_title(content), _age(hb)))
+
+    if not rows:
+        print(f"no In Progress claims for {me}")
+        return 0
+    for number, title, age in rows:
+        print(
+            f"  #{number:>4}  age={int(age.total_seconds() // 60)}min "
+            f"({_urgency(age)})  {title}"
         )
     return 0
 
@@ -445,12 +500,36 @@ def main() -> int:
     p.add_argument("--note", default=None)
     p.add_argument("--list-stale", action="store_true")
     p.add_argument("--status", metavar="ISSUE")
+    p.add_argument("--mine", action="store_true")
     p.add_argument("-h", "--help", action="store_true")
     a = p.parse_args()
 
-    if a.help or (not a.issue and not a.list_stale and not a.status):
+    if a.help or (not a.issue and not a.list_stale and not a.status and not a.mine):
         print(__doc__)
         return 0
+
+    if a.mine:
+        conflicts = [
+            name
+            for name, used in (
+                ("an issue or action", a.issue is not None or a.action is not None),
+                ("--note", a.note is not None),
+                ("--list-stale", a.list_stale),
+                ("--status", a.status is not None),
+            )
+            if used
+        ]
+        if conflicts:
+            print(
+                f"usage error: --mine cannot be combined with {', '.join(conflicts)}",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            return cmd_mine()
+        except RuntimeError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
 
     if a.list_stale:
         return cmd_list_stale()
