@@ -1,5 +1,5 @@
 {
-  "body": "## NVDA \u2014 Active Signal\n\n**No EOD snapshot available** \u00b7 `XNYS`\n\n> EOD planning snapshot \u2014 not a live/intraday quote\n\n> No EOD snapshot available \u2014 run the post-close snapshot job.",
+  "body": "## NVDA \u2014 Active Signal\n\n**No EOD snapshot available** \u00b7 `XNYS`\n\n> EOD planning snapshot \u2014 not a live/intraday quote\n\n> No EOD snapshot available \u2014 run the post-close snapshot job.\n\n---\n\n**Data state:** Unavailable - no EOD snapshot available; run the post-close snapshot job. Source: `eod-snapshot`; as of unknown.",
   "endpoint": "tt/position/signal-card",
   "params": {
     "symbol": "NVDA"

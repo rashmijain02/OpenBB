@@ -1,6 +1,6 @@
 {
   "body": {
-    "detail": "basket_id must match [A-Za-z0-9_.-]{1,64}; got '<script>alert(1)</script>'"
+    "detail": "basket_id must match [A-Za-z0-9_.-]{1,64}"
   },
   "endpoint": "pi/equity/basket-analyst-consensus",
   "params": {

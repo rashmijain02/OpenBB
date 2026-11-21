@@ -64,14 +64,18 @@ def _manifest() -> dict:
 # ---------------------------------------------------------------------------
 
 
+_PROVENANCE = ("data_state", "data_source", "data_as_of")
+
+
 def test_price_history_default_is_line_shape() -> None:
     """Omitting ``chart_type`` returns line shape ``{date, close}``."""
     resp = _client.get("/pi/equity/price-history?symbol=AAPL&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "line shape must return non-empty rows"
+    # #1269: plus the three string provenance columns on every raw row.
     assert all(
-        set(r.keys()) == {"date", "close"} for r in rows
+        set(r.keys()) == {"date", "close", *_PROVENANCE} for r in rows
     ), f"expected exactly date+close keys, got {rows[0].keys()}"
     assert all(isinstance(r["close"], (int, float)) for r in rows)
 
@@ -81,12 +85,14 @@ def test_price_history_line_explicit() -> None:
     resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
-    assert rows and all(set(r.keys()) == {"date", "close"} for r in rows)
+    assert rows and all(set(r.keys()) == {"date", "close", *_PROVENANCE} for r in rows)
 
 
 def test_price_history_candle_returns_ohlc_shape() -> None:
     """``chart_type=candle`` returns ``{date, open, high, low, close}``."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=candle&raw=true")
+    resp = _client.get(
+        "/pi/equity/price-history?symbol=AAPL&chart_type=candle&raw=true"
+    )
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "candle shape must return non-empty rows"
@@ -103,7 +109,9 @@ def test_price_history_candle_returns_ohlc_shape() -> None:
 
 def test_price_history_rejects_invalid_chart_type() -> None:
     """Unknown ``chart_type`` returns 400 with a discriminating error."""
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikinashi&raw=true")
+    resp = _client.get(
+        "/pi/equity/price-history?symbol=AAPL&chart_type=heikinashi&raw=true"
+    )
     assert resp.status_code == 400
     detail = resp.json().get("detail", "")
     assert "chart_type" in detail
@@ -147,7 +155,9 @@ def test_price_history_range_controls_length() -> None:
 
     def _n(rng: str) -> int:
         return len(
-            _client.get(f"/pi/equity/price-history?symbol=AAPL&range={rng}&raw=true").json()
+            _client.get(
+                f"/pi/equity/price-history?symbol=AAPL&range={rng}&raw=true"
+            ).json()
         )
 
     n1m, n3m, n1y, n5y = _n("1M"), _n("3M"), _n("1Y"), _n("5Y")

@@ -1,18 +1,27 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "severity": "material",
       "symbol": "AAPL",
       "title": "Apple beats Q3 EPS; services growth accelerates",
       "when": "2026-07-19"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "severity": "material",
       "symbol": "NVDA",
       "title": "NVIDIA announces new datacenter GPU",
       "when": "2026-07-18"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "severity": "material",
       "symbol": "MSFT",
       "title": "Microsoft raises Azure guidance",

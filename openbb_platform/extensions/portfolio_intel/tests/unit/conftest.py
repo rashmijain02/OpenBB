@@ -1,8 +1,15 @@
 """Shared fixtures for the Portfolio Intelligence unit tests."""
 
 import itertools
+import os
 
 import pytest
+
+# Demo mode (#1269, plan Step 6.3): the unit suite exercises the labelled
+# stub fallback with the provider tiers cleared, so it selects ``fallback``
+# (also the backend default) explicitly; tests that need ``off`` or ``only``
+# set it with ``monkeypatch``.
+os.environ.setdefault("PI_DEMO_MODE", "fallback")
 
 
 @pytest.fixture(params=["memory", "sqlite"])

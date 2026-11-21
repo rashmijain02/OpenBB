@@ -9,9 +9,10 @@ so the endpoint returns the readable label itself:
   (unknown values pass through unchanged, so nothing is dropped);
 - :func:`relabel` applies that to whatever an endpoint (or its provider
   tier) returned;
-- :func:`metric_cards` builds Workspace metric cards (``[{label, value}]``)
-  with an explicit data-state card, so demo and unavailable values are
-  never shown as bare numbers or a fabricated ``0.0``.
+- :func:`metric_cards` builds Workspace metric cards (``[{label, value}]``);
+  unavailable values read ``Unavailable`` rather than a fabricated ``0.0``.
+  The trailing ``Data State`` card is added by the provenance decorator
+  (:mod:`.provenance`, #1269).
 """
 
 from __future__ import annotations
@@ -21,11 +22,13 @@ import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
+from openbb_portfolio_intel.widget_backend.provenance import DATA_STATE_LABEL
+
 Row = Mapping[str, Any]
 Pattern = tuple[re.Pattern[str], str]
 
-#: Label of the card that states where metric values came from.
-DATA_STATE_LABEL = "Data State"
+__all__ = ["DATA_STATE_LABEL", "label_rows", "metric_cards", "relabel"]
+
 UNAVAILABLE = "Unavailable"
 
 EVENT_TYPE_LABELS = {
@@ -129,17 +132,15 @@ def relabel(
 
 
 def metric_cards(
-    values: Sequence[tuple[str, float | str]], *, available: bool, state: str
+    values: Sequence[tuple[str, float | str]], *, available: bool
 ) -> list[dict[str, float | str]]:
-    """Return Workspace metric cards followed by one data-state card.
+    """Return Workspace metric cards for ``(label, value)`` pairs.
 
     ``available=False`` replaces every value with ``"Unavailable"`` so no
-    placeholder number is ever shown as if it were measured. ``state`` is the
-    text of the trailing card, e.g. ``"Demo: synthetic sample book"``.
+    placeholder number is ever shown as if it were measured. The endpoint's
+    ``@widget("metric")`` decorator appends the ``Data State`` card.
     """
-    cards: list[dict[str, float | str]] = [
+    return [
         {"label": label, "value": value if available else UNAVAILABLE}
         for label, value in values
     ]
-    cards.append({"label": DATA_STATE_LABEL, "value": state})
-    return cards

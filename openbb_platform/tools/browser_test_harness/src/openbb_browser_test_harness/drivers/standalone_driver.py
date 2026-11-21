@@ -126,6 +126,9 @@ class StandaloneDriver:
         # This is the P0-3 fix: mutation is scoped to the child.
         child_env = os.environ.copy()
         child_env["PI_WIDGET_BACKEND_AUTH_MODE"] = "loopback-dev"
+        # Demo data is explicit (#1269): the harness fixtures are recorded
+        # from the labelled stub fallback, so select it for the child.
+        child_env["PI_DEMO_MODE"] = "fallback"
 
         # Process-group flags per OS.
         popen_kwargs: dict[str, object] = {
@@ -160,7 +163,9 @@ class StandaloneDriver:
         # (spec §5.1 P0-2).
         deadline = time.monotonic() + self.readiness_timeout_s
         interval_s = 0.1
-        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=self.step_timeout_s)
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url, timeout=self.step_timeout_s
+        )
         last_error: Exception | None = None
         while time.monotonic() < deadline:
             # Did the subprocess die mid-startup?
@@ -293,7 +298,9 @@ class StandaloneDriver:
             duration_ms=duration_ms,
             screenshot_path=None,
             observations=observations,
-            error=None
-            if ok
-            else f"expected_status={step.expected_status} got_status={resp.status_code}",
+            error=(
+                None
+                if ok
+                else f"expected_status={step.expected_status} got_status={resp.status_code}"
+            ),
         )

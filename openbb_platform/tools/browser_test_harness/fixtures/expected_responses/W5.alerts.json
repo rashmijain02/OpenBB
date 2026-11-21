@@ -1,18 +1,27 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "detail": "8-K Item 7.01 filed 2026-07-22",
       "kind": "Held-Security Form 8-K",
       "severity": "warning",
       "symbol": "NVDA"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "detail": "Earnings 2026-07-25",
       "kind": "Upcoming Earnings",
       "severity": "info",
       "symbol": "AAPL"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "detail": "Recall notice",
       "kind": "Material News",
       "severity": "critical",

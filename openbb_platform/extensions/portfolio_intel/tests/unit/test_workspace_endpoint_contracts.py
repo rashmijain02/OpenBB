@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -52,6 +53,8 @@ def _hermetic_env(home: Path) -> dict[str, str]:
     for name in ("HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA"):
         env[name] = str(home)
     env["PI_WIDGET_BACKEND_AUTH_MODE"] = "loopback-dev"
+    # Demo data is explicit (#1269): probe the labelled stub fallback.
+    env["PI_DEMO_MODE"] = "fallback"
     # Fresh-install paper engine: sqlite with no database file yet.
     env["PI_PAPER_ENGINE"] = "sqlite"
     env["PI_PAPER_DB"] = str(home / "paper.db")
@@ -98,7 +101,9 @@ def test_probe_isolation_guards_hold(tmp_path: Path) -> None:
     checks = _run_probe("selftest", tmp_path)
     assert checks == {name: True for name in checks}
     assert len(checks) == 6
-    assert repr(_Responses(a=(200, "secret body"))) == "<1 endpoint responses>"
+    assert repr(_Responses(a=(200, "secret body", None, None))) == (
+        "<1 endpoint responses>"
+    )
 
 
 def test_hermetic_env_scrubs_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -130,10 +135,44 @@ def test_endpoint_response_matches_widget_contract(
     widget_id: str, responses: _Responses
 ) -> None:
     """Every endpoint returns its type's shape, or the gap is recorded debt."""
-    status, body = responses[widget_id]
+    status, body, _state, _source = responses[widget_id]
     new, resolved = _new_and_resolved(widget_id, status, body)
     assert not new, f"new response contract violations: {new}"
     assert not resolved, f"fixed response debt still in baseline, remove it: {resolved}"
+
+
+def _body_state(widget: dict[str, Any], body: str) -> tuple[str, str] | None:
+    """Return ``(state, source)`` as the response body states it (#1269)."""
+    payload = json.loads(body)
+    kind = widget["type"]
+    if kind == "chart" and isinstance(payload, dict) and "layout" in payload:
+        meta = payload["layout"]["meta"]
+        return meta["state"], meta["source"]
+    if kind == "table" and isinstance(payload, list) and payload:
+        return payload[0]["data_state"], payload[0]["data_source"]
+    if kind == "metric":
+        value = payload[-1]["value"]
+        return value.split(":", 1)[0].lower(), ""
+    if kind == "markdown":
+        match = re.search(r"\*\*Data state:\*\* (\w+).*?Source: `([^`]*)`", payload)
+        return (match.group(1).lower(), match.group(2)) if match else None
+    return None
+
+
+@pytest.mark.parametrize("widget_id", sorted(WIDGETS))
+def test_provenance_headers_match_the_body(
+    widget_id: str, responses: _Responses
+) -> None:
+    """``X-PI-Data-State``/``-Source`` equal the state the body states (#1269)."""
+    status, body, state, source = responses[widget_id]
+    assert status == 200
+    stated = _body_state(WIDGETS[widget_id], body)
+    if stated is None:  # #1271 shape-debt envelope: headers still carry state
+        assert state is not None and source is not None
+        return
+    assert state == stated[0]
+    if stated[1]:
+        assert source == stated[1]
 
 
 def test_every_placed_widget_has_an_endpoint_contract_test() -> None:
@@ -152,6 +191,7 @@ def test_response_checker_rejects_wrong_shapes() -> None:
     table = {"type": "table", "data": {"table": {"columnsDefs": [{"field": "a"}]}}}
     cases = [
         ({"type": "chart"}, 200, "[]", "response.shape.chart"),
+        ({"type": "chart"}, 200, '{"data": []}', "response.state.chart"),
         (table, 200, '{"a": 1}', "response.shape.table"),
         (table, 200, "[]", "response.empty"),
         (table, 200, '[{"b": 1}]', "response.table.column_missing"),
@@ -163,11 +203,12 @@ def test_response_checker_rejects_wrong_shapes() -> None:
     for widget, status, body, code in cases:
         codes = {i.code for i in collect_response_issues("w", widget, status, body)}
         assert code in codes, (widget, body, codes)
-    assert not collect_response_issues("w", {"type": "chart"}, 200, '{"data": []}')
-    assert not collect_response_issues("w", table, 200, '[{"a": 1}]')
+    live = '{"data": [], "layout": {"meta": {"state": "live", "source": "x"}}}'
+    assert not collect_response_issues("w", {"type": "chart"}, 200, live)
+    row = '{"a": 1, "data_state": "demo", "data_source": "stub", "data_as_of": "u"}'
+    assert not collect_response_issues("w", table, 200, f"[{row}]")
     keyed = {"type": "table", "data": {"dataKey": "rows"}}
-    assert not collect_response_issues("w", keyed, 200, '{"rows": [{"a": 1}]}')
+    assert not collect_response_issues("w", keyed, 200, f'{{"rows": [{row}]}}')
     assert collect_response_issues("w", keyed, 200, '{"rows": {"a": 1}}')
-    assert not collect_response_issues(
-        "w", {"type": "metric"}, 200, '{"label": "x", "value": 1}'
-    )
+    card = '{"label": "Data State", "value": "Demo: synthetic"}'
+    assert not collect_response_issues("w", {"type": "metric"}, 200, card)

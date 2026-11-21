@@ -164,7 +164,10 @@
         "severity",
         "kind",
         "symbol",
-        "detail"
+        "detail",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -245,7 +248,10 @@
         "buy",
         "hold",
         "sell",
-        "consensus"
+        "consensus",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -648,7 +654,10 @@
       "tableFields": [
         "ex_date",
         "payment_date",
-        "amount"
+        "amount",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -685,7 +694,10 @@
         "quarter",
         "eps_actual",
         "eps_estimate",
-        "surprise_pct"
+        "surprise_pct",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -742,7 +754,10 @@
       "tableFields": [
         "metric",
         "value",
-        "note"
+        "note",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -779,7 +794,10 @@
         "symbol",
         "name",
         "price",
-        "change_pct"
+        "change_pct",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -817,7 +835,10 @@
         "id",
         "name",
         "weight_pct",
-        "value_usd"
+        "value_usd",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -890,7 +911,10 @@
       "chart": null,
       "tableFields": [
         "metric",
-        "value"
+        "value",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1038,7 +1062,10 @@
       "tableFields": [
         "metric",
         "value",
-        "note"
+        "note",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1081,7 +1108,10 @@
         "symbol",
         "type",
         "date",
-        "detail"
+        "detail",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1143,7 +1173,10 @@
       "tableFields": [
         "line_item",
         "period_1",
-        "period_2"
+        "period_2",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1222,7 +1255,10 @@
         "symbol",
         "name",
         "effective_weight",
-        "rank"
+        "rank",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1286,7 +1322,10 @@
         "symbol",
         "when",
         "title",
-        "severity"
+        "severity",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1325,7 +1364,10 @@
         "side",
         "qty",
         "status",
-        "avg_price"
+        "avg_price",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1499,7 +1541,10 @@
         "pe_ttm",
         "pe_fwd",
         "ev_ebitda",
-        "ps_ttm"
+        "ps_ttm",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1590,7 +1635,10 @@
         "status",
         "latency_ms",
         "serving",
-        "note"
+        "note",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -1926,7 +1974,10 @@
         "kind",
         "actor",
         "value_usd",
-        "date"
+        "date",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {
@@ -2109,7 +2160,10 @@
         "metric",
         "before",
         "after",
-        "delta"
+        "delta",
+        "data_state",
+        "data_source",
+        "data_as_of"
       ],
       "placements": [
         {

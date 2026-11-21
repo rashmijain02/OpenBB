@@ -50,6 +50,14 @@ from starlette.datastructures import (  # noqa: E402  # pylint: disable=wrong-im
     MutableHeaders,
 )
 
+from openbb_portfolio_intel.widget_backend import (  # noqa: E402  # pylint: disable=wrong-import-position
+    provenance,
+)
+
+# Fail fast on a misconfigured demo mode (#1269): an invalid PI_DEMO_MODE
+# stops the backend when the app is created, not with per-request 500s.
+provenance.demo_mode()
+
 logger = logging.getLogger(__name__)
 
 # CORS: exact hosted and self-hosted Workspace origins reach this backend.
@@ -57,8 +65,13 @@ _ALLOWED_ORIGINS = ["https://pro.openbb.co", "http://127.0.0.1:1420"]
 
 # Response header carrying the provider tier that served the request
 # (e.g. ``fmp_cached`` vs ``stub``) so the local viewer can render a
-# live-vs-demo badge (#1953).
-_DATA_SOURCE_HEADER = "x-pi-data-source"
+# live-vs-demo badge (#1953). #1269 adds the data state and as-of headers.
+_DATA_SOURCE_HEADER = provenance.SOURCE_HEADER
+_EXPOSED_HEADERS = (
+    provenance.SOURCE_HEADER,
+    provenance.STATE_HEADER,
+    provenance.AS_OF_HEADER,
+)
 
 
 def _prime_openbb() -> None:
@@ -166,6 +179,7 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     offloaded via ``anyio.to_thread`` to keep the event loop responsive during
     the import.
     """
+    provenance.demo_mode()  # re-validated on server start (#1269)
     await anyio.to_thread.run_sync(_warm_openbb)
     _register_health_probers()
     try:
@@ -205,18 +219,18 @@ app.state.background_tasks = set()
 
 
 class _DataSourceHeaderMiddleware:
-    """Mirror the per-endpoint serving tier onto ``X-PI-Data-Source`` (#1953).
+    """Stamp each response with its own data state and source (#1953, #1269).
 
-    Read-only, pure-ASGI. After the wrapped app has run the endpoint, look
-    up the tier the request was served by in the ``_TIER_IN_USE`` ledger —
-    keyed by request path, since every retrofitted endpoint registers its
-    ledger key as ``path.lstrip("/")`` (e.g. route ``/pi/equity/price-history``
-    -> ledger key ``pi/equity/price-history``) — and stamp it on the response
-    so the local viewer can show a *live* (``fmp_cached``) vs *demo* (``stub``)
-    badge. The ledger dict is written by ``record_tier_used`` during endpoint
-    execution (visible here because it is a shared module global); the value is
-    best-effort under concurrent same-path requests, which is acceptable for a
-    single-user local dev viewer.
+    Read-only, pure-ASGI. The middleware starts a fresh per-request
+    provenance record before the endpoint runs; the widget decorators publish
+    the response's final record into it (sync endpoints run in a worker
+    thread with a copy of this context, which still points at the same
+    record). The headers are therefore taken from the very record the body
+    was rendered from, so ``X-PI-Data-Source`` always equals the body's
+    ``meta.source`` / ``data_source`` even under concurrent requests to the
+    same path. (Before #1269 it read the shared ``_TIER_IN_USE`` ledger,
+    which a concurrent request could overwrite.) A 401/403 carries
+    ``X-PI-Data-State: forbidden`` and no source.
     """
 
     def __init__(self, asgi_app: Any) -> None:
@@ -227,32 +241,33 @@ class _DataSourceHeaderMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Lazy import avoids an import cycle: widgets_endpoints imports ``app``
-        # from this module, so importing it at module load would be circular.
-        # pylint: disable=import-outside-toplevel
-        from openbb_portfolio_intel.widget_backend.widgets_endpoints import (
-            _TIER_IN_USE,
-        )
-
-        key = scope.get("path", "").lstrip("/")
+        holder, token = provenance.bind()
 
         async def send_wrapper(message: Any) -> None:
             if message["type"] == "http.response.start":
-                tier = _TIER_IN_USE.get(key)
-                if tier:
+                values: dict[str, str] = {}
+                if message.get("status") in (401, 403):
+                    values[provenance.STATE_HEADER] = "forbidden"
+                elif holder.final is not None:
+                    values = holder.final.headers()
+                elif holder.tier:
+                    values[_DATA_SOURCE_HEADER] = holder.tier
+                if values:
                     headers = MutableHeaders(scope=message)
-                    headers[_DATA_SOURCE_HEADER] = tier
-                    # Let the (cross-origin) Workspace read the header too.
+                    for name, value in values.items():
+                        headers[name] = value
+                    # Let the (cross-origin) Workspace read the headers too.
                     existing = headers.get("access-control-expose-headers")
-                    exposed = (
-                        _DATA_SOURCE_HEADER
-                        if not existing
-                        else (f"{existing}, {_DATA_SOURCE_HEADER}")
+                    exposed = ", ".join(_EXPOSED_HEADERS)
+                    headers["access-control-expose-headers"] = (
+                        exposed if not existing else f"{existing}, {exposed}"
                     )
-                    headers["access-control-expose-headers"] = exposed
             await send(message)
 
-        await self.app(scope, receive, send_wrapper)
+        try:
+            await self.app(scope, receive, send_wrapper)
+        finally:
+            provenance.unbind(token)
 
 
 # Order matters: add the CORS middleware LAST so it wraps outermost (runs

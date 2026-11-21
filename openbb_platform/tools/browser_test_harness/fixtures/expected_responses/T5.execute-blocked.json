@@ -1,5 +1,5 @@
 {
-  "body": "## Execute Bridge: BLOCKED\n\nVerdict gate: **FAIL** \u2014 execution blocked.\n\n> Re-run T4 validation; only a PASS verdict opens the write-batch path.",
+  "body": "## Execute Bridge: BLOCKED\n\nVerdict gate: **FAIL** \u2014 execution blocked.\n\n> Re-run T4 validation; only a PASS verdict opens the write-batch path.\n\n---\n\n**Data state:** Live - bridge readiness read from backend configuration. Source: `backend-config`; as of <observed-at>.",
   "endpoint": "tt/execute/bridge",
   "params": {
     "verdict": "FAIL"

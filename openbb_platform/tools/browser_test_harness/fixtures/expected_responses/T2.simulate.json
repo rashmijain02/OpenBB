@@ -2,6 +2,9 @@
   "body": [
     {
       "as_of_session": null,
+      "data_as_of": "unknown",
+      "data_source": "eod-snapshot",
+      "data_state": "unavailable",
       "disclaimer": "EOD planning snapshot \u2014 not a live/intraday quote",
       "earnings_annotation": null,
       "exchange_calendar": "XNYS",

@@ -584,6 +584,17 @@ test("single-value metric cards carry the served label and glossary help (#1268)
   assert.equal(model.cards[1].glossaryKey, null);
 });
 
+test("hidden provenance columns stay hidden; data state is shown (#1269)", () => {
+  const container = { innerHTML: "" };
+  H.renderTable(container, [{
+    metric: "Resistance 3", value: 234.6, note: "",
+    data_state: "demo", data_source: "SOURCE-SENTINEL", data_as_of: "ASOF-SENTINEL",
+  }], WIDGETS.pi_equity_technicals);
+  assert.match(container.innerHTML, /Data State/);
+  assert.match(container.innerHTML, />demo</);
+  assert.doesNotMatch(container.innerHTML, /SOURCE-SENTINEL|ASOF-SENTINEL|Data Source|Data As Of/);
+});
+
 test("server-labelled technical rows get glossary help (#1268)", () => {
   const container = { innerHTML: "" };
   H.renderTable(container, [{ metric: "Resistance 3", value: 234.6, note: "" }],
@@ -659,7 +670,7 @@ test("every manifest headerTooltip resolves to a curated glossary record (#1268)
       assert.ok(H.metricGlossaryKeyForSummary(column.headerTooltip), `${id}.${column.field}`);
     }
   }
-  assert.equal(seen, 19);
+  assert.equal(seen, 19 + 2 * 18); // #1269: data_source/data_as_of on 18 tables
 });
 
 test("every rendered-label glossary key is a curated record", () => {

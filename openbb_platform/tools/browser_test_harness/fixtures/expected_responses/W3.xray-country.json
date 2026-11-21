@@ -2,7 +2,7 @@
   "body": {
     "data": [
       {
-        "hovertemplate": "%{label}<br>Weight: %{percent}<extra></extra>",
+        "hovertemplate": "%{label}<br>Weight: %{value:.1%} of the book<br>Share of chart: %{percent}<extra></extra>",
         "labels": [
           "United States",
           "China",
@@ -28,7 +28,7 @@
       "annotations": [
         {
           "showarrow": false,
-          "text": "Demo portfolio (synthetic); not your account.",
+          "text": "Demo: demo portfolio (synthetic); not your account.",
           "x": 0.5,
           "xref": "paper",
           "y": 1.08,
@@ -41,6 +41,8 @@
         }
       },
       "meta": {
+        "asOf": "unknown",
+        "reason": "demo portfolio (synthetic); not your account",
         "source": "stub",
         "state": "demo"
       }

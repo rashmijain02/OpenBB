@@ -147,7 +147,7 @@
       "annotations": [
         {
           "showarrow": false,
-          "text": "Synthetic demo book, 1Y vs SPY; not your portfolio.",
+          "text": "Demo: synthetic demo book, 1Y vs SPY; not your portfolio.",
           "x": 0.5,
           "xref": "paper",
           "y": 1.08,
@@ -156,6 +156,9 @@
       ],
       "barmode": "relative",
       "meta": {
+        "asOf": "unknown",
+        "reason": "synthetic demo book, 1Y vs SPY; not your portfolio",
+        "source": "stub",
         "state": "demo"
       },
       "xaxis": {

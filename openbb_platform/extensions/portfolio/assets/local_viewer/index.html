@@ -553,8 +553,10 @@
     // column's glossary is its schema-native headerTooltip (the glossary
     // record's summary). Row help is keyed on the rendered first-column label.
     const defs = widget && widget.data && widget.data.table && widget.data.table.columnsDefs;
+    // #1269: honour Workspace's ``hide`` (data_source / data_as_of stay in
+    // the rows for agents but are not shown as columns).
     const cols = (defs && defs.length)
-      ? defs.map((c) => ({
+      ? defs.filter((c) => !c.hide).map((c) => ({
         field: c.field,
         header: c.headerName || c.field,
         tooltip: typeof c.headerTooltip === "string" ? c.headerTooltip : "",
@@ -2137,6 +2139,20 @@
       definition: "Net income is the bottom line remaining after all operating and non-operating costs are subtracted from revenue.",
       interpretation: "Rising net income usually signals improving profitability, but watch for one-off items and share-count effects.",
       source: "https://en.wikipedia.org/wiki/Net_income",
+    }),
+    data_source: Object.freeze({
+      label: "Data Source",
+      summary: "Provider tier or backend source that produced the row; stub means synthetic demo data.",
+      definition: "The provider tier (for example fmp_cached), snapshot store or backend component that answered the request.",
+      interpretation: "Use it with Data State: cached rows are persisted provider responses, stub rows are synthetic demo data.",
+      source: "https://en.wikipedia.org/wiki/Data_lineage",
+    }),
+    data_as_of: Object.freeze({
+      label: "Data As Of",
+      summary: "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it.",
+      definition: "The observation time reported for the data: a UTC timestamp, an end-of-day session date, or unknown.",
+      interpretation: "Unknown means the source does not say how old the data is; it is not a claim that the data is current.",
+      source: "https://en.wikipedia.org/wiki/Timestamp",
     }),
     net_margin_pct: Object.freeze({
       label: "Net Margin (%)",

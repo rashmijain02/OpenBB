@@ -1,5 +1,5 @@
 {
-  "body": "**What-If (invalid input)**\n\n`delta_shares` is not an integer.",
+  "body": "**What-If (invalid input)**\n\n`delta_shares` is not an integer.\n\n---\n\n**Data state:** Unavailable - delta_shares is not an integer, so no diff was computed. Source: `stub`; as of unknown.",
   "endpoint": "pi/whatif",
   "params": {
     "delta_shares": "1.5",

@@ -2,6 +2,9 @@
   "body": [
     {
       "actor": "CFO",
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-18",
       "kind": "Insider Buy",
       "symbol": "NVDA",
@@ -9,6 +12,9 @@
     },
     {
       "actor": "Berkshire Hathaway",
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-15",
       "kind": "13F Increase",
       "symbol": "AAPL",
@@ -16,6 +22,9 @@
     },
     {
       "actor": "Director",
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-17",
       "kind": "Insider Sell",
       "symbol": "TSLA",

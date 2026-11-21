@@ -35,7 +35,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -43,13 +42,22 @@ from fastapi.responses import JSONResponse
 from openbb_portfolio_intel.widget_backend._app import _ALLOWED_ORIGINS, app
 from openbb_portfolio_intel.widget_backend._shared import (
     _SYMBOL_RE,
+    account_display,
     require_auth,
     validate_account,
 )
-from openbb_portfolio_intel.widget_backend.overview_charts import (
-    brinson_attribution_figure,
-    state_figure,
-    xray_sector_figure,
+from openbb_portfolio_intel.widget_backend.provenance import (
+    DataState,
+    mark,
+    mark_unavailable,
+    widget,
+)
+from openbb_portfolio_intel.widget_backend.terminal_charts import (
+    DEMO_BOOK,
+    brinson_chart,
+    plotly_chart,
+    weights_assess,
+    xray_sector_chart,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,6 +112,11 @@ def get_apps() -> JSONResponse:
 
 
 @app.get("/pi/context/symbol")
+@widget(
+    "markdown",
+    source="request",
+    reason="echoes the selected ticker; no provider data is shown",
+)
 def context_symbol(request: Request, symbol: str = "AAPL") -> str:
     """Symbol context bar (#1638) — echoes the ticker as markdown.
 
@@ -126,6 +139,7 @@ def context_symbol(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/pi/context/book")
+@widget("markdown")
 def context_book(request: Request, account_id: str = "demo") -> str:
     """Book (account) context bar (#1639) — echoes account_id as markdown.
 
@@ -134,8 +148,13 @@ def context_book(request: Request, account_id: str = "demo") -> str:
     """
     require_auth(request)
     validate_account(account_id)
+    if account_id == "demo":
+        mark(DataState.DEMO, DEMO_BOOK)
+    else:
+        mark_unavailable("account resolver not wired for this account")
     return (
-        f"**Book:** `{account_id}`  \nPortfolio tabs (F8-F11) share this " f"account."
+        f"**Book:** {account_display(account_id)}  \nPortfolio tabs (F8-F11) "
+        "share this account."
     )
 
 
@@ -145,19 +164,21 @@ def context_book(request: Request, account_id: str = "demo") -> str:
 
 
 @app.get("/pi/xray/sector", response_model=None)
+@plotly_chart(xray_sector_chart, demo=DEMO_BOOK, assess=weights_assess("weight"))
 def xray_sector(
-    request: Request, account_id: str = "demo", raw: bool = False
-) -> list[dict[str, float | str]] | dict[str, Any]:
+    request: Request, account_id: str = "demo"
+) -> list[dict[str, float | str]]:
     """X-Ray sector weights for ``account_id`` as a Plotly pie (#1267).
 
     ``raw=true`` (sent by Workspace for ``raw: true`` widgets) returns the
-    underlying ``{sector, weight}`` rows instead of the figure.
+    underlying ``{sector, weight}`` rows (plus the #1269 provenance columns)
+    instead of the figure.
     """
     require_auth(request)
     validate_account(account_id)
 
     if account_id == "demo":
-        rows: list[dict[str, float | str]] = [
+        return [
             {"sector": "Information Technology", "weight": 0.38},
             {"sector": "Healthcare", "weight": 0.22},
             {"sector": "Financials", "weight": 0.15},
@@ -165,22 +186,14 @@ def xray_sector(
             {"sector": "Energy", "weight": 0.08},
             {"sector": "Other", "weight": 0.05},
         ]
-        if raw:
-            return rows
-        return xray_sector_figure(
-            rows, state="demo", label="Demo portfolio (synthetic); not your account."
-        )
 
-    logger.warning("xray/sector: account resolver not wired for %r", account_id)
-    if raw:
-        return [{"sector": "(no data — account resolver not wired)", "weight": 0.0}]
-    return state_figure(
-        "unavailable",
-        "Unavailable: no sector data, account resolver not wired for this account.",
-    )
+    logger.warning("xray/sector: account resolver not wired for this account")
+    mark_unavailable("account resolver not wired for this account")
+    return [{"sector": "(no data — account resolver not wired)", "weight": 0.0}]
 
 
 @app.get("/pi/whatif")
+@widget("markdown", demo="preview stub; what-if analytics are not wired yet")
 def whatif(request: Request, symbol: str = "AAPL", delta_shares: str = "100") -> str:
     """Markdown widget — human-readable What-If diff summary."""
     require_auth(request)
@@ -196,6 +209,7 @@ def whatif(request: Request, symbol: str = "AAPL", delta_shares: str = "100") ->
     try:
         delta = int(delta_shares)
     except ValueError:
+        mark_unavailable("delta_shares is not an integer, so no diff was computed")
         return "**What-If (invalid input)**\n\n`delta_shares` is not an integer."
 
     action = "BUY" if delta >= 0 else "SELL"
@@ -208,13 +222,22 @@ def whatif(request: Request, symbol: str = "AAPL", delta_shares: str = "100") ->
     )
 
 
+def _brinson_demo(params: dict) -> str:
+    """Name the synthetic Brinson book, window, and benchmark (#1267, #1269)."""
+    benchmark = str(params.get("benchmark_symbol", "")).strip().upper()
+    return (
+        f"synthetic demo book, {params.get('window')} vs {benchmark}; "
+        "not your portfolio"
+    )
+
+
 @app.get("/pi/attribution", response_model=None)
+@plotly_chart(brinson_chart, demo=_brinson_demo)
 def attribution(
     request: Request,
     window: str = "1Y",
     benchmark_symbol: str = "SPY",
-    raw: bool = False,
-) -> list[dict[str, float | str]] | dict[str, Any]:
+) -> list[dict[str, float | str]]:
     """Brinson-Fachler attribution in percentage points as a Plotly figure.
 
     ``raw=true`` returns the underlying per-sector rows
@@ -259,9 +282,7 @@ def attribution(
         }
         for row in waterfall.rows
     ]
-    if raw:
-        return rows
-    return brinson_attribution_figure(rows, window=window, benchmark_symbol=bm)
+    return rows
 
 
 # Batch of P1/P2/P3 widget endpoints (#529-#577) — imported for side

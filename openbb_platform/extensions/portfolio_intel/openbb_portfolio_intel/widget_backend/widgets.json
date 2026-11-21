@@ -125,6 +125,25 @@
           {
             "field": "rank",
             "headerName": "Rank"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -181,6 +200,25 @@
           {
             "field": "detail",
             "headerName": "Details"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -245,6 +283,25 @@
           {
             "field": "date",
             "headerName": "Date"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -389,6 +446,25 @@
             "field": "avg_price",
             "headerName": "Average Execution Price",
             "headerTooltip": "Quantity-weighted average price across fills."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -510,6 +586,25 @@
           {
             "field": "delta",
             "headerName": "Change"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -573,6 +668,25 @@
           {
             "field": "severity",
             "headerName": "Severity"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -645,6 +759,25 @@
           {
             "field": "detail",
             "headerName": "Details"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -722,6 +855,25 @@
           {
             "field": "value",
             "headerName": "Value"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -792,6 +944,25 @@
           {
             "field": "note",
             "headerName": "Interpretation"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -831,6 +1002,25 @@
           {
             "field": "note",
             "headerName": "Context"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -880,6 +1070,25 @@
             "field": "value_usd",
             "headerName": "Market Value ($)",
             "headerTooltip": "Current value based on market prices."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -924,6 +1133,25 @@
             "field": "change_pct",
             "headerName": "Change (%)",
             "headerTooltip": "Price movement relative to a reference price."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1192,6 +1420,25 @@
             "field": "surprise_pct",
             "headerName": "Surprise (%)",
             "headerTooltip": "Percentage difference between reported EPS and estimated EPS."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1254,6 +1501,25 @@
             "field": "amount",
             "headerName": "Dividend Amount ($/share)",
             "headerTooltip": "Cash dividend declared for each share."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1374,6 +1640,25 @@
           {
             "field": "period_2",
             "headerName": "Prior Period (millions)"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1476,6 +1761,25 @@
             "field": "ps_ttm",
             "headerName": "P/S (TTM)",
             "headerTooltip": "Price divided by trailing twelve-month sales per share."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1568,6 +1872,25 @@
           {
             "field": "note",
             "headerName": "Note"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }
@@ -1635,6 +1958,25 @@
             "field": "consensus",
             "headerName": "Consensus Rating",
             "headerTooltip": "Aggregate analyst buy, hold, or sell view."
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
           }
         ]
       }

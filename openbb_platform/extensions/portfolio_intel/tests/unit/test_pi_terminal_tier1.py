@@ -78,7 +78,12 @@ def test_stock_splits_widget_declared() -> None:
 def test_dividend_payment_widget_declared() -> None:
     w = _widgets().get("pi_dividend_payment")
     assert w and w["type"] == "table"
-    table = w["data"]["table"]["columnsDefs"]
+    table = [
+        column
+        for column in w["data"]["table"]["columnsDefs"]
+        if column["field"]
+        not in ("data_state", "data_source", "data_as_of")  # #1269 provenance columns
+    ]
     assert table == [
         {
             "field": "ex_date",

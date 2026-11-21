@@ -56,14 +56,60 @@ Widget → HTTP endpoint → analytics.<module> → JSON response
 ## Add a new widget
 
 1. Add an entry to `widgets.json` (name, description, type, endpoint, gridData, params).
-2. Add the FastAPI route to `main.py` returning data matching the declared `type`:
-   - `markdown` → return a non-empty str that says when it is a demo, stub or unavailable.
-   - `chart` → return a Plotly figure dict by default, with no `layout.title` (Workspace shows the widget name); put the data state in `layout.meta.state` and a demo/empty/unavailable annotation.
-   - `chart` with `raw: true` → also return the underlying rows when called with `raw=true`. For a row endpoint, wrap it with `terminal_charts.plotly_chart(builder)` (#1268), which adds the `raw` parameter.
-   - `table` → return a list of dicts. Label enum codes and row identifiers in the response (`table_contracts.relabel`); a column's glossary is its `headerTooltip` (the Local Viewer glossary summary). Workspace's schema rejects `glossaryKey`, `valueLabels`, `rowLabels` and `data.metricGlossary` (#1268).
-   - `metric` → return Workspace metric cards `[{"label": ..., "value": ..., "delta"?: ...}]`; use `table_contracts.metric_cards`, which adds a `Data State` card and shows `Unavailable` instead of placeholder numbers (#1268).
+2. Add the FastAPI route to `main.py` returning data matching the declared `type`. Every
+   response states its data state (live, cached, demo, stale, partial or unavailable) through
+   one model, `provenance.py` (#1269); see "Data state and provenance" below.
+   - `markdown` → return a non-empty str; decorate with `@widget("markdown", demo=...)`, which
+     appends a `**Data state:** <State>` line.
+   - `chart` → return the rows and wrap the route with `terminal_charts.plotly_chart(builder,
+     demo=...)` (#1268): the default response is a Plotly figure with no `layout.title`
+     (Workspace shows the widget name), the record in `layout.meta` and, unless live, an
+     annotation; `raw=true` returns the rows.
+   - `table` → return a list of dicts and decorate with `@widget("table", demo=...)`, which adds
+     the `data_state` / `data_source` / `data_as_of` columns. Label enum codes and row
+     identifiers in the response (`table_contracts.relabel`); a column's glossary is its
+     `headerTooltip` (the Local Viewer glossary summary). Workspace's schema rejects
+     `glossaryKey`, `valueLabels`, `rowLabels` and `data.metricGlossary` (#1268).
+   - `metric` → return Workspace metric cards via `table_contracts.metric_cards` (shows
+     `Unavailable` instead of placeholder numbers) and decorate with `@widget("metric", ...)`,
+     which appends the `Data State` card.
 3. Reference the analytics module rather than reimplementing math.
 4. Add a smoke test in `tests/unit/test_widget_backend.py` that hits the endpoint via `TestClient` and asserts the shape matches the widget type contract.
+
+## Data state and provenance
+
+`provenance.py` defines `DataState` (live, cached, demo, stale, partial, unavailable,
+forbidden) and a `Provenance` record (state, source, as-of, reason). The record is built once
+per request from the serving tier (`record_tier_used`), an explicit `mark(...)` by the
+endpoint (unavailable accounts, snapshot freshness, probe results) or the decorator's `demo`
+reason, and rendered per widget type:
+
+| Type | Where the state lives |
+|---|---|
+| chart | `layout.meta` = `{state, source, asOf, reason}` plus an annotation unless live |
+| table and `raw=true` rows | `data_state`, `data_source`, `data_as_of` string columns on every row (`data_source` / `data_as_of` are `hide: true` column defs where a widget declares `columnsDefs`) |
+| metric | trailing card `{"label": "Data State", "value": "<State>: <reason>"}` |
+| markdown | closing `**Data state:** <State> - <reason>. Source: ...; as of ...` line |
+
+The `X-PI-Data-State`, `X-PI-Data-Source` and `X-PI-Data-As-Of` headers come from the same
+per-request record, so they always match the body. A 401/403 stays an error with
+`X-PI-Data-State: forbidden` and no data. `as_of` is only what was observed (snapshot session,
+probe time, or the UTC time the backend read its own state); provider tiers report `unknown`.
+`fmp_cached` serves persisted provider responses, so it is `cached` (as-of `unknown`); only real
+provider calls are `live`. `contracts.collect_response_issues` fails any widget response without
+a valid state. Harness fixtures normalize only those observation times
+(`openbb_browser_test_harness.normalize`).
+
+### Demo mode (`PI_DEMO_MODE`)
+
+| Value | Behaviour |
+|---|---|
+| `fallback` (default) | The stub answers when no provider does, always labelled `demo` in body and headers. |
+| `off` | No synthetic fallback: when no provider answers, the widget is `unavailable` with a reason and no sample values. Selecting `account_id=demo` / `basket_id=demo` is explicit and still shows the labelled synthetic book. |
+| `only` | Onboarding and tests: provider tiers are never called; every widget serves labelled demo data. |
+
+Responses never echo a non-demo account identifier, credential or home path (redaction test:
+`tests/unit/test_demo_mode_redaction_1269.py`).
 
 ## CORS
 

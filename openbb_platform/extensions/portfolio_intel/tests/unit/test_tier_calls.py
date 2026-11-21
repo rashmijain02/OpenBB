@@ -31,6 +31,13 @@ from openbb_portfolio_intel.widget_backend.main import app
 _client = TestClient(app)
 
 
+def _without_provenance(rows: list[dict]) -> list[dict]:
+    """Drop the #1269 provenance columns, which every row carries as strings."""
+    keys = ("data_state", "data_source", "data_as_of")
+    assert all(isinstance(row[key], str) for row in rows for key in keys)
+    return [{k: v for k, v in row.items() if k not in keys} for row in rows]
+
+
 @pytest.fixture(autouse=True)
 def _clear_and_reregister() -> None:
     """Reset the dispatch table, then re-run production registrations."""
@@ -213,7 +220,7 @@ def test_endpoint_serves_from_tier_not_stub(monkeypatch: pytest.MonkeyPatch) -> 
     )
     resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=line&raw=true")
     assert resp.status_code == 200
-    rows = resp.json()
+    rows = _without_provenance(resp.json())
     assert rows == [
         {"date": "2026-06-01", "close": 192.01},
         {"date": "2026-06-02", "close": 194.3},
@@ -234,7 +241,9 @@ def test_endpoint_rejects_invalid_chart_type_with_tier_registered(
     monkeypatch.setattr(
         tier_calls, "_fetch_price_history_rows", lambda symbol: _fixture_rows()
     )
-    resp = _client.get("/pi/equity/price-history?symbol=AAPL&chart_type=heikin&raw=true")
+    resp = _client.get(
+        "/pi/equity/price-history?symbol=AAPL&chart_type=heikin&raw=true"
+    )
     assert resp.status_code == 400
     detail = resp.json().get("detail", "")
     assert "chart_type" in detail and "line" in detail and "candle" in detail
@@ -269,7 +278,9 @@ def test_endpoint_forwards_normalized_symbol_to_tier(
         return _fixture_rows()
 
     monkeypatch.setattr(tier_calls, "_fetch_price_history_rows", _capture)
-    resp = _client.get("/pi/equity/price-history?symbol=+aapl+&chart_type=line&raw=true")
+    resp = _client.get(
+        "/pi/equity/price-history?symbol=+aapl+&chart_type=line&raw=true"
+    )
     assert resp.status_code == 200
     assert seen["symbol"] == "AAPL", (
         "live tier must be queried with the normalized ticker, not the raw "
@@ -386,7 +397,7 @@ def test_perf_endpoint_serves_from_tier_not_stub(
     )
     resp = _client.get("/pi/equity/price-performance?symbol=AAPL")
     assert resp.status_code == 200
-    rows = resp.json()
+    rows = _without_provenance(resp.json())
     assert {"period": "1D", "return_pct": -0.13} in rows
     assert not any(r["return_pct"] == 0.54 for r in rows), "served the stub!"
 
@@ -667,7 +678,7 @@ def test_geo_endpoint_serves_from_tier_not_stub(
     )
     resp = _client.get("/pi/equity/revenue-geography?symbol=AAPL&raw=true")
     assert resp.status_code == 200
-    rows = resp.json()
+    rows = _without_provenance(resp.json())
     assert {"region": "Americas", "revenue": 125_000} in rows
     assert not any(r["revenue"] == 162560 for r in rows), "served the stub!"
 
@@ -804,7 +815,7 @@ def test_seg_endpoint_serves_from_tier_not_stub(
     )
     resp = _client.get("/pi/equity/revenue-business-line?symbol=AAPL&raw=true")
     assert resp.status_code == 200
-    rows = resp.json()
+    rows = _without_provenance(resp.json())
     assert {"segment": "iPhone", "revenue": 203_000} in rows
     assert not any(r["revenue"] == 200583 for r in rows), "served the stub!"
 
@@ -2959,7 +2970,9 @@ def test_shape_key_stats_omits_forward_pe_without_positive_estimate(mean) -> Non
     assert "Forward P/E" not in {row["metric"] for row in rows}
 
 
-def test_fetch_share_statistics_uses_fmp_cached(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fetch_share_statistics_uses_fmp_cached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The share-statistics enrichment must preserve fmp_cached provenance."""
     seen: dict = {}
 

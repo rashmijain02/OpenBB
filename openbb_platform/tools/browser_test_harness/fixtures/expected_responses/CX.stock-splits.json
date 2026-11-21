@@ -1,30 +1,45 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2020-08-31",
       "denominator": 1,
       "numerator": 4,
       "ratio": "4:1"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2014-06-09",
       "denominator": 1,
       "numerator": 7,
       "ratio": "7:1"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2005-02-28",
       "denominator": 1,
       "numerator": 2,
       "ratio": "2:1"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2000-06-21",
       "denominator": 1,
       "numerator": 2,
       "ratio": "2:1"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "1987-06-16",
       "denominator": 1,
       "numerator": 2,
