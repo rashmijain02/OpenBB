@@ -1,0 +1,436 @@
+{
+  "description": "Known Workspace-schema violations in the served manifests (#1266). Shrink-only: tests fail on any new issue and on any entry that no longer occurs. Remove entries when the owning repair issue fixes them.",
+  "schemaSource": "third_party/workspace/terminalpro (widget-schema.json, apps-schema.json)",
+  "issues": [
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_xray_sector.data.chart",
+      "tracking": "#1267"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_xray_country.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_lookthrough_top25.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_lookthrough_top25.data.table.columnsDefs[2].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_concentration_gauge.data.metric",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_concentration_gauge.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_event_calendar.data.table.columnsDefs[1].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_event_calendar.data.table.columnsDefs[1].valueLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_smart_money_ribbon.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_smart_money_ribbon.data.table.columnsDefs[1].valueLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_smart_money_ribbon.data.table.columnsDefs[3].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_risk_dashboard.data.metric",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_risk_dashboard.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_risk_vol_chart.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_risk_vol_chart.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_paper_blotter.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_paper_blotter.data.table.columnsDefs[5].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_paper_performance.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_paper_performance.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_paper_perf_kpis.data.metric",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_paper_perf_kpis.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_whatif_card.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.unknown_key",
+      "path": "widgets.pi_whatif_card.data.table.rowLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_brinson_attribution.data.chart",
+      "tracking": "#1267"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_brinson_attribution.data.metricGlossary",
+      "tracking": "#1267"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_sentiment_gauge.data.metric",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_alerts_panel.data.table.columnsDefs[1].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_alerts_panel.data.table.columnsDefs[1].valueLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_key_stats.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_financial_charts.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_financial_charts.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_technicals.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.unknown_key",
+      "path": "widgets.pi_equity_technicals.data.table.rowLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_analyst_forecasts.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.unknown_key",
+      "path": "widgets.pi_equity_analyst_forecasts.data.table.rowLabelPatterns",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.unknown_key",
+      "path": "widgets.pi_equity_analyst_forecasts.data.table.rowLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_complementary.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_equity_complementary.data.table.columnsDefs[3].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_equity_complementary.data.table.columnsDefs[4].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_equity_competitors.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_equity_competitors.data.table.columnsDefs[3].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.unknown_key",
+      "path": "widgets.pi_equity_price_history.help",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_revenue_geography.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_revenue_business_line.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_stock_ownership.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_earnings_history.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_earnings_history.data.table.columnsDefs[1].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_earnings_history.data.table.columnsDefs[2].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_earnings_history.data.table.columnsDefs[3].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_dividend_payment.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_dividend_payment.data.table.columnsDefs[0].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_dividend_payment.data.table.columnsDefs[2].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_price_target_history.data.chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_price_target_history.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_financial_statements.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_peer_multiples.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_peer_multiples.data.table.columnsDefs[1].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_peer_multiples.data.table.columnsDefs[2].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_peer_multiples.data.table.columnsDefs[3].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_peer_multiples.data.table.columnsDefs[4].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.unknown_key",
+      "path": "widgets.tt_segment_movers.dataKey",
+      "tracking": "#1271"
+    },
+    {
+      "code": "widget.unknown_key",
+      "path": "widgets.tt_scan_table.dataKey",
+      "tracking": "#1271"
+    },
+    {
+      "code": "widget.data.unknown_key",
+      "path": "widgets.pi_basket_analyst_consensus.data.metricGlossary",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_basket_analyst_consensus.data.table.columnsDefs[1].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_basket_analyst_consensus.data.table.columnsDefs[5].glossaryKey",
+      "tracking": "#1268"
+    },
+    {
+      "code": "widget.table.column.unknown_key",
+      "path": "widgets.pi_basket_analyst_consensus.data.table.columnsDefs[5].valueLabels",
+      "tracking": "#1268"
+    },
+    {
+      "code": "app.unknown_key",
+      "path": "apps.custom-portfolio-intelligence-terminal.guidedTour",
+      "tracking": "#1270"
+    },
+    {
+      "code": "app.unknown_key",
+      "path": "apps.custom-portfolio-intelligence-terminal.params",
+      "tracking": "#1270"
+    },
+    {
+      "code": "app.unknown_key",
+      "path": "apps.custom-techtrade-desk.params",
+      "tracking": "#1270"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_xray_sector",
+      "tracking": "#1267"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_xray_country",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.metric",
+      "path": "responses.pi_risk_dashboard",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_risk_vol_chart",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_paper_performance",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.metric",
+      "path": "responses.pi_paper_perf_kpis",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_brinson_attribution",
+      "tracking": "#1267"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_equity_financial_charts",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_equity_price_history",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_revenue_geography",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_revenue_business_line",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_stock_ownership",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_price_target_history",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.pi_charting",
+      "tracking": "#1268"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.tt_segment_movers",
+      "tracking": "#1271"
+    },
+    {
+      "code": "response.shape.table",
+      "path": "responses.tt_scan_table",
+      "tracking": "#1271"
+    },
+    {
+      "code": "response.shape.chart",
+      "path": "responses.tt_simulate_result",
+      "tracking": "#1271"
+    }
+  ]
+}
