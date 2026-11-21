@@ -138,7 +138,7 @@ Read pi_xray_sector on the X-Ray tab.
 
 Read pi_xray_country on the X-Ray tab.
 
-**Expected:** 6 country rows; United States ~0.72.
+**Expected:** Pie of 6 countries labelled as the synthetic demo portfolio; United States ~72%.
 
 **Params:** `account_id=demo`
 
@@ -158,7 +158,7 @@ Read pi_xray_country on the X-Ray tab.
 
 Read pi_concentration_gauge.
 
-**Expected:** HHI metric between 0 and 1; demo value ~0.26.
+**Expected:** Metric card 'Concentration (HHI)' between 0 and 1 (demo value ~0.24) and a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -178,7 +178,7 @@ Read pi_concentration_gauge.
 
 Read pi_risk_dashboard.
 
-**Expected:** vol_annualized, var_95_1d, beta_spy numeric values present, note field = 'demo book'.
+**Expected:** Metric cards 'Annualized Volatility (%)', '1-Day 95% VaR (%)' and 'Beta vs SPY' with numeric values, and a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -218,7 +218,7 @@ Read pi_brinson_attribution.
 
 Read pi_event_calendar on the Calendar tab.
 
-**Expected:** 5+ rows covering earnings, ex_dividend, form_8k events.
+**Expected:** 5+ rows covering Earnings, Ex-Dividend and Form 8-K events (labelled by the endpoint).
 
 **Params:** `account_id=demo` · `horizon_days=30`
 
@@ -258,7 +258,7 @@ Read pi_alerts_panel on the Alerts tab.
 
 Read pi_paper_perf_kpis on the Paper Trading tab.
 
-**Expected:** Total return, Sharpe, max drawdown numeric values.
+**Expected:** Metric cards for total return (%), annualized Sharpe ratio and maximum drawdown (%), plus a 'Data State' card that says Demo.
 
 **Params:** `account_id=demo`
 
@@ -314,7 +314,7 @@ Navigate to the Morning Review tab. It composes 5 REUSE widgets: concentration +
 
 Read pi_basket_analyst_consensus with basket_id=demo.
 
-**Expected:** 5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, hold, sell, consensus fields.
+**Expected:** 5 rows (AAPL, MSFT, GOOGL, NVDA, META) with avg_target, buy, hold, sell, consensus fields; consensus reads Buy or Strong Buy.
 
 **Params:** `basket_id=demo`
 
@@ -396,7 +396,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Chart rows for 5-yr revenue + net income + margin.
+**Expected:** Chart: revenue and net income bars ($B) with net margin (%) on a right axis.
 
 **Params:** `symbol=AAPL`
 
@@ -496,7 +496,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** OHLC rows with date+close in line-chart mode.
+**Expected:** Line chart of the daily closing price (6M default).
 
 **Params:** `symbol=AAPL` · `chart_type=line`
 
@@ -516,7 +516,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** OHLC + SMA20/SMA50/RSI14 overlays.
+**Expected:** OHLC candles with SMA20/SMA50 overlays and an RSI14 pane.
 
 **Params:** `symbol=AAPL` · `window=3M`
 
@@ -556,7 +556,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Ownership bucket rows (Institutions/Retail/ETFs/Insiders).
+**Expected:** Pie of ownership by holder type (Institutions/Retail/ETFs/Insiders).
 
 **Params:** `symbol=AAPL`
 
@@ -716,7 +716,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Region/revenue rows totaling ~total revenue.
+**Expected:** Pie of latest-period revenue by region.
 
 **Params:** `symbol=AAPL`
 
@@ -736,7 +736,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Segment/revenue rows totaling ~total revenue.
+**Expected:** Pie of latest-period revenue by business segment.
 
 **Params:** `symbol=AAPL`
 
@@ -796,7 +796,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Target-vs-close time series rows.
+**Expected:** Lines: analyst price target vs. the close when each target was published.
 
 **Params:** `symbol=AAPL`
 
@@ -836,7 +836,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** 20d/60d rolling realized volatility rows.
+**Expected:** Lines: 20d/60d rolling realized volatility in percent.
 
 **Params:** `account_id=demo`
 
@@ -916,7 +916,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Paper account equity-curve rows.
+**Expected:** Line: paper account equity curve.
 
 **Params:** `account_id=demo`
 
@@ -1612,7 +1612,7 @@ Deep invariant sweep (B9 #1734). context symbol rejects CRLF header-injection pa
 
 **Expected:** HTTP 400 rejection.
 
-**Params:** `symbol=AAPL
+**Params:** `symbol=AAPL
 X-Injected: yes`
 
 **Endpoint:** `pi/context/symbol`

@@ -1,36 +1,112 @@
 {
-  "body": [
-    {
-      "net_income_b": 94.68,
-      "net_margin_pct": 25.88,
-      "revenue_b": 365.817,
-      "year": 2021.0
-    },
-    {
-      "net_income_b": 99.803,
-      "net_margin_pct": 25.31,
-      "revenue_b": 394.328,
-      "year": 2022.0
-    },
-    {
-      "net_income_b": 96.995,
-      "net_margin_pct": 25.31,
-      "revenue_b": 383.285,
-      "year": 2023.0
-    },
-    {
-      "net_income_b": 93.736,
-      "net_margin_pct": 23.97,
-      "revenue_b": 391.035,
-      "year": 2024.0
-    },
-    {
-      "net_income_b": 112.01,
-      "net_margin_pct": 26.92,
-      "revenue_b": 416.161,
-      "year": 2025.0
+  "body": {
+    "data": [
+      {
+        "hovertemplate": "FY %{x}<br>Revenue ($B): %{y:,.1f}<br>Annual sales expressed in billions of dollars.<extra></extra>",
+        "meta": {
+          "glossaryKey": "revenue_b"
+        },
+        "name": "Revenue ($B)",
+        "type": "bar",
+        "x": [
+          2021.0,
+          2022.0,
+          2023.0,
+          2024.0,
+          2025.0
+        ],
+        "y": [
+          365.8,
+          394.3,
+          383.3,
+          391.0,
+          400.5
+        ]
+      },
+      {
+        "hovertemplate": "FY %{x}<br>Net Income ($B): %{y:,.1f}<br>Annual profit after expenses, taxes, and interest, shown in billions.<extra></extra>",
+        "meta": {
+          "glossaryKey": "net_income_b"
+        },
+        "name": "Net Income ($B)",
+        "type": "bar",
+        "x": [
+          2021.0,
+          2022.0,
+          2023.0,
+          2024.0,
+          2025.0
+        ],
+        "y": [
+          94.7,
+          99.8,
+          97.0,
+          93.0,
+          102.3
+        ]
+      },
+      {
+        "hovertemplate": "FY %{x}<br>Net Margin (%): %{y:.2f}%<br>Net income as a percentage of revenue.<extra></extra>",
+        "meta": {
+          "glossaryKey": "net_margin_pct"
+        },
+        "mode": "lines+markers",
+        "name": "Net Margin (%)",
+        "type": "scatter",
+        "x": [
+          2021.0,
+          2022.0,
+          2023.0,
+          2024.0,
+          2025.0
+        ],
+        "y": [
+          25.89,
+          25.31,
+          25.31,
+          23.79,
+          25.54
+        ],
+        "yaxis": "y2"
+      }
+    ],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Demo data: no live provider answered, so these are sample values, not live AAPL data.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 1.08,
+          "yref": "paper"
+        }
+      ],
+      "barmode": "group",
+      "meta": {
+        "source": "stub",
+        "state": "demo"
+      },
+      "xaxis": {
+        "title": {
+          "text": "Fiscal year"
+        },
+        "type": "category"
+      },
+      "yaxis": {
+        "title": {
+          "text": "Billions ($B)"
+        }
+      },
+      "yaxis2": {
+        "overlaying": "y",
+        "showgrid": false,
+        "side": "right",
+        "title": {
+          "text": "Net margin (%)"
+        }
+      }
     }
-  ],
+  },
   "endpoint": "pi/equity/financials",
   "params": {
     "symbol": "AAPL"

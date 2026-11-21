@@ -215,6 +215,7 @@
     .metric .mlabel { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
     .metric .mvalue { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
     .metric.pos .mvalue { color: var(--green); } .metric.neg .mvalue { color: var(--red); }
+    .metric .mdelta { font-size: 12px; color: var(--muted); }
     .mnote { padding: 0 14px 12px; color: var(--muted); font-size: 12px; }
     /* Chart widgets — inline SVG, no CDN (#1805) */
     .chart { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -548,40 +549,29 @@
   function renderTable(container, rows, widget) {
     hideMetricHelpLayerWithin(container);
     if (!rows.length) { container.innerHTML = '<div class="state">No rows returned.</div>'; return; }
+    // #1268: the backend labels enum codes and row identifiers itself, and a
+    // column's glossary is its schema-native headerTooltip (the glossary
+    // record's summary). Row help is keyed on the rendered first-column label.
     const defs = widget && widget.data && widget.data.table && widget.data.table.columnsDefs;
-    const map = widget && widget.data && widget.data.metricGlossary;
-    const rowLabels = widget && widget.data && widget.data.table && widget.data.table.rowLabels;
-    const rowLabelPatterns = widget && widget.data && widget.data.table && widget.data.table.rowLabelPatterns;
     const cols = (defs && defs.length)
       ? defs.map((c) => ({
         field: c.field,
         header: c.headerName || c.field,
-        glossaryKey: c.glossaryKey || null,
+        tooltip: typeof c.headerTooltip === "string" ? c.headerTooltip : "",
+        glossaryKey: metricGlossaryKeyForSummary(c.headerTooltip),
         formatterFn: c.formatterFn,
         renderFn: c.renderFn,
-        valueLabels: c.valueLabels || null,
       }))
-      : Object.keys(rows[0]).map((k) => ({ field: k, header: k }));
-    const thead = "<tr>" + cols.map((c) => `<th>${metricLabelHtml(c.header, c.glossaryKey)}</th>`).join("") + "</tr>";
+      : Object.keys(rows[0]).map((k) => ({ field: k, header: k, tooltip: "", glossaryKey: null }));
+    const thead = "<tr>" + cols.map((c) => {
+      const title = c.tooltip ? ` title="${escapeHtml(c.tooltip)}"` : "";
+      return `<th${title}>${metricLabelHtml(c.header, c.glossaryKey)}</th>`;
+    }).join("") + "</tr>";
     const body = rows.map((r) =>
       "<tr>" + cols.map((c, idx) => {
         const v = r[c.field];
-        const pattern = idx === 0 && typeof v === "string" && Array.isArray(rowLabelPatterns)
-          ? rowLabelPatterns.find((item) => {
-            try { return item && item.pattern && new RegExp(item.pattern).test(v); } catch (_) { return false; }
-          })
-          : null;
-        const display = idx === 0 && typeof v === "string" && rowLabels
-          && Object.prototype.hasOwnProperty.call(rowLabels, v) ? rowLabels[v]
-          : (pattern && pattern.labelTemplate ? v.replace(new RegExp(pattern.pattern), pattern.labelTemplate)
-            : (pattern && pattern.label) || (c.valueLabels
-              && Object.prototype.hasOwnProperty.call(c.valueLabels, v) ? c.valueLabels[v] : v));
-        const key = idx === 0 && typeof v === "string" && (
-          (map && Object.prototype.hasOwnProperty.call(map, v) && map[v])
-          || (map && Object.prototype.hasOwnProperty.call(map, display) && map[display])
-          || (pattern && pattern.glossaryKey)
-        );
-        const label = metricLabelHtml(fmtCell(display, c), key);
+        const key = idx === 0 && typeof v === "string" ? glossaryKeyForLabel(widget, v) : null;
+        const label = metricLabelHtml(fmtCell(v, c), key);
         return `<td class="${cellClass(v, c)}">${label}</td>`;
       }).join("") + "</tr>"
     ).join("");
@@ -995,36 +985,30 @@
     return `<div class="chart"><svg viewBox="0 0 ${W} ${Hh}" width="100%" height="${Hh}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="line chart">${axis}${yhi}${ylo}${xticks}${polylines}</svg><div class="legend">${legend}</div></div>`;
   }
 
-  // Shape a metric endpoint's dict into cards.
-  //  - {value,label,note}                 -> one prominent card
-  //  - {vol_annualized,var_95_1d,...,note} -> one card per numeric key
+  // Shape a metric endpoint's response into cards.
+  //  - [{label,value,delta?}, ...]        -> one card per Workspace metric (#1268)
+  //  - {value,label,note}                 -> one prominent card (legacy)
+  //  - {vol_annualized,var_95_1d,...,note} -> one card per numeric key (legacy)
+  // Glossary help is keyed on the card label (metricLabelGlossaryKey).
   // Sign coloring: value > 0 -> pos, < 0 -> neg.
-  function metricModel(obj, metricMeta) {
-    const o = (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
-    const note = (typeof o.note === "string") ? o.note : "";
+  function metricModel(obj) {
     const sign = (v) => (typeof v === "number" ? (v > 0 ? "pos" : v < 0 ? "neg" : "") : "");
-    const labels = metricMeta && metricMeta.labels && typeof metricMeta.labels === "object" ? metricMeta.labels : null;
-    const formatters = metricMeta && metricMeta.formatters && typeof metricMeta.formatters === "object"
-      ? metricMeta.formatters
-      : null;
-    const glossary = metricMeta && metricMeta.metricGlossary && typeof metricMeta.metricGlossary === "object"
-      ? metricMeta.metricGlossary
-      : null;
-    const glossaryKeyForLabel = (label) => {
-      if (!glossary || typeof label !== "string") return null;
-      return Object.prototype.hasOwnProperty.call(glossary, label) ? glossary[label] : null;
-    };
+    if (Array.isArray(obj)) {
+      const cards = obj
+        .filter((m) => m && typeof m === "object" && "label" in m && "value" in m)
+        .map((m) => {
+          const label = String(m.label);
+          const delta = m.delta === undefined || m.delta === null ? null : String(m.delta);
+          return { label, value: m.value, delta, cls: sign(m.value), glossaryKey: metricLabelGlossaryKey(label) };
+        });
+      return { cards, note: "" };
+    }
+    const o = (obj && typeof obj === "object") ? obj : {};
+    const note = (typeof o.note === "string") ? o.note : "";
     if ("value" in o) {
-      const rawLabel = (typeof o.label === "string" ? o.label : "");
-      const label = labels && typeof labels.value === "string" ? labels.value : rawLabel;
+      const label = (typeof o.label === "string" ? o.label : "");
       return {
-        cards: [{
-          label,
-          value: o.value,
-          cls: sign(o.value),
-          glossaryKey: glossaryKeyForLabel(label),
-          formatterFn: formatters && typeof formatters.value === "string" ? formatters.value : null,
-        }],
+        cards: [{ label, value: o.value, delta: null, cls: sign(o.value), glossaryKey: metricLabelGlossaryKey(label) }],
         note,
       };
     }
@@ -1032,15 +1016,7 @@
     for (const [k, v] of Object.entries(o)) {
       if (k === "note" || k === "label") continue;
       if (typeof v === "number") {
-        const label = labels && typeof labels[k] === "string" ? labels[k] : k;
-        cards.push({
-          label,
-          rawKey: k,
-          value: v,
-          cls: sign(v),
-          glossaryKey: glossaryKeyForLabel(label),
-          formatterFn: formatters && typeof formatters[k] === "string" ? formatters[k] : null,
-        });
+        cards.push({ label: k, rawKey: k, value: v, delta: null, cls: sign(v), glossaryKey: metricLabelGlossaryKey(k) });
       }
     }
     return { cards, note };
@@ -1059,13 +1035,10 @@
 
   function renderMetric(container, obj, widgetDef) {
     hideMetricHelpLayerWithin(container);
-    const metricMeta = widgetDef && widgetDef.data && widgetDef.data.metric;
-    const model = metricModel(obj, metricMeta);
+    const model = metricModel(obj);
     if (!model.cards.length) { container.innerHTML = '<div class="state">No metric value returned.</div>'; return; }
-    const fmt = (v, formatterFn) => {
+    const fmt = (v) => {
       if (typeof v !== "number") return String(v);
-      if (formatterFn === "percent") return v.toFixed(2) + "%";
-      if (formatterFn === "normalizedPercent") return (v * 100).toFixed(2) + "%";
       return Number.isInteger(v) ? String(v) : v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
     };
     const cards = model.cards.map((c) =>
@@ -1073,7 +1046,8 @@
         const entry = c.glossaryKey ? metricGlossaryEntry(c.glossaryKey) : metricGlossaryForLabel(widgetDef, c.label);
         const title = entry ? ` title="${escapeHtml(entry.summary)}"` : "";
         const rawKey = c.rawKey ? ` data-metric-key="${escapeHtml(c.rawKey)}"` : "";
-        return `<div class="metric ${c.cls}"${rawKey}><div class="mlabel"${title}>${metricLabelHtml(c.label, c.glossaryKey)}</div><div class="mvalue">${escapeHtml(fmt(c.value, c.formatterFn))}</div></div>`;
+        const delta = c.delta ? `<div class="mdelta">${escapeHtml(c.delta)}</div>` : "";
+        return `<div class="metric ${c.cls}"${rawKey}><div class="mlabel"${title}>${metricLabelHtml(c.label, c.glossaryKey)}</div><div class="mvalue">${escapeHtml(fmt(c.value))}</div>${delta}</div>`;
       })()
     ).join("");
     const note = model.note ? `<div class="mnote">${escapeHtml(model.note)}</div>` : "";
@@ -1249,17 +1223,58 @@
       }
       return out;
     }
+    // Candlestick/OHLC (#1268): price candles plus, when present, the volume
+    // bars from the lower pane. Other overlays (SMA lines, an RSI pane) are not
+    // drawn, matching the row renderer's candle model.
+    const candle = traces.find((t) => t.type === "candlestick" || t.type === "ohlc");
+    if (candle) {
+      const xs = Array.isArray(candle.x) ? candle.x : [];
+      const at = (arr, i) => (Array.isArray(arr) && arr[i] != null ? Number(arr[i]) : NaN);
+      const candles = xs.map((_, i) => ({
+        x: i, o: at(candle.open, i), h: at(candle.high, i), l: at(candle.low, i), c: at(candle.close, i),
+      })).filter((d) => [d.o, d.h, d.l, d.c].every(Number.isFinite));
+      const vol = traces.find((t) => t !== candle && t.type === "bar"
+        && ((t.meta && t.meta.glossaryKey === "volume") || /^volume$/i.test(String(t.name || ""))));
+      const volume = vol && Array.isArray(vol.y)
+        ? vol.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null }))
+        : null;
+      if (candles.length) {
+        out.model = { kind: "candle", xKey: null, candles, volume, xLabels: xs.map((x) => String(x)) };
+      }
+      return out;
+    }
     const xy = traces.filter((t) => Array.isArray(t.y) && t.y.length);
     if (!xy.length) return out;
     const xs = Array.isArray(xy[0].x) ? xy[0].x : xy[0].y.map((_, i) => i);
+    const toSeries = (t, si) => ({
+      key: t.name ? String(t.name) : "Series " + (si + 1),
+      points: t.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null })),
+    });
+    // Dual axis (#1268): bars on the left axis and series on yaxis "y2" map to
+    // the combo model, so a percent line is not crushed by a $B bar scale.
+    const right = xy.filter((t) => t.yaxis === "y2");
+    const bars = xy.filter((t) => t.type === "bar" && t.yaxis !== "y2");
+    if (right.length && bars.length) {
+      const axisTitle = (axis) => {
+        const title = axis && axis.title;
+        return String((title && typeof title === "object" ? title.text : title) || "");
+      };
+      out.model = {
+        kind: "combo",
+        xKey: null,
+        xLabels: xs.map((x) => String(x)),
+        bars: bars.map(toSeries),
+        lines: right.map(toSeries),
+        leftLabel: axisTitle(layout.yaxis),
+        rightLabel: axisTitle(layout.yaxis2),
+      };
+      return out;
+    }
     out.model = {
       kind: "line",
       xKey: null,
       xLabels: xs.map((x) => String(x)),
-      series: xy.map((t, si) => ({
-        key: t.name ? String(t.name) : "Series " + (si + 1),
-        points: t.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null })),
-      })),
+      series: xy.map(toSeries),
     };
     return out;
   }
@@ -1274,7 +1289,17 @@
     }
     const data = Object.assign({}, (widgetDef && widgetDef.data) || {}, { metricGlossary: parsed.glossary });
     const def = Object.assign({}, widgetDef || {}, { data });
-    container.innerHTML = (caption ? `<div class="state">${caption}</div>` : "") + svgForChart(parsed.model, def);
+    const captionHtml = caption ? `<div class="state">${caption}</div>` : "";
+    // Dated candle/line figures use TradingView Lightweight Charts, like raw
+    // rows do (#1268); any failure falls back to the inline SVG renderer.
+    if (isTimeSeriesModel(parsed.model) && typeof tvChartAvailable === "function" && tvChartAvailable()) {
+      try {
+        renderTradingViewChart(container, parsed.model, def);
+        if (captionHtml) container.insertAdjacentHTML("afterbegin", captionHtml);
+        return;
+      } catch (e) { tvDispose(container); /* fall through to SVG */ }
+    }
+    container.innerHTML = captionHtml + svgForChart(parsed.model, def);
     if (typeof bindMetricHelpButtons === "function") bindMetricHelpButtons(container);
   }
 
@@ -2133,10 +2158,119 @@
     return entry || null;
   }
 
-  function metricGlossaryForLabel(widgetDef, label) {
+  // Rendered display label -> glossary key (#1268). Workspace manifests are
+  // schema-closed, so the viewer keys help on the labels the backend renders:
+  // first-column row labels and metric-card labels. Column headers use their
+  // schema-native headerTooltip instead (metricGlossaryKeyForSummary).
+  function metricLabelGlossaryData() {
+    return {
+      "Effective Weight": "effective_weight",
+      "Effective Weight (%)": "effective_weight",
+      "Herfindahl-Hirschman Index": "herfindahl_hirschman_index",
+      "Concentration (HHI)": "herfindahl_hirschman_index",
+      "Transaction Value": "transaction_value",
+      "Transaction Value ($)": "transaction_value",
+      "Annualized Volatility": "annualized_volatility",
+      "Annualized Volatility (%)": "annualized_volatility",
+      "1-Day VaR (95%)": "one_day_var_95",
+      "1-Day 95% VaR (%)": "one_day_var_95",
+      "Beta vs SPY": "beta_vs_spy",
+      "Average Execution Price": "average_execution_price",
+      "Total Return": "total_return",
+      "Total Return (%)": "total_return",
+      "Sharpe Ratio": "sharpe_ratio",
+      "Annualized Sharpe Ratio": "sharpe_ratio",
+      "Maximum Drawdown": "maximum_drawdown",
+      "Maximum Drawdown (%)": "maximum_drawdown",
+      "Symbol Weight": "symbol_weight",
+      "Symbol Weight (%)": "symbol_weight",
+      "Sector Weight": "sector_weight",
+      "Sector Weight (%)": "sector_weight",
+      "Cash Weight": "cash_weight",
+      "Cash Weight (%)": "cash_weight",
+      "News Sentiment Score (-1 to +1)": "news_sentiment_score",
+      "Market Cap": "market_cap",
+      "P/E (TTM)": "pe_ttm",
+      "P/E (Forward)": "pe_forward",
+      "EV/EBITDA": "ev_ebitda",
+      "P/S (TTM)": "ps_ttm",
+      "EPS (TTM)": "eps_ttm",
+      "Beta": "beta",
+      "Dividend Yield": "dividend_yield",
+      "Volume": "volume",
+      "52-Week High": "fifty_two_week_high",
+      "52-Week Low": "fifty_two_week_low",
+      "Analyst Consensus": "analyst_consensus",
+      "Resistance 1": "resistance",
+      "Resistance 2": "resistance",
+      "Resistance 3": "resistance",
+      "Pivot": "pivot",
+      "Support 1": "support",
+      "Support 2": "support",
+      "Support 3": "support",
+      "ATM Implied Volatility Term Structure": "atm_implied_volatility",
+      "12-Month Price Target": "twelve_month_price_target",
+      "Target Range": "target_range",
+      "Upside vs Current Price": "implied_upside",
+      "Historical Revenue Estimate": "revenue_estimate",
+      "Portfolio Weight": "portfolio_weight",
+      "Portfolio Weight (%)": "portfolio_weight",
+      "Market Value": "market_value",
+      "Market Value ($)": "market_value",
+      "Percentage Price Change": "percentage_price_change",
+      "Change (%)": "percentage_price_change",
+      "Actual EPS": "actual_eps",
+      "Estimated EPS": "estimated_eps",
+      "Earnings Surprise": "earnings_surprise",
+      "Surprise (%)": "earnings_surprise",
+      "Ex-Dividend Date": "ex_dividend_date",
+      "Dividend Amount ($/share)": "dividend_amount_per_share",
+      "Revenue": "revenue",
+      "Gross Profit": "gross_profit",
+      "Operating Income": "operating_income",
+      "Net Income": "net_income",
+      "Total Assets": "total_assets",
+      "Total Debt": "total_debt",
+      "Cash & Equivalents": "cash_and_equivalents",
+      "Operating Cash Flow": "operating_cash_flow",
+      "Free Cash Flow": "free_cash_flow",
+      "Average Price Target": "average_price_target",
+      "Consensus Rating": "consensus_rating",
+    };
+  }
+
+  // Glossary key for a rendered label: exact labels, then the two families
+  // of analyst-forecast rows the backend labels from a pattern.
+  function metricLabelGlossaryKey(label) {
+    if (typeof label !== "string") return null;
+    const map = metricLabelGlossaryData();
+    if (Object.prototype.hasOwnProperty.call(map, label)) return map[label];
+    if (/^Rating Distribution: \S/.test(label)) return "rating_distribution";
+    if (/^Q[1-4] \d{4} EPS Surprise$/.test(label)) return "eps_surprise";
+    return null;
+  }
+
+  // Glossary key whose one-line summary is exactly ``summary`` (a column's
+  // headerTooltip). Summaries are unique per record.
+  function metricGlossaryKeyForSummary(summary) {
+    if (typeof summary !== "string" || !summary) return null;
+    const glossary = typeof METRIC_GLOSSARY !== "undefined" ? METRIC_GLOSSARY : metricGlossaryData();
+    for (const key of Object.keys(glossary)) {
+      if (glossary[key] && glossary[key].summary === summary) return key;
+    }
+    return null;
+  }
+
+  // A widget-scoped map (Plotly trace glossary keys) wins; otherwise the
+  // rendered-label map applies.
+  function glossaryKeyForLabel(widgetDef, label) {
     const map = widgetDef && widgetDef.data && widgetDef.data.metricGlossary;
-    if (!map) return null;
-    return metricGlossaryEntry(map[label]);
+    if (map && Object.prototype.hasOwnProperty.call(map, label)) return map[label];
+    return metricLabelGlossaryKey(label);
+  }
+
+  function metricGlossaryForLabel(widgetDef, label) {
+    return metricGlossaryEntry(glossaryKeyForLabel(widgetDef, label));
   }
 
   // Apply the provenance badge to a widget's header. ``bodyEl`` is the widget

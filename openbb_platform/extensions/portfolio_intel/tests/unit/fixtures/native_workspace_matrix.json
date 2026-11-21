@@ -166,7 +166,6 @@
         "symbol",
         "detail"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -209,7 +208,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -249,7 +247,6 @@
         "sell",
         "consensus"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -282,7 +279,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -344,7 +340,7 @@
       "endpoint": "pi/attribution",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "window",
@@ -360,13 +356,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-overview",
@@ -398,7 +394,7 @@
       "endpoint": "pi/equity/charting",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -414,13 +410,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -442,7 +438,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -464,9 +459,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [
-        "Concentration (HHI)"
-      ],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -512,7 +504,6 @@
       "parameters": [],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -659,7 +650,6 @@
         "payment_date",
         "amount"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -697,7 +687,6 @@
         "eps_estimate",
         "surprise_pct"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -730,7 +719,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -756,7 +744,6 @@
         "value",
         "note"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -794,7 +781,6 @@
         "price",
         "change_pct"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -833,7 +819,6 @@
         "weight_pct",
         "value_usd"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -855,7 +840,7 @@
       "endpoint": "pi/equity/financials",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -865,13 +850,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "combo",
+        "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -907,7 +892,6 @@
         "metric",
         "value"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -949,7 +933,7 @@
       "endpoint": "pi/equity/price-history",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -971,13 +955,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1020,7 +1004,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1057,7 +1040,6 @@
         "value",
         "note"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1101,7 +1083,6 @@
         "date",
         "detail"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1164,7 +1145,6 @@
         "period_1",
         "period_2"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1197,7 +1177,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -1219,7 +1198,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -1246,7 +1224,6 @@
         "effective_weight",
         "rank"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1279,7 +1256,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -1312,7 +1288,6 @@
         "title",
         "severity"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1352,7 +1327,6 @@
         "status",
         "avg_price"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1385,11 +1359,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [
-        "Total Return (%)",
-        "Annualized Sharpe Ratio",
-        "Maximum Drawdown (%)"
-      ],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1431,13 +1400,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1494,7 +1463,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1533,7 +1501,6 @@
         "ev_ebitda",
         "ps_ttm"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1566,7 +1533,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -1577,7 +1543,7 @@
       "endpoint": "pi/equity/price-target-history",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -1587,13 +1553,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1626,7 +1592,6 @@
         "serving",
         "note"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1768,13 +1733,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "segment",
-        "valueColumn": "revenue"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1806,13 +1771,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "region",
-        "valueColumn": "revenue"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1845,11 +1810,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [
-        "Annualized Volatility",
-        "1-Day VaR (95%)",
-        "Beta vs SPY"
-      ],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1891,13 +1851,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1930,9 +1890,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [
-        "News Sentiment Score (-1 to +1)"
-      ],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1971,7 +1928,6 @@
         "value_usd",
         "date"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2003,13 +1959,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "bucket",
-        "valueColumn": "pct"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -2031,7 +1987,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -2053,7 +2008,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2157,7 +2111,6 @@
         "after",
         "delta"
       ],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2196,7 +2149,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-overview",
@@ -2238,13 +2190,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
-        "type": "pie",
-        "labelColumn": "country",
-        "valueColumn": "weight"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2276,13 +2228,13 @@
         }
       ],
       "chart": {
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-portfolio-intelligence-overview",
@@ -2325,7 +2277,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2351,7 +2302,6 @@
       "parameters": [],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2384,7 +2334,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2410,7 +2359,6 @@
       "parameters": [],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": []
     },
     {
@@ -2425,7 +2373,6 @@
       "parameters": [],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2458,7 +2405,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2491,7 +2437,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2524,7 +2469,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2549,13 +2493,13 @@
       "baselineState": "contract-repair",
       "parameters": [],
       "chart": {
+        "plotly": false,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2588,7 +2532,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2620,13 +2563,13 @@
         }
       ],
       "chart": {
+        "plotly": false,
         "raw": true,
         "type": null,
         "labelColumn": null,
         "valueColumn": null
       },
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2665,7 +2608,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2698,7 +2640,6 @@
       ],
       "chart": null,
       "tableFields": [],
-      "metricLabels": [],
       "placements": [
         {
           "appId": "custom-techtrade-desk",

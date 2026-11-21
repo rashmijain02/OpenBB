@@ -142,7 +142,7 @@ def test_management_team_returns_executive_rows() -> None:
 
 def test_revenue_geography_returns_region_revenue_rows() -> None:
     """#1649 — chart rows carry region + revenue for pie rendering."""
-    r = _client.get("/pi/equity/revenue-geography?symbol=AAPL")
+    r = _client.get("/pi/equity/revenue-geography?symbol=AAPL&raw=true")
     assert r.status_code == 200
     rows = r.json()
     assert isinstance(rows, list) and rows
@@ -154,7 +154,7 @@ def test_revenue_geography_returns_region_revenue_rows() -> None:
 
 def test_revenue_business_line_returns_segment_revenue_rows() -> None:
     """#1650 — chart rows carry segment + revenue."""
-    r = _client.get("/pi/equity/revenue-business-line?symbol=AAPL")
+    r = _client.get("/pi/equity/revenue-business-line?symbol=AAPL&raw=true")
     assert r.status_code == 200
     rows = r.json()
     assert isinstance(rows, list) and rows
@@ -183,13 +183,13 @@ def test_management_team_rejects_bad_symbol() -> None:
 
 def test_revenue_geography_rejects_bad_symbol() -> None:
     for bad in ("<script>", "A;B"):
-        r = _client.get(f"/pi/equity/revenue-geography?symbol={bad}")
+        r = _client.get(f"/pi/equity/revenue-geography?symbol={bad}&raw=true")
         assert r.status_code == 400
 
 
 def test_revenue_business_line_rejects_bad_symbol() -> None:
     for bad in ("<script>", "A;B"):
-        r = _client.get(f"/pi/equity/revenue-business-line?symbol={bad}")
+        r = _client.get(f"/pi/equity/revenue-business-line?symbol={bad}&raw=true")
         assert r.status_code == 400
 
 

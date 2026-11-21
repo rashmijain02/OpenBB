@@ -323,6 +323,16 @@ def _management_team_fmp_cached(*, symbol: str) -> list[dict]:
 # labels / split segments in one period).
 
 
+def _to_millions(amount: float) -> float:
+    """Convert an absolute reporting-currency amount to millions (#1268).
+
+    Provider revenue rows are absolute currency; the endpoint stub, the pie
+    hover and the widget description use millions. Normalizing here keeps
+    the live and demo paths in one unit.
+    """
+    return round(amount / 1_000_000, 2)
+
+
 def _fetch_revenue_geography_rows(symbol: str) -> list[dict]:
     """Fetch revenue-by-geography rows for ``symbol`` from ``fmp_cached``.
 
@@ -347,6 +357,8 @@ def _fetch_revenue_geography_rows(symbol: str) -> list[dict]:
 def _shape_revenue_geography(rows: list[dict]) -> list[dict]:
     """Shape geographic-revenue rows to the pie contract ``[{region, revenue}]``.
 
+    ``revenue`` is in millions of the reporting currency.
+
     Selects the single latest ``period_ending`` present, then aggregates
     ``revenue`` by ``region`` within that period. Rows with a null region or
     null revenue are ignored. Region insertion order (first seen in the
@@ -365,7 +377,10 @@ def _shape_revenue_geography(rows: list[dict]) -> list[dict]:
         if not region or revenue is None:
             continue
         agg[region] = agg.get(region, 0) + revenue
-    return [{"region": region, "revenue": revenue} for region, revenue in agg.items()]
+    return [
+        {"region": region, "revenue": _to_millions(revenue)}
+        for region, revenue in agg.items()
+    ]
 
 
 def _revenue_geography_fmp_cached(*, symbol: str) -> list[dict]:
@@ -421,6 +436,8 @@ def _fetch_revenue_business_line_rows(symbol: str) -> list[dict]:
 def _shape_revenue_business_line(rows: list[dict]) -> list[dict]:
     """Shape business-line revenue rows to the pie contract ``[{segment, revenue}]``.
 
+    ``revenue`` is in millions of the reporting currency.
+
     Selects the single latest ``period_ending`` present, aggregates ``revenue``
     by ``business_line`` within that period, and renames ``business_line`` ->
     ``segment`` (the widget's contract key). Rows with a null business line or
@@ -441,7 +458,8 @@ def _shape_revenue_business_line(rows: list[dict]) -> list[dict]:
             continue
         agg[segment] = agg.get(segment, 0) + revenue
     return [
-        {"segment": segment, "revenue": revenue} for segment, revenue in agg.items()
+        {"segment": segment, "revenue": _to_millions(revenue)}
+        for segment, revenue in agg.items()
     ]
 
 

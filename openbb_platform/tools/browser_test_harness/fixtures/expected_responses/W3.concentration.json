@@ -1,9 +1,14 @@
 {
-  "body": {
-    "label": "HHI (0..1; higher = more concentrated)",
-    "note": "demo book",
-    "value": 0.2374
-  },
+  "body": [
+    {
+      "label": "Concentration (HHI)",
+      "value": 0.2374
+    },
+    {
+      "label": "Data State",
+      "value": "Demo: synthetic sample book"
+    }
+  ],
   "endpoint": "pi/concentration",
   "params": {
     "account_id": "demo"

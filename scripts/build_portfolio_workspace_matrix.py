@@ -33,6 +33,48 @@ def _registered_routes(backend_dir: Path) -> set[str]:
     return routes
 
 
+def _is_plotly_route(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Return True when a route serves a Plotly figure by default.
+
+    Native chart endpoints either take a ``raw`` parameter themselves (#1267)
+    or are wrapped by ``plotly_chart`` (#1268), which adds ``raw``.
+    """
+    if any(arg.arg == "raw" for arg in (*node.args.args, *node.args.kwonlyargs)):
+        return True
+    for decorator in node.decorator_list:
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        name = (
+            target.id
+            if isinstance(target, ast.Name)
+            else target.attr if isinstance(target, ast.Attribute) else None
+        )
+        if name == "plotly_chart":
+            return True
+    return False
+
+
+def _plotly_routes(backend_dir: Path) -> set[str]:
+    """Return literal routes whose endpoints return Plotly figures."""
+    routes: set[str] = set()
+    for path in (backend_dir / "main.py", backend_dir / "widgets_endpoints.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            if not _is_plotly_route(node):
+                continue
+            for decorator in node.decorator_list:
+                route = _route_decorator_path(decorator)
+                if route:
+                    routes.add(route)
+    return routes
+
+
+def _endpoint_path(widget: dict[str, Any]) -> str:
+    endpoint = str(widget.get("endpoint") or "")
+    return endpoint if endpoint.startswith("/") else f"/{endpoint}"
+
+
 def _route_decorator_path(decorator: ast.expr) -> str | None:
     """Return a literal app/router route path from one decorator."""
     if not isinstance(decorator, ast.Call):
@@ -47,11 +89,12 @@ def _route_decorator_path(decorator: ast.expr) -> str | None:
     return route.value
 
 
-def _chart_mapping(widget: dict[str, Any]) -> dict[str, Any]:
-    """Return the manifest's explicit chart mapping, when present."""
+def _chart_mapping(widget: dict[str, Any], plotly: bool) -> dict[str, Any]:
+    """Return the chart contract: Plotly figure, or explicit raw mapping."""
     data = widget.get("data") or {}
     chart = data.get("chart") or widget.get("chart") or {}
     return {
+        "plotly": plotly,
         "raw": widget.get("raw") is True,
         "type": chart.get("type") or chart.get("chartType"),
         "labelColumn": chart.get("labelColumn") or chart.get("label"),
@@ -71,17 +114,7 @@ def _table_fields(widget: dict[str, Any]) -> list[str]:
     ]
 
 
-def _metric_labels(widget: dict[str, Any]) -> list[str]:
-    """Return metric labels declared by the Workspace manifest."""
-    data = widget.get("data") or {}
-    metric = data.get("metric") or {}
-    labels = metric.get("labels") or {}
-    if isinstance(labels, dict):
-        return list(labels.values())
-    return []
-
-
-def _baseline_state(widget_id: str, widget: dict[str, Any]) -> str:
+def _baseline_state(widget_id: str, widget: dict[str, Any], plotly: bool) -> str:
     """Classify the static manifest without claiming runtime provider behavior."""
     if "execute" in widget_id or widget_id == "pi_backtest_button":
         return "gate-required"
@@ -97,10 +130,11 @@ def _baseline_state(widget_id: str, widget: dict[str, Any]) -> str:
 
     widget_type = widget.get("type")
     if widget_type == "chart":
-        mapping = _chart_mapping(widget)
+        mapping = _chart_mapping(widget, plotly)
         return (
             "native-ready"
-            if mapping["raw"]
+            if mapping["plotly"]
+            or mapping["raw"]
             and mapping["type"]
             and mapping["labelColumn"]
             and mapping["valueColumn"]
@@ -108,9 +142,9 @@ def _baseline_state(widget_id: str, widget: dict[str, Any]) -> str:
         )
     if widget_type == "table":
         return "native-ready" if _table_fields(widget) else "contract-repair"
-    if widget_type == "metric":
-        return "native-ready" if _metric_labels(widget) else "contract-repair"
-    if widget_type == "markdown":
+    if widget_type in ("metric", "markdown"):
+        # Metric cards carry their own labels (#1268); the endpoint contract
+        # test checks the ``[{label, value}]`` response, not the manifest.
         return "native-ready"
     return "contract-repair"
 
@@ -146,6 +180,7 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
     widgets = _read_json(backend_dir / "widgets.json")
     apps = _read_json(backend_dir / "apps.json")
     routes = _registered_routes(backend_dir)
+    plotly_routes = _plotly_routes(backend_dir)
 
     if not isinstance(widgets, dict):
         raise TypeError("widgets.json must contain an object keyed by widget ID")
@@ -206,7 +241,8 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
     widget_rows: list[dict[str, Any]] = []
     for widget_id, widget in sorted(widgets.items()):
         endpoint = str(widget.get("endpoint") or "")
-        endpoint_path = endpoint if endpoint.startswith("/") else f"/{endpoint}"
+        endpoint_path = _endpoint_path(widget)
+        plotly = endpoint_path in plotly_routes
         parameters = [
             {
                 "name": parameter.get("paramName"),
@@ -226,16 +262,15 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
                 "endpoint": endpoint,
                 "endpointRegistered": endpoint_path in routes,
                 "source": widget.get("source"),
-                "baselineState": _baseline_state(widget_id, widget),
+                "baselineState": _baseline_state(widget_id, widget, plotly),
                 "parameters": parameters,
                 "chart": (
-                    _chart_mapping(widget) if widget.get("type") == "chart" else None
+                    _chart_mapping(widget, plotly)
+                    if widget.get("type") == "chart"
+                    else None
                 ),
                 "tableFields": (
                     _table_fields(widget) if widget.get("type") == "table" else []
-                ),
-                "metricLabels": (
-                    _metric_labels(widget) if widget.get("type") == "metric" else []
                 ),
                 "placements": placements[widget_id],
             }

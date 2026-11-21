@@ -83,7 +83,9 @@ def test_dividend_payment_widget_declared() -> None:
         {
             "field": "ex_date",
             "headerName": "Ex-Dividend Date",
-            "glossaryKey": "ex_dividend_date",
+            "headerTooltip": (
+                "First trading day when a buyer is not entitled to the next dividend."
+            ),
         },
         {
             "field": "payment_date",
@@ -92,7 +94,7 @@ def test_dividend_payment_widget_declared() -> None:
         {
             "field": "amount",
             "headerName": "Dividend Amount ($/share)",
-            "glossaryKey": "dividend_amount_per_share",
+            "headerTooltip": "Cash dividend declared for each share.",
         },
     ]
 
@@ -127,7 +129,7 @@ def test_institutional_ownership_shape() -> None:
 
 def test_stock_ownership_shape() -> None:
     """#1660 — pie rows: bucket + pct."""
-    rows = _client.get("/pi/equity/stock-ownership?symbol=AAPL").json()
+    rows = _client.get("/pi/equity/stock-ownership?symbol=AAPL&raw=true").json()
     assert rows
     buckets = {r["bucket"] for r in rows}
     assert "Institutions" in buckets or "Insiders" in buckets
@@ -198,7 +200,7 @@ def test_earnings_transcripts_returns_markdown() -> None:
 
 def test_price_target_history_shape() -> None:
     """#1669 — target history rows: date + close + target."""
-    rows = _client.get("/pi/equity/price-target-history?symbol=AAPL").json()
+    rows = _client.get("/pi/equity/price-target-history?symbol=AAPL&raw=true").json()
     assert rows
     for r in rows:
         assert "date" in r and "close" in r and "target" in r
