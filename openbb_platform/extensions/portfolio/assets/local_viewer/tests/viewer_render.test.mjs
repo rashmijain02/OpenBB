@@ -57,7 +57,8 @@ function loadHelpers() {
     "metricModel", "renderMetric", "metricGlossaryData", "metricGlossaryEntry", "metricGlossaryForLabel", "metricHelpButtonHtml", "metricLabelHtml", "metricHelpPageHtml", "metricHelpLayerPosition", "hideMetricHelpLayer", "hideMetricHelpLayerWithin", "inlineOptionsHtml",
     "sidebarAppsHtml", "pxToGridRect", "clampGridItem", "gridItemStyle", "mergeLayout", "widgetRefString",
     "helpText", "helpButtonHtml", "dataSourceBadge", "resolveParams", "contextParamLabel", "chartLegendLabelHtml", "renderTab",
-    "syncMetricHelpLayer", "bindMetricHelpLayerEvents", "bindMetricHelpButtons"];
+    "syncMetricHelpLayer", "bindMetricHelpLayerEvents", "bindMetricHelpButtons",
+    "isPlotlyFigure", "plotlyFigureModel", "renderPlotlyFigure"];
   const code = "let METRIC_HELP_ID_SEQ = 0; let ACTIVE_METRIC_HELP_BTN = null; let METRIC_HELP_LAYER_BOUND = false;\n\n"
     + names.map((n) => extractFn(src, n)).join("\n\n") +
     "\n;globalThis.__H = { " + names.join(", ")
@@ -479,18 +480,61 @@ test("risk dashboard formats fraction metrics as signed percentages while beta s
   assert.match(container.innerHTML, />1\.08</);
 });
 
-test("Brinson chart labels identify percentage-point series and retain help keys", () => {
-  const data = WIDGETS.pi_brinson_attribution.data;
-  const model = H.inferChartModel(
-    [{ sector: "Technology", allocation: 3.0, selection: -0.5, interaction: 0.1, total: 2.6 }],
-    data.chart,
-  );
+// Brinson and X-Ray sector are native Workspace Plotly figures (#1267). The
+// viewer maps the figure onto its own chart models; this fixture mirrors the
+// backend's brinson_attribution_figure / xray_sector_figure output shapes.
+const BRINSON_FIGURE = {
+  data: [
+    { type: "bar", name: "Allocation Effect (%)", x: ["Technology", "Energy"], y: [3.0, -0.4], meta: { glossaryKey: "allocation_effect" } },
+    { type: "bar", name: "Selection Effect (%)", x: ["Technology", "Energy"], y: [-0.5, 0.2], meta: { glossaryKey: "selection_effect" } },
+    { type: "bar", name: "Interaction Effect (%)", x: ["Technology", "Energy"], y: [0.1, 0.0], meta: { glossaryKey: "interaction_effect" } },
+    { type: "scatter", mode: "markers", name: "Total Active Return (%)", x: ["Technology", "Energy"], y: [2.6, -0.2], meta: { glossaryKey: "total_active_return" } },
+  ],
+  layout: { title: { text: "Brinson-Fachler Attribution - Demo book, 1Y vs SPY" }, meta: { state: "demo" } },
+};
+
+test("Brinson Plotly figure maps to percentage-point series that retain help keys", () => {
+  assert.equal(H.isPlotlyFigure(BRINSON_FIGURE), true);
+  assert.equal(H.isPlotlyFigure([{ sector: "S0" }]), false);
+  const parsed = H.plotlyFigureModel(BRINSON_FIGURE);
+  assert.equal(parsed.model.kind, "line");
+  assert.deepEqual([...parsed.model.xLabels], ["Technology", "Energy"]);
   assert.equal(
-    model.series.map((series) => series.key).join("|"),
+    parsed.model.series.map((series) => series.key).join("|"),
     "Allocation Effect (%)|Selection Effect (%)|Interaction Effect (%)|Total Active Return (%)",
   );
-  assert.equal(data.metricGlossary["Allocation Effect (%)"], "allocation_effect");
-  assert.equal(data.metricGlossary["Total Active Return (%)"], "total_active_return");
+  assert.deepEqual(parsed.model.series[3].points.map((p) => p.y), [2.6, -0.2]);
+  assert.equal(parsed.glossary["Allocation Effect (%)"], "allocation_effect");
+  assert.equal(parsed.glossary["Total Active Return (%)"], "total_active_return");
+  const container = { innerHTML: "", querySelectorAll: () => [] };
+  H.renderPlotlyFigure(container, BRINSON_FIGURE, { type: "chart" });
+  assert.match(container.innerHTML, /Demo book, 1Y vs SPY/);
+  assert.match(container.innerHTML, /data-metric-help="allocation_effect"/);
+});
+
+test("X-Ray sector Plotly pie maps to a pie model", () => {
+  const parsed = H.plotlyFigureModel({
+    data: [{ type: "pie", labels: ["Information Technology", "Energy"], values: [0.38, 0.08] }],
+    layout: { title: { text: "Sector Weights - Demo portfolio (synthetic)" } },
+  });
+  assert.equal(parsed.model.kind, "pie");
+  assert.deepEqual(parsed.model.slices.map((s) => s.label), ["Information Technology", "Energy"]);
+  assert.ok(Math.abs(parsed.model.total - 0.46) < 1e-12);
+});
+
+test("trace-free Plotly figure renders its state message, not a blank chart", () => {
+  const container = { innerHTML: "", querySelectorAll: () => [] };
+  H.renderPlotlyFigure(container, {
+    data: [],
+    layout: {
+      title: { text: "Sector Weights - Unavailable" },
+      annotations: [{ text: "No sector data: account resolver not wired for this account." }],
+    },
+  }, { type: "chart" });
+  assert.match(container.innerHTML, /class="state"/);
+  assert.match(container.innerHTML, /Unavailable/);
+  assert.match(container.innerHTML, /account resolver not wired/);
+  assert.doesNotMatch(container.innerHTML, /<svg/);
 });
 
 test("single-value metric cards apply explicit labels and glossary metadata", () => {

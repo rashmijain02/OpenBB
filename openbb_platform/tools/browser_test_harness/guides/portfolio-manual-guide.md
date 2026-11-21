@@ -118,7 +118,7 @@ On the Financials tab, verify period=annual returns 9 line items.
 
 Read pi_xray_sector on the X-Ray tab.
 
-**Expected:** 6 sector rows totaling ~1.0; Information Technology ~0.38.
+**Expected:** Pie of 6 sectors titled as the synthetic demo portfolio; Information Technology ~38%.
 
 **Params:** `account_id=demo`
 
@@ -198,7 +198,7 @@ Read pi_risk_dashboard.
 
 Read pi_brinson_attribution.
 
-**Expected:** Sector rows with allocation, selection, interaction, total.
+**Expected:** Demo-book chart by sector: allocation, selection, interaction bars and total active return markers, in percentage points.
 
 **Params:** `window=1Y` · `benchmark_symbol=SPY`
 

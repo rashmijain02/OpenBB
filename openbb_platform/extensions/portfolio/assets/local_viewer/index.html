@@ -1217,6 +1217,67 @@
     if (typeof bindMetricHelpButtons === "function") bindMetricHelpButtons(container);
   }
 
+  // Native Workspace chart endpoints return a Plotly figure {data, layout}
+  // (#1267). The viewer has no Plotly runtime, so map the figure onto the same
+  // pure chart models inferChartModel produces: one pie trace -> pie model;
+  // bar/scatter traces -> one series per trace over the shared x categories.
+  // Trace meta.glossaryKey feeds the legend help buttons. A figure with no
+  // plottable trace is an explicit state: its annotation text is the message.
+  function isPlotlyFigure(resp) {
+    return !!resp && typeof resp === "object" && !Array.isArray(resp)
+      && Array.isArray(resp.data) && !!resp.layout && typeof resp.layout === "object";
+  }
+
+  function plotlyFigureModel(fig) {
+    const layout = (fig && fig.layout) || {};
+    const title = layout.title && typeof layout.title === "object" ? layout.title.text : layout.title;
+    const notes = (Array.isArray(layout.annotations) ? layout.annotations : [])
+      .map((a) => (a && a.text) || "").filter(Boolean);
+    const out = { title: title ? String(title) : "", notes, glossary: {}, model: { kind: "empty" } };
+    const traces = (Array.isArray(fig && fig.data) ? fig.data : []).filter((t) => t && typeof t === "object");
+    traces.forEach((t) => {
+      if (t.name && t.meta && t.meta.glossaryKey) out.glossary[String(t.name)] = String(t.meta.glossaryKey);
+    });
+    const pie = traces.find((t) => t.type === "pie");
+    if (pie) {
+      const labels = Array.isArray(pie.labels) ? pie.labels : [];
+      const values = Array.isArray(pie.values) ? pie.values : [];
+      const slices = labels.map((label, i) => ({ label: String(label), value: Number(values[i]) }))
+        .filter((s) => Number.isFinite(s.value));
+      if (slices.length) {
+        out.model = { kind: "pie", slices, total: slices.reduce((a, s) => a + Math.abs(s.value), 0) };
+      }
+      return out;
+    }
+    const xy = traces.filter((t) => Array.isArray(t.y) && t.y.length);
+    if (!xy.length) return out;
+    const xs = Array.isArray(xy[0].x) ? xy[0].x : xy[0].y.map((_, i) => i);
+    out.model = {
+      kind: "line",
+      xKey: null,
+      xLabels: xs.map((x) => String(x)),
+      series: xy.map((t, si) => ({
+        key: t.name ? String(t.name) : "Series " + (si + 1),
+        points: t.y.map((y, i) => ({ x: i, y: typeof y === "number" && Number.isFinite(y) ? y : null })),
+      })),
+    };
+    return out;
+  }
+
+  function renderPlotlyFigure(container, fig, widgetDef) {
+    hideMetricHelpLayerWithin(container);
+    const parsed = plotlyFigureModel(fig);
+    const caption = [parsed.title].concat(parsed.notes).filter(Boolean).map(escapeHtml).join(" — ");
+    if (parsed.model.kind === "empty") {
+      container.innerHTML = `<div class="state">${caption || "No chartable data returned."}</div>`;
+      return;
+    }
+    const data = Object.assign({}, (widgetDef && widgetDef.data) || {}, { metricGlossary: parsed.glossary });
+    const def = Object.assign({}, widgetDef || {}, { data });
+    container.innerHTML = (caption ? `<div class="state">${caption}</div>` : "") + svgForChart(parsed.model, def);
+    if (typeof bindMetricHelpButtons === "function") bindMetricHelpButtons(container);
+  }
+
   //--------------------------------------------------------------------------
   // Dashboard: /apps.json (tabs) + /widgets.json (defs) -> tables.
   //--------------------------------------------------------------------------
@@ -1278,6 +1339,7 @@
       if (type === "markdown") { renderMarkdown(bodyEl, resp); return; }
       if (type === "metric") { renderMetric(bodyEl, resp, widgetDef); return; }
       if (type === "chart") {
+        if (isPlotlyFigure(resp)) { renderPlotlyFigure(bodyEl, resp, widgetDef); return; }
         const rows = extractRows(resp, widgetDef.data ? widgetDef.data.dataKey : "");
         renderChart(bodyEl, rows, widgetDef);
         return;

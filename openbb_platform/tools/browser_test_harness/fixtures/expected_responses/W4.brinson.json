@@ -1,83 +1,178 @@
 {
-  "body": [
-    {
-      "allocation": -0.0684318171455849,
-      "interaction": 0.025399672714894732,
-      "sector": "S0",
-      "selection": -0.05476594628924076,
-      "total": -0.09779809071993094
-    },
-    {
-      "allocation": -0.08147230108300275,
-      "interaction": -0.11107479184855838,
-      "sector": "S1",
-      "selection": 0.17022717893612813,
-      "total": -0.022319913995433024
-    },
-    {
-      "allocation": -0.0545774425374402,
-      "interaction": 0.27787817498613193,
-      "sector": "S2",
-      "selection": -0.950539895059682,
-      "total": -0.7272391626109901
-    },
-    {
-      "allocation": -0.0435766094828979,
-      "interaction": 0.39681388589783956,
-      "sector": "S3",
-      "selection": 0.29273978378562915,
-      "total": 0.6459770602005709
-    },
-    {
-      "allocation": -0.4948834022918352,
-      "interaction": -1.0247694698402696,
-      "sector": "S4",
-      "selection": 2.84980559232393,
-      "total": 1.3301527201918248
-    },
-    {
-      "allocation": -0.19086797572056333,
-      "interaction": -0.18416420252563734,
-      "sector": "S5",
-      "selection": -0.9504851826439566,
-      "total": -1.3255173608901574
-    },
-    {
-      "allocation": 0.5179772271763172,
-      "interaction": 2.532023786004161,
-      "sector": "S6",
-      "selection": -2.9065589408393917,
-      "total": 0.14344207234108647
-    },
-    {
-      "allocation": 0.027805164718137255,
-      "interaction": -0.2238667835558841,
-      "sector": "S7",
-      "selection": -0.0912383684567651,
-      "total": -0.2872999872945119
-    },
-    {
-      "allocation": 0.5920720074870479,
-      "interaction": -0.21889458092403877,
-      "sector": "S8",
-      "selection": -0.05694314447946113,
-      "total": 0.31623428208354804
-    },
-    {
-      "allocation": -0.301345187937236,
-      "interaction": 0.38746795821152435,
-      "sector": "S9",
-      "selection": 0.04478951330538988,
-      "total": 0.13091228357967824
-    },
-    {
-      "allocation": -1.1928461571475364,
-      "interaction": 2.8794994486109444,
-      "sector": "S10",
-      "selection": 0.8546162296768902,
-      "total": 2.5412695211402982
+  "body": {
+    "data": [
+      {
+        "hovertemplate": "%{x}<br>Allocation Effect (%): %{y:.3f} pp<br>Attribution from benchmark-relative segment weights.<extra></extra>",
+        "meta": {
+          "glossaryKey": "allocation_effect"
+        },
+        "name": "Allocation Effect (%)",
+        "type": "bar",
+        "x": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10"
+        ],
+        "y": [
+          -0.0684318171455849,
+          -0.08147230108300275,
+          -0.0545774425374402,
+          -0.0435766094828979,
+          -0.4948834022918352,
+          -0.19086797572056333,
+          0.5179772271763172,
+          0.027805164718137255,
+          0.5920720074870479,
+          -0.301345187937236,
+          -1.1928461571475364
+        ]
+      },
+      {
+        "hovertemplate": "%{x}<br>Selection Effect (%): %{y:.3f} pp<br>Attribution from security selection within segments.<extra></extra>",
+        "meta": {
+          "glossaryKey": "selection_effect"
+        },
+        "name": "Selection Effect (%)",
+        "type": "bar",
+        "x": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10"
+        ],
+        "y": [
+          -0.05476594628924076,
+          0.17022717893612813,
+          -0.950539895059682,
+          0.29273978378562915,
+          2.84980559232393,
+          -0.9504851826439566,
+          -2.9065589408393917,
+          -0.0912383684567651,
+          -0.05694314447946113,
+          0.04478951330538988,
+          0.8546162296768902
+        ]
+      },
+      {
+        "hovertemplate": "%{x}<br>Interaction Effect (%): %{y:.3f} pp<br>Combined allocation and selection attribution effect.<extra></extra>",
+        "meta": {
+          "glossaryKey": "interaction_effect"
+        },
+        "name": "Interaction Effect (%)",
+        "type": "bar",
+        "x": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10"
+        ],
+        "y": [
+          0.025399672714894732,
+          -0.11107479184855838,
+          0.27787817498613193,
+          0.39681388589783956,
+          -1.0247694698402696,
+          -0.18416420252563734,
+          2.532023786004161,
+          -0.2238667835558841,
+          -0.21889458092403877,
+          0.38746795821152435,
+          2.8794994486109444
+        ]
+      },
+      {
+        "hovertemplate": "%{x}<br>Total Active Return (%): %{y:.3f} pp<br>Portfolio return minus benchmark return.<extra></extra>",
+        "marker": {
+          "size": 10,
+          "symbol": "diamond"
+        },
+        "meta": {
+          "glossaryKey": "total_active_return"
+        },
+        "mode": "markers",
+        "name": "Total Active Return (%)",
+        "type": "scatter",
+        "x": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10"
+        ],
+        "y": [
+          -0.09779809071993094,
+          -0.022319913995433024,
+          -0.7272391626109901,
+          0.6459770602005709,
+          1.3301527201918248,
+          -1.3255173608901574,
+          0.14344207234108647,
+          -0.2872999872945119,
+          0.31623428208354804,
+          0.13091228357967824,
+          2.5412695211402982
+        ]
+      }
+    ],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Synthetic reference book; not your portfolio.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 1.08,
+          "yref": "paper"
+        }
+      ],
+      "barmode": "relative",
+      "meta": {
+        "state": "demo"
+      },
+      "title": {
+        "text": "Brinson-Fachler Attribution - Demo book, 1Y vs SPY"
+      },
+      "xaxis": {
+        "title": {
+          "text": "Sector"
+        }
+      },
+      "yaxis": {
+        "title": {
+          "text": "Effect (percentage points)"
+        }
+      }
     }
-  ],
+  },
   "endpoint": "pi/attribution",
   "params": {
     "benchmark_symbol": "SPY",

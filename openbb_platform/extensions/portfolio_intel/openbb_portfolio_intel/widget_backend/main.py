@@ -35,6 +35,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -44,6 +45,11 @@ from openbb_portfolio_intel.widget_backend._shared import (
     _SYMBOL_RE,
     require_auth,
     validate_account,
+)
+from openbb_portfolio_intel.widget_backend.overview_charts import (
+    brinson_attribution_figure,
+    state_figure,
+    xray_sector_figure,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,16 +144,20 @@ def context_book(request: Request, account_id: str = "demo") -> str:
 # ---------------------------------------------------------------------------
 
 
-@app.get("/pi/xray/sector")
+@app.get("/pi/xray/sector", response_model=None)
 def xray_sector(
-    request: Request, account_id: str = "demo"
-) -> list[dict[str, float | str]]:
-    """X-Ray sector-weight rows for ``account_id``."""
+    request: Request, account_id: str = "demo", raw: bool = False
+) -> list[dict[str, float | str]] | dict[str, Any]:
+    """X-Ray sector weights for ``account_id`` as a Plotly pie (#1267).
+
+    ``raw=true`` (sent by Workspace for ``raw: true`` widgets) returns the
+    underlying ``{sector, weight}`` rows instead of the figure.
+    """
     require_auth(request)
     validate_account(account_id)
 
     if account_id == "demo":
-        return [
+        rows: list[dict[str, float | str]] = [
             {"sector": "Information Technology", "weight": 0.38},
             {"sector": "Healthcare", "weight": 0.22},
             {"sector": "Financials", "weight": 0.15},
@@ -155,9 +165,20 @@ def xray_sector(
             {"sector": "Energy", "weight": 0.08},
             {"sector": "Other", "weight": 0.05},
         ]
+        if raw:
+            return rows
+        return xray_sector_figure(
+            rows, state="demo", title="Sector Weights - Demo portfolio (synthetic)"
+        )
 
     logger.warning("xray/sector: account resolver not wired for %r", account_id)
-    return [{"sector": "(no data — account resolver not wired)", "weight": 0.0}]
+    if raw:
+        return [{"sector": "(no data — account resolver not wired)", "weight": 0.0}]
+    return state_figure(
+        "Sector Weights - Unavailable",
+        "unavailable",
+        "No sector data: account resolver not wired for this account.",
+    )
 
 
 @app.get("/pi/whatif")
@@ -188,11 +209,18 @@ def whatif(request: Request, symbol: str = "AAPL", delta_shares: str = "100") ->
     )
 
 
-@app.get("/pi/attribution")
+@app.get("/pi/attribution", response_model=None)
 def attribution(
-    request: Request, window: str = "1Y", benchmark_symbol: str = "SPY"
-) -> list[dict[str, float | str]]:
-    """Brinson-Fachler attribution waterfall in percentage points for charts."""
+    request: Request,
+    window: str = "1Y",
+    benchmark_symbol: str = "SPY",
+    raw: bool = False,
+) -> list[dict[str, float | str]] | dict[str, Any]:
+    """Brinson-Fachler attribution in percentage points as a Plotly figure.
+
+    ``raw=true`` returns the underlying per-sector rows
+    (``sector, allocation, selection, interaction, total``) instead (#1267).
+    """
     require_auth(request)
     bm = benchmark_symbol.strip().upper()
     if not _SYMBOL_RE.match(bm):
@@ -219,7 +247,7 @@ def attribution(
     fx = json.loads(demo_fx.read_text())
     df = pd.DataFrame(fx["inputs"])
     waterfall = build_from_dataframe(df, window=window, benchmark_symbol=bm)
-    return [
+    rows: list[dict[str, float | str]] = [
         {
             "sector": row.sector,
             # This widget-only endpoint is a presentation API. Preserve the
@@ -232,6 +260,9 @@ def attribution(
         }
         for row in waterfall.rows
     ]
+    if raw:
+        return rows
+    return brinson_attribution_figure(rows, window=window, benchmark_symbol=bm)
 
 
 # Batch of P1/P2/P3 widget endpoints (#529-#577) — imported for side

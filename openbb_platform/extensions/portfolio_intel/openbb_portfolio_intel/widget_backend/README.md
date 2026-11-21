@@ -43,9 +43,9 @@ It is never a replacement for the real Workspace UI at <https://pro.openbb.co>.
 
 | Widget id | Type | Endpoint | Wraps |
 |---|---|---|---|
-| `pi_xray_sector` | `chart` (raw records) | `/pi/xray/sector` | `analytics.xray` sector breakdown |
+| `pi_xray_sector` | `chart` (Plotly pie; `raw=true` rows) | `/pi/xray/sector` | `analytics.xray` sector breakdown |
 | `pi_whatif_diff` | `markdown` | `/pi/whatif` | `analytics.whatif` diff engine (#558) |
-| `pi_brinson_attribution` | `chart` (raw records) | `/pi/attribution` | `analytics.attribution_engine` (#559) |
+| `pi_brinson_attribution` | `chart` (Plotly bars; `raw=true` rows) | `/pi/attribution` | `analytics.attribution_engine` (#559) |
 
 Each endpoint is a **thin adapter** over an existing analytics module. No new financial math lives in this backend — the shape is:
 

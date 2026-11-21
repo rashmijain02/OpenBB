@@ -2277,9 +2277,9 @@
       ],
       "chart": {
         "raw": true,
-        "type": "pie",
-        "labelColumn": "sector",
-        "valueColumn": "weight"
+        "type": null,
+        "labelColumn": null,
+        "valueColumn": null
       },
       "tableFields": [],
       "metricLabels": [],

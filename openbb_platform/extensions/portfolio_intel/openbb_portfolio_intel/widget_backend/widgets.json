@@ -43,7 +43,7 @@
   },
   "pi_xray_sector": {
     "name": "X-Ray - Sector Weights",
-    "description": "Portfolio sector weights (pie).",
+    "description": "Portfolio sector weights as a Plotly pie. The demo account shows a labelled synthetic portfolio; other accounts show an explicit unavailable state. The raw view lists sector and weight (fraction of the portfolio).",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/xray/sector",
@@ -53,13 +53,6 @@
       "h": 9
     },
     "source": "portfolio-intel",
-    "data": {
-      "chart": {
-        "type": "pie",
-        "labelColumn": "sector",
-        "valueColumn": "weight"
-      }
-    },
     "params": [
       {
         "paramName": "account_id",
@@ -650,7 +643,7 @@
   },
   "pi_brinson_attribution": {
     "name": "Brinson-Fachler Attribution",
-    "description": "Sector-level allocation vs selection waterfall (matches Brinson reference fixtures to +/-1bp).",
+    "description": "Brinson-Fachler attribution by sector, in percentage points, for a synthetic demo book (matches the Brinson reference fixtures to +/-1bp). Allocation Effect: attribution from benchmark-relative segment weights. Selection Effect: attribution from security selection within segments. Interaction Effect: combined allocation and selection effect. Total Active Return: portfolio return minus benchmark return. The raw view lists sector, allocation, selection, interaction and total.",
     "category": "Portfolio Intelligence",
     "type": "chart",
     "endpoint": "pi/attribution",
@@ -675,24 +668,7 @@
         "type": "text",
         "description": "Benchmark ticker"
       }
-    ],
-    "data": {
-      "metricGlossary": {
-        "Allocation Effect (%)": "allocation_effect",
-        "Selection Effect (%)": "selection_effect",
-        "Interaction Effect (%)": "interaction_effect",
-        "Total Active Return (%)": "total_active_return"
-      },
-      "chart": {
-        "labels": {
-          "sector": "Sector",
-          "allocation": "Allocation Effect (%)",
-          "selection": "Selection Effect (%)",
-          "interaction": "Interaction Effect (%)",
-          "total": "Total Active Return (%)"
-        }
-      }
-    }
+    ]
   },
   "pi_news_ribbon": {
     "name": "News - Held Symbols",
