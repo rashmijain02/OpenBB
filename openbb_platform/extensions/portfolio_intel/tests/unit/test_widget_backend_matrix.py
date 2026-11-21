@@ -133,3 +133,22 @@ def test_metric_widgets_take_labels_from_the_endpoint() -> None:
         "pi_metric", {"type": "metric"}, False
     )
     assert state == "native-ready"
+
+
+def test_app_rows_record_groups_prompts_and_placement_groups() -> None:
+    """#1270: apps carry schema-native groups and prompts, not app ``params``."""
+    matrix = _load_builder().build_matrix(BACKEND)
+    for app in matrix["apps"]:
+        assert "params" not in app, app["id"]
+        assert app["prompts"], app["id"]
+        assert app["groups"], app["id"]
+    header = next(
+        p
+        for p in next(w for w in matrix["widgets"] if w["id"] == "pi_symbol_context")[
+            "placements"
+        ]
+        if p["tabId"] == "overview"
+    )
+    assert header["groups"] == ["Group 1"]
+    provenance = next(w for w in matrix["widgets"] if w["id"] == "pi_data_provenance")
+    assert all(p["groups"] == [] for p in provenance["placements"])

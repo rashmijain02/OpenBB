@@ -8,11 +8,16 @@ Every rule here is grounded in the pinned OpenBB Workspace source
   and ``data.table`` level);
 - apps schema: ``terminalpro/apps-schema.json``;
 - runtime notes: ``backend-api/backend/workspace_mcp/app_builder/resources``
-  (group types, ``Group N`` names, 40-column grid).
+  (group types, ``Group N`` names, 40-column grid, no overlapping widgets
+  per ``guides/review-app.md``);
+- group sync: ``terminalpro/src/lib/utils/app.ts`` (``getTickerParamName``,
+  ``isValidParamOption``): ticker groups write only ``ticker``-typed params,
+  static groups only values among a param's inline options (#1270).
 
 Rules the pinned source does not establish are deliberately not enforced.
 Cross-references a JSON schema cannot express (registered routes, group
-membership, layout params) are validated on top of the schema rules.
+membership, layout params and overlaps) are validated on top of the schema
+rules.
 """
 
 from __future__ import annotations
@@ -374,10 +379,20 @@ def _validate_group_member(
     Ticker (symbol) groups may include widgets without a symbol param:
     the pinned app-builder guide lists discovery tables in the symbol group
     "even when they have no ``symbol`` param" (``guides/review-app.md``).
+    A member that does declare ``symbol`` must declare it as ``ticker``:
+    Workspace writes a ticker group's value only into the ``ticker``-typed
+    param (``getTickerParamName``), so a ``text`` symbol never syncs.
     """
     group_type = group.get("type")
     params = _params_by_name(widget)
     if group_type == "ticker":
+        symbol = params.get("symbol")
+        if symbol is not None and symbol.get("type") != "ticker":
+            out.add(
+                "group.type.mismatch",
+                path,
+                f"ticker groups need a ticker-typed symbol param on {widget_id!r}",
+            )
         return
     param_name = group.get("paramName")
     param = params.get(str(param_name))
@@ -396,12 +411,38 @@ def _validate_group_member(
                 f"endpointParam needs an endpoint param with optionsEndpoint "
                 f"on {widget_id!r}",
             )
-    elif param.get("type") == "endpoint" or not param.get("options"):
+    elif param.get("type") == "endpoint" or not isinstance(param.get("options"), list):
         out.add(
             "group.type.mismatch",
             path,
             f"param groups need a static param with inline options on {widget_id!r}",
         )
+    elif "defaultValue" in group and not _is_option(param, group["defaultValue"]):
+        out.add(
+            "group.default.value",
+            path,
+            f"defaultValue is not an option of {widget_id!r}.{param_name}",
+        )
+
+
+def _is_option(param: Mapping[str, Any], value: Any) -> bool:
+    """Return True when Workspace accepts ``value`` for a param's options.
+
+    Mirrors ``isValidParamOption`` (``terminalpro/src/lib/utils/app.ts``):
+    no inline options list means no constraint here, an empty list accepts
+    any value, and otherwise the stringified value (a multi-select list
+    joins with commas, like JavaScript's ``toString``) must contain some
+    option value.
+    """
+    options = param.get("options")
+    if not isinstance(options, list) or not options:
+        return True
+    text = ",".join(map(str, value)) if isinstance(value, list) else str(value)
+    return any(
+        str(option.get("value")) in text
+        for option in options
+        if isinstance(option, dict) and "value" in option
+    )
 
 
 def _validate_groups(
@@ -507,13 +548,54 @@ def _validate_placement(
         out.add("layout.state.params", path, "state.params must be an object")
         return
     allowed = _params_by_name(widgets.get(str(widget_id)))
-    for name in params:
-        if widget_id in widgets and name not in allowed:
+    for name, value in params.items():
+        if widget_id not in widgets:
+            continue
+        if name not in allowed:
             out.add(
                 "layout.state.param",
                 path,
                 f"widget {widget_id!r} has no param {name!r}",
             )
+        elif allowed[name].get("type") != "endpoint" and not _is_option(
+            allowed[name], value
+        ):
+            out.add(
+                "layout.state.param.value",
+                path,
+                f"{name}={value!r} is not an option of widget {widget_id!r}",
+            )
+
+
+def _rect(placement: Any) -> tuple[int, int, int, int] | None:
+    """Return a placement's ``(x, y, x_end, y_end)`` or None when malformed."""
+    if not isinstance(placement, dict):
+        return None
+    x, y, w, h = (placement.get(field) for field in ("x", "y", "w", "h"))
+    if not (_is_int(x) and _is_int(y) and _is_int(w) and _is_int(h)):
+        return None
+    return x, y, x + w, y + h
+
+
+def _validate_overlaps(out: _Collector, tab_path: str, layout: list[Any]) -> None:
+    """Flag every pair of items in one tab that share a grid cell."""
+    rects = [(index, _rect(placement)) for index, placement in enumerate(layout)]
+    for first, (index_a, rect_a) in enumerate(rects):
+        for index_b, rect_b in rects[first + 1 :]:
+            if rect_a is None or rect_b is None:
+                continue
+            if (
+                rect_a[0] < rect_b[2]
+                and rect_b[0] < rect_a[2]
+                and rect_a[1] < rect_b[3]
+                and rect_b[1] < rect_a[3]
+            ):
+                out.add(
+                    "layout.overlap",
+                    f"{tab_path}.layout[{index_b}]",
+                    f"{layout[index_b].get('i')!r} overlaps "
+                    f"{layout[index_a].get('i')!r} (layout[{index_a}])",
+                )
 
 
 def _validate_app(
@@ -553,6 +635,7 @@ def _validate_app(
             _validate_placement(
                 out, f"{tab_path}.layout[{item_index}]", placement, widgets, groups
             )
+        _validate_overlaps(out, tab_path, layout)
 
 
 def collect_manifest_issues(

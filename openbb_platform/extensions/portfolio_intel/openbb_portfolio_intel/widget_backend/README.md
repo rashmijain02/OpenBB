@@ -75,6 +75,30 @@ Widget → HTTP endpoint → analytics.<module> → JSON response
      which appends the `Data State` card.
 3. Reference the analytics module rather than reimplementing math.
 4. Add a smoke test in `tests/unit/test_widget_backend.py` that hits the endpoint via `TestClient` and asserts the shape matches the widget type contract.
+5. Declare a `symbol` param as `"type": "ticker"` and an `account_id` param as `text` with
+   the demo option (`{"label": "Demo account (synthetic)", "value": "demo"}`), so the widget
+   works alone from the Widget Gallery and can join the app groups below.
+
+## Apps, parameter groups and prompts (#1270)
+
+`apps.json` uses only `apps-schema.json` keys. Shared context lives in `groups`, never in an
+app-level `params`:
+
+| App | Group 1 | Group 2 |
+|---|---|---|
+| Overview | `ticker` (AAPL): What-If | `param` `account_id` (demo): X-Ray sector |
+| Terminal | `ticker` (AAPL): every symbol widget, F1-F11 | `param` `account_id` (demo): every account widget |
+| TechTrade | `ticker` (AAPL): scan table (discovery) and every symbol widget | none (no account widget) |
+
+Every placement of a member lists the group in its `groups`, and grouped presets in
+`state.params` equal the group `defaultValue`. Workspace syncs a ticker group only into a
+`ticker`-typed param, and a `param` group only into a param with inline `options`;
+`contracts.py` checks both, plus no overlapping placements per tab and preset values that are
+real options (empty `options` accept anything; a multi-select value must contain an option, as in
+`isValidParamOption`). Suggested agent questions live in `prompts` and read as plain questions,
+without notebook ids, issue numbers or wiring notes (a test enforces this). The Terminal's
+ten-step weekly review is one prompt per step
+(`Weekly review, step <n> of 10 (<tab> > <widget>): <question>`).
 
 ## Data state and provenance
 

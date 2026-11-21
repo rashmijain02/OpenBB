@@ -58,7 +58,7 @@ function loadHelpers() {
     "metricModel", "renderMetric", "metricGlossaryData", "metricGlossaryEntry", "metricGlossaryForLabel",
     "metricLabelGlossaryData", "metricLabelGlossaryKey", "metricGlossaryKeyForSummary", "glossaryKeyForLabel", "metricHelpButtonHtml", "metricLabelHtml", "metricHelpPageHtml", "metricHelpLayerPosition", "hideMetricHelpLayer", "hideMetricHelpLayerWithin", "inlineOptionsHtml",
     "sidebarAppsHtml", "pxToGridRect", "clampGridItem", "gridItemStyle", "mergeLayout", "widgetRefString",
-    "helpText", "helpButtonHtml", "dataSourceBadge", "resolveParams", "contextParamLabel", "chartLegendLabelHtml", "renderTab",
+    "helpText", "helpButtonHtml", "dataSourceBadge", "resolveParams", "appContextParams", "contextParamLabel", "chartLegendLabelHtml", "renderTab",
     "syncMetricHelpLayer", "bindMetricHelpLayerEvents", "bindMetricHelpButtons",
     "isPlotlyFigure", "plotlyFigureModel", "renderPlotlyFigure"];
   const code = "let METRIC_HELP_ID_SEQ = 0; let ACTIVE_METRIC_HELP_BTN = null; let METRIC_HELP_LAYER_BOUND = false;\n\n"
@@ -1473,6 +1473,38 @@ test("resolveParams: global key the widget does NOT declare never leaks in", () 
 test("resolveParams: empty-string global override is honored (not skipped)", () => {
   const out = H.resolveParams(PH_DEF.params, { symbol: "TSLA" }, { symbol: "" });
   assert.equal(out.symbol, "");
+});
+
+// appContextParams (#1270): the context bar is seeded from the schema-native
+// parameter groups (apps.json no longer carries a non-schema app `params`).
+const APPS = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "..", "..", "..", "extensions", "portfolio_intel", "openbb_portfolio_intel", "widget_backend", "apps.json"), "utf-8")
+);
+
+test("appContextParams: ticker group seeds symbol, param groups seed their paramName", () => {
+  const app = { groups: [
+    { name: "Group 1", type: "ticker", widgetIds: ["a"], defaultValue: "AAPL" },
+    { name: "Group 2", type: "param", paramName: "account_id", widgetIds: ["b"], defaultValue: "demo" },
+    { name: "Group 3", type: "endpointParam", paramName: "region", widgetIds: ["c"] },
+  ] };
+  assert.deepEqual({ ...H.appContextParams(app) }, { symbol: "AAPL", account_id: "demo", region: "" });
+});
+
+test("appContextParams: first group wins for a repeated param; no groups -> no context", () => {
+  const app = { groups: [
+    { name: "Group 1", type: "param", paramName: "symbol", widgetIds: ["a"], defaultValue: "MSFT" },
+    { name: "Group 2", type: "ticker", widgetIds: ["b"], defaultValue: "AAPL" },
+  ] };
+  assert.deepEqual({ ...H.appContextParams(app) }, { symbol: "MSFT" });
+  assert.deepEqual({ ...H.appContextParams({ params: { symbol: "AAPL" } }) }, {});
+  assert.deepEqual({ ...H.appContextParams(null) }, {});
+});
+
+test("appContextParams: the shipped Terminal keeps its symbol + account context bar", () => {
+  const terminal = APPS.find((a) => a.id === "custom-portfolio-intelligence-terminal");
+  assert.deepEqual({ ...H.appContextParams(terminal) }, { symbol: "AAPL", account_id: "demo" });
+  const desk = APPS.find((a) => a.id === "custom-techtrade-desk");
+  assert.deepEqual({ ...H.appContextParams(desk) }, { symbol: "AAPL" });
 });
 
 test("contextParamLabel maps known shared params and title-cases the rest", () => {

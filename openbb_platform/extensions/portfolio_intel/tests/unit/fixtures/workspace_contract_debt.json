@@ -13,21 +13,6 @@
       "tracking": "#1271"
     },
     {
-      "code": "app.unknown_key",
-      "path": "apps.custom-portfolio-intelligence-terminal.guidedTour",
-      "tracking": "#1270"
-    },
-    {
-      "code": "app.unknown_key",
-      "path": "apps.custom-portfolio-intelligence-terminal.params",
-      "tracking": "#1270"
-    },
-    {
-      "code": "app.unknown_key",
-      "path": "apps.custom-techtrade-desk.params",
-      "tracking": "#1270"
-    },
-    {
       "code": "response.shape.chart",
       "path": "responses.tt_segment_movers",
       "tracking": "#1271"
