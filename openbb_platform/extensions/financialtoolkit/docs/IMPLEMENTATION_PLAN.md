@@ -120,7 +120,7 @@ Use existing extension conventions (`technical`, `quantitative`, etc.) as templa
   - `financetoolkit` from PyPI (`^2.1.2`)
 
 > **Historical note (#19):** an earlier iteration used a local path
-> dependency on a `FinanceToolkit` git submodule (`prajoria/FinanceToolkit`
+> dependency on a `FinanceToolkit` git submodule (`rashmijain02/FinanceToolkit`
 > fork). That coupling was removed so the extension is PyPI-installable.
 
 Current dependency strategy:

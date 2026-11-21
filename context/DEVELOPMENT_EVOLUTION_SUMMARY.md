@@ -1,6 +1,6 @@
 # OpenBB Learning Branch: Development Evolution & Architecture Summary
 
-> **Branch**: `openbb_learning` | **Fork**: `prajoria/OpenBB` | **Expert Architect Review**
+> **Branch**: `openbb_learning` | **Fork**: `rashmijain02/OpenBB` | **Expert Architect Review**
 > **Generated**: March 6, 2026 | **As Expert Co-Developer**
 
 ---

@@ -1,6 +1,6 @@
 # 12 — Testing Strategy & Non-Functional Requirements
 
-**GitHub:** [#49](https://github.com/prajoria/OpenBB/issues/49) · **Depends on:** [#46](https://github.com/prajoria/OpenBB/issues/46)
+**GitHub:** `legacy issue 49` · **Depends on:** `legacy issue 46`
 **Beads:** OpenBB-gpb, OpenBB-cex
 
 The quality gate for the whole engine: what we test, how we keep it deterministic, the

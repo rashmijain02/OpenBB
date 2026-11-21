@@ -1,6 +1,6 @@
 # 07 — Performance Analytics & Reporting
 
-**GitHub:** [#44](https://github.com/prajoria/OpenBB/issues/44) · **Depends on:** [#41](https://github.com/prajoria/OpenBB/issues/41), [#42](https://github.com/prajoria/OpenBB/issues/42)
+**GitHub:** `legacy issue 44` · **Depends on:** `legacy issue 41`, `legacy issue 42`
 **Beads:** OpenBB-95d, OpenBB-u11
 
 The analytics layer (`analytics/`) turns an equity curve / returns series into

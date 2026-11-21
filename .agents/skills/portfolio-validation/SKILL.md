@@ -17,6 +17,30 @@ manually for work validation, so the heavyweight GH-issue-tree tracking that
 fix / validation," graduate it to `openbb-dev-cycle` on a proper `feat/pi-*`
 branch.
 
+## Tracking board (source of truth)
+
+All work is tracked on **[Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)**,
+owned by Rashmi Jain (`rashmijain02`). Every item is an issue in `rashmijain02/OpenBB`. The original program epic,
+#242 (Portfolio Intelligence Engine epic), is closed; new work attaches to its own program epic on this board.
+Do not use any other project.
+
+| Setting | Value |
+|---|---|
+| `gh` owner / number | `--owner rashmijain02` / `1` |
+| Project ID | `PVT_kwHOAE4h8M4BqDs2` |
+| Status field | `PVTSSF_lAHOAE4h8M4BqDs2zhocetk` (Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`) |
+| Phase / Lane / Type fields | `PVTSSF_lAHOAE4h8M4BqDs2zhoceu4` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevA` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevE` |
+| Start / End fields | `PVTF_lAHOAE4h8M4BqDs2zhocevM` / `PVTF_lAHOAE4h8M4BqDs2zhocevU` |
+| Field option IDs | `scripts/proj_fields.json`; item IDs by issue number in `scripts/pi_project_items.json` |
+
+```bash
+gh project item-add 1 --owner rashmijain02 --url https://github.com/rashmijain02/OpenBB/issues/<NN>
+.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> in-progress   # status + heartbeat
+```
+
+Issue numbers written before 2026-11-02 use the legacy numbering; resolve them with
+`docs/migration/legacy-issue-map.md`.
+
 ## Branch topology (the one non-negotiable constraint)
 
 ```
@@ -43,7 +67,7 @@ branch.
    git merge origin/portfolio        # one-way absorb: portfolio -> portfolio_validations
    ```
 4. **Fork-internal only, never cross-fork.** Every PR targets `portfolio`
-   inside `prajoria/OpenBB`. Always pass `--repo prajoria/OpenBB --base portfolio`.
+   inside `rashmijain02/OpenBB`. Always pass `--repo rashmijain02/OpenBB --base portfolio`.
    Never target `OpenBB-finance/OpenBB` or any other fork. (Same hard rule as
    the rest of this repo — see CLAUDE.md.)
 5. **Never propose `portfolio_validations` → `develop`.** Promotion toward
@@ -98,7 +122,7 @@ branch.
   git add <files>
   git commit -m "<type>(<scope>): <what>"   # cite the issue if one exists: Refs #NN / Closes #NN
   git push
-  gh pr create --repo prajoria/OpenBB --base portfolio --head portfolio_validations \
+  gh pr create --repo rashmijain02/OpenBB --base portfolio --head portfolio_validations \
     --title "..." --body "..."
   ```
   Open exactly ONE PR; do not open the next until this one lands.
@@ -117,7 +141,7 @@ branch.
 ## What carries over unchanged from openbb-dev-cycle
 - Conservative git profile — no commit/push/PR/merge without explicit
   in-session authorization.
-- Fork-internal PRs only (`--repo prajoria/OpenBB`); never cross-fork.
+- Fork-internal PRs only (`--repo rashmijain02/OpenBB`); never cross-fork.
 - Provider policy: `fmp_cached` preferred, `fmp` fallback (+ `area:fmp-cached-gap`
   issue), never yfinance.
 - `.venv_portfolio` interpreter for all Python; never system Python.

@@ -1,10 +1,10 @@
 # 80 — Recommendation Builder (Levels / Stop-Gaps / R:R / Conviction / Reasoning)
 
-**GitHub:** [#80](https://github.com/prajoria/OpenBB/issues/80) · **Phase:** P5 · **Sprint:** 5 · **Size:** M
-**Depends on:** [#78](https://github.com/prajoria/OpenBB/issues/78) (PaperBroker fill sim → realized `entry_price`)
+**GitHub:** `legacy issue 80` · **Phase:** P5 · **Sprint:** 5 · **Size:** M
+**Depends on:** `legacy issue 78` (PaperBroker fill sim → realized `entry_price`)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §14.2 (Recommendation builder), §9.3 (`Recommendation` model), §13 (levels / sizing)
 **Scope:** Add the pure builder in `engine/execution.py` that turns a **paper-filled `TradePlan`**
-(realized entry from [#78](https://github.com/prajoria/OpenBB/issues/78), levels + size from [#76](https://github.com/prajoria/OpenBB/issues/76), votes from [#74](https://github.com/prajoria/OpenBB/issues/74)) into a fully-populated
+(realized entry from `legacy issue 78`, levels + size from `legacy issue 76`, votes from `legacy issue 74`) into a fully-populated
 `Recommendation` — action/conviction, entry/stop/target + stop-gaps + R:R + ATR, sizing/risk fields,
 and a **deterministic, non-LLM** `reasoning` / `top_factors` / `caveats` narrative that traces back to
 the signal's `votes`. No orders, no fills, no network, no LLM.
@@ -56,13 +56,13 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 
 | # | Decision | Choice | Consequence |
 |---|---|---|---|
-| L1 | `Recommendation` schema | **Consumed as-is from `models.py`** (scaffolded by [#71](https://github.com/prajoria/OpenBB/issues/71)). #80 **populates every field**, defines no new model | All 20 fields fixed: `symbol/segment/as_of`, `action`, `conviction`, `score`, `entry_price/stop_price/target_price` (Decimal), `stop_distance_pct/target_distance_pct/risk_reward/atr` (float), `position_size/risk_per_share` (Decimal), `risk_pct_of_notional` (float), `time_stop_bars` (int\|None), `reasoning` (str), `top_factors` (list[str]), `caveats` (str) |
+| L1 | `Recommendation` schema | **Consumed as-is from `models.py`** (scaffolded by `legacy issue 71`). #80 **populates every field**, defines no new model | All 20 fields fixed: `symbol/segment/as_of`, `action`, `conviction`, `score`, `entry_price/stop_price/target_price` (Decimal), `stop_distance_pct/target_distance_pct/risk_reward/atr` (float), `position_size/risk_per_share` (Decimal), `risk_pct_of_notional` (float), `time_stop_bars` (int\|None), `reasoning` (str), `top_factors` (list[str]), `caveats` (str) |
 | L2 | Action from direction | `long → BUY`, `short → SELL_SHORT`, `flat → HOLD/FLAT` | `action: Literal["BUY","SELL_SHORT","HOLD/FLAT"]`; pure map off `signal.direction` |
-| L3 | Conviction buckets | `\|score\| ≥ 0.7` → **High**; `0.4 ≤ \|score\| < 0.7` → **Medium**; `< 0.4` → **Low** (lower-inclusive edges) | Reuse [#74](https://github.com/prajoria/OpenBB/issues/74)'s `confluence.bucket_conviction` (single source of truth) — see §3 / Q-note |
+| L3 | Conviction buckets | `\|score\| ≥ 0.7` → **High**; `0.4 ≤ \|score\| < 0.7` → **Medium**; `< 0.4` → **Low** (lower-inclusive edges) | Reuse `legacy issue 74`'s `confluence.bucket_conviction` (single source of truth) — see §3 / Q-note |
 | L4 | Distance / R:R formulas (§14.2, §9.3) | `stop_distance_pct = \|entry − stop\| / entry`; `target_distance_pct = \|target − entry\| / entry`; `risk_reward = \|target − entry\| / \|entry − stop\|` | Computed from the **actual** levels (not echoed from `target_r_multiple`), so quantization/realized-fill drift is reflected honestly |
 | L5 | Numeric discipline | **Decimal** for prices/sizing (`entry_price/stop_price/target_price/position_size/risk_per_share`); **float** for ratios/pcts (`score/stop_distance_pct/target_distance_pct/risk_reward/atr/risk_pct_of_notional`) | Matches `models.py` typing; distances computed in **Decimal** then cast to `float` at the boundary — no float money math (§2) |
 | L6 | `reasoning` is the **source of truth** | A **deterministic, templated, non-LLM** 2–4 sentence narrative from `MoverSignal.votes`. The optional agent layer (§16) *may* rewrite prose, but the template is what ships when the agent is absent | Auditable + golden-lockable; no network, no model call (§4) |
-| L7 | Builder posture | **Pure / offline / deterministic** — `execution.py` depends on `models` (+ stdlib `decimal`, `math`) only; consumes a **paper-filled `TradePlan`**; **never** recomputes votes ([#74](https://github.com/prajoria/OpenBB/issues/74)), levels/sizing ([#76](https://github.com/prajoria/OpenBB/issues/76)), or fills ([#78](https://github.com/prajoria/OpenBB/issues/78)) | Same `TradePlan` in ⇒ identical `Recommendation` (string-stable) out; unit-testable without `openbb.build()` |
+| L7 | Builder posture | **Pure / offline / deterministic** — `execution.py` depends on `models` (+ stdlib `decimal`, `math`) only; consumes a **paper-filled `TradePlan`**; **never** recomputes votes (`legacy issue 74`), levels/sizing (`legacy issue 76`), or fills (`legacy issue 78`) | Same `TradePlan` in ⇒ identical `Recommendation` (string-stable) out; unit-testable without `openbb.build()` |
 | L8 | Auditability | `reasoning`, `top_factors`, `caveats` are derived **only** from `signal.votes` (`IndicatorVote.family/name/vote/weight`) + the levels/rule on the plan — no second source of truth | Acceptance "traces to the signal's votes" is a direct invariant (§4, §5) |
 
 ### 0.2 Open questions (please review / brainstorm)
@@ -77,7 +77,7 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 > |---|---|---|---|
 > | **A1 — votes-only (RECOMMEND)** | polarity tokens from votes (`"MACD+"`, `"EMA cross+"`, `"RSI+"`) — no raw numbers | Pure trace to `votes` (L8); no panel coupling; golden-stable | Loses the literal *"RSI 62"* flavour of the §14.2 example |
 > | **A2 — builder also takes `IndicatorPanel`** | raw readings (`rsi=62`, `adx=28`) pulled from the panel that produced the votes | Matches the §14.2 example verbatim | Couples #80 to the panel; weakens "traces to **votes**" (two sources); panel must be threaded onto the `TradePlan` (it is **not** there today) |
-> | **A3 — extend `IndicatorVote` with a `reading: float`** | each vote carries its own raw value | One source, richest narrative | **Model change touching [#74](https://github.com/prajoria/OpenBB/issues/74)** + every golden it locked; out of #80's "no new models" remit |
+> | **A3 — extend `IndicatorVote` with a `reading: float`** | each vote carries its own raw value | One source, richest narrative | **Model change touching `legacy issue 74`** + every golden it locked; out of #80's "no new models" remit |
 >
 > Recommend **A1** (votes-only) for v1, with the parenthetical as polarity tokens; revisit A3 if the
 > prose must show raw numbers. **This choice gates `top_factors` formatting (Q-B) too.**
@@ -104,7 +104,7 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 >      richer agent-layer narrative), extending `IndicatorVote` with an optional `reading: float`
 >      is clean and backward-compatible. But that's a future issue, not #80.
 
-> **Q-B — `top_factors` selection + format.** Rank `signal.votes` by **`\|weight · vote\|`** (the [#74](https://github.com/prajoria/OpenBB/issues/74)
+> **Q-B — `top_factors` selection + format.** Rank `signal.votes` by **`\|weight · vote\|`** (the `legacy issue 74`
 > §4 attribution key, descending) and take the top-**K**. **K = 3** (matches the §9.3 example length).
 > Per-factor string: `"{NAME}{±} ({family})"` e.g. `"MACD+ (trend)"`, `"RSI+ (momentum)"`,
 > `"OBV+ (volume)"` (raw-number form `"RSI 62"` only if Q-A=A2/A3). **Tie-break:** `\|weight·vote\|`
@@ -139,7 +139,7 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 >
 > | # | Trigger (deterministic predicate over the plan) | Example clause |
 > |---|---|---|
-> | 1 | **Validation** ([#82](https://github.com/prajoria/OpenBB/issues/82)): `plan.validation` present and failing / high overfit-prob | *"validation flags overfitting"* |
+> | 1 | **Validation** (`legacy issue 82`): `plan.validation` present and failing / high overfit-prob | *"validation flags overfitting"* |
 > | 2 | **No paper fill:** `action ≠ HOLD/FLAT` but `simulated_fills` has no entry fill | *"no paper fill — levels are planned, not realized"* |
 > | 3 | **Volume divergence:** a `volume` vote opposes `sign(score)` | *"volume diverging from price"* |
 > | 4 | **Intra-family disagreement:** two voters in one family with opposite signs (e.g. `macd_hist+` vs `ema_cross−`) | *"trend votes split"* |
@@ -147,7 +147,7 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 > | 6 | **Missing family:** a family absent from the panel (warm-up / short history) ⇒ omitted from voting | *"momentum unavailable (short history)"* |
 >
 > **Open:** the full trigger set + the δ band (5); whether `plan.validation` (typed `Data \| None`,
-> [#82](https://github.com/prajoria/OpenBB/issues/82)) is even available at #80's call site; and the **empty representation** — `caveats` is a
+> `legacy issue 82`) is even available at #80's call site; and the **empty representation** — `caveats` is a
 > required `str` (not Optional), so when nothing triggers, ship `""` or a benign `"None."`?
 >
 > - **Recommendation:** adopt the full six-trigger set in the listed precedence with δ = 0.10 (the
@@ -175,25 +175,25 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 
 > **Q-D — `entry_price` provenance + the FLAT / no-fill edge case (a real model tension).**
 > The three price fields are **required `Decimal`** (no default), yet a `HOLD/FLAT` symbol has **no
-> trade and no fill** ([#76](https://github.com/prajoria/OpenBB/issues/76) emits no levels; [#77](https://github.com/prajoria/OpenBB/issues/77) emits empty orders; [#78](https://github.com/prajoria/OpenBB/issues/78) produces no fills). What goes
+> trade and no fill** (`legacy issue 76` emits no levels; `legacy issue 77` emits empty orders; `legacy issue 78` produces no fills). What goes
 > in `entry_price/stop_price/target_price`?
 >
 > | Case | `entry_price` source | `stop`/`target` | Gaps / R:R / size |
 > |---|---|---|---|
-> | **BUY/SELL_SHORT, filled** | **realized** entry from the `entry`-intent `Fill.price` ([#78](https://github.com/prajoria/OpenBB/issues/78), after slippage) | from [#76](https://github.com/prajoria/OpenBB/issues/76) levels — **frozen** (as planned) **or re-anchored** off the realized entry (sub-Q below) | computed (§2) |
-> | **BUY/SELL_SHORT, NOT filled** (limit never marketable / no t+1 bar) | fall back to **planned** `entry_ref` ([#77](https://github.com/prajoria/OpenBB/issues/77), off `as_of` close) + caveat #2 | planned levels | computed off planned |
+> | **BUY/SELL_SHORT, filled** | **realized** entry from the `entry`-intent `Fill.price` (`legacy issue 78`, after slippage) | from `legacy issue 76` levels — **frozen** (as planned) **or re-anchored** off the realized entry (sub-Q below) | computed (§2) |
+> | **BUY/SELL_SHORT, NOT filled** (limit never marketable / no t+1 bar) | fall back to **planned** `entry_ref` (`legacy issue 77`, off `as_of` close) + caveat #2 | planned levels | computed off planned |
 > | **HOLD/FLAT** | **?** — model forces a Decimal. Straw: the **`as_of` close** (a meaningful reference price) | **?** Straw: `stop = target = entry` ⇒ zero-distance | `stop_distance_pct = target_distance_pct = 0.0`, `risk_reward = 0.0`, `position_size = 0`, `risk_per_share = 0`, `time_stop_bars = None` |
 >
 > The Excel sketch (§14.3) renders the FLAT row's Entry/Stop/Target/Stop%/R:R as **"—"**, so whatever
-> sentinel we pick, [#81](https://github.com/prajoria/OpenBB/issues/81) maps the zero-distance/flat case to "—". **Open:** (a) FLAT entry =
-> `as_of` close vs `Decimal("0")`; (b) for filled trades, **freeze** [#77](https://github.com/prajoria/OpenBB/issues/77)'s planned stop/target (R:R drifts
+> sentinel we pick, `legacy issue 81` maps the zero-distance/flat case to "—". **Open:** (a) FLAT entry =
+> `as_of` close vs `Decimal("0")`; (b) for filled trades, **freeze** `legacy issue 77`'s planned stop/target (R:R drifts
 > from `target_r_multiple` because the realized entry ≠ planned `entry_ref`) **or re-anchor** stop/target
-> off the realized entry (keeps R:R ≈ `target_r_multiple` exact). [#77](https://github.com/prajoria/OpenBB/issues/77) Q-F recommended *freeze +
+> off the realized entry (keeps R:R ≈ `target_r_multiple` exact). `legacy issue 77` Q-F recommended *freeze +
 > report drift* — confirm #80 reports the drifted R:R rather than re-anchoring.
 >
 > - **Recommendation:** FLAT entry = the **`as_of` close** (a meaningful reference, not `Decimal("0")`)
->   with `stop = target = entry` ⇒ zero-distance gaps; for filled trades **freeze** [#77](https://github.com/prajoria/OpenBB/issues/77)'s planned
->   stop/target and **report the drifted R:R** honestly (no re-anchoring), consistent with [#77](https://github.com/prajoria/OpenBB/issues/77) Q-F.
+>   with `stop = target = entry` ⇒ zero-distance gaps; for filled trades **freeze** `legacy issue 77`'s planned
+>   stop/target and **report the drifted R:R** honestly (no re-anchoring), consistent with `legacy issue 77` Q-F.
 > - **Answer (Review):** ✅ **Approved — FLAT = `as_of` close; freeze levels; report drift.**
 >
 >   1. **FLAT entry = `as_of` close — correct.** `Decimal("0")` is a meaningless sentinel that
@@ -223,7 +223,7 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 > | **E2** | `sizing.risk_per_trade` (e.g. `0.01`) | the **input** risk budget fraction | needs `risk_per_trade` threaded to #80 |
 > | **E3 — RECOMMEND** | `(position_size · risk_per_share) / account_size` | **account** notional; the *realized* fraction of (abstract) account at risk, `≤ risk_per_trade` after share-flooring | needs `account_size` threaded to #80 |
 >
-> All three are privacy-safe (`account_size` defaults to an **abstract** notional, [#76](https://github.com/prajoria/OpenBB/issues/76) L2 — no
+> All three are privacy-safe (`account_size` defaults to an **abstract** notional, `legacy issue 76` L2 — no
 > personal dollars leak; the output is a pure fraction). **But E2/E3 require `account_size`/`risk_per_trade`
 > to reach #80** — the `TradePlan` carries `position_size` but **not** the `SizingConfig` today, so a
 > plumbing decision rides on this (E1 needs nothing extra). **Open:** pick the formula **and** confirm
@@ -252,15 +252,15 @@ shipped template. An optional later agent rewrite is out of scope; the template 
 
 > **Q-F — builder location, signature, and the `engine/execution.py` filename pact.** PRD §9.1 names a
 > single `engine/execution.py` hosting *"BrokerInterface + paper fill simulation + Recommendation
-> builder"*; [#78](https://github.com/prajoria/OpenBB/issues/78) split the broker/fill half into `engine/broker.py` + `engine/simulate.py` and
+> builder"*; `legacy issue 78` split the broker/fill half into `engine/broker.py` + `engine/simulate.py` and
 > **left `execution.py` for #80** (its §1 note). Proposed: `execution.py::build_recommendation(plan:
 > TradePlan, *, config=...) -> Recommendation`. **Open:** does the builder **return** the
 > `Recommendation` (caller attaches via `plan.model_copy(update={"recommendation": rec})`), or
 > **mutate** `plan.recommendation` in place? Recommend **return-only** (pure; the `plan_router`/`scan`
-> caller attaches), since `TradePlan.recommendation` is `Recommendation | None` per [#77](https://github.com/prajoria/OpenBB/issues/77) Q-A.
+> caller attaches), since `TradePlan.recommendation` is `Recommendation | None` per `legacy issue 77` Q-A.
 >
 > - **Recommendation:** `execution.py::build_recommendation(plan, *, config=...) -> Recommendation`,
->   **return-only** (pure); the `plan_router` / [#79](https://github.com/prajoria/OpenBB/issues/79) `scan` caller attaches it via
+>   **return-only** (pure); the `plan_router` / `legacy issue 79` `scan` caller attaches it via
 >   `plan.model_copy(update={"recommendation": rec})`. Keep the `engine/execution.py` filename for #80
 >   per the [#78](./78-paperbroker-fill-sim.md) §1 pact (broker/fill live in `broker.py`/`simulate.py`).
 > - **Answer (Review):** ✅ **Approved — return-only builder in `execution.py`.**
@@ -307,7 +307,7 @@ openbb_platform/extensions/techtrade/tests/
 
 **Module-boundary rules**
 - `execution.py` is **pure**: it takes a paper-filled `TradePlan` (whose `signal.votes`, `orders`,
-  `simulated_fills`, `position_size`, `rule` are already populated by [#74](https://github.com/prajoria/OpenBB/issues/74)/[#77](https://github.com/prajoria/OpenBB/issues/77)/[#78](https://github.com/prajoria/OpenBB/issues/78)) and returns a
+  `simulated_fills`, `position_size`, `rule` are already populated by `legacy issue 74`/`legacy issue 77`/`legacy issue 78`) and returns a
   `Recommendation`. It performs **no** I/O and imports nothing from the engine except `models` (and,
   optionally, `confluence.bucket_conviction` for L3 — see §3) — unit-testable without `openbb.build()`.
 - It **never recomputes** the signal, the levels, the sizing, or the fill price. Every number is
@@ -315,7 +315,7 @@ openbb_platform/extensions/techtrade/tests/
   narrative (§4). One source of truth per quantity (kills any §19 duplication).
 - The float↔Decimal boundary (§2.1) is crossed **once**: distances are computed in `Decimal`, then
   cast to `float` for the `*_pct`/`risk_reward` fields. No `float` money ever escapes.
-- No cycles: `models ← execution`; the `plan_router`/`scan` caller ([#77](https://github.com/prajoria/OpenBB/issues/77)/[#79](https://github.com/prajoria/OpenBB/issues/79)) attaches the result onto
+- No cycles: `models ← execution`; the `plan_router`/`scan` caller (`legacy issue 77`/`legacy issue 79`) attaches the result onto
   `TradePlan.recommendation`.
 
 ---
@@ -326,10 +326,10 @@ Inputs (all already on the paper-filled `TradePlan`):
 
 | Quantity | Type | Source |
 |---|---|---|
-| `entry_price` | Decimal | realized `entry`-intent `Fill.price` ([#78](https://github.com/prajoria/OpenBB/issues/78), after slippage); planned `entry_ref` fallback (Q-D) |
-| `stop_price`, `target_price` | Decimal | [#76](https://github.com/prajoria/OpenBB/issues/76) levels carried via [#77](https://github.com/prajoria/OpenBB/issues/77) orders (`exit_stop.stop_price`, `exit_target.limit_price`); frozen or re-anchored (Q-D) |
-| `atr` | float | the ATR(14) that set the stop — `IndicatorPanel.volatility["atr"]` via [#76](https://github.com/prajoria/OpenBB/issues/76); **carried through**, never recomputed |
-| `position_size`, `risk_per_share` | Decimal | [#76](https://github.com/prajoria/OpenBB/issues/76) sizing (`risk_per_share = \|entry − stop\| = atr_stop_mult·ATR`); `plan.position_size` |
+| `entry_price` | Decimal | realized `entry`-intent `Fill.price` (`legacy issue 78`, after slippage); planned `entry_ref` fallback (Q-D) |
+| `stop_price`, `target_price` | Decimal | `legacy issue 76` levels carried via `legacy issue 77` orders (`exit_stop.stop_price`, `exit_target.limit_price`); frozen or re-anchored (Q-D) |
+| `atr` | float | the ATR(14) that set the stop — `IndicatorPanel.volatility["atr"]` via `legacy issue 76`; **carried through**, never recomputed |
+| `position_size`, `risk_per_share` | Decimal | `legacy issue 76` sizing (`risk_per_share = \|entry − stop\| = atr_stop_mult·ATR`); `plan.position_size` |
 | `time_stop_bars` | int\|None | `plan.rule.max_holding_bars` |
 | `score` | float | `plan.signal.score` |
 
@@ -355,7 +355,7 @@ risk_per_share = stop_distance                          # Decimal, = |entry - st
 - **`atr`** is surfaced verbatim (the value that sized the stop) — #80 does **not** touch pandas-ta.
 - **`risk_pct_of_notional`** per Q-E (straw **E3**: `float(position_size · risk_per_share / account_size)`).
 
-> **One quantity, two uses (carried from [#76](https://github.com/prajoria/OpenBB/issues/76) §2.1).** `risk_per_share = \|entry − stop\|` is the
+> **One quantity, two uses (carried from `legacy issue 76` §2.1).** `risk_per_share = \|entry − stop\|` is the
 > same magnitude that sized the position and set the R-multiple target — so `risk_reward`,
 > `stop_distance_pct`, and `position_size` cannot disagree by construction. #80 surfaces it; it does
 > not re-derive it.
@@ -378,11 +378,11 @@ def conviction_of(score: float) -> str:
     return "Low"                      # |score| < 0.4
 ```
 
-- `action` is a pure map off `signal.direction` (resolved by [#74](https://github.com/prajoria/OpenBB/issues/74)/[#75](https://github.com/prajoria/OpenBB/issues/75)); `conviction` off `|score|`.
+- `action` is a pure map off `signal.direction` (resolved by `legacy issue 74`/`legacy issue 75`); `conviction` off `|score|`.
 - A `flat` signal is **typically** `|score| < entry_threshold (0.4)` ⇒ `Low`, so `HOLD/FLAT` + `Low`
   is the consistent FLAT row — but the two fields are computed **independently** (a `flat` symbol
   could in principle carry a higher `|score|` if direction were resolved differently upstream; #80
-  does not second-guess [#74](https://github.com/prajoria/OpenBB/issues/74)).
+  does not second-guess `legacy issue 74`).
 - **L3 reuse note (minor open):** import `bucket_conviction` from `confluence.py` to avoid two copies
   of the `0.7 / 0.4` edges drifting, **vs** inline the two-line helper to keep `execution.py` free of
   an engine import. Recommend **reuse** (one source of truth); confirm.
@@ -392,7 +392,7 @@ def conviction_of(score: float) -> str:
 ## 4. Deterministic reasoning (the non-LLM narrative) — §14.2
 
 The acceptance hinge: `reasoning`, `top_factors`, and `caveats` must **trace to the actual votes**
-(`signal.votes`), with **no recomputation and no second source of truth**. [#74](https://github.com/prajoria/OpenBB/issues/74) §4 already
+(`signal.votes`), with **no recomputation and no second source of truth**. `legacy issue 74` §4 already
 guarantees the `votes` *fully reconcile* to `score`, so a narrative built from `votes` is faithful by
 construction.
 
@@ -489,7 +489,7 @@ hand-computed goldens; pct/ratio fields compare within `testing.DEFAULT_TOL` (1e
 ### 5.2 `tests/golden/test_recommendation_golden.py` — narrative lock
 
 Because `reasoning`/`top_factors`/`caveats` are **deterministic strings**, lock them against a
-committed fixture via the `testing.py` harness (the [#74](https://github.com/prajoria/OpenBB/issues/74)/[#71](https://github.com/prajoria/OpenBB/issues/71) golden pattern):
+committed fixture via the `testing.py` harness (the `legacy issue 74`/`legacy issue 71` golden pattern):
 
 ```python
 import pytest
@@ -524,15 +524,15 @@ Run:
 
 | Acceptance criterion (issue) | Satisfied by | Open dependency |
 |---|---|---|
-| `engine/execution.py` builder: entry/stop/target, **stop-gaps**, R:R, ATR | §2 (Decimal gaps + `risk_reward`); §1 (`execution.py`, Q-F filename pact with [#78](https://github.com/prajoria/OpenBB/issues/78)) | Q-D (entry provenance), Q-F (signature) |
-| Sizing fields: `position_size`, `risk_per_share`, `risk_pct_of_notional`, `time_stop_bars` | §2 (carried from [#76](https://github.com/prajoria/OpenBB/issues/76); Q-E formula) | **Q-E** (formula + plumbing) |
+| `engine/execution.py` builder: entry/stop/target, **stop-gaps**, R:R, ATR | §2 (Decimal gaps + `risk_reward`); §1 (`execution.py`, Q-F filename pact with `legacy issue 78`) | Q-D (entry provenance), Q-F (signature) |
+| Sizing fields: `position_size`, `risk_per_share`, `risk_pct_of_notional`, `time_stop_bars` | §2 (carried from `legacy issue 76`; Q-E formula) | **Q-E** (formula + plumbing) |
 | **Deterministic reasoning template** (non-LLM): `reasoning`/`top_factors`/`caveats` traced to votes | §4 (grammar + `top_factors` rank + `caveats` precedence); L6/L8 | **Q-A/Q-B/Q-C** |
 | `action` + `conviction` buckets from score | §3 (L2 action map, L3 buckets) | — |
 | Unit test: **every field populated**; reasoning references actual top votes | §5.1 (`test_all_fields_populated`, `test_reasoning_references_top_votes`) | — |
 | `Recommendation` fully populated per §9.3 / §14.2 | §0.1 L1 (all 20 fields), §2–§4 | Q-D (required Decimals for FLAT) |
 | `reasoning`/`top_factors` trace to the signal's votes (**auditable**) | §4.3 invariant; §5.1 names ⊂ votes; §5.2 golden lock | Q-A (votes-only vs panel) |
 | R:R, stop/target distance % computed correctly (**Decimal**) | §2.1 (Decimal arithmetic, cast at boundary); §5.1 `test_distance_and_rr_decimal` | — |
-| (Depends) consumes [#78](https://github.com/prajoria/OpenBB/issues/78) realized entry; feeds [#81](https://github.com/prajoria/OpenBB/issues/81) (one Excel row), [#82](https://github.com/prajoria/OpenBB/issues/82) caveat | §1 boundary; §2 (Fill entry); §4.3 (validation caveat) | Q-C (validation availability) |
+| (Depends) consumes `legacy issue 78` realized entry; feeds `legacy issue 81` (one Excel row), `legacy issue 82` caveat | §1 boundary; §2 (Fill entry); §4.3 (validation caveat) | Q-C (validation availability) |
 
 > **Gate before implementation:** resolve **Q-A…Q-F (§0.2)** with the user. Q-A (template grammar) and
 > Q-D (FLAT/no-fill `entry_price`) change the golden string/values, so the §5.2 fixture is authored

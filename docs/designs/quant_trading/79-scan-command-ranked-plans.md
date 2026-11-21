@@ -1,7 +1,7 @@
 # 79 — scan Command: All Sectors → Ranked TradePlans
 
-**GitHub:** [#79](https://github.com/prajoria/OpenBB/issues/79) · **Phase:** P4 · **Sprint:** 5 · **Size:** M
-**Depends on:** [#78](https://github.com/prajoria/OpenBB/issues/78) (paper fill sim — `simulate` / `PaperBroker`)
+**GitHub:** `legacy issue 79` · **Phase:** P4 · **Sprint:** 5 · **Size:** M
+**Depends on:** `legacy issue 78` (paper fill sim — `simulate` / `PaperBroker`)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §9.2 (command surface), §10 (segment & top-mover screening); reuse rule §19; resolved questions §20 Q2/Q3
 **Scope:** Add `obb.techtrade.scan(metric=…, top_n=…, preset=…)` — the **one-call orchestrator** that screens all 11 GICS sectors, runs each segment's movers through the existing signals→rules→orders→fills chain, and returns a **cross-segment ranked** `list[TradePlan]`. `scan` is pure **composition over existing engines** (no new signal/rule/order/fill logic), plus an integration test over a small multi-sector universe asserting deterministic ordering for a fixed as-of.
 
@@ -15,14 +15,14 @@
 >
 > | Stale ref (issue body) | Real techtrade issue | Surface `scan` reuses |
 > |---|---|---|
-> | `#6` | [#73](https://github.com/prajoria/OpenBB/issues/73) ([design](./73-indicator-adapter-selector-parity-bulk.md)) | bulk indicator panels (`engine/bulk.build_panels_bulk`) |
-> | `#11` | [#75](https://github.com/prajoria/OpenBB/issues/75) ([design](./75-signals-command-presets.md)) | confluence signals (`signals` → `MoverSignal`) |
-> | `#13` | [#77](https://github.com/prajoria/OpenBB/issues/77) ([design](./77-order-generation-tradeplan.md)) | orders + `TradePlan` (`plan` / `engine/orders.build_plan`) |
-> | `#14` | [#78](https://github.com/prajoria/OpenBB/issues/78) ([design](./78-paperbroker-fill-sim.md)) | paper fills (`simulate` / `PaperBroker`) |
+> | `#6` | `legacy issue 73` ([design](./73-indicator-adapter-selector-parity-bulk.md)) | bulk indicator panels (`engine/bulk.build_panels_bulk`) |
+> | `#11` | `legacy issue 75` ([design](./75-signals-command-presets.md)) | confluence signals (`signals` → `MoverSignal`) |
+> | `#13` | `legacy issue 77` ([design](./77-order-generation-tradeplan.md)) | orders + `TradePlan` (`plan` / `engine/orders.build_plan`) |
+> | `#14` | `legacy issue 78` ([design](./78-paperbroker-fill-sim.md)) | paper fills (`simulate` / `PaperBroker`) |
 >
-> The screener/mover front of the chain ([#69](https://github.com/prajoria/OpenBB/issues/69) universe
-> resolver, [#70](https://github.com/prajoria/OpenBB/issues/70) movers) and the rules/sizing stage
-> ([#76](https://github.com/prajoria/OpenBB/issues/76)) are implicit upstream of `#13`→#77 and are
+> The screener/mover front of the chain (`legacy issue 69` universe
+> resolver, `legacy issue 70` movers) and the rules/sizing stage
+> (`legacy issue 76`) are implicit upstream of `#13`→#77 and are
 > reused identically.
 
 ---

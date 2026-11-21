@@ -1,7 +1,7 @@
 # 78 — PaperBroker Fill Simulation (BrokerInterface, Next-Bar-Open) + simulate
 
-**GitHub:** [#78](https://github.com/prajoria/OpenBB/issues/78) · **Phase:** P4 · **Sprint:** 4 · **Size:** L
-**Depends on:** [#77](https://github.com/prajoria/OpenBB/issues/77) (orders + TradePlan)
+**GitHub:** `legacy issue 78` · **Phase:** P4 · **Sprint:** 4 · **Size:** L
+**Depends on:** `legacy issue 77` (orders + TradePlan)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §14.1 (broker / fill model), §13 (look-ahead discipline); models §9.3; reuse rule §19
 **Scope:** Add a live-ready `BrokerInterface` Protocol + a `PaperBroker` implementation, a
 next-bar-open fill model (no look-ahead) with slippage + commission, the

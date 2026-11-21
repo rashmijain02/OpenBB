@@ -193,12 +193,12 @@ snapshots + matching scripts. Safe to delete after Phase C ships.
 
 ## portfolio-intel-tracker-sync-2026-07-16
 
-Retroactive close pass on Project #4 (Portfolio Intelligence Engine) —
+Retroactive close pass on Project 1 (Portfolio Intelligence Engine) —
 tracker had drifted from `origin/portfolio` because every merged
 `feat/pi-*` PR cited the retired `OpenBBTechnical-qy83.1.N` bd-id in its
 `Closes` clause, which GitHub could not resolve. Closed 6 shipped-but-open
 issues (#504, #506, #507, #509, #510, #511) with linking comments naming
-the shipping PR (#466, #467, #468, #471, #473, #474). Project #4 status
+the shipping PR (#466, #467, #468, #471, #473, #474). Project 1 status
 went from `3 Done / 87 Todo` to `9 Done / 81 Todo`.
 
 Also authored two planning artifacts:
@@ -222,7 +222,7 @@ add a CI check rejecting PRs whose `Closes` clause doesn't cite a real
 
 ## portfolio-intel-stage4-2026-07-16
 
-Stage 4 tracker-hygiene pass on Project #4 (Portfolio Intelligence Engine)
+Stage 4 tracker-hygiene pass on Project 1 (Portfolio Intelligence Engine)
 completed on Daisy's blanket approval. Six actions executed:
 
 1. Closed #500 (obsolete bd-schema bug) as `not planned`.
@@ -230,7 +230,7 @@ completed on Daisy's blanket approval. Six actions executed:
    `status:blocked`. Blocks M3 kickoff. Nadia will re-ping each session.
 3. #505 re-described from "weekly Monday sync" to "session-boundary
    absorb cadence, Nadia owned" — fits AI-agent team model.
-4. #780/#781/#802 got their Phase/Lane fields set on Project #4
+4. #780/#781/#802 got their Phase/Lane fields set on Project 1
    (previously missing). All other 87 items had correct field values
    from the bd->gh migration; zero conflicts.
 5. Filed #826 (CI: reject Closes clauses that don't cite real #NN) —
@@ -242,7 +242,7 @@ completed on Daisy's blanket approval. Six actions executed:
 New labels created: `pm:blocked-on-decision` (red B60205),
 `area:fmp-cached-gap` (yellow FBCA04), `milestone:M0/M1/M2/M3/M4` (blue).
 
-**Standing state after Stage 4:** Project #4 = **10 Done / 82 Todo** (92
+**Standing state after Stage 4:** Project 1 = **10 Done / 82 Todo** (92
 total; the 2 new items #826 + #827 raised the total from 90). Two open
 Daisy-blocking items: #498 (fill-model decision) and initial ack on Kai
 claiming #512 (recommended M1 first branch). Everything else is
@@ -452,7 +452,7 @@ merges landed with 6/6 CI on iter-1. Local pre-flight of all 4 linters
 (black + ruff + pylint + mypy) in .venv_portfolio pays off; no more
 "CI catches what local missed" iterations.
 
-**Project #4 state after batch**: 21 Done / 79 Todo / 100 total. Up
+**Project 1 state after batch**: 21 Done / 79 Todo / 100 total. Up
 from 17/82/99 at batch start. First P2 issue closed (#892 — Paper/Fills
 adapter). M0 anchor #492 sub-issue rollup climbed further.
 
@@ -477,7 +477,7 @@ data work per the roadmap.
 
 ## portfolio-intel-session-close-2026-07-19
 
-**Session ended 2026-07-19 with 29 Done / 71 Todo on Project #4 (100 total)** —
+**Session ended 2026-07-19 with 29 Done / 71 Todo on Project 1 (100 total)** —
 up from 3 Done / 87 Todo / 90 total at session start (2026-07-16). Net delta:
 +26 Done, -16 Todo (some items filed then closed same session; +10 new items
 added during the session).
@@ -813,7 +813,7 @@ fresh (<10 min) heartbeat marker.
 
 **Final drain state on 2026-07-21 after full-day session:**
 
-Board went from 281 → 221 open on Project #4 (60 items drained).
+Board went from 281 → 221 open on Project 1 (60 items drained).
 Fetcher count: **76 → 122** (+46 new).
 
 Wave status:
@@ -870,7 +870,7 @@ Wave status:
 
 **Session-end housekeeping:**
 - CronCreate wakeup jobs: all deleted on merge (no leaks)
-- All in-flight issues closed on GH + Project #4 Status=Done
+- All in-flight issues closed on GH + Project 1 Status=Done
 - No open branches on origin
 - 3 follow-up issues filed: #1321 (baseline test drift),
   #1330 (plan_limited.py stale), and this session left docs +
@@ -895,7 +895,7 @@ Wave status:
 and `fmp-cached-drain-final-2026-07-21`).**
 
 Session outcome across 2 sessions on 2026-07-22:
-- Board went from 221 → 92 open on Project #4 (**129 items drained today**)
+- Board went from 221 → 92 open on Project 1 (**129 items drained today**)
 - **Waves W1, W2, W3, W4, W7 all fully drained** — only W5 (19), W6 (31),
   W8 (28), no-wave (14) remain.
 - Fetcher count 122 → **151** (+29 new)
@@ -1041,7 +1041,7 @@ follow-up remain).
 
 ## project4-drain-endgame-2026-07-22-end
 
-**Project #4 (Portfolio Intelligence Engine) drain — everything
+**Project 1 (Portfolio Intelligence Engine) drain — everything
 drainable via this program is drained.** Board went 221 → **3 open**
 across 2 sessions on 2026-07-21/22.
 
@@ -1138,7 +1138,7 @@ PR) intentionally does NOT close #1373 — closing without the
 snapshots would violate "loud empties" (blocker gone but nothing
 actually unblocked yet).
 
-**Board state at time of memory**: 12 open on Project #4 (was 15
+**Board state at time of memory**: 12 open on Project 1 (was 15
 before this drain iteration); the remainder are the 7 Phase B code
 issues + gate + parent epic + PR-4 + #1373.
 
@@ -1209,7 +1209,7 @@ sanctioned fallback is the fixture path per STORY_BIBLE §3, not a
 fabrication.
 
 **Board state at time of memory**: Phase B parent epic #1352 closes
-with this PR. Remaining open in Project #4: the 6 fresh follow-ups
+with this PR. Remaining open in Project 1: the 6 fresh follow-ups
 (#1400-#1405), bug reports #1389/#1390/#1394/#1395 (surfaced during
 notebook execution), and the assorted long-tail non-portfolio issues.
 
@@ -1314,7 +1314,7 @@ on the 6120 `portfolio_intel` backend. Closes #1805.
   `main.py`). The union return `HTMLResponse | PlainTextResponse` needs
   `response_model=None` on the `@router.get` decorator or FastAPI
   raises `Invalid args for response field` at startup.
-- **CodeRabbit is NOT installed on prajoria/OpenBB** — PRs get 0 bot
+- **CodeRabbit is NOT installed on rashmijain02/OpenBB** — PRs get 0 bot
   review threads, so the openbb-dev-cycle Phase-9 CodeRabbit/autofix clause
   degrades to "0 threads = satisfied". Rely on the built-in code-review +
   security-review agents for convergence.

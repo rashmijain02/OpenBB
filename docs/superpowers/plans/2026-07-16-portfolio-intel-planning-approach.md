@@ -3,9 +3,9 @@
 **Status:** DRAFT — awaiting user confirmation on Stage 2 wording + audit doc location before execution.
 **Date:** 2026-07-16
 **Author:** Claude (session on `portfolio` branch)
-**Repo:** `prajoria/OpenBB` — https://github.com/prajoria/OpenBB
+**Repo:** `rashmijain02/OpenBB` — https://github.com/rashmijain02/OpenBB
 **Branch:** `portfolio` (integration; `develop → portfolio` one-way absorb; `portfolio → develop` gated on Daisy's loud sign-off at M4)
-**Project:** [Portfolio Intelligence Engine (#4)](https://github.com/users/prajoria/projects/4) — private, 90 items, all Issues
+**Project:** [Portfolio Intelligence Engine (#4)](https://github.com/users/rashmijain02/projects/1/views/1) — private, 90 items, all Issues
 
 ---
 
@@ -17,7 +17,7 @@
 - **Fallback path:** only when `fmp_cached` genuinely does not cover the endpoint you need. Ideally that is zero cases — treat every fallback as a gap that must be closed **by someone else** (see scope boundary below).
 - **When a gap is hit** (required workflow, not optional):
   1. Use `fmp` for the immediate call so the roadmap doesn't stall. If a future workstream introduces a genuinely new data domain not covered by either fmp variant, use whatever provider is available (FRED, EOD-HD, etc.) under the same file-a-gap-issue discipline.
-  2. File a GH issue in `prajoria/OpenBB`, add it to Project #4, label `area:fmp-cached-gap`. Body must include: missing endpoint, calling context (which milestone / widget / analysis path), what needs to be added to `providers/fmp_cached/`.
+  2. File a GH issue in `rashmijain02/OpenBB`, add it to Project 1, label `area:fmp-cached-gap`. Body must include: missing endpoint, calling context (which milestone / widget / analysis path), what needs to be added to `providers/fmp_cached/`.
   3. Add a `# TODO(gh-<NN>): migrate to fmp_cached once endpoint lands` comment at the fallback call-site so the debt is visible in every future diff, `grep`-able, and reviewer-visible in PRs.
 - **Scope boundary — hard rule:** a **separate team** owns `providers/fmp_cached/`. The portfolio team **does not** implement `fmp_cached` extensions. Ever. File the gap issue with enough context that the `fmp_cached` team can act on it, then move on with the fallback. Do not open PRs adding endpoints to `fmp_cached`, even for "trivial" cases — cross-team boundary violations create merge conflicts and duplicated work.
 - **Reviewer discipline (Mira gate, Zev veto):** any PR introducing an `fmp` fallback that does *not* have a paired `area:fmp-cached-gap` GH issue is rejected. Codified rule, no reviewer judgment needed. **Also rejected:** any PR from the portfolio team that touches `providers/fmp_cached/` source (crossing the scope boundary).
@@ -46,7 +46,7 @@ Working from the epic's product surfaces:
 
 ## Locked decisions
 
-1. **Repo of record:** `prajoria/OpenBB`. Every open issue must be attached to Project #4; if any orphans surface, they get added.
+1. **Repo of record:** `rashmijain02/OpenBB`. Every open issue must be attached to Project 1; if any orphans surface, they get added.
 2. **Team (all AI agents, random names, roles fixed):**
    - **PM (project manager, milestone ownership, roadmap authoring):** *Nadia*
    - **Dev-A (backend / data / router):** *Kai*
@@ -78,21 +78,21 @@ Read-only inventory. Ran end-to-end; artifacts written to `.dev-cycle/`.
 
 | Metric | Value |
 |---|---|
-| Project #4 total items | 90 (all Issues, all in `prajoria/OpenBB`) |
+| Project 1 total items | 90 (all Issues, all in `rashmijain02/OpenBB`) |
 | Status = `Todo` | 87 |
 | Status = `Done` | 3 (only #501, #502, #503 — M0 repo-bugs) |
 | PRs targeting `portfolio` | 8 (7 merged, 1 open — `#762 chore/absorb-develop-into-portfolio`) |
 | PRs from `feat/pi-*` branches | 6, all merged |
-| Merged PRs with `Closes #NN` referencing a Project #4 issue | **0** |
+| Merged PRs with `Closes #NN` referencing a Project 1 issue | **0** |
 | bd → gh migration map entries (`scripts/pi_bead_to_gh_map.json`) | 87 → 87 unique GH issues |
-| bd-map ↔ Project #4 coverage | Perfect (all 87 mapped issues are on the project) |
+| bd-map ↔ Project 1 coverage | Perfect (all 87 mapped issues are on the project) |
 
 ### The critical finding — tracker sync broke at the bd retirement
 
 Every shipped `feat/pi-*` PR cites the retired bd-id (`OpenBBTechnical-qy83.1.N`) in its body, **not** the GH issue number. GitHub can't auto-close on unrecognized identifiers, so:
 
 - Work landed on `portfolio` (PRs #466, #467, #468, #471, #473, #474, #487 all merged).
-- The GH issues that those PRs actually finished stayed `Todo` on Project #4.
+- The GH issues that those PRs actually finished stayed `Todo` on Project 1.
 - The `pi_bead_to_gh_map.json` file (already in the tree) is the retroactive bridge.
 
 **Implication for Stage 2:** the task changed from "spawn parallel subagents to classify 90 items" (my original plan) into a **mechanical join over a small map**. Much cheaper.
@@ -139,13 +139,13 @@ For each of the 5 merged `feat/pi-*` PRs:
 
 ### Stage 2B — Non-project refs check (~15 min)
 
-The commit log has `Closes #21/#23/#93/#763/#774/#775/#776/#782/#783/#793/#804/#805/#806/#807` and `Fixes #739`. None of these are in Project #4 (they were absorbed from `develop`). Noted in the audit doc, not our concern here.
+The commit log has `Closes #21/#23/#93/#763/#774/#775/#776/#782/#783/#793/#804/#805/#806/#807` and `Fixes #739`. None of these are in Project 1 (they were absorbed from `develop`). Noted in the audit doc, not our concern here.
 
 Also confirm: bd-map has 87 entries; project has 90 items. The 3 extras are `#501/#502/#503` (Done). **No orphans.** ✓
 
 ### Stage 2C — Missing-`Closes` audit (~5 min)
 
-Grep every PR body for bare `#\d{3}` references and cross-check against Project #4 item numbers. Almost certainly zero hits, but confirms tracker-sync claim rigorously.
+Grep every PR body for bare `#\d{3}` references and cross-check against Project 1 item numbers. Almost certainly zero hits, but confirms tracker-sync claim rigorously.
 
 ### Stage 2D — Close-with-comment (~10 min, needs user only for ambiguous rows)
 
@@ -153,7 +153,7 @@ Under the granted bulk-close permission, close each identified shipped-but-open 
 
 ```
 Shipped via #<PR-number> (branch: feat/pi-.../…) — originally referenced by the
-retired bd-id `OpenBBTechnical-qy83.1.N`. Closing as `Done` on Project #4.
+retired bd-id `OpenBBTechnical-qy83.1.N`. Closing as `Done` on Project 1.
 ```
 
 Also append a single entry to `docs/MEMORIES.md` documenting the retroactive close pass so a future session sees the audit trail.
@@ -218,7 +218,7 @@ Not sized in weeks. Nadia will estimate once the concrete issue list is known.
 1. Walk Daisy through the audit + roadmap docs.
 2. On approval:
    - Bulk-close classified duplicates/stale/shipped issues (Stage 2D).
-   - Add any *newly-identified* work as fresh GH issues attached to Project #4 (with bulk-create sign-off since >3 in one action).
+   - Add any *newly-identified* work as fresh GH issues attached to Project 1 (with bulk-create sign-off since >3 in one action).
    - Ensure every surviving open issue has `Status`, `Milestone` (M1/M2/M3/M4), and `Workstream` label set.
 3. Nadia converts the roadmap into concrete issue-level ordering (M1 issue queue for the first sprint).
 

@@ -101,6 +101,6 @@
 - [ ] Commit with `Refs #1719` and the Copilot trailer; push and open one PR to
   `portfolio` with `Closes #1719`.
 - [ ] Iterate local/GitHub reviews until all findings are applied-and-verified or
-  deferred with a Project #4 issue, all current threads are resolved, fresh code
+  deferred with a Project 1 issue, all current threads are resolved, fresh code
   review is clean, and security review has no unaddressed high/critical finding.
 - [ ] Merge when checks and policy permit; verify #1719 closes and clean the worktree.

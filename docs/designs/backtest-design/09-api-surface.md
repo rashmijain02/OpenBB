@@ -1,6 +1,6 @@
 # 09 — API / Router Surface
 
-**GitHub:** [#46](https://github.com/prajoria/OpenBB/issues/46) · **Depends on:** [#41](https://github.com/prajoria/OpenBB/issues/41), [#42](https://github.com/prajoria/OpenBB/issues/42), [#44](https://github.com/prajoria/OpenBB/issues/44), [#45](https://github.com/prajoria/OpenBB/issues/45), [#47](https://github.com/prajoria/OpenBB/issues/47)
+**GitHub:** `legacy issue 46` · **Depends on:** `legacy issue 41`, `legacy issue 42`, `legacy issue 44`, `legacy issue 45`, `legacy issue 47`
 **Beads:** OpenBB-2gu, OpenBB-z1f
 
 The public face: the `obb.backtest.*` namespace exposed through the standard OpenBB router, so

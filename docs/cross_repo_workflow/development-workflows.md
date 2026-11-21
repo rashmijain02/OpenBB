@@ -5,7 +5,7 @@
 The Portfolio repository is the dependency control plane:
 
 ```powershell
-git clone https://github.com/prajoria/OpenBB.git
+git clone https://github.com/rashmijain02/OpenBB.git
 Set-Location OpenBB
 git submodule sync --recursive
 ```

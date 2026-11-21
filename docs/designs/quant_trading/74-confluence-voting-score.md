@@ -1,7 +1,7 @@
 # 74 — Weighted Confluence Voting → Score + IndicatorVote Attribution
 
-**GitHub:** [#74](https://github.com/prajoria/OpenBB/issues/74) · **Phase:** P3 · **Sprint:** 3 · **Size:** L
-**Depends on:** [#73](https://github.com/prajoria/OpenBB/issues/73) (the hybrid selector / authoritative `IndicatorPanel`) and [#64](https://github.com/prajoria/OpenBB/issues/64) (Q4 default weights, **RESOLVED**)
+**GitHub:** `legacy issue 74` · **Phase:** P3 · **Sprint:** 3 · **Size:** L
+**Depends on:** `legacy issue 73` (the hybrid selector / authoritative `IndicatorPanel`) and `legacy issue 64` (Q4 default weights, **RESOLVED**)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §12 (Weighted Confluence Signal Engine), §20 Q4
 **Scope:** Add `engine/confluence.py`: map each indicator family's panel readings to votes ∈ `[-1,+1]`,
 fuse them through the Q4 family weights (trend/momentum/volatility additive; volume as a confirmation

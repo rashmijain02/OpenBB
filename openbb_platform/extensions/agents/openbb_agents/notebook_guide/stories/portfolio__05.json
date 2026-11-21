@@ -72,8 +72,8 @@
       "optional": false
     },
     {
-      "id": "3-what-if-diff-pr-905-https-github-com-prajoria",
-      "title": "3. What-if diff \u2014 PR [#905](https://github.com/prajoria/OpenBB/issues/905)",
+      "id": "3-what-if-diff-pr-905-https-github-com-rashmijain02",
+      "title": "3. What-if diff \u2014 PR legacy issue 905",
       "kind": "analysis",
       "cells": [
         9,
@@ -88,7 +88,7 @@
       ],
       "inputs": [],
       "outputs": [
-        "3-what-if-diff-pr-905-https-github-com-prajoria-result"
+        "3-what-if-diff-pr-905-https-github-com-rashmijain02-result"
       ],
       "optional": false
     },
@@ -101,7 +101,7 @@
         12
       ],
       "depends_on": [
-        "3-what-if-diff-pr-905-https-github-com-prajoria"
+        "3-what-if-diff-pr-905-https-github-com-rashmijain02"
       ],
       "capabilities": [
         "platform:story_whatif_diff"

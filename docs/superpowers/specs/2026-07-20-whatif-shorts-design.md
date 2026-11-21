@@ -1,7 +1,7 @@
 # Design — What-If short-position support with signed rollups (#904)
 
 - **Date:** 2026-07-20
-- **Issue:** [#904](https://github.com/prajoria/OpenBB/issues/904)
+- **Issue:** [#249](https://github.com/rashmijain02/OpenBB/issues/249)
 - **Parent:** #558 (initial What-If diff engine, PR #905) + #903 (cash line, PR #926)
 - **Branch:** `feat/pi-analytics/whatif-shorts-gh-904`
 - **Base:** `portfolio` (post-#903 merge)

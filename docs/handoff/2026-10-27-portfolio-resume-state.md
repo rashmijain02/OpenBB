@@ -18,7 +18,7 @@ This file supersedes its §3, §4 and §6. Tracking issue: #2308 (Record
   NF2.1 (#2203) are closed, and N07 (#2217) and N08 (#2218) closed on
   2026-10-28. Next are N09 and N10 under NF2.2 (#2204), then N11 onward (see
   §3). Everything is agent-doable except the items in §4.
-- **Project #4 open items:** 28 Notebook Companion issues, plus #2329 until
+- **Project 1 open items:** 28 Notebook Companion issues, plus #2329 until
   this update merges. Nothing else on the board is open.
 
 ## 2. What shipped on 2026-10-27

@@ -1,7 +1,7 @@
 # General Code Linting toolchain specification
 
 Status: implementation specification for
-[#2095 (General Code Linting job lacks installed linters)](https://github.com/prajoria/OpenBB/issues/2095).
+[#723 (General Code Linting job lacks installed linters)](https://github.com/rashmijain02/OpenBB/issues/723).
 Integration target: `portfolio`.
 
 ## Problem

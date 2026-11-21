@@ -239,7 +239,7 @@ export GITHUB_TOKEN=$(gh auth token)
 
 # Persistent, shared across all clones (via commit in A7)
 # Manually edit .beads/config.yaml to add:
-#   github.owner: "prajoria"
+#   github.owner: "rashmijain02"
 #   github.repo: "OpenBB"
 # (These live under the existing "sync.remote:" line, using the same
 #  top-level-key-with-colon style — check config.yaml for actual syntax)
@@ -262,11 +262,11 @@ bd github pull 488               # execute
 
 - Dry-run reported: `[dry-run] Would import: 488 - [bd] Dolt dep-schema missing depends_on_id column (blocks all bd link)`
 - Execute reported: `✓ Pulled 1 issues (1 created, 0 updated)`
-- **Bd created a fresh bead** `OpenBBTechnical-1783912572966-1-5b51c294` with `external_ref: https://github.com/prajoria/OpenBB/issues/488` — it did **NOT** link to the existing matching bead `OpenBBTechnical-qy83.1.12`.
+- **Bd created a fresh bead** `OpenBBTechnical-1783912572966-1-5b51c294` with `external_ref: `legacy issue 488`` — it did **NOT** link to the existing matching bead `OpenBBTechnical-qy83.1.12`.
 - Duplicate has since been closed with reason pointing at `qy83.1.12`.
   **Known residual (2026-07-13):** the closed duplicate bead
   `OpenBBTechnical-1783912572966-1-5b51c294` remains in the DB
-  with `external_ref = https://github.com/prajoria/OpenBB/issues/488`
+  with `external_ref = `legacy issue 488``
   (the full URL form, not the canonical `gh-488` short form). Before
   A3 runs, either (a) delete the bead entirely via
   `bd delete OpenBBTechnical-1783912572966-1-5b51c294` (if that
@@ -291,7 +291,7 @@ bd github pull 488               # execute
 
 ```bash
 # Step 1: enumerate the unlinked set on each side
-gh issue list --repo prajoria/OpenBB --state all --limit 500 --json number,title,state,body \
+gh issue list --repo rashmijain02/OpenBB --state all --limit 500 --json number,title,state,body \
   > /tmp/gh_issues.json
 bd list --limit 0 --json > /tmp/bd_beads.json
 
@@ -387,10 +387,10 @@ Once Phase A is stable, add these two lines to `.beads/config.yaml`
 entry near the bottom of the file — visible in `git diff`):
 
 ```yaml
-sync.remote: "git+https://github.com/prajoria/OpenBB.git"
+sync.remote: "git+https://github.com/rashmijain02/OpenBB.git"
 
 # GitHub Issues sync (added Phase A A7 per docs/BD_MIGRATION_PLAN.md)
-github.owner: "prajoria"
+github.owner: "rashmijain02"
 github.repo: "OpenBB"
 # github.token is NOT stored here — set via GITHUB_TOKEN env var
 ```

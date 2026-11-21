@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Issue** | [#1 — Google ADK Agents on Top of OpenBB](https://github.com/prajoria/OpenBB/issues/1) |
+| **Issue** | #1 — Google ADK Agents on Top of OpenBB (`legacy issue 1`) |
 | **Status** | Design |
 | **Date** | 2026-06-02 |
 | **Author** | daaji |

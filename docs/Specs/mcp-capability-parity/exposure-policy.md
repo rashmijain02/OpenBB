@@ -1,8 +1,8 @@
 # MCP capability exposure policy
 
 Status: implementation specification for
-[#2154 (classify every capability and publish profile policy)](https://github.com/prajoria/OpenBB/issues/2154),
-under [#2133 (reviewed exposure and invocation policy)](https://github.com/prajoria/OpenBB/issues/2133).
+[#1217 (classify every capability and publish profile policy)](https://github.com/rashmijain02/OpenBB/issues/1217),
+under [#1187 (reviewed exposure and invocation policy)](https://github.com/rashmijain02/OpenBB/issues/1187).
 Integration target: `portfolio`.
 
 ## Purpose

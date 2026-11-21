@@ -244,7 +244,7 @@ Only create this commit if a validation-discovered correction is necessary.
 
 ```bash
 git push -u origin feat/pi-f2-metric-help-gh-1984
-gh pr create --repo prajoria/OpenBB --base fix/pi-viewer-combo-recolor-lwc-nulls-gh-1982 --head feat/pi-f2-metric-help-gh-1984 --title "feat(portfolio): add F2 metric glossary help (#1984)" --body "## Summary
+gh pr create --repo rashmijain02/OpenBB --base fix/pi-viewer-combo-recolor-lwc-nulls-gh-1982 --head feat/pi-f2-metric-help-gh-1984 --title "feat(portfolio): add F2 metric glossary help (#1984)" --body "## Summary
 - Add contextual F2 metric explanations and a same-origin documentation view.
 - Preserve existing widget-level help and omit uncurated metric mappings.
 

@@ -1,6 +1,6 @@
 # 03 — fmp_cached Data Bundle & Data Layer
 
-**GitHub:** [#40](https://github.com/prajoria/OpenBB/issues/40) · **Depends on:** [#39](https://github.com/prajoria/OpenBB/issues/39)
+**GitHub:** `legacy issue 40` · **Depends on:** `legacy issue 39`
 **Beads:** OpenBB-crw, OpenBB-b5r, OpenBB-wz7
 
 Ingests the existing `openbb_fmp_cache` MySQL cache into a fast columnar store the engines

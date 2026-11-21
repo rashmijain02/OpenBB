@@ -1,4 +1,4 @@
-"""Migrate 87 portfolio-intel beads to GitHub issues on prajoria/OpenBB.
+"""Migrate 87 portfolio-intel beads to GitHub issues on rashmijain02/OpenBB.
 
 Bead: OpenBBTechnical-qy83 program.
 
@@ -27,7 +27,7 @@ import sys
 import time
 from pathlib import Path
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 MAP_FILE = Path(__file__).parent / "pi_bead_to_gh_map.json"
 SLEEP = 0.25  # seconds between GH API calls
 

@@ -1,8 +1,8 @@
 # Create GH Project "Pine Script Support" — session prompt
 
 **Purpose:** Reusable prompt to hand to a Claude Code session that has your
-`prajoria/OpenBB` repo checked out. It creates a GitHub Project mirroring the
-shape of Project #4 (Portfolio Intelligence Engine), tuned for Pine Script
+`rashmijain02/OpenBB` repo checked out. It creates a GitHub Project mirroring the
+shape of Project 1 (Portfolio Intelligence Engine), tuned for Pine Script
 support work, and seeds a root epic issue.
 
 Paste the section below into a fresh session verbatim. It's self-contained —
@@ -13,7 +13,7 @@ no other files needed.
 ## Prompt to paste
 
 > Create a new GitHub Project titled **"Pine Script Support"** under my
-> `prajoria` GitHub account, mirroring the structural pattern of Project #4
+> `rashmijain02` GitHub account, mirroring the structural pattern of Project 1
 > ("Portfolio Intelligence Engine") on the same account but tuned for Pine
 > Script domain vocabulary. Follow the steps below in order and report each
 > one as it completes. Use my `.venv_win` for any Python. Commit any scripts
@@ -24,7 +24,7 @@ no other files needed.
 > - `gh auth status` must show scopes including `project` and `repo`. If not,
 >   halt and print exactly: `gh auth refresh -h github.com -s project,read:project`
 >   for me to run.
-> - Target repo: `prajoria/OpenBB`. Verify with `gh repo view prajoria/OpenBB
+> - Target repo: `rashmijain02/OpenBB`. Verify with `gh repo view rashmijain02/OpenBB
 >   --json name` before doing anything write-ish.
 > - You will use `gh` CLI, `gh api graphql`, and the raw GitHub GraphQL API
 >   (all authenticated via my existing `gh` token). No web-UI steps allowed
@@ -33,14 +33,14 @@ no other files needed.
 >
 > ### Step 1 — Create the project
 >
-> Run `gh project create --owner prajoria --title "Pine Script Support"
+> Run `gh project create --owner rashmijain02 --title "Pine Script Support"
 > --format json`. Capture the project's `id` (e.g. `PVT_kw...`) and `number`
 > (e.g. `5`). Save both to `scripts/pine_script_project.json` for resume
 > safety.
 >
 > ### Step 2 — Link project to the repo
 >
-> Use `gh project link <number> --owner prajoria --repo prajoria/OpenBB` so
+> Use `gh project link <number> --owner rashmijain02 --repo rashmijain02/OpenBB` so
 > issues from that repo can be added to the project via the "Add to project"
 > button on issue pages.
 >
@@ -76,7 +76,7 @@ no other files needed.
 >
 > ### Step 5 — Seed the root epic issue
 >
-> Create a single tracking issue on `prajoria/OpenBB` titled
+> Create a single tracking issue on `rashmijain02/OpenBB` titled
 > **"[EPIC] Pine Script Support"** with the body below (adapt only the
 > `Docs` / `Contact` bullets — leave the rest verbatim):
 >
@@ -114,7 +114,7 @@ no other files needed.
 > ## Docs
 >
 > - Design spec: TBD
-> - Contact: @prajoria
+> - Contact: Rashmi Jain
 > ```
 >
 > Labels on the epic: `pine-script`, `type-epic` (create `type-epic` if
@@ -143,7 +143,7 @@ no other files needed.
 > ```
 > Manual steps (GitHub API doesn't expose view CRUD):
 >
-> 1. Open https://github.com/users/prajoria/projects/<NUMBER>
+> 1. Open https://github.com/users/rashmijain02/projects/<NUMBER>
 > 2. Delete the default "View 1" (▾ next to tab → Delete view).
 > 3. Add 3 views:
 >    a. "+ New view" → Board → Group by = Area → rename to "Board by Area"
@@ -155,7 +155,7 @@ no other files needed.
 > ### Step 8 — Final report
 >
 > Print a summary with:
-> - Project URL (`https://github.com/users/prajoria/projects/<NUMBER>`)
+> - Project URL (`https://github.com/users/rashmijain02/projects/<NUMBER>`)
 > - Number of custom fields created (should be 5)
 > - Number of labels created / already-existed
 > - Root epic issue URL

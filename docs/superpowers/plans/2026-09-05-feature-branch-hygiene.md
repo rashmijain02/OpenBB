@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - This document is planning-only. Creating it does not authorize merges, branch deletion, or PR changes.
-- Run all GitHub operations against `prajoria/OpenBB`; never create a cross-fork PR.
+- Run all GitHub operations against `rashmijain02/OpenBB`; never create a cross-fork PR.
 - Keep Pine work isolated from Portfolio Intelligence. Pine branches target `openbb_pine_support`, not `portfolio_validations`.
 - Keep Portfolio Intelligence work isolated from Pine. In this checkout, Portfolio Intelligence branches target `portfolio_validations`, not `portfolio`.
 - Never create or merge a PR into `develop` without Daisy explicitly requesting
@@ -44,7 +44,7 @@ candidate set. Never delete, rename, force-push, or repurpose them:
 | Branch | Role | Historical evidence | GitHub protection at 2026-09-05 |
 | --- | --- | --- | --- |
 | `develop` | Fork default and upstream-sync mainline | Default branch; target of 117 PRs | Protected |
-| `portfolio` | Portfolio Intelligence production integration | Declared long-lived Project #4 branch; target of 253 PRs | Not protected |
+| `portfolio` | Portfolio Intelligence production integration | Declared long-lived Project 1 branch; target of 253 PRs | Not protected |
 | `portfolio_validations` | Portfolio Intelligence validation and staging | Mandatory target for this checkout's side branches; target of 12 PRs | Not protected |
 | `openbb_pine_support` | Separate Pine program integration | Target of 54 PRs and active Pine work | Not protected |
 
@@ -175,11 +175,11 @@ Expected: `feat/top50-intraday-gh-1986` remains protected because it is checked 
 Use separate issues so Pine, local-CI, and Portfolio Intelligence ownership cannot be mixed:
 
 ```powershell
-gh issue create --repo prajoria/OpenBB --title "chore(pine): verify and retire merged feature branches" --body "Verify each Pine feat/* branch against openbb_pine_support using ancestry, patch equivalence, file-level comparison, and tests before deleting refs. Source plan: docs/superpowers/plans/2026-09-05-feature-branch-hygiene.md."
-gh issue create --repo prajoria/OpenBB --title "chore(ci): drain local-CI stacked feature branches" --body "Drain PR #1015 into feat/local-ci-cli-gh-985, PR #1009 into test/develop-e2e-docker-stack, and PR #948 into develop. Delete each branch only after its target merge is verified. Source plan: docs/superpowers/plans/2026-09-05-feature-branch-hygiene.md."
+gh issue create --repo rashmijain02/OpenBB --title "chore(pine): verify and retire merged feature branches" --body "Verify each Pine feat/* branch against openbb_pine_support using ancestry, patch equivalence, file-level comparison, and tests before deleting refs. Source plan: docs/superpowers/plans/2026-09-05-feature-branch-hygiene.md."
+gh issue create --repo rashmijain02/OpenBB --title "chore(ci): drain local-CI stacked feature branches" --body "Drain PR #1015 into feat/local-ci-cli-gh-985, PR #1009 into test/develop-e2e-docker-stack, and PR #948 into develop. Delete each branch only after its target merge is verified. Source plan: docs/superpowers/plans/2026-09-05-feature-branch-hygiene.md."
 ```
 
-Expected: two issue URLs. Do not attach the Pine or local-CI cleanup issues to Portfolio Intelligence Project #4 unless the user explicitly changes program ownership.
+Expected: two issue URLs. Do not attach the Pine or local-CI cleanup issues to Portfolio Intelligence Project 1 unless the user explicitly changes program ownership.
 
 ---
 
@@ -243,7 +243,7 @@ Run:
 ```powershell
 $prs = 485,472,463,462,455,465,425,430,431,433,435,434,439,461,469
 foreach ($pr in $prs) {
-  gh pr view $pr --repo prajoria/OpenBB --json number,state,mergedAt,baseRefName `
+  gh pr view $pr --repo rashmijain02/OpenBB --json number,state,mergedAt,baseRefName `
     --jq '[.number,.state,.mergedAt,.baseRefName] | @tsv'
 }
 ```
@@ -328,7 +328,7 @@ Expected: enough evidence to classify each unique patch as either semantically p
 If any behavior is missing, create a Pine-owned reconciliation branch:
 
 ```powershell
-$pineIssue = gh issue list --repo prajoria/OpenBB --state open `
+$pineIssue = gh issue list --repo rashmijain02/OpenBB --state open `
   --search '"chore(pine): verify and retire merged feature branches" in:title' `
   --json number --jq '.[0].number'
 git switch --create "fix/pine-branch-reconciliation-gh-$pineIssue" origin/openbb_pine_support
@@ -350,7 +350,7 @@ Commit with the Pine cleanup issue reference, push, and open a fork-internal PR:
 
 ```powershell
 git push -u origin "fix/pine-branch-reconciliation-gh-$pineIssue"
-gh pr create --repo prajoria/OpenBB --base openbb_pine_support `
+gh pr create --repo rashmijain02/OpenBB --base openbb_pine_support `
   --head "fix/pine-branch-reconciliation-gh-$pineIssue" `
   --title "fix(pine): reconcile retained feature-branch changes (#$pineIssue)" `
   --body "Closes #$pineIssue."
@@ -366,7 +366,7 @@ For every superseded branch, post a concrete comment:
 $branch = 'feat/e01-split-errors'
 $tip = git rev-parse "origin/$branch"
 $target = git rev-parse origin/openbb_pine_support
-gh issue comment $pineIssue --repo prajoria/OpenBB --body `
+gh issue comment $pineIssue --repo rashmijain02/OpenBB --body `
   "Branch $branch at $tip is superseded by openbb_pine_support at $target; file-level comparison and Pine tests confirm no missing behavior."
 ```
 
@@ -375,10 +375,10 @@ For every reconciled branch, post its actual merged PR:
 ```powershell
 $branch = 'feat/e01-split-errors'
 $tip = git rev-parse "origin/$branch"
-$reconciliationPr = gh pr list --repo prajoria/OpenBB --state merged `
+$reconciliationPr = gh pr list --repo rashmijain02/OpenBB --state merged `
   --head "fix/pine-branch-reconciliation-gh-$pineIssue" `
   --json number,mergeCommit --jq '.[0]'
-gh issue comment $pineIssue --repo prajoria/OpenBB --body `
+gh issue comment $pineIssue --repo rashmijain02/OpenBB --body `
   "Branch $branch at $tip was reconciled by PR #$($reconciliationPr.number), merged into openbb_pine_support at $($reconciliationPr.mergeCommit.oid)."
 ```
 
@@ -410,9 +410,9 @@ Expected: all seven refs are absent only after their evidence is recorded.
 Run:
 
 ```powershell
-gh pr view 1017 --repo prajoria/OpenBB --comments
-gh pr view 970 --repo prajoria/OpenBB --comments
-gh pr view 960 --repo prajoria/OpenBB --comments
+gh pr view 1017 --repo rashmijain02/OpenBB --comments
+gh pr view 970 --repo rashmijain02/OpenBB --comments
+gh pr view 960 --repo rashmijain02/OpenBB --comments
 ```
 
 Expected: identify whether each PR was closed as obsolete, replaced, or incomplete. Do not reopen or delete anything yet.
@@ -441,7 +441,7 @@ Expected: a branch-by-branch list of missing or superseded files. The current sn
 For any still-required work:
 
 ```powershell
-$pineIssue = gh issue list --repo prajoria/OpenBB --state open `
+$pineIssue = gh issue list --repo rashmijain02/OpenBB --state open `
   --search '"chore(pine): verify and retire merged feature branches" in:title' `
   --json number --jq '.[0].number'
 git switch --create "fix/pine-closed-branch-recovery-gh-$pineIssue" origin/openbb_pine_support
@@ -475,7 +475,7 @@ Compared files:
 $($files -join "`n")
 No retained behavior remains after file-level comparison. The remote branch can be deleted.
 "@
-gh pr comment $pr --repo prajoria/OpenBB --body $body
+gh pr comment $pr --repo rashmijain02/OpenBB --body $body
 ```
 
 Expected: each deletion has an auditable rationale.
@@ -562,7 +562,7 @@ Push the branch and open a fork-internal PR:
 
 ```powershell
 git -C H:\masterswork\git\OpenBB-Top50-Intraday-1986 push -u origin feat/top50-intraday-gh-1986
-gh pr create --repo prajoria/OpenBB --base portfolio_validations `
+gh pr create --repo rashmijain02/OpenBB --base portfolio_validations `
   --head feat/top50-intraday-gh-1986 `
   --title "feat(backtest): test top-50 S&P intraday drift theory (#1986)" `
   --body "Closes #1986."
@@ -575,9 +575,9 @@ Expected: a PR to `portfolio_validations`, never directly to `portfolio`.
 After review and CI pass:
 
 ```powershell
-$top50Pr = gh pr list --repo prajoria/OpenBB --state open `
+$top50Pr = gh pr list --repo rashmijain02/OpenBB --state open `
   --head feat/top50-intraday-gh-1986 --json number --jq '.[0].number'
-gh pr merge $top50Pr --repo prajoria/OpenBB --merge --delete-branch
+gh pr merge $top50Pr --repo rashmijain02/OpenBB --merge --delete-branch
 git fetch --prune origin
 git worktree remove H:\masterswork\git\OpenBB-Top50-Intraday-1986
 git branch -d feat/top50-intraday-gh-1986
@@ -611,7 +611,7 @@ Expected: no obsolete feature refs. Any remaining branch must have an open PR or
 - [ ] **Step 2: Cross-check GitHub PRs**
 
 ```powershell
-gh pr list --repo prajoria/OpenBB --state open --limit 500 `
+gh pr list --repo rashmijain02/OpenBB --state open --limit 500 `
   --json number,title,headRefName,baseRefName,url `
   --jq '.[] | select(.headRefName | startswith("feat/"))'
 ```
@@ -651,15 +651,15 @@ $remainingText
 - Deleted-ref merge and supersession proofs are recorded in earlier comments.
 "@
 $cleanupIssues = @(
-  gh issue list --repo prajoria/OpenBB --state open `
+  gh issue list --repo rashmijain02/OpenBB --state open `
     --search '"chore(pine): verify and retire merged feature branches" in:title' `
     --json number --jq '.[0].number'
-  gh issue list --repo prajoria/OpenBB --state open `
+  gh issue list --repo rashmijain02/OpenBB --state open `
     --search '"chore(ci): drain local-CI stacked feature branches" in:title' `
     --json number --jq '.[0].number'
 )
 foreach ($issue in $cleanupIssues) {
-  gh issue comment $issue --repo prajoria/OpenBB --body $body
+  gh issue comment $issue --repo rashmijain02/OpenBB --body $body
 }
 ```
 
@@ -806,7 +806,7 @@ Expected: all four remote refs exist.
 $body = $permanent | ForEach-Object {
   "$_ : $(git rev-parse "origin/$_")"
 }
-gh issue comment 2035 --repo prajoria/OpenBB --body `
+gh issue comment 2035 --repo rashmijain02/OpenBB --body `
   "Permanent branch pre-cleanup tips:`n$($body -join "`n")"
 ```
 
@@ -815,7 +815,7 @@ Expected: issue #2035 contains all four full SHAs before any deletion.
 - [ ] **Step 4: Verify GitHub protection coverage**
 
 ```powershell
-gh api repos/prajoria/OpenBB/branches?per_page=100 --paginate `
+gh api repos/rashmijain02/OpenBB/branches?per_page=100 --paginate `
   --jq '.[] | select(.name == "develop" or .name == "portfolio" or .name == "portfolio_validations" or .name == "openbb_pine_support") | [.name,.protected] | @tsv'
 ```
 
@@ -888,7 +888,7 @@ Expected: no exception and no unique patch.
 ```powershell
 $prs = 480,460,440,482,486,442,475,429,1631,1690,1630,1787,1791
 foreach ($pr in $prs) {
-  gh pr view $pr --repo prajoria/OpenBB `
+  gh pr view $pr --repo rashmijain02/OpenBB `
     --json number,state,baseRefName,mergeCommit `
     --jq '[.number,.state,.baseRefName,.mergeCommit.oid] | @tsv'
 }
@@ -905,7 +905,7 @@ $candidates = @($pineMerged) + @($portfolioMerged)
 $proof = foreach ($branch in $candidates) {
   "$branch : $(git rev-parse "origin/$branch")"
 }
-gh issue comment 2035 --repo prajoria/OpenBB --body `
+gh issue comment 2035 --repo rashmijain02/OpenBB --body `
   "Patch-equivalent deletion set:`n$($proof -join "`n")"
 foreach ($branch in $candidates) {
   git push origin --delete $branch
@@ -946,8 +946,8 @@ foreach ($branch in $pineReconcile) {
     origin/openbb_pine_support..."origin/$branch"
   git diff --name-status origin/openbb_pine_support..."origin/$branch"
 }
-gh pr view 458 --repo prajoria/OpenBB --comments
-gh pr view 921 --repo prajoria/OpenBB --comments
+gh pr view 458 --repo rashmijain02/OpenBB --comments
+gh pr view 921 --repo rashmijain02/OpenBB --comments
 ```
 
 Expected: a file-level disposition for each unique patch. Do not assume that
@@ -959,7 +959,7 @@ If any behavior is still required, create a tracked Pine issue and a side
 branch from `openbb_pine_support`:
 
 ```powershell
-$url = gh issue create --repo prajoria/OpenBB `
+$url = gh issue create --repo rashmijain02/OpenBB `
   --title "fix(pine): reconcile residual branch-hygiene changes" `
   --body "Recover only retained changes from the three Pine reconciliation branches listed in issue #2035. Target openbb_pine_support. Do not touch Portfolio Intelligence or develop."
 $pineIssue = [int]($url -replace '^.*/','')
@@ -981,7 +981,7 @@ Expected: Pine tests pass and the diff contains no unrelated program files.
 
 ```powershell
 git push -u origin "fix/pine-residual-hygiene-gh-$pineIssue"
-gh pr create --repo prajoria/OpenBB --base openbb_pine_support `
+gh pr create --repo rashmijain02/OpenBB --base openbb_pine_support `
   --head "fix/pine-residual-hygiene-gh-$pineIssue" `
   --title "fix(pine): reconcile residual branch-hygiene changes (#$pineIssue)" `
   --body "Closes #$pineIssue.`n`nRefs #2035 (full branch inventory)."
@@ -1056,7 +1056,7 @@ or retained. Historical PR state alone is not enough.
 
 - [ ] **Step 3: Split retained work by coherent ownership**
 
-For each coherent retained change, create a GitHub issue, add it to Project #4,
+For each coherent retained change, create a GitHub issue, add it to Project 1,
 claim it, and create a side branch from `portfolio_validations`. Do not combine
 unrelated QC tooling, dependency constraints, design documents, and application
 code merely because they came from one stale branch.
@@ -1081,9 +1081,9 @@ independent review, and a fork-internal PR:
 
 ```powershell
 $branch = "$branchType/$topic-gh-$issue"
-$issueTitle = gh issue view $issue --repo prajoria/OpenBB `
+$issueTitle = gh issue view $issue --repo rashmijain02/OpenBB `
   --json title --jq '.title'
-gh pr create --repo prajoria/OpenBB --base portfolio_validations `
+gh pr create --repo rashmijain02/OpenBB --base portfolio_validations `
   --head $branch `
   --title "$issueTitle (#$issue)" `
   --body "Closes #$issue.`n`nRefs #2035 (full branch inventory)."
@@ -1133,7 +1133,7 @@ Expected: none of the local candidates is listed as a checked-out branch.
 - [ ] **Step 2: Delete the already-merged local-CI correction branch**
 
 ```powershell
-gh pr view 2031 --repo prajoria/OpenBB `
+gh pr view 2031 --repo rashmijain02/OpenBB `
   --json state,baseRefName,headRefName,mergeCommit
 git branch -d fix/local-ci-post-merge-review-gh-2030
 ```
@@ -1177,7 +1177,7 @@ Update each successfully deleted local row to `DELETED-PROVED` or
 - [ ] **Step 1: Verify the quarantined pair**
 
 ```powershell
-gh pr view 895 --repo prajoria/OpenBB `
+gh pr view 895 --repo rashmijain02/OpenBB `
   --json number,state,baseRefName,headRefName,mergeable,statusCheckRollup
 git rev-parse origin/sync/upstream-openbb-2026-07-19
 ```
@@ -1233,7 +1233,7 @@ owner; otherwise the cleanup is incomplete.
 - [ ] **Step 2: Audit every open PR**
 
 ```powershell
-gh pr list --repo prajoria/OpenBB --state open --limit 1000 `
+gh pr list --repo rashmijain02/OpenBB --state open --limit 1000 `
   --json number,title,headRefName,baseRefName,url
 ```
 

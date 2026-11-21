@@ -420,5 +420,5 @@ git commit -m "feat(techtrade): select snapshot storage backend" -m "Closes #196
 - [ ] Run a security review focused on SQL parameterization, shared-store PII boundaries, and unsafe fallback behavior.
 - [ ] Run an independent code review and fix every high-confidence finding.
 - [ ] Push `feat/pi-eod-snapshot-store-gh-1963`.
-- [ ] Open a PR into `portfolio` inside `prajoria/OpenBB` with `Closes #1963.` on its own line.
+- [ ] Open a PR into `portfolio` inside `rashmijain02/OpenBB` with `Closes #1963.` on its own line.
 - [ ] Continue review/fix iterations until checks pass and there are zero unresolved active threads.

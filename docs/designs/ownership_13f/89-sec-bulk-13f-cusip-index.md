@@ -1,6 +1,6 @@
 # 89 — SEC bulk 13F + CUSIP index (reverse institutional ownership)
 
-**GitHub:** [#89](https://github.com/prajoria/OpenBB/issues/89) *(proposed — not yet filed)* · **Phase:** Provider infra · **Sprint:** TBD · **Size:** L
+**GitHub:** `legacy issue 89` *(proposed — not yet filed)* · **Phase:** Provider infra · **Sprint:** TBD · **Size:** L
 **Depends on:** none (self-contained provider work) · **Related:** the `fmp_cached`
 institutional-ownership fallback chain surfaced by the §3 Analysis pipeline and
 [`notebooks/01-foundations-techtrade-and-analysis.ipynb`](../../../notebooks/01-foundations-techtrade-and-analysis.ipynb)
@@ -373,7 +373,7 @@ flowchart LR
 
 Per repo convention — **GitHub issue for the heavy lift, bd chain for the sub-tasks:**
 
-- **GitHub [#89](https://github.com/prajoria/OpenBB/issues/89) — FILED:** "SEC bulk 13F + CUSIP
+- **GitHub `legacy issue 89` — FILED:** "SEC bulk 13F + CUSIP
   index (reverse institutional ownership)" (this design doc is its spec).
 - **bd sub-tasks (created, linked via `external_ref gh-89`)** — scope reflects the answered
   Q-A…Q-E above:

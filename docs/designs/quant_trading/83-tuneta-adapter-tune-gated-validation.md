@@ -1,7 +1,7 @@
 # 83 — tuneta adapter + tune command, gated by validation
 
-**GitHub:** [#83](https://github.com/prajoria/OpenBB/issues/83) · **Phase:** P7 · **Sprint:** 6 · **Size:** M
-**Depends on:** [#82](https://github.com/prajoria/OpenBB/issues/82) (`obb.techtrade.validate` — supplies the `ValidationReport` the gate reads, **RESOLVED 2026-06-21**)
+**GitHub:** `legacy issue 83` · **Phase:** P7 · **Sprint:** 6 · **Size:** M
+**Depends on:** `legacy issue 82` (`obb.techtrade.validate` — supplies the `ValidationReport` the gate reads, **RESOLVED 2026-06-21**)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §12.4 (Optional tuning), §15 (validation gate), §18 P7 (phased delivery), §19 (TA over-tuning risk), §22 (license posture for `tuneta`)
 
 **Scope:** Add a `tuning/` package behind a new `[tuneta]` optional extra, exposing

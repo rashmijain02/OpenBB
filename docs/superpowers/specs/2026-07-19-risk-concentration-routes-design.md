@@ -1,7 +1,7 @@
 # Design — /portfolio_intel/risk + /concentration routes
 
 - **Date:** 2026-07-19
-- **Issue:** [#528](https://github.com/prajoria/OpenBB/issues/528)
+- **Issue:** [#769](https://github.com/rashmijain02/OpenBB/issues/769)
 - **Parent epic:** #491
 - **Branch:** `feat/pi-app/risk-concentration-routes-gh-528`
 - **Base:** `portfolio` @ 6f3a0c553 (post-#541)

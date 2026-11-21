@@ -1,9 +1,9 @@
-# Project #4 (Portfolio Intelligence Engine) — Baseline + Dedup Audit
+# Project 1 (Portfolio Intelligence Engine) — Baseline + Dedup Audit
 
 **Date:** 2026-07-16
-**Session branch:** `portfolio` on `prajoria/OpenBB`
+**Session branch:** `portfolio` on `rashmijain02/OpenBB`
 **Author:** Claude (Stage 2 of the planning-approach doc)
-**Scope:** Reconcile Project #4's `Todo`/`Done` state against what's actually shipped on `origin/portfolio`, in service of an accurate M1–M4 roadmap.
+**Scope:** Reconcile Project 1's `Todo`/`Done` state against what's actually shipped on `origin/portfolio`, in service of an accurate M1–M4 roadmap.
 **Companion:** `docs/superpowers/plans/2026-07-16-portfolio-intel-planning-approach.md` (the umbrella plan) and `docs/superpowers/plans/2026-07-16-portfolio-intel-roadmap.md` (Nadia's roadmap synthesized post-audit).
 
 ---
@@ -12,7 +12,7 @@
 
 | Source | Path | Size |
 |---|---|---|
-| Project #4 items | `.dev-cycle/project4-snapshot-2026-07-16.json` | 90 items |
+| Project 1 items | `.dev-cycle/project4-snapshot-2026-07-16.json` | 90 items |
 | PRs base=portfolio | `.dev-cycle/prs-base-portfolio-2026-07-16.json` | 8 (7 merged, 1 open) |
 | PRs head=feat/pi-* | `.dev-cycle/prs-head-pi-2026-07-16.json` | 6 (all merged) |
 | Portfolio commit log | `.dev-cycle/portfolio-log-2026-07-16.tsv` | full log since 2026-01-01 |
@@ -45,21 +45,21 @@ Extracted `OpenBBTechnical-qy83.*` references from each merged `feat/pi-*` PR bo
 
 Each of the 6 issues received the following retroactive-close comment via `gh issue comment` (concrete PR/branch/bd-id substituted per issue), then closed with `gh issue close --reason completed`:
 
-> Shipped via #\<PR> (branch: `<branch>`) — originally referenced by the retired bd-id `OpenBBTechnical-<bd-id>`. Closing as `Done` on Project #4 (Portfolio Intelligence Engine).
+> Shipped via #\<PR> (branch: `<branch>`) — originally referenced by the retired bd-id `OpenBBTechnical-<bd-id>`. Closing as `Done` on Project 1 (Portfolio Intelligence Engine).
 >
-> Retroactive close performed 2026-07-16 during Project #4 tracker-sync audit: the merged PR cited the retired bd-id in its `Closes` clause, which GitHub could not resolve, so this issue stayed `Todo` even though the work landed on `portfolio`. See `docs/superpowers/audits/2026-07-16-project4-baseline-and-dedup.md` for the full sync pass.
+> Retroactive close performed 2026-07-16 during Project 1 tracker-sync audit: the merged PR cited the retired bd-id in its `Closes` clause, which GitHub could not resolve, so this issue stayed `Todo` even though the work landed on `portfolio`. See `docs/superpowers/audits/2026-07-16-project4-baseline-and-dedup.md` for the full sync pass.
 
 Comment permalinks (chronological):
-- #511 → https://github.com/prajoria/OpenBB/issues/511#issuecomment-4990004324
-- #510 → https://github.com/prajoria/OpenBB/issues/510#issuecomment-4990004616
-- #504 → https://github.com/prajoria/OpenBB/issues/504#issuecomment-4990004894
-- #509 → https://github.com/prajoria/OpenBB/issues/509#issuecomment-4990005176
-- #507 → https://github.com/prajoria/OpenBB/issues/507#issuecomment-4990005424
-- #506 → https://github.com/prajoria/OpenBB/issues/506#issuecomment-4990005698
+- #511 → https://github.com/rashmijain02/OpenBB/issues/752
+- #510 → https://github.com/rashmijain02/OpenBB/issues/751
+- #504 → https://github.com/rashmijain02/OpenBB/issues/745
+- #509 → https://github.com/rashmijain02/OpenBB/issues/750
+- #507 → https://github.com/rashmijain02/OpenBB/issues/748
+- #506 → https://github.com/rashmijain02/OpenBB/issues/747
 
 ## 4. Post-audit state
 
-**Project #4 status distribution:** `Done: 9  · Todo: 81` (was `Done: 3 · Todo: 87`).
+**Project 1 status distribution:** `Done: 9  · Todo: 81` (was `Done: 3 · Todo: 87`).
 
 Refreshed snapshot: `.dev-cycle/project4-snapshot-post-close-2026-07-16.json`.
 
@@ -85,13 +85,13 @@ Milestone/phase breakdown of the 81 remaining `Todo`s:
 
 ## 5. Non-project references (Stage 2B)
 
-The commit log surfaces `Closes #21/#23/#93/#763/#774/#775/#776/#782/#783/#793/#804/#805/#806/#807` and `Fixes #739`. None of these are in Project #4 — they're absorbed from `develop`. Noted here for completeness; no action required.
+The commit log surfaces `Closes #21/#23/#93/#763/#774/#775/#776/#782/#783/#793/#804/#805/#806/#807` and `Fixes #739`. None of these are in Project 1 — they're absorbed from `develop`. Noted here for completeness; no action required.
 
-Coverage audit: `bd_map` has 87 entries; Project #4 has 90 items. The 3 extras are `#501/#502/#503` (M0 repo-bugs, already `Done`). **No orphans.** Every bd-mapped GH issue is on Project #4.
+Coverage audit: `bd_map` has 87 entries; Project 1 has 90 items. The 3 extras are `#501/#502/#503` (M0 repo-bugs, already `Done`). **No orphans.** Every bd-mapped GH issue is on Project 1.
 
 ## 6. Ambiguous cases carried forward
 
-None. Every `Closes`-cited bd-id in a merged PR mapped 1:1 to a Project #4 issue with `Todo` status. Every `Refs`-only mention was recognizable as a forward-reference to future work.
+None. Every `Closes`-cited bd-id in a merged PR mapped 1:1 to a Project 1 issue with `Todo` status. Every `Refs`-only mention was recognizable as a forward-reference to future work.
 
 ## 7. Debt entries created by this audit
 

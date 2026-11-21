@@ -372,5 +372,5 @@ Run simplification, code, and security reviews using `gpt-5.6-sol`; resolve
 every finding and re-run affected verification. Push once, open one PR to
 `portfolio`, add one exact `Closes #NN` line for each of #1968, #1969,
 #1942, #1943, #1944, #1945, and #2086, converge review feedback, merge, verify
-all seven issues are closed and Project #4 items are Done, then remove the local
+all seven issues are closed and Project 1 items are Done, then remove the local
 branch and worktree.

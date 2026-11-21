@@ -2,7 +2,7 @@
 
 **Release cut:** 2026-07-21
 **Branch:** `portfolio` (fork of `develop`)
-**Tracking:** [Project #4 — Portfolio Intelligence Engine](https://github.com/users/prajoria/projects/4)
+**Tracking:** [Project 1 — Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)
 **Meta issue:** #491
 
 The Portfolio Intelligence Engine is a comprehensive personal-portfolio decision surface built on top of the OpenBB Platform. This release ships the first end-to-end vertical: from the paper-trading ledger through analytics (X-Ray, What-If, Brinson attribution, risk, alerts) into OpenBB Workspace via a compliant custom-backend widget suite.

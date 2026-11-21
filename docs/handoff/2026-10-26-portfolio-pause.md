@@ -10,12 +10,12 @@ Written at the start of a planned multi-month pause, so that work can resume
 from this file alone. Tracking issue: #2284 (Pause handoff record for
 Portfolio MCP work).
 
-- **Repo:** `prajoria/OpenBB` (fork). **Integration branch:** `portfolio`.
-- **Board:** [Project #4: Portfolio Intelligence Engine](https://github.com/users/prajoria/projects/4).
+- **Repo:** `rashmijain02/OpenBB` (fork). **Integration branch:** `portfolio`.
+- **Board:** [Project 1: Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1).
 - **`portfolio` tip at pause:** `303a07ada73` (`build(mcp): lock dual-MCP transitive dependency graphs (#2283)`).
 - **Process:** every change goes through the `openbb-dev-cycle` skill. That
   means a side branch cut from `portfolio`, TDD with mutation reverse-checks,
-  and a fork-internal PR with `--repo prajoria/OpenBB --base portfolio`.
+  and a fork-internal PR with `--repo rashmijain02/OpenBB --base portfolio`.
   `CLAUDE.md` holds the binding rules.
 
 ## 1. Standing rules to remember on return
@@ -24,7 +24,7 @@ Portfolio MCP work).
    worked and finished, never closed as "stale" without doing the work. An
    issue that truly needs a human decision, money, hardware or a legal
    sign-off stays open with a comment naming the blocker.
-2. **Only `prajoria` works this repo.** Fork-internal PRs only. Never open a
+2. **Only Rashmi Jain (`rashmijain02`) works this repo.** Fork-internal PRs only. Never open a
    PR to `OpenBB-finance`. Never open `portfolio` → `develop` without explicit,
    loud sign-off from Daisy.
 3. **Subagents must use `gpt-5.6-sol`.** In this session that model was
@@ -139,7 +139,7 @@ Resolve them before any new work.
    `cddfe05` with no commits. It is the empty start of #2194 (T44); either
    rebase it onto `portfolio` or recreate it.
 
-## 4. Open work on Project #4 (50 items at pause)
+## 4. Open work on Project 1 (50 items at pause)
 
 Each item is marked as needing a **HUMAN** (stays open until a person acts)
 or as **AGENT** work (finishable by the agent through the dev cycle).
@@ -164,14 +164,14 @@ stories with a **local vLLM Nemotron** model. Its plan and design are only in
 - **HUMAN:** N11 (#2221), N19 (#2229) and the N18 (#2228) qualification runs
   need a GPU host with the Nemotron weights served by vLLM.
 
-### 4.3 Other Project #4 items
+### 4.3 Other Project 1 items
 
 | Issue | Who | Note |
 |---|---|---|
 | #2235 (Retired Beads Git hooks still run during Portfolio commits) | AGENT | Reproduced on 2026-10-26: `git commit` printed `Exported 1045 issues to .beads/issues.jsonl`. Remove the bd hook from `.git/hooks`, or from the hook manager config. |
 | #2094 (Live fixture staleness: 12 portfolio-story fixtures drift with market data) | AGENT | Freeze the fixtures to recorded snapshots, or assert shape instead of values. |
 
-## 5. Older backlog not on Project #4 (210 open issues)
+## 5. Older backlog not on Project 1 (210 open issues)
 
 These come from programs that predate the Portfolio board. Most of the triage
 below is by title, so **verify against code before working any of them**.

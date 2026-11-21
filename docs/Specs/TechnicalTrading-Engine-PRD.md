@@ -22,7 +22,7 @@ overfitting-aware signal generation — not opacity.
 **Licensing posture:** The fork is **AGPL-3.0** (inherited from OpenBB) and
 **non-commercial**. Every dependency in this design is permissive (MIT / BSD / Apache-2.0)
 and therefore AGPL-compatible with no Commons-Clause exposure. The primary indicator
-engine, **`pandas-ta-classic`** ([`prajoria/pandas-ta-classic`](https://github.com/prajoria/pandas-ta-classic),
+engine, **`pandas-ta-classic`** ([`rashmijain02/pandas-ta-classic`](https://github.com/rashmijain02/pandas-ta-classic),
 MIT), is a **first-party fork** consumed as a **git submodule**, so feature work can land
 on its source branch and flow straight into this engine.
 
@@ -199,7 +199,7 @@ not a universal ranking.
 
 | Library | License | Strengths | Weaknesses for us | Fit |
 |---|---|---|---|---|
-| **pandas-ta-classic** (`prajoria/` fork) | **MIT** | 192 indicators + 62 candlestick patterns; `df.ta` accessor; fluent chaining; multiprocessing Strategy; optional TA-Lib/numba backends | Batch-only (no streaming yet) | **Core (first-party submodule)** |
+| **pandas-ta-classic** (`rashmijain02/` fork) | **MIT** | 192 indicators + 62 candlestick patterns; `df.ta` accessor; fluent chaining; multiprocessing Strategy; optional TA-Lib/numba backends | Batch-only (no streaming yet) | **Core (first-party submodule)** |
 | **OpenBB `technical`** ext | AGPL (ours) | Already installed; OBBject-native (rsi/macd/bbands/atr/adx/stoch/ema/ichimoku/…) | Smaller set; per-series only | **Core (reuse where covered)** |
 | **TA-Lib** (`mrjbq7/ta-lib`, `TA-Lib/ta-lib-python`) | BSD | 150+ indicators + candlesticks; C-fast | C build dependency | **Optional accel backend** (via pandas-ta-classic `talib=True`) |
 | `bukosabino/ta` | MIT | 43 clean pure-pandas indicators; sklearn-friendly | Subset of pandas-ta-classic | Reference / fallback |
@@ -261,7 +261,7 @@ MIT, BSD, and Apache-2.0 all are.
 
 | Component | License | AGPL-compatible? | Role |
 |---|---|---|---|
-| **pandas-ta-classic** (`prajoria/` fork) | **MIT** | ✅ | **Core — first-party git submodule** |
+| **pandas-ta-classic** (`rashmijain02/` fork) | **MIT** | ✅ | **Core — first-party git submodule** |
 | OpenBB `technical` / `discovery` | AGPL (ours) | ✅ | Core (reuse) |
 | `fmp_cached` provider | AGPL (ours) | ✅ | Data |
 | **tuneta** | **MIT** | ✅ | Optional extra (`[tuneta]`) |
@@ -396,7 +396,7 @@ flowchart TD
 
 | Capability | Chosen component | License | Why it wins |
 |---|---|---|---|
-| Breadth indicator engine | **pandas-ta-classic** (`prajoria/` fork, submodule) | MIT | 192 ind + 62 candles; first-party → extensible on source branch |
+| Breadth indicator engine | **pandas-ta-classic** (`rashmijain02/` fork, submodule) | MIT | 192 ind + 62 candles; first-party → extensible on source branch |
 | Already-covered indicators | **OpenBB `technical`** ext | AGPL (ours) | OBBject-native; no duplication |
 | Top-mover lists | **OpenBB `equity.discovery`** | AGPL (ours) | gainers/losers/active already implemented |
 | Historical OHLCV | **`fmp_cached`** | AGPL (ours) | Existing cache; deterministic; no re-download |
@@ -441,7 +441,7 @@ openbb_platform/extensions/techtrade/
 │   │   └── mcp_tools.py
 │   └── strategies/                # curated confluence presets (trend/mean-rev/breakout)
 ├── external/
-│   └── pandas-ta-classic/         # GIT SUBMODULE (prajoria/pandas-ta-classic, MIT)
+│   └── pandas-ta-classic/         # GIT SUBMODULE (rashmijain02/pandas-ta-classic, MIT)
 ├── tests/
 ├── README.md
 └── pyproject.toml                 # entry point: openbb_core_extension
@@ -1020,7 +1020,7 @@ live in the sibling `OpenBB` checkout's `quant_repos/`; the submodule is vendore
 tree.
 
 **Indicator engine (core):**
-- `prajoria/pandas-ta-classic` (**MIT — first-party submodule**) — 192 indicators + 62
+- `rashmijain02/pandas-ta-classic` (**MIT — first-party submodule**) — 192 indicators + 62
   candlestick patterns; `df.ta`; multiprocessing Strategy; optional TA-Lib/numba.
 - OpenBB `technical` extension (**core, reuse**) — OBBject-native rsi/macd/bbands/atr/adx/
   stoch/ema/ichimoku/donchian/kc/vwap/aroon/fisher/demark/clenow.

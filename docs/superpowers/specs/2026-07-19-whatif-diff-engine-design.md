@@ -1,7 +1,7 @@
 # Design — What-If Diff Engine (`openbb_portfolio_intel.analytics.whatif`)
 
 - **Date:** 2026-07-19
-- **Issue:** [#558 `[portfolio] [P2][Analytics] What-If diff engine (stateless)`](https://github.com/prajoria/OpenBBTechnical/issues/558)
+- **Issue:** [#558 `[portfolio] [P2][Analytics] What-If diff engine (stateless)`](https://github.com/rashmijain02/OpenBBTechnical/issues/558)
 - **Parent epic:** #491 (Portfolio Intelligence Engine)
 - **PRD reference:** `docs/Specs/Portfolio-Intelligence-Engine-PRD.md` §15 (Rebalancing & What-If Simulator), §14 (Risk & Attribution Analytics)
 - **Branch:** `portfolio`

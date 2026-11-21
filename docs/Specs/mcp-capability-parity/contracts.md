@@ -1,9 +1,9 @@
 # MCP capability inventory contracts
 
 Status: implementation specification for
-[#2152 (capability contracts and immutable audit fixtures)](https://github.com/prajoria/OpenBB/issues/2152),
-under [#2132 (versioned source/API/MCP inventory)](https://github.com/prajoria/OpenBB/issues/2132)
-and [the MCP parity program](https://github.com/prajoria/OpenBB/issues/2123).
+[#1215 (capability contracts and immutable audit fixtures)](https://github.com/rashmijain02/OpenBB/issues/1215),
+under [#1186 (versioned source/API/MCP inventory)](https://github.com/rashmijain02/OpenBB/issues/1186)
+and [the MCP parity program](https://github.com/rashmijain02/OpenBB/issues/725).
 Integration target: `portfolio`.
 
 ## Scope

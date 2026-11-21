@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-04
-**Decision owner:** Portfolio Intelligence Engine (Project #4)
+**Decision owner:** Portfolio Intelligence Engine (Project 1)
 **Closes:** #1809
 **Related:** #1807 (Feature — Phase 0), #1806 (EPIC), #1808 (backend spawn ADR — picks `openbb-api`), #1810 (rendering-model ADR)
 

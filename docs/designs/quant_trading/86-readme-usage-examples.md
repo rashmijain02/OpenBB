@@ -1,7 +1,7 @@
 # 86 — README + Usage Docs + Worked Examples
 
-**GitHub:** [#86](https://github.com/prajoria/OpenBB/issues/86) · **Phase:** P8 · **Sprint:** 7 · **Size:** M
-**Depends on:** [#65](https://github.com/prajoria/OpenBB/issues/65) (scaffold + the current README) plus the full P3-P6 pipeline ([#73](https://github.com/prajoria/OpenBB/issues/73) selector, [#74](https://github.com/prajoria/OpenBB/issues/74) confluence, [#75](https://github.com/prajoria/OpenBB/issues/75) signals, [#76](https://github.com/prajoria/OpenBB/issues/76) sizing, [#77](https://github.com/prajoria/OpenBB/issues/77) orders, [#78](https://github.com/prajoria/OpenBB/issues/78) fills, [#79](https://github.com/prajoria/OpenBB/issues/79) scan, [#80](https://github.com/prajoria/OpenBB/issues/80) recommendation, [#81](https://github.com/prajoria/OpenBB/issues/81) export, [#82](https://github.com/prajoria/OpenBB/issues/82) validate)
+**GitHub:** `legacy issue 86` · **Phase:** P8 · **Sprint:** 7 · **Size:** M
+**Depends on:** `legacy issue 65` (scaffold + the current README) plus the full P3-P6 pipeline (`legacy issue 73` selector, `legacy issue 74` confluence, `legacy issue 75` signals, `legacy issue 76` sizing, `legacy issue 77` orders, `legacy issue 78` fills, `legacy issue 79` scan, `legacy issue 80` recommendation, `legacy issue 81` export, `legacy issue 82` validate)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §9 (command surface), §17 (testing & determinism), §18 (delivery roadmap)
 **Scope:** Replace the **scaffold-era** `openbb_platform/extensions/techtrade/README.md` (last updated at #65, still says *"Status: scaffold"*) with a release-ready document for users of the now-complete pipeline. Add a short, runnable **worked example** for every public command (`obb.techtrade.{segments, movers, signals, plan, scan, orders, simulate, export, validate, about}`), document the **soft-dep install matrix** (`xlsxwriter`, `validation`), and add a small `examples/` directory with end-to-end scripts the README links to.
 
@@ -56,11 +56,11 @@ is the `examples/*.py` scripts and (if Q-A picks the executable-test option) a t
 | # | Decision | Choice | Consequence |
 |---|---|---|---|
 | L1 | The README is **the** entry point | `openbb_platform/extensions/techtrade/README.md` (replaces the #65 scaffold doc in place) | Search engines, PyPI, GitHub all surface this file; everything else links from it |
-| L2 | Command set documented | The current live set: `about`, `segments`, `movers`, `signals`, `plan`, `scan`, `orders`, `simulate`, `export`, `validate` | `tune` ([#83](https://github.com/prajoria/OpenBB/issues/83), "extra" tier, not implemented) is mentioned as **roadmap**, not documented as live; `tune` is removed from the scaffold-era surface line until it lands |
-| L3 | Soft-deps documented | **Two**: `[xlsxwriter]` for the alternative Excel engine ([#81](https://github.com/prajoria/OpenBB/issues/81)), `[validation]` for `openbb-backtest` ([#82](https://github.com/prajoria/OpenBB/issues/82)). Both shown with their install commands; both show graceful-degradation behaviour | Mirrors the actual `[tool.poetry.extras]` block; no hypothetical extras (`[tuneta]`, `[agent]`, etc.) are mentioned as installable until they exist |
+| L2 | Command set documented | The current live set: `about`, `segments`, `movers`, `signals`, `plan`, `scan`, `orders`, `simulate`, `export`, `validate` | `tune` (`legacy issue 83`, "extra" tier, not implemented) is mentioned as **roadmap**, not documented as live; `tune` is removed from the scaffold-era surface line until it lands |
+| L3 | Soft-deps documented | **Two**: `[xlsxwriter]` for the alternative Excel engine (`legacy issue 81`), `[validation]` for `openbb-backtest` (`legacy issue 82`). Both shown with their install commands; both show graceful-degradation behaviour | Mirrors the actual `[tool.poetry.extras]` block; no hypothetical extras (`[tuneta]`, `[agent]`, etc.) are mentioned as installable until they exist |
 | L4 | Tone | **Direct, finance-literate, US-English, no marketing**. Mirrors the existing PRD prose and the established design-doc convention (the same voice you are reading now) | No "powerful", "blazing-fast", "AI-powered" copy; one terse paragraph per concept; runnable code blocks are the proof |
 | L5 | Code-block convention | **PowerShell + bash variants** for install / test commands (`.venv_win\Scripts\python.exe` is the canonical Windows interpreter per `CLAUDE.md`; bash form is given alongside for non-Windows); Python snippets use **`from openbb import obb`** unless they're testing an engine seam | A reader on either platform finds a runnable line; the engine-internal calls (e.g. `build_recommendation`) appear under "advanced / testing" only |
-| L6 | Determinism / disclaimer | A short **"Outputs are paper / research — not investment advice"** banner near the top of the README, mirroring the locked Excel-export disclaimer (PRD §20 Q9 / [#81](https://github.com/prajoria/OpenBB/issues/81) L3) | Compliance posture is consistent across surfaces (Excel sheet + README + future agent prompts); one-line, never suppressible |
+| L6 | Determinism / disclaimer | A short **"Outputs are paper / research — not investment advice"** banner near the top of the README, mirroring the locked Excel-export disclaimer (PRD §20 Q9 / `legacy issue 81` L3) | Compliance posture is consistent across surfaces (Excel sheet + README + future agent prompts); one-line, never suppressible |
 | L7 | Reference style | **One example per command**, max ~6 lines, showing the typical args and the shape of `OBBject.results` ("returns a `list[TradePlan]`") | The exhaustive parameter table lives in the command docstring (already authored and rendered into the static package surface); the README does not duplicate it |
 | L8 | Worked-example placement | Live runnable scripts under **`openbb_platform/extensions/techtrade/examples/`** (sibling of `tests/` and `openbb_techtrade/`); the README links to them | Scripts are real Python files (not fenced blocks), so they survive a lint pass and can be smoke-imported in CI; one less surface to drift |
 | L9 | The pipeline picture | An ASCII diagram **once** in the README ("segment → movers → panel → signal → rule → orders → fills → recommendation → export / validate"), reused (not redrawn) wherever else the pipeline is described | Anchors the mental model; matches the PRD §9 chain so a reader can cross-reference |
@@ -111,7 +111,7 @@ is the `examples/*.py` scripts and (if Q-A picks the executable-test option) a t
 >      `list[TradePlan]` / `str`-path-exists is enough to catch signature and return-shape drift,
 >      which is what actually rots a README.
 
-> **Q-B — Should the README cover `tune` / `narrator` / `MCP` ([#83](https://github.com/prajoria/OpenBB/issues/83) / [#84](https://github.com/prajoria/OpenBB/issues/84) / [#85](https://github.com/prajoria/OpenBB/issues/85)) as "Roadmap" or omit them entirely?**
+> **Q-B — Should the README cover `tune` / `narrator` / `MCP` (`legacy issue 83` / `legacy issue 84` / `legacy issue 85`) as "Roadmap" or omit them entirely?**
 > All three are "extra-tier", not implemented, but already referenced by name in the scaffold
 > README's surface line (`obb.techtrade.… / tune`). Two options:
 >
@@ -222,7 +222,7 @@ is the `examples/*.py` scripts and (if Q-A picks the executable-test option) a t
 >
 > | Opt | Layout | Trade-off |
 > |---|---|---|
-> | **E1 — RECOMMEND** | **No separate doc.** README + `examples/*.py` is sufficient for the v1 surface. Revisit when narrator ([#84](https://github.com/prajoria/OpenBB/issues/84)) / MCP ([#85](https://github.com/prajoria/OpenBB/issues/85)) land and the surface area outgrows one page | Lowest surface, fewest things to keep in sync, no new directory |
+> | **E1 — RECOMMEND** | **No separate doc.** README + `examples/*.py` is sufficient for the v1 surface. Revisit when narrator (`legacy issue 84`) / MCP (`legacy issue 85`) land and the surface area outgrows one page | Lowest surface, fewest things to keep in sync, no new directory |
 > | E2 | Add `openbb_platform/extensions/techtrade/docs/quickstart.md` with the longer narrative; README points to it | Mirrors the convention some other extensions use; but the README is already short enough to carry the full quickstart inline |
 >
 > **Recommend E1.** Keep everything in the README until it crosses ~200 lines; split then.
@@ -430,7 +430,7 @@ unit-smoke is enough to prove the README/examples don't drift.
 | README + usage docs covering the full live surface | §2 (full section skeleton), §3 (command matrix) | Q-B (Roadmap), Q-D (For Contributors layout) |
 | Worked examples for the headline flows | §4 (`examples/scan_to_excel.py`, `plan_one_symbol.py`, `validate_a_plan.py`) | Q-A (drift-guard) |
 | Soft-dep install instructions documented (`[xlsxwriter]`, `[validation]`) | §2 Install section; Q-C C1 install matrix | — |
-| Disclaimer present (mirrors PRD §20 Q9 / [#81](https://github.com/prajoria/OpenBB/issues/81)) | L6 banner near top of README | — |
+| Disclaimer present (mirrors PRD §20 Q9 / `legacy issue 81`) | L6 banner near top of README | — |
 | Roadmap section for not-yet-shipped extras | Q-B B1 (`tune` / narrator / MCP / streaming) | — |
 | Drift guard: README snippets stay in sync with the code | Q-A A3 + §5.2 (`test_examples_smoke.py`) | — |
 | Pipeline picture documented | L9 ASCII (§2.1) | — |

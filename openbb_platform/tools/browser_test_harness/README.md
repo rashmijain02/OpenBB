@@ -2,7 +2,7 @@
 
 Dual-mode browser test harness for the OpenBB Portfolio Intelligence Terminal (EPIC #1634) and Techtrade Trading-Desk (EPIC #1691) Workspace apps.
 
-**EPIC:** [#1721](https://github.com/prajoria/OpenBB/issues/1721)
+**EPIC:** [#528](https://github.com/rashmijain02/OpenBB/issues/528)
 **Design spec:** [`docs/superpowers/specs/2026-08-01-browser-test-harness-design.md`](../../../docs/superpowers/specs/2026-08-01-browser-test-harness-design.md)
 
 ## What's shipped
@@ -18,7 +18,7 @@ Dual-mode browser test harness for the OpenBB Portfolio Intelligence Terminal (E
 
 ## Still pending
 
-- ⏳ **B7 (#1729)** CI integration + close-out of [#1713](https://github.com/prajoria/OpenBB/issues/1713)
+- ⏳ **B7 (#1729)** CI integration + close-out of [#523](https://github.com/rashmijain02/OpenBB/issues/523)
 
 ## Quickstart
 
@@ -94,4 +94,4 @@ The auto-generated manual guides at `guides/*.md` render the same story a human 
 Random-port backend spawn + persistent Chrome profile driving
 `pro.openbb.co`. Full contract, local run instructions, and debugging
 tips live in [`docs/workspace-mode.md`](docs/workspace-mode.md).
-Tracked in [#1789](https://github.com/prajoria/OpenBB/issues/1789).
+Tracked in [#541](https://github.com/rashmijain02/OpenBB/issues/541).

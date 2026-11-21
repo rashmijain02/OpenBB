@@ -2,9 +2,9 @@
 
 **Recorded:** 2026-10-02
 
-**Program:** [#2096](https://github.com/prajoria/OpenBB/issues/2096)
+**Program:** [#724](https://github.com/rashmijain02/OpenBB/issues/724)
 
-**Replay layer:** [#2111](https://github.com/prajoria/OpenBB/issues/2111)
+**Replay layer:** [#1163](https://github.com/rashmijain02/OpenBB/issues/1163)
 
 ## Executive verdict
 
@@ -140,7 +140,7 @@ The initial UI acceptance run exposed an empty authenticated `/app` shell.
 Issue #2115 traced the root cause to on-prem login state: a missing hosted
 `developer_onboarding_info` record was persisted as `needsOnboarding=true`,
 and `AuthGuard` returned `null` before the layout or redirect helper mounted.
-The source fix in `prajoria/workspace` PR #1 treats on-prem sessions as
+The source fix in `rashmijain02/workspace` PR #1 treats on-prem sessions as
 onboarding-complete while preserving hosted onboarding behavior. A regression
 test, focused auth tests, production build, fresh login, and profile reuse all
 passed. The source-excluded TradingView UDF bundle still returns 404, but the

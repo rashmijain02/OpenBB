@@ -28,7 +28,7 @@ python -c "import openbb; openbb.build()"
 
 The runtime dependency is the published `financetoolkit` package (`^2.1.2`)
 from PyPI. The previous coupling to a personal fork
-(`prajoria/FinanceToolkit`) via git submodule was removed in #19 to make
+(`rashmijain02/FinanceToolkit`) via git submodule was removed in #19 to make
 the extension PyPI-installable. Disposition of the fork's 3-tier
 historical-data fallback (FMP cached → FMP direct → CBOE) is tracked in a
 separate follow-up issue.

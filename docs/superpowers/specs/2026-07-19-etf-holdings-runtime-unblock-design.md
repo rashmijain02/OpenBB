@@ -1,7 +1,7 @@
 # Design — EtfHoldings runtime unblock (`obb.etf.holdings` E2E)
 
 - **Date:** 2026-07-19
-- **Issue:** [#512 `[portfolio] [P0][Data] EtfHoldings model (etf/holdings) — PRIORITY, unblocks Lane B`](https://github.com/prajoria/OpenBB/issues/512)
+- **Issue:** [#512 `[portfolio] [P0][Data] EtfHoldings model (etf/holdings) — PRIORITY, unblocks Lane B`](https://github.com/rashmijain02/OpenBB/issues/753)
 - **Parent epic:** #491 Portfolio Intelligence Engine
 - **Branch:** `feat/pi-data/etf-holdings-gh-512`
 - **Author:** Claude (openbb-dev-cycle v3, Phase 1)

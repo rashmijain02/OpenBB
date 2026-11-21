@@ -156,7 +156,7 @@ reading` appendix lists all links cited in that notebook.
 
 Break into **7 sub-issues (one per notebook)**, each landing as a
 separate PR against `portfolio`. All 7 sub-issues attached to a new
-parent epic under Project #4. This mirrors the shape that worked for
+parent epic under Project 1. This mirrors the shape that worked for
 Phase B code fulfillment (7 code-fulfillment PRs, one per NB).
 
 ### Sequence + estimated effort per notebook

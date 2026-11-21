@@ -4,7 +4,7 @@ Workspace mode drives hosted Workspace or the self-hosted UI at
 `http://127.0.0.1:1420` via a Playwright-controlled Chromium session with a
 persistent user profile.
 
-Tracked in [#1789](https://github.com/prajoria/OpenBB/issues/1789).
+Tracked in [#541](https://github.com/rashmijain02/OpenBB/issues/541).
 
 ## Contract
 

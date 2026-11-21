@@ -1,7 +1,7 @@
 # 76 — EntryExitRule + Risk-Based Sizing (ATR Stop / R-Target / Time-Stop)
 
-**GitHub:** [#76](https://github.com/prajoria/OpenBB/issues/76) · **Phase:** P4 · **Sprint:** 4 · **Size:** M
-**Depends on:** [#75](https://github.com/prajoria/OpenBB/issues/75) (signals command + 3 presets + golden-score test → `MoverSignal`)
+**GitHub:** `legacy issue 76` · **Phase:** P4 · **Sprint:** 4 · **Size:** M
+**Depends on:** `legacy issue 75` (signals command + 3 presets + golden-score test → `MoverSignal`)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §13 (Entry/Exit & Order Generation), §20 Q6 (sizing inputs), privacy §4.7 (Guiding Principle 7)
 **Scope:** Add the pure rules engine that turns one `MoverSignal` + an `ATR(14)` value + a
 reference price into deterministic **entry / stop / target levels** and a **risk-based share

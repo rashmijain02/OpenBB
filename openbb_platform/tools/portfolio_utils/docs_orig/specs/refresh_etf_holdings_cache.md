@@ -8,7 +8,7 @@
 | **Writes** | `etf_holdings` (indirectly, via the `fmp_cached` provider's multi-tier fallback chain) |
 | **Design** | [`docs/superpowers/specs/2026-06-26-refresh-etf-holdings-cache-design.md`](../../../docs/superpowers/specs/2026-06-26-refresh-etf-holdings-cache-design.md) |
 | **Sibling** | [`fetch_position_history.py`](fetch_position_history.md) (same skeleton; that one warms `equity_historical` for held symbols, this one warms `etf_holdings` for held + relevant ETFs) |
-| **Related** | [#97](https://github.com/prajoria/OpenBB/issues/97) (ETF holdings multi-tier fallback — fixes the source chain that this tool calls on a schedule) |
+| **Related** | `legacy issue 97` (ETF holdings multi-tier fallback — fixes the source chain that this tool calls on a schedule) |
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The tool is a thin orchestrator. It calls
 `obb.etf.holdings(symbol=X, provider="fmp_cached")` for each ETF and lets
 the provider's multi-tier fallback chain (FMP → issuer-file → SEC N-PORT)
 populate the cache. **This tool knows nothing about which tier feeds each
-ETF.** That's by design (L2) — when [#97](https://github.com/prajoria/OpenBB/issues/97)
+ETF.** That's by design (L2) — when `legacy issue 97`
 adds new tiers, this tool needs zero changes.
 
 Until #97 lands: every SPDR ETF logs `402 Restricted Endpoint` as an

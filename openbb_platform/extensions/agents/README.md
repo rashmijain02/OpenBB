@@ -29,7 +29,7 @@ privacy, and protocol reviews are complete.
 ## Install
 
 The extension depends on a fork of `google-adk`
-([`prajoria/adk-python`](https://github.com/prajoria/adk-python)). Install it
+([`rashmijain02/adk-python`](https://github.com/rashmijain02/adk-python)). Install it
 first, then the extension in editable mode.
 
 The fork is vendored as a git submodule at `third_party/adk-python` to avoid
@@ -43,7 +43,7 @@ git submodule update --init third_party/adk-python
 ```
 
 > If you prefer not to use the submodule, install the fork directly:
-> `pip install -e "git+https://github.com/prajoria/adk-python@main#egg=google-adk"`
+> `pip install -e "git+https://github.com/rashmijain02/adk-python@main#egg=google-adk"`
 
 ## Configuration
 

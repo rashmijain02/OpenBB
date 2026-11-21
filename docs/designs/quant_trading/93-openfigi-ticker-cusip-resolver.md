@@ -1,7 +1,7 @@
 # 93 — Broad ticker→CUSIP resolver via OpenFIGI (deterministic FIGI bridge)
 
-**GitHub:** [#93](https://github.com/prajoria/OpenBB/issues/93) · **Phase:** Provider infra (13F follow-up) · **Sprint:** TBD · **Size:** M
-**Depends on:** [#89](https://github.com/prajoria/OpenBB/issues/89) (SEC bulk 13F + CUSIP index — schema, `resolve_cusip`, `sec_13f_cusip_map`, `sec_13f_holdings`) · **Local bead:** `OpenBBTechnical-cse`
+**GitHub:** `legacy issue 93` · **Phase:** Provider infra (13F follow-up) · **Sprint:** TBD · **Size:** M
+**Depends on:** `legacy issue 89` (SEC bulk 13F + CUSIP index — schema, `resolve_cusip`, `sec_13f_cusip_map`, `sec_13f_holdings`) · **Local bead:** `OpenBBTechnical-cse`
 **Source:** no PRD — this design doc is the primary artifact. It implements the
 **deterministic FIGI bridge** that #89's Q-B / Q-E reviews locked as the follow-up
 ([89 design](../ownership_13f/89-sec-bulk-13f-cusip-index.md), §0 Q-B/Q-E).

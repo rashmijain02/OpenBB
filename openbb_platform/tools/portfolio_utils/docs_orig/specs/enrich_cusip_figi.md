@@ -6,7 +6,7 @@
 | **Path** | `Tools/enrich_cusip_figi.py` (~390 lines) |
 | **Reads** | `sec_13f_holdings`, `sec_13f_cusip_map` |
 | **Writes** | `sec_13f_cusip_map`, `openfigi_map_cache` |
-| **Issue** | [#93](https://github.com/prajoria/OpenBB/issues/93) (broad ticker → CUSIP via OpenFIGI) |
+| **Issue** | `legacy issue 93` (broad ticker → CUSIP via OpenFIGI) |
 | **Design** | [`docs/designs/quant_trading/93-openfigi-ticker-cusip-resolver.md`](../../../docs/designs/quant_trading/93-openfigi-ticker-cusip-resolver.md) |
 | **Sibling** | [`populate_cusip_map.py`](populate_cusip_map.md) (covers S&P 500 via FMP profile; this script covers the long tail via OpenFIGI) |
 

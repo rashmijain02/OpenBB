@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claim, heartbeat, release, and reclaim Project #4 issues.
+"""Claim, heartbeat, release, and reclaim Project 1 issues.
 
 Usage:
   python scripts/pi_claim.py <issue> in-progress   # claim (initial)
@@ -37,12 +37,12 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-REPO = "prajoria/OpenBB"
+REPO = "rashmijain02/OpenBB"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ITEMS_JSON = REPO_ROOT / "scripts" / "pi_project_items.json"
 
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"
-STATUS_FIELD_ID = "PVTSSF_lAHOAOc7384BdSTgzhX058Y"
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"
+STATUS_FIELD_ID = "PVTSSF_lAHOAE4h8M4BqDs2zhocetk"
 STATUS_OPTIONS = {
     "todo": "f75ad846",
     "in-progress": "47fc9ee4",
@@ -145,7 +145,7 @@ def _hb_marker_from_comment(comment: dict) -> dict | None:
 
 
 def item_id_for(issue: str) -> str:
-    """Look up the Project #4 item_id for an issue number."""
+    """Look up the Project 1 item_id for an issue number."""
     issue_number = int(issue)
     if ITEMS_JSON.exists():
         mapping = json.loads(ITEMS_JSON.read_text(encoding="utf-8"))
@@ -157,7 +157,7 @@ def item_id_for(issue: str) -> str:
         content = item.get("content") or {}
         if content.get("number") == issue_number:
             return item["id"]
-    raise RuntimeError(f"issue #{issue} is not in Project #4")
+    raise RuntimeError(f"issue #{issue} is not in Project 1")
 
 
 # ---------------------------------------------------------------------------
@@ -287,13 +287,13 @@ def cmd_status(issue: str) -> int:
 
 
 def _project_items() -> list[dict]:
-    """Return every Project #4 item, following the GraphQL connection."""
+    """Return every Project 1 item, following the GraphQL connection."""
     items: list[dict] = []
     cursor: str | None = None
     query = """
     query($cursor: String) {
-      user(login: "prajoria") {
-        projectV2(number: 4) {
+      user(login: "rashmijain02") {
+        projectV2(number: 1) {
           items(first: 100, after: $cursor) {
             nodes {
               id

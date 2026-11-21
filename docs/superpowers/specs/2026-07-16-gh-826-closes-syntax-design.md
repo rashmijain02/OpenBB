@@ -6,7 +6,7 @@
 
 ## Problem
 
-The 2026-07-16 Project #4 tracker-sync audit found 6 shipped-but-open issues (#504, #506, #507, #509, #510, #511) because every merged `feat/pi-*` PR cited the retired `OpenBBTechnical-qy83.1.N` bd-id in its `Closes` clause. GitHub couldn't resolve those to real `#NN` references, so the issues stayed `Todo` on Project #4 even though the shipping PRs had merged into `portfolio`.
+The 2026-07-16 Project 1 tracker-sync audit found 6 shipped-but-open issues (#504, #506, #507, #509, #510, #511) because every merged `feat/pi-*` PR cited the retired `OpenBBTechnical-qy83.1.N` bd-id in its `Closes` clause. GitHub couldn't resolve those to real `#NN` references, so the issues stayed `Todo` on Project 1 even though the shipping PRs had merged into `portfolio`.
 
 Root cause: **GitHub's auto-close only fires on the exact `Closes/Fixes/Resolves #NN | owner/repo#NN | full-URL` grammar**. Anything else (bd-ids, backtick-quoted identifiers, bare topic labels, prose references) is silently ignored. Prose-review by humans doesn't catch this at scale.
 
@@ -21,7 +21,7 @@ Root cause: **GitHub's auto-close only fires on the exact `Closes/Fixes/Resolves
 
 - Do not validate that the `#NN` cited actually exists as an open issue. Rationale: cheap check first; if we want existence-checking later, that's a separate ticket. The retrospective audit is what catches non-existence — this workflow's job is *grammar* enforcement so retrospective audits never need to run again for the tracker-drift class.
 - Do not scan commit messages. Only the PR body matters for GH's auto-close.
-- Do not run on PRs that aren't from portfolio-intel branches. Portfolio-intel is the scope of Project #4; other work has its own rules.
+- Do not run on PRs that aren't from portfolio-intel branches. Portfolio-intel is the scope of Project 1; other work has its own rules.
 
 ## Approach
 
@@ -46,14 +46,14 @@ Anchoring on start-of-line matches the community norm (both GitHub docs' example
 **Reject examples** (with error explaining why):
 - `Closes \`OpenBBTechnical-qy83.1.4\`` (backticks + bd-id — the exact bug from PRs #466-#474)
 - `Closes bd-qy83.1.4` (bd-id)
-- `Closes https://github.com/prajoria/OpenBB/issues/826` (URL — works for GH auto-close, but rejected here for readability consistency)
+- `Closes https://github.com/rashmijain02/OpenBB/issues/819` (URL — works for GH auto-close, but rejected here for readability consistency)
 - `This PR closes 826` (missing `#`)
 
 **Accept examples:**
 - `Closes #826`
 - `Fixes #826, #827`
 - `- Closes #826` (bulleted)
-- `Resolves prajoria/OpenBB#826` (cross-repo shape — kept accepting since GH resolves it)
+- `Resolves rashmijain02/OpenBB#819` (cross-repo shape — kept accepting since GH resolves it)
 
 ## Escape hatch: `noissue`
 
@@ -84,10 +84,10 @@ Fixture set:
 1. `Closes #826` → PASS
 2. `Fixes #826, #827` → PASS
 3. `- Resolves #826` (bulleted) → PASS
-4. `Resolves prajoria/OpenBB#826` → PASS
+4. `Resolves rashmijain02/OpenBB#819` → PASS
 5. `Closes \`OpenBBTechnical-qy83.1.4\`` → FAIL (bd-id in backticks — historical bug)
 6. `Closes bd-qy83.1.4` → FAIL (bd-id)
-7. `Closes https://github.com/prajoria/OpenBB/issues/826` → FAIL (URL)
+7. `Closes https://github.com/rashmijain02/OpenBB/issues/819` → FAIL (URL)
 8. `Closes 826` → FAIL (missing #)
 9. Body with no `Closes` at all, no `noissue:` → FAIL (missing-closes)
 10. Body with no `Closes` and `noissue: docs-only cleanup` → PASS

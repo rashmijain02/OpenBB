@@ -9,7 +9,7 @@ description = "Record and strictly replay Fidelity (and similar broker) sessions
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "prajoria" }]
+authors = [{ name = "Rashmi Jain" }]
 
 dependencies = [
     "playwright>=1.44",

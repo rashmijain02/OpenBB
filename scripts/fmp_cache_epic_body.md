@@ -32,4 +32,4 @@ tooling) attaches here as a sub-issue.
 ## Docs
 
 - Design spec: TBD
-- Contact: @prajoria
+- Contact: Rashmi Jain

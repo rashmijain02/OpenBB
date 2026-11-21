@@ -52,8 +52,8 @@ Do not interpret 40/40 as 100% notebook coverage. In particular:
 - [Base MCP implementation plan](../superpowers/plans/2026-10-03-portfolio-mcp-capability-parity.md).
 - [GitHub issue map and verified project tracking](project-issue-map.md).
 
-GitHub [Project #4](https://github.com/users/prajoria/projects/4/views/2) is the
-work-of-record. Both programs target `prajoria/OpenBB` and the `portfolio`
+GitHub [Project 1](https://github.com/users/rashmijain02/projects/1/views/1) is the
+work-of-record. Both programs target `rashmijain02/OpenBB` and the `portfolio`
 integration branch. Creating issues does not close MCP gaps or deliver a
 running agent.
 
@@ -461,7 +461,7 @@ The base program has 44 tasks. This follow-on has 24 tasks, with these gates:
 7. Local Nemotron qualifies at least 48/50 runs and every showcase journey.
 8. All denial/injection/approval/idempotency/resume cases pass.
 9. Shared Workspace integration and Portfolio drift CI pass.
-10. Release evidence and rollback guidance are linked in Project #4.
+10. Release evidence and rollback guidance are linked in Project 1.
 
 The notebook-agent plan estimates **61-88 engineer-days** beyond the base MCP
 plan's **81-119**. These are planning estimates, not elapsed-time promises or

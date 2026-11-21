@@ -1,7 +1,7 @@
 # Design — /portfolio_intel/events route (`openbb_portfolio_intel.routers.events_router`)
 
 - **Date:** 2026-07-19
-- **Issue:** [#542](https://github.com/prajoria/OpenBB/issues/542)
+- **Issue:** [#783](https://github.com/rashmijain02/OpenBB/issues/783)
 - **Parent epic:** #491
 - **Branch:** `feat/pi-app/events-route-gh-542`
 - **Base:** `portfolio` @ 34744c380 (post-#528)

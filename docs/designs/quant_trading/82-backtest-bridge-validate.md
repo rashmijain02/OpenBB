@@ -1,7 +1,7 @@
 # 82 — backtest_bridge + validate + Attach ValidationReport
 
-**GitHub:** [#82](https://github.com/prajoria/OpenBB/issues/82) · **Phase:** P6 · **Sprint:** 6 · **Size:** M
-**Depends on:** [#78](https://github.com/prajoria/OpenBB/issues/78) (PaperBroker fills → a TradePlan to validate) · [#64](https://github.com/prajoria/OpenBB/issues/64) (Q1 repo consolidation, **RESOLVED**)
+**GitHub:** `legacy issue 82` · **Phase:** P6 · **Sprint:** 6 · **Size:** M
+**Depends on:** `legacy issue 78` (PaperBroker fills → a TradePlan to validate) · `legacy issue 64` (Q1 repo consolidation, **RESOLVED**)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §15 (Robustness Validation), §20 Q1 (repo consolidation)
 **Scope:** Add `validation/backtest_bridge.py` (translate a `TradePlan` into an
 `openbb-backtest` `validate` call) + the `validate` command, attach the returned
@@ -222,13 +222,13 @@ also returning it. Confirm: `OBBject[ValidationReport]` as the return, plan upda
 
 **Q-E — The tuning gate is NOT in #82 scope.**
 §15's rule — *a `tune` result becomes a default only if the verdict is `robust`* — lives in
-**[#83](https://github.com/prajoria/OpenBB/issues/83) (tuneta adapter + tune, gated by
+**`legacy issue 83` (tuneta adapter + tune, gated by
 validation)**, which *consumes* the verdict. #82 delivers only the **plumbing** (produce a
 verdict, attach it). State this explicitly so reviewers don't expect the gate here.
 
 - **Recommendation:** keep the tuning gate (a `tune` result becoming a default only when the
   verdict is `robust`) **out of #82 scope**; #82 delivers only the plumbing (produce the verdict
-  and attach it to `TradePlan.validation`), and [#83](https://github.com/prajoria/OpenBB/issues/83)
+  and attach it to `TradePlan.validation`), and `legacy issue 83`
   (tuneta adapter + tune, gated by validation) consumes that verdict.
 > - **Answer (Review):** ✅ **Approved — tuning gate is out of #82 scope.**
 >
@@ -240,12 +240,12 @@ verdict, attach it). State this explicitly so reviewers don't expect the gate he
 All `openbb_backtest` imports are **lazy, inside bridge function bodies** — never at module top
 level — mirroring the `models.py` `Data | None` rule (L2). This keeps `import openbb_techtrade`
 clean without backtest installed, and is enforced by the
-[#85](https://github.com/prajoria/OpenBB/issues/85) (core-unchanged-when-removed) discipline:
+`legacy issue 85` (core-unchanged-when-removed) discipline:
 techtrade's non-validation surface must import and run identically whether or not
 `openbb-backtest` is present.
 
 - **Recommendation:** keep **all** `openbb_backtest` imports lazy and in-body (never at module top
-  level), enforced by the [#85](https://github.com/prajoria/OpenBB/issues/85)
+  level), enforced by the `legacy issue 85`
   (core-unchanged-when-removed) test, so the non-validation surface imports and runs identically
   with or without backtest installed.
 - **Answer (Review):** ✅ **Approved — all imports lazy and in-body, enforced by test.**

@@ -39,13 +39,13 @@ coercion, no partial success.
 
 - Python 3.12 (matches the repo's `.venv_portfolio`)
 - Windows or Linux (tested on both; SQLite paths differ per OS)
-- Access to the `prajoria/OpenBB` fork, `portfolio` branch or later
+- Access to the `rashmijain02/OpenBB` fork, `portfolio` branch or later
 - No API keys required — T5 is entirely local
 
 ### Install
 
 ```bash
-git clone https://github.com/prajoria/OpenBB.git
+git clone https://github.com/rashmijain02/OpenBB.git
 cd OpenBB
 git checkout portfolio
 
@@ -731,8 +731,8 @@ When filing a T5 bug, use this template so we can triage quickly.
 
 ## 9. Contact
 
-- **Issue tracker:** `prajoria/OpenBB` — parent tracking issue is
-  [#1719](https://github.com/prajoria/OpenBB/issues/1719)
+- **Issue tracker:** `rashmijain02/OpenBB` — parent tracking issue is
+  [#527](https://github.com/rashmijain02/OpenBB/issues/527)
 - **Merged PRs:** #1749 (P1), #1752 (P2), #1755 (P3.a)
 - **Design docs:** `docs/superpowers/specs/2026-08-*.md`
 - **Related:** `#1744` (MySQL positions store), `#1715` (ChainedFetcher),
@@ -740,4 +740,4 @@ When filing a T5 bug, use this template so we can triage quickly.
 
 **Report all issues on the GitHub tracker.** Comments on merged PRs are
 seen but not tracked. Do NOT open cross-fork PRs — every PR must target
-`portfolio` in `prajoria/OpenBB` (see repo's `CLAUDE.md`).
+`portfolio` in `rashmijain02/OpenBB` (see repo's `CLAUDE.md`).

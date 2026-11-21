@@ -1,6 +1,6 @@
 # 01 — Scaffolding & Package Layout
 
-**GitHub:** [#38](https://github.com/prajoria/OpenBB/issues/38) · **Depends on:** — (foundation)
+**GitHub:** `legacy issue 38` · **Depends on:** — (foundation)
 **Beads:** OpenBB-4ys, OpenBB-g1m, OpenBB-lpy, OpenBB-ufl
 
 Defines the on-disk skeleton, packaging, router registration, config plumbing, and build

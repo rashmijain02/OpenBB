@@ -1,6 +1,6 @@
 # 2026-06-25 — `enrich_cusip_figi` bounded live run
 
-End-to-end verification for [#93](https://github.com/prajoria/OpenBB/issues/93) (Task 4 of
+End-to-end verification for `legacy issue 93` (Task 4 of
 `docs/superpowers/plans/2026-06-25-93-openfigi-ticker-cusip-resolver.md`).
 
 **Environment.** `OpenBBTechnical` checkout, `trading_technicals` branch, `.venv_win` Python

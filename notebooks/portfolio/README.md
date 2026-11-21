@@ -134,15 +134,15 @@ NB07 ─ "reproducible from disk, 45 min, works on a plane"
 
 ## Provenance
 
-Filed under epic [#1352](https://github.com/prajoria/OpenBB/issues/1352)
-on Project #4 (Portfolio Intelligence Engine). Each notebook cites
+Filed under epic [#274](https://github.com/rashmijain02/OpenBB/issues/274)
+on Project 1 (Portfolio Intelligence Engine). Each notebook cites
 its shipping PR. Story bible (author reference) at
 `STORY_BIBLE.md`.
 
 ### Optional standalone chapter — NB08: analyst-recommendations basket
 
 `08-analyst-recommendations-basket.ipynb` (filed under
-[#1367](https://github.com/prajoria/OpenBB/issues/1367)) is an
+[#649](https://github.com/rashmijain02/OpenBB/issues/649)) is an
 optional companion to the main NB01→NB07 arc. It builds a 15-ETF
 all-weather basket from the Dalio / Bogleheads / Faber / Fidelity
 frameworks and runs the same review numbers on it. Reads

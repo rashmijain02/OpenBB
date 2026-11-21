@@ -1,7 +1,7 @@
 # 81 — Excel Recommendation Export (6 Sheets + Conditional Formatting + Disclaimer)
 
-**GitHub:** [#81](https://github.com/prajoria/OpenBB/issues/81) · **Phase:** P5 · **Sprint:** 5 · **Size:** L
-**Depends on:** [#80](https://github.com/prajoria/OpenBB/issues/80) (Recommendation builder) · [#64](https://github.com/prajoria/OpenBB/issues/64) (Q9, **RESOLVED**)
+**GitHub:** `legacy issue 81` · **Phase:** P5 · **Sprint:** 5 · **Size:** L
+**Depends on:** `legacy issue 80` (Recommendation builder) · `legacy issue 64` (Q9, **RESOLVED**)
 **Source PRD:** [`docs/Specs/TechnicalTrading-Engine-PRD.md`](../../Specs/TechnicalTrading-Engine-PRD.md) §14.3 (Excel recommendation export), §20 Q9 (engine/disclaimer decision)
 **Scope:** Add `reporting/excel_export.py` + the `obb.techtrade.export(plans, path=…, engine=…)` command that writes a deterministic **6-sheet `.xlsx` workbook** (Recommendations, Levels, Reasoning, Orders, Fills, Summary) with conditional formatting, a per-workbook disclaimer on **Recommendations**, and a **golden test** that locks structure/values/disclaimer.
 
@@ -36,7 +36,7 @@ files, which are zips of XML carrying wall-clock timestamps — so a literal byt
 both fragile and impossible across the two supported engines (`openpyxl`, the default, and the
 optional `xlsxwriter`). The headline open question below resolves this by golden-locking a
 **structure/value snapshot** (read the workbook back, normalize sheets/cells/formats/disclaimer to
-JSON, and compare via the existing [#71](https://github.com/prajoria/OpenBB/issues/71) test
+JSON, and compare via the existing `legacy issue 71` test
 harness) rather than raw bytes. Money stays `Decimal` end-to-end; Excel display rounding is
 presentation-only and never mutates the stored model value.
 
@@ -44,7 +44,7 @@ presentation-only and never mutates the stored model value.
 
 ## 0. Key decisions (locked) + open questions
 
-### 0.1 Locked (carried from §20 Q9 [#64](https://github.com/prajoria/OpenBB/issues/64), `ExportConfig` in `models.py`, PRD §14.3 / §17)
+### 0.1 Locked (carried from §20 Q9 `legacy issue 64`, `ExportConfig` in `models.py`, PRD §14.3 / §17)
 
 | # | Decision | Choice | Consequence |
 |---|---|---|---|
@@ -71,7 +71,7 @@ presentation-only and never mutates the stored model value.
 >
 > | Opt | Mechanism | Pros | Cons |
 > |---|---|---|---|
-> | **(i) — RECOMMEND** | **Structure/value golden:** write to a temp file, **read back** with `openpyxl.load_workbook`, normalize (sheet names+order, per-sheet header row + cell values, number formats, CF rule descriptors, disclaimer text) → compare via the existing **`testing.assert_matches_golden`** JSON harness ([#71](https://github.com/prajoria/OpenBB/issues/71), already handles `Decimal`/`date`) | Engine-agnostic; openpyxl-version-robust; diffable JSON; **reuses the in-tree harness**; `TECHTRADE_REGEN_GOLDEN=1` regen path | Doesn't lock raw bytes (we argue bytes are the wrong invariant) |
+> | **(i) — RECOMMEND** | **Structure/value golden:** write to a temp file, **read back** with `openpyxl.load_workbook`, normalize (sheet names+order, per-sheet header row + cell values, number formats, CF rule descriptors, disclaimer text) → compare via the existing **`testing.assert_matches_golden`** JSON harness (`legacy issue 71`, already handles `Decimal`/`date`) | Engine-agnostic; openpyxl-version-robust; diffable JSON; **reuses the in-tree harness**; `TECHTRADE_REGEN_GOLDEN=1` regen path | Doesn't lock raw bytes (we argue bytes are the wrong invariant) |
 > | (ii) | **Zip normalization:** strip/pin `docProps` timestamps + zip mtimes (fixed epoch), then byte-compare | True byte-stability for one engine | Still **single-engine only**; brittle to openpyxl internals; custom post-processor to maintain |
 > | (iii) | **Per-sheet DataFrame equality:** `pd.read_excel(sheet)` → `assert_frame_equal` per sheet | Simple value check | Loses formatting/CF/disclaimer (those aren't cells) → needs a second structural pass anyway |
 >
@@ -107,7 +107,7 @@ presentation-only and never mutates the stored model value.
 >   `conditional_formatting=True` is the default, L5). Define the rules **once** as an engine-agnostic
 >   `FORMAT_SPEC` (list of rule descriptors: target column, kind, thresholds/colors) and render them with
 >   **two thin appliers** (`_apply_openpyxl`, `_apply_xlsxwriter`) — single source of truth, mirroring the
->   `selector.SOURCE_TABLE` discipline from [#73](https://github.com/prajoria/OpenBB/issues/73).
+>   `selector.SOURCE_TABLE` discipline from `legacy issue 73`.
 > - **B2:** formatting-rich **only** on `xlsxwriter`, with a **plainer openpyxl fallback** (Action/Conviction
 >   fills + number formats, but skip data-bars). Less openpyxl code; weaker default deliverable.
 >
@@ -148,8 +148,8 @@ presentation-only and never mutates the stored model value.
 >   submodule pin, validation coverage` — are **not** all on any one model. Derivable from the plans:
 >   `as-of` (`plan.as_of`), segment counts, `#BUY/SELL/FLAT` (count by `action`), `avg R:R`
 >   (mean `risk_reward` over actionable rows), `validation coverage` (count of plans with `.validation`
->   populated, [#82](https://github.com/prajoria/OpenBB/issues/82)). **Not** derivable: `calendar`, `preset`, `weights` ([#74](https://github.com/prajoria/OpenBB/issues/74) confluence weights),
->   `submodule pin` — these are **run context** threaded from the producing `scan` ([#79](https://github.com/prajoria/OpenBB/issues/79)) → Q-D.
+>   populated, `legacy issue 82`). **Not** derivable: `calendar`, `preset`, `weights` (`legacy issue 74` confluence weights),
+>   `submodule pin` — these are **run context** threaded from the producing `scan` (`legacy issue 79`) → Q-D.
 >
 > - **Recommendation:** adopt the §2 column→field mapping as the single `SHEET_SPEC`; render the Reasoning
 >   sheet's per-family breakdown as **one column per family** holding a compact signed family sum from
@@ -179,7 +179,7 @@ presentation-only and never mutates the stored model value.
 > populate Orders/Fills/votes. Open: how does the **Summary** run-context reach `export`?
 > - **(i) — RECOMMEND:** `export(plans, *, config=ExportConfig(), context=None)` where `context` is an
 >   optional metadata mapping/`Data` (`{preset, weights, calendar, submodule_pin}`) produced by `scan`
->   ([#79](https://github.com/prajoria/OpenBB/issues/79)); everything else is **derived from `plans`**. Absent `context` ⇒ Summary shows `"n/a"` for the
+>   (`legacy issue 79`); everything else is **derived from `plans`**. Absent `context` ⇒ Summary shows `"n/a"` for the
 >   non-derivable cells (export still succeeds).
 > - **(ii):** extend `ExportConfig` with the run-context fields (single handle, but bloats the config model).
 > - **(iii):** require the caller to pass a richer `RunContext` `Data` (cleanest typing; one more model + a
@@ -309,7 +309,7 @@ openbb_platform/extensions/techtrade/tests/golden/
   imports — it consumes already-built `TradePlan`s and emits a file. Fully golden-testable without
   `openbb.build()`.
 - **One mapping table** (`SHEET_SPEC`) decides every sheet's columns + order; nothing else encodes column
-  layout (kills the column-drift risk, mirroring `selector.SOURCE_TABLE` in [#73](https://github.com/prajoria/OpenBB/issues/73)).
+  layout (kills the column-drift risk, mirroring `selector.SOURCE_TABLE` in `legacy issue 73`).
 - **One rule table** (`FORMAT_SPEC`) decides conditional formatting; the two engine appliers render it — no
   per-engine rule logic duplicated (Q-B).
 - `export_router.py` is thin: validate/normalize `plans`, call `excel_export.export`, wrap the returned path
@@ -365,7 +365,7 @@ column → field mappings (Q-C):
 
 > **The lone in-cell timestamp (determinism, L6):** `Fill.timestamp` is a tz-aware datetime — the **only**
 > timestamp written to a cell. It is **deterministic** (the *t+1* session-close localization fixed by
-> [#78](https://github.com/prajoria/OpenBB/issues/78) Q-F), **not** wall-clock, so it does **not** break byte/structure-stability. The export must write
+> `legacy issue 78` Q-F), **not** wall-clock, so it does **not** break byte/structure-stability. The export must write
 > that fill timestamp verbatim and never stamp `datetime.now()` anywhere.
 
 ### 2.6 `Summary` — run metadata & roll-ups (Q-C / Q-D)
@@ -374,13 +374,13 @@ column → field mappings (Q-C):
 |---|---|
 | As-of date | derived: `plans[*].as_of` (uniform) |
 | Calendar | **context** (`XNYS` default) |
-| Preset | **context** ([#79](https://github.com/prajoria/OpenBB/issues/79)/[#75](https://github.com/prajoria/OpenBB/issues/75) preset) |
-| Weights | **context** ([#74](https://github.com/prajoria/OpenBB/issues/74) confluence weights) |
+| Preset | **context** (`legacy issue 79`/`legacy issue 75` preset) |
+| Weights | **context** (`legacy issue 74` confluence weights) |
 | Segment counts | derived: count by `segment` |
 | # BUY / SELL / FLAT | derived: count by `recommendation.action` |
 | Avg R:R | derived: mean `risk_reward` over actionable rows |
 | Submodule pin | **context** (`pandas-ta-classic` commit) |
-| Validation coverage | derived: # plans with `.validation` populated ([#82](https://github.com/prajoria/OpenBB/issues/82)) |
+| Validation coverage | derived: # plans with `.validation` populated (`legacy issue 82`) |
 
 ### 2.7 Title block + disclaimer (Recommendations only, L3) — ASCII sketch (§14.3)
 
@@ -516,14 +516,14 @@ Run:
 | Conditional formatting: color-coded Action, R:R color scale, conviction | §3 (`FORMAT_SPEC` + appliers); L5 | Q-B (openpyxl vs xlsxwriter) |
 | Per-workbook disclaimer on Recommendations ("Research/paper — not advice") | §2.7 title block; **L3** | — (locked, Q9) |
 | `export(plans, path=…, engine=…)` → file path; default `Analysis/exports/techtrade_<date>.xlsx` | §4 command; L4 | Q-D (input shape), Q-F (path/side-effects) |
-| Golden `.xlsx` test (byte/structure-stable) | §5 structural/value golden via [#71](https://github.com/prajoria/OpenBB/issues/71) harness | **Q-A** (structure vs byte) |
+| Golden `.xlsx` test (byte/structure-stable) | §5 structural/value golden via `legacy issue 71` harness | **Q-A** (structure vs byte) |
 | `obb.techtrade.export(...)` writes the 6-sheet workbook to default/given path | §4 (`export_router`, auto-wired); L8 | Q-F |
 | formatting + disclaimer present; output matches golden | §3 + §5 (disclaimer + CF asserted) | Q-A, Q-B |
 | reflects Q9 engine/disclaimer decision | L1 (openpyxl default + xlsxwriter optional) + L3 (disclaimer required) | — (Q9 RESOLVED, do not reopen) |
-| Depends on [#80](https://github.com/prajoria/OpenBB/issues/80) (Recommendation builder) | §2 consumes `TradePlan.recommendation` (built by [#80](https://github.com/prajoria/OpenBB/issues/80)); plans produced by `scan` [#79](https://github.com/prajoria/OpenBB/issues/79) | Q-D (context threading) |
+| Depends on `legacy issue 80` (Recommendation builder) | §2 consumes `TradePlan.recommendation` (built by `legacy issue 80`); plans produced by `scan` `legacy issue 79` | Q-D (context threading) |
 
 > **Net new risks surfaced:** (1) **Q-A** — a literal byte-identical `.xlsx` golden is infeasible across
-> engines and openpyxl versions; the doc recommends a **structure/value** golden via the existing [#71](https://github.com/prajoria/OpenBB/issues/71)
+> engines and openpyxl versions; the doc recommends a **structure/value** golden via the existing `legacy issue 71`
 > harness — confirm before coding the test. (2) **Q-B** — full conditional formatting on the **default**
 > openpyxl engine is achievable but verbose; decide whether xlsxwriter must reach formatting **parity** in
 > v1. (3) **Q-D** — `export` must take `list[TradePlan]` (not `list[Recommendation]`) and needs a

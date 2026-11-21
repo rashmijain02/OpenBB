@@ -27,9 +27,9 @@
 
 ## GitHub Delivery and Branch Topology
 
-**Program epic:** [#491 Portfolio Intelligence Engine](https://github.com/prajoria/OpenBB/issues/491)  
-**Feature epic:** [#2046 OpenBB Portfolio Windows Service Host](https://github.com/prajoria/OpenBB/issues/2046)  
-**Jobs foundation:** [#1934 Async scan + ScanSnapshotStore](https://github.com/prajoria/OpenBB/issues/1934)  
+**Program epic:** [#242 Portfolio Intelligence Engine](https://github.com/rashmijain02/OpenBB/issues/242)  
+**Feature epic:** [#708 OpenBB Portfolio Windows Service Host](https://github.com/rashmijain02/OpenBB/issues/708)  
+**Jobs foundation:** [#593 Async scan + ScanSnapshotStore](https://github.com/rashmijain02/OpenBB/issues/593)  
 **Integration branch:** `feat/pi-jobs-service-gh-1934`
 
 Every related issue carries `program:openbb-service-host`,
@@ -38,10 +38,10 @@ and `priority:P2`.
 
 | Order | GitHub issue | Plan scope | Side branch | PR base |
 | --- | --- | --- | --- | --- |
-| 1 | [#2047 Native Windows host configuration and supervision](https://github.com/prajoria/OpenBB/issues/2047) | Tasks 1-2 | `feat/windows-service-host-gh-2047` | `feat/pi-jobs-service-gh-1934` |
-| 2 | [#2048 OpenBB health, logging, and runtime integration](https://github.com/prajoria/OpenBB/issues/2048) | Tasks 3-5 | `feat/windows-service-integration-gh-2048` | `feat/pi-jobs-service-gh-1934` |
-| 3 | [#2049 Secure Windows install, update, rollback, and uninstall](https://github.com/prajoria/OpenBB/issues/2049) | Task 6 | `feat/windows-service-deploy-gh-2049` | `feat/pi-jobs-service-gh-1934` |
-| 4 | [#2050 Windows acceptance harness and operator runbook](https://github.com/prajoria/OpenBB/issues/2050) | Task 7 | `test/windows-service-verify-gh-2050` | `feat/pi-jobs-service-gh-1934` |
+| 1 | [#1148 Native Windows host configuration and supervision](https://github.com/rashmijain02/OpenBB/issues/1148) | Tasks 1-2 | `feat/windows-service-host-gh-2047` | `feat/pi-jobs-service-gh-1934` |
+| 2 | [#1149 OpenBB health, logging, and runtime integration](https://github.com/rashmijain02/OpenBB/issues/1149) | Tasks 3-5 | `feat/windows-service-integration-gh-2048` | `feat/pi-jobs-service-gh-1934` |
+| 3 | [#1150 Secure Windows install, update, rollback, and uninstall](https://github.com/rashmijain02/OpenBB/issues/1150) | Task 6 | `feat/windows-service-deploy-gh-2049` | `feat/pi-jobs-service-gh-1934` |
+| 4 | [#1151 Windows acceptance harness and operator runbook](https://github.com/rashmijain02/OpenBB/issues/1151) | Task 7 | `test/windows-service-verify-gh-2050` | `feat/pi-jobs-service-gh-1934` |
 
 The branches are dependency ordered. A later branch starts from the updated
 integration branch only after the preceding PR merges. Each child PR uses a

@@ -5,7 +5,7 @@ name: Portfolio-Intel Closes-Syntax Check
 # feat/pi-* PRs whose body cites the retired `OpenBBTechnical-qy83.1.N`
 # bd-id in the Closes clause do NOT auto-close their GH issue, because
 # GitHub only recognizes `#NN` / `owner/repo#NN` grammar. This workflow
-# enforces the grammar so shipped work stays in sync with Project #4.
+# enforces the grammar so shipped work stays in sync with Project 1.
 #
 # Companion: .github/workflows/portfolio-intel-base-guard.yml
 # Script:    .github/scripts/closes-syntax-check.sh (function under test)

@@ -3,6 +3,30 @@
 A disciplined, gated workflow for developing features in the OpenBB platform.
 Each phase must complete before the next begins. No shortcuts.
 
+## Tracking board (source of truth)
+
+All work is tracked on **[Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)**,
+owned by Rashmi Jain (`rashmijain02`). Every item is an issue in `rashmijain02/OpenBB`. The original program epic,
+#242 (Portfolio Intelligence Engine epic), is closed; new work attaches to its own program epic on this board.
+Do not use any other project.
+
+| Setting | Value |
+|---|---|
+| `gh` owner / number | `--owner rashmijain02` / `1` |
+| Project ID | `PVT_kwHOAE4h8M4BqDs2` |
+| Status field | `PVTSSF_lAHOAE4h8M4BqDs2zhocetk` (Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`) |
+| Phase / Lane / Type fields | `PVTSSF_lAHOAE4h8M4BqDs2zhoceu4` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevA` / `PVTSSF_lAHOAE4h8M4BqDs2zhocevE` |
+| Start / End fields | `PVTF_lAHOAE4h8M4BqDs2zhocevM` / `PVTF_lAHOAE4h8M4BqDs2zhocevU` |
+| Field option IDs | `scripts/proj_fields.json`; item IDs by issue number in `scripts/pi_project_items.json` |
+
+```bash
+gh project item-add 1 --owner rashmijain02 --url https://github.com/rashmijain02/OpenBB/issues/<NN>
+.venv_portfolio\Scripts\python.exe scripts\pi_claim.py <NN> in-progress   # status + heartbeat
+```
+
+Issue numbers written before 2026-11-02 use the legacy numbering; resolve them with
+`docs/migration/legacy-issue-map.md`.
+
 ## Overview
 
 This command enforces an 8-phase development lifecycle that chains together
@@ -87,7 +111,7 @@ Example: if the doc says `<TASK: create title="foo" type=bug priority=P1>`
 and the mode is `gh`, resolve to:
 
 ```
-gh issue create --repo prajoria/OpenBB --title "foo" --label type:bug --label priority:P1
+gh issue create --repo rashmijain02/OpenBB --title "foo" --label type:bug --label priority:P1
 ```
 
 Never paste `<TASK: ...>` verbatim into a shell or tool call — it will fail.
@@ -253,7 +277,7 @@ before opening a PR, so we catch our own regressions before human reviewers do.
    `backtest`, `fmp_cached`, `agents`, `tools`, `sec`, `notebooks`,
    `financialtoolkit`. **Cite the tracking issue in the commit body** so
    history is queryable:
-   - gh mode: `Closes #491 (Point-in-time XLK universe builder)`
+   - gh mode: `Closes #<NN> (short description)`
    - bd mode: `Refs bd-b6k5 (Aroon Up/Down/Osc family)` — bd does not
      parse commit messages; close the bead manually via `bd close bd-b6k5
      --reason="shipped in <sha>"`. Use `Refs`, not `Closes`, since GitHub
@@ -416,7 +440,7 @@ The `<TASK: ...>` placeholders above translate to the following per mode.
 
 | Mode | Command |
 |---|---|
-| gh | `gh issue create --repo prajoria/OpenBB --title "<title>" --body "<body>" --label type:<T> --label priority:<P>[ --label area:<A>]` |
+| gh | `gh issue create --repo rashmijain02/OpenBB --title "<title>" --body "<body>" --label type:<T> --label priority:<P>[ --label area:<A>]` |
 | bd | `bd create --title="<title>" --description="<body>" --type=<T> --priority=<P>` |
 | ephemeral | `TaskCreate(subject="<title>", description="<body>")` |
 

@@ -1,6 +1,6 @@
 # 02 — Core Data Models & Interface Contracts
 
-**GitHub:** [#39](https://github.com/prajoria/OpenBB/issues/39) · **Depends on:** [#38](https://github.com/prajoria/OpenBB/issues/38)
+**GitHub:** `legacy issue 39` · **Depends on:** `legacy issue 38`
 **Beads:** OpenBB-bfk, OpenBB-cft, OpenBB-i8a
 
 The canonical Pydantic `Data` models and `Protocol` interfaces shared by every other

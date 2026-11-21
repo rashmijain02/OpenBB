@@ -2,7 +2,7 @@
 
 For each of the 87 GH issues (from pi_bead_to_gh_map.json):
 
-1. Add the issue to project #4 (get back a project-item ID)
+1. Add the issue to project 1 (get back a project-item ID)
 2. Set the Phase field (M0/P0/P1/P2/P3/M4) from the issue's labels
 3. Set the Lane field (A-Data/B-Analytics/...) from labels
 4. Set the Type field (Epic/Feature/Task/Bug) from labels
@@ -27,16 +27,16 @@ from datetime import date, timedelta
 from pathlib import Path
 
 # ---------- constants ----------
-OWNER = "prajoria"
-REPO = "prajoria/OpenBB"
-PROJECT_ID = "PVT_kwHOAOc7384BdSTg"  # project #4
+OWNER = "rashmijain02"  # Rashmi Jain
+REPO = "rashmijain02/OpenBB"
+PROJECT_ID = "PVT_kwHOAE4h8M4BqDs2"  # project 1
 
 FIELD = {
-    "Phase": "PVTSSF_lAHOAOc7384BdSTgzhX06B8",
-    "Lane": "PVTSSF_lAHOAOc7384BdSTgzhX06C0",
-    "Type": "PVTSSF_lAHOAOc7384BdSTgzhX06C4",
-    "Start": "PVTF_lAHOAOc7384BdSTgzhX06C8",
-    "End": "PVTF_lAHOAOc7384BdSTgzhX06DA",
+    "Phase": "PVTSSF_lAHOAE4h8M4BqDs2zhoceu4",
+    "Lane": "PVTSSF_lAHOAE4h8M4BqDs2zhocevA",
+    "Type": "PVTSSF_lAHOAE4h8M4BqDs2zhocevE",
+    "Start": "PVTF_lAHOAE4h8M4BqDs2zhocevM",
+    "End": "PVTF_lAHOAE4h8M4BqDs2zhocevU",
 }
 
 PHASE_OPTION = {

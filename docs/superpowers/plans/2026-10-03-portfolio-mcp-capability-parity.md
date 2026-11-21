@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- **Planning and tracking only.** The original delivery was plan-only. The subsequent notebook-agent request authorized creating this hierarchy in Project #4; it did not start implementation, deployments, or live-data validation.
-- Target project: [Portfolio Intelligence Engine, Project #4, Board view](https://github.com/users/prajoria/projects/4/views/2).
-- Parent repository: `prajoria/OpenBB`. Parent-repository feature PRs target `portfolio`, never `develop` or an upstream fork.
+- **Planning and tracking only.** The original delivery was plan-only. The subsequent notebook-agent request authorized creating this hierarchy in Project 1; it did not start implementation, deployments, or live-data validation.
+- Target project: [Portfolio Intelligence Engine, Project 1, Board view](https://github.com/users/rashmijain02/projects/1/views/1).
+- Parent repository: `rashmijain02/OpenBB`. Parent-repository feature PRs target `portfolio`, never `develop` or an upstream fork.
 - Audited baseline: `39f171603c9bc4a28778e668ba981cf0e4358b9a`. Reconcile subsequent Portfolio changes before implementation; do not reset them.
 - Current branch: `feature/dual-mcp-launcher`, tracking `origin/portfolio`. Preserve this tracking when publishing; do not use `git push -u` to replace it.
 - No automatic trading, broker submission, raw brokerage import, arbitrary SQL, arbitrary filesystem access, or secret-setting tools in the default MCP profile.
@@ -29,13 +29,13 @@
 
 ## 1. Approval boundary and deliverables
 
-**Tracking update:** the user subsequently authorized Project #4 creation.
-The program is now [#2123 (Portfolio MCP capability parity)](https://github.com/prajoria/OpenBB/issues/2123):
-72 new issues plus reused [#386 (Daytrade MCP tool server)](https://github.com/prajoria/OpenBB/issues/386).
+**Tracking update:** the user subsequently authorized Project 1 creation.
+The program is now [#725 (Portfolio MCP capability parity)](https://github.com/rashmijain02/OpenBB/issues/725):
+72 new issues plus reused [#241 (Daytrade MCP tool server)](https://github.com/rashmijain02/OpenBB/issues/241).
 See the [complete issue map](../../cross_repo_workflow/project-issue-map.md)
 for actual hierarchy, metadata and dependency read-back. The follow-on
-[#2195 (Python Notebook MCP Companion)](https://github.com/prajoria/OpenBB/issues/2195)
-is blocked by [#2194 (T44 base MCP release)](https://github.com/prajoria/OpenBB/issues/2194).
+[#210 (Python Notebook MCP Companion)](https://github.com/rashmijain02/OpenBB/issues/210)
+is blocked by [#1257 (T44 base MCP release)](https://github.com/rashmijain02/OpenBB/issues/1257).
 All implementation work remains planned; the original plan-only boundary below
 is retained as approval history, not a statement that issues are still absent.
 
@@ -43,7 +43,7 @@ is retained as approval history, not a statement that issues are still absent.
 
 1. Defines the proposed program, epics, features, tasks, dependency graph, and milestones.
 2. Maps every finding in the [MCP coverage report](../../cross_repo_workflow/mcp-coverage-report.md) to an owned work package.
-3. Specifies testable outcomes and the later Project #4 issue-creation procedure.
+3. Specifies testable outcomes and the later Project 1 issue-creation procedure.
 4. Identifies existing work for reuse before new issues are created.
 
 ### Original plan-only boundary
@@ -57,7 +57,7 @@ is retained as approval history, not a statement that issues are still absent.
 **Approval gates:**
 
 - **A1 - Plan approval:** approve the scope, architectural decisions, proposed hierarchy, and access policy.
-- **A2 - Tracking approval:** authorize creation of the reviewed issue set and its placement on Project #4. Re-run deduplication before creation.
+- **A2 - Tracking approval:** authorize creation of the reviewed issue set and its placement on Project 1. Re-run deduplication before creation.
 - **A3 - Implementation approval:** claim and execute dependency-ready tasks through fork-internal PRs.
 - **A4 - Operational approval:** separately authorize installations/restarts and any live data or maintenance validation.
 
@@ -244,13 +244,13 @@ tests existing persistent implementations, and produces an explicit
 conversion backlog for any separately approved persistence expansion.
 A persistence claim requires cache-hit/miss/freshness/invalidation evidence.
 
-## 4. Proposed Project #4 hierarchy and metadata
+## 4. Proposed Project 1 hierarchy and metadata
 
 ### Verified board configuration
 
 Read-only inspection confirmed:
 
-- Project ID: `PVT_kwHOAOc7384BdSTg`.
+- Project ID: `PVT_kwHOAE4h8M4BqDs2`.
 - View 2 is **Board**, `BOARD_LAYOUT`, with an empty filter.
 - Status options: **Todo**, **In Progress**, **Done**.
 - Type options: **Epic**, **Feature**, **Task**, **Bug**.
@@ -281,11 +281,11 @@ TechTrade-specific phase-label descriptions.
 
 | Existing issue | Observed state | Planned treatment |
 | --- | --- | --- |
-| [#386 - Daytrade MCP tool server](https://github.com/prajoria/OpenBB/issues/386) | Open; no Project items; no structured parent; body refers to the Daytrade phase/epic | Reuse for T31. Add to Project #4 after approval; cross-link F6.1. Do not silently reparent or duplicate it. |
-| [#360 - Daytrade agent turns and MCP phase](https://github.com/prajoria/OpenBB/issues/360) | Open | Keep as domain coordination context for T31/T32. |
-| [#356 - FMP Trading program epic](https://github.com/prajoria/OpenBB/issues/356) | Open | Preserve its program ownership and link cross-program dependencies. |
-| [#491 - Portfolio Intelligence Engine epic](https://github.com/prajoria/OpenBB/issues/491) | Closed | Link as predecessor/context; do not reopen a completed program to hide new scope. |
-| [#116 - Pine MCP registration](https://github.com/prajoria/OpenBB/issues/116) | Open, in-progress label | Track as adjacent work. Do not absorb or duplicate it without a source/capability overlap review. |
+| [#241 - Daytrade MCP tool server](https://github.com/rashmijain02/OpenBB/issues/241) | Open; no Project items; no structured parent; body refers to the Daytrade phase/epic | Reuse for T31. Add to Project 1 after approval; cross-link F6.1. Do not silently reparent or duplicate it. |
+| [#131 - Daytrade agent turns and MCP phase](https://github.com/rashmijain02/OpenBB/issues/131) | Open | Keep as domain coordination context for T31/T32. |
+| [#128 - FMP Trading program epic](https://github.com/rashmijain02/OpenBB/issues/128) | Open | Preserve its program ownership and link cross-program dependencies. |
+| [#242 - Portfolio Intelligence Engine epic](https://github.com/rashmijain02/OpenBB/issues/242) | Closed | Link as predecessor/context; do not reopen a completed program to hide new scope. |
+| [#20 - Pine MCP registration](https://github.com/rashmijain02/OpenBB/issues/20) | Open, in-progress label | Track as adjacent work. Do not absorb or duplicate it without a source/capability overlap review. |
 
 Search again at A2: other agents may create overlapping issues between plan
 approval and issue creation. Existing closed implementation issues can be
@@ -1094,7 +1094,7 @@ documentation, without adding autonomous financial mutation.
 
 **Feature:** F6.1. **Priority/phase/lane:** P1 / P1 / B-Analytics.
 **Dependencies:** T03. **Estimate:** 2-3 days.
-**Existing tracking:** [#386 - Daytrade MCP tool server](https://github.com/prajoria/OpenBB/issues/386).
+**Existing tracking:** [#241 - Daytrade MCP tool server](https://github.com/rashmijain02/OpenBB/issues/241).
 
 **Files:** modify
 `openbb_platform/extensions/fmp_trading/openbb_fmp_trading/agent/mcp_server.py`,
@@ -1414,8 +1414,8 @@ After A1 and explicit A2 authorization:
    hierarchy nodes. Use database issue IDs where the REST relationship API
    requires them; do not substitute visible issue numbers.
 5. Keep reused Daytrade work's ownership/parenting intact and link it as a
-   dependency of the new F6.1 feature. Add it to Project #4 only after approval.
-6. Add each approved issue to Project #4; set Type, Phase, Lane and Status
+   dependency of the new F6.1 feature. Add it to Project 1 only after approval.
+6. Add each approved issue to Project 1; set Type, Phase, Lane and Status
    using the already verified fields. Initial Status is Todo.
 7. Apply the existing type/area/priority labels and the approved program label.
 8. Add dependency relationships and reciprocal cross-program links; do not
@@ -1441,8 +1441,8 @@ When a new issue replaces or extends existing work, include:
 
 ```text
 Provenance: MCP capability audit at 39f171603c9
-Tracking: Project #4, Portfolio Intelligence Engine
-Integration target: portfolio (prajoria/OpenBB)
+Tracking: Project 1, Portfolio Intelligence Engine
+Integration target: portfolio (rashmijain02/OpenBB)
 Plan ID: the corresponding E/F/T identifier in this document
 Scope: implemented-capability parity; no implicit new trading privileges
 Evidence: source/API/MCP layer and required validation level
@@ -1504,6 +1504,6 @@ alone completed the capability.
 | Maintain safe merge direction and tracked delivery | T05, T38, section 15 |
 
 **Handoff:** approve or revise the plan first. The next authorized action
-should be issue deduplication and Project #4 hierarchy creation, not automatic
+should be issue deduplication and Project 1 hierarchy creation, not automatic
 code execution. Implementation can then proceed through reviewed parallel
 task execution or sequential dependency-ready batches.

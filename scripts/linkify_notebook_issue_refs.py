@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #   `\w` catches things like `sha1234` / `python3.10` that already have digits.
 # Negative lookahead: skip when `]` follows (existing link's closing bracket).
 BARE_REF = re.compile(r"(?<![\w/(\[])#(\d{2,5})(?!\w|\])")
-URL_TMPL = "https://github.com/prajoria/OpenBB/issues/{n}"
+URL_TMPL = "https://github.com/rashmijain02/OpenBB/issues/{n}"
 
 
 def _rewrite_text(src: str) -> tuple[str, int]:
