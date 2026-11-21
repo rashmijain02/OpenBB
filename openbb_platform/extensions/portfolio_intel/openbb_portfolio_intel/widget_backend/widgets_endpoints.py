@@ -2367,7 +2367,7 @@ _SQLITE_FALLBACK_RETRY_SECONDS = 30.0
 
 def _get_snapshot_store() -> SnapshotStore:
     """Cache the canonical store, but retry a fallback backend periodically."""
-    global _SNAPSHOT_STORE_CACHE  # noqa: PLW0603
+    global _SNAPSHOT_STORE_CACHE  # noqa: PLW0603  # pylint: disable=global-statement
     now = time.monotonic()
     with _SNAPSHOT_STORE_LOCK:
         cached = _SNAPSHOT_STORE_CACHE
