@@ -1,7 +1,9 @@
 """Intelligence widget-backend composition adapter."""
 
 import copy
+import inspect
 from contextlib import asynccontextmanager
+from urllib.parse import parse_qsl, urlencode
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -51,6 +53,54 @@ class IntelligenceRouteAuthMiddleware:
         await self.app(scope, receive, send)
 
 
+CHART_ROWS_NOTE = (
+    "\n\nMCP returns this chart's rows (the widget's `raw=true` form), never "
+    "its Plotly figure; any `raw` argument is ignored. Each row carries "
+    "`data_state`, `data_source` and `data_as_of`, so say whether the data is "
+    "live, cached, demo or unavailable."
+)
+
+
+def _is_chart_route(route: APIRoute) -> bool:
+    """Return whether a route is a Plotly chart with a ``raw`` rows form (#1268)."""
+    try:
+        return "raw" in inspect.signature(route.endpoint).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+class ChartRowsMiddleware:
+    """Force ``raw=true`` on cloned chart routes (#1272).
+
+    Workspace's agent contract reads a chart's rows, not its figure. The MCP
+    clone keeps the original handler and dependencies, so the query string is
+    rewritten instead: any ``raw`` argument is replaced by ``raw=true``.
+    """
+
+    def __init__(self, app: ASGIApp, paths: frozenset[str]):
+        self.app = app
+        self.paths = paths
+
+    async def __call__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
+        """Rewrite ``raw`` on chart routes, pass everything else through."""
+        if scope["type"] == "http" and str(scope.get("path", "")) in self.paths:
+            query = scope.get("query_string", b"").decode("latin-1")
+            pairs = [
+                (name, value)
+                for name, value in parse_qsl(query, keep_blank_values=True)
+                if name != "raw"
+            ]
+            pairs.append(("raw", "true"))
+            scope = dict(scope)
+            scope["query_string"] = urlencode(pairs).encode("latin-1")
+        await self.app(scope, receive, send)
+
+
 def compose_portfolio_intel_app(
     source_app: FastAPI,
     intelligence_app: FastAPI | None,
@@ -93,6 +143,7 @@ def compose_portfolio_intel_app(
         if isinstance(route, APIRoute)
     }
 
+    chart_paths: set[str] = set()
     for original in intelligence_app.router.routes:
         if not isinstance(original, APIRoute):
             continue
@@ -157,6 +208,9 @@ def compose_portfolio_intel_app(
         config = dict(route.openapi_extra.get("mcp_config") or {})
         config["name"] = name
         route.openapi_extra["mcp_config"] = config
+        if _is_chart_route(original):
+            route.description = (original.description or "") + CHART_ROWS_NOTE
+            chart_paths.add(original.path)
         composed.router.routes.append(route)
         existing_names.add(name)
         existing_mcp_names.add(name)
@@ -171,6 +225,8 @@ def compose_portfolio_intel_app(
             yield
 
     composed.router.lifespan_context = composed_lifespan
+    if chart_paths:
+        composed.add_middleware(ChartRowsMiddleware, paths=frozenset(chart_paths))
     if upstream_token:
         composed.add_middleware(
             IntelligenceRouteAuthMiddleware,

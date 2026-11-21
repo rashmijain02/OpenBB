@@ -193,3 +193,32 @@ Reject-and-400 rather than silently coerce; the widget shows a Workspace-side er
 ## What this replaces
 
 The `desktop/src/pi/` canvas from #981 / #982 / #1004 was a scope error — that shipped a bespoke React canvas which is NOT how Workspace consumes widgets. It stays in the tree as a **local preview harness** (headless smoke testing of the SDK contract), but the shipping surface for portfolio-intel widgets is THIS backend + Workspace as the frontend.
+
+## Workspace agent (#1272)
+
+This backend also serves the custom Workspace agent (`/agents.json` and `/query`, from
+`openbb_portfolio.copilot`). It answers through the local model proxy and is read-only.
+
+- **Discovery.** `/agents.json` advertises `streaming` and `widget-dashboard-select`, and
+  nothing else. Widget access is advertised only because this backend registers an agent
+  inventory on `app.state` (`agent_policy.build_agent_capabilities()`, built from
+  `widgets.json`); a backend without one stays text-only.
+- **Reads.** The agent reads the widgets the user selected through Workspace's own
+  `get_widget_data` call. It has no HTTP client or backend token of its own. It passes each
+  widget's current parameters unchanged and adds `raw=true` for chart widgets, so it gets rows,
+  not Plotly figures. At most 8 widgets, 50 rows per widget and 24,000 characters of context
+  per question. The model answer has a time limit (`COPILOT_PROXY_TIMEOUT_SECONDS`, default 60)
+  and a token cap.
+- **Denied.** `pi_paper_ticket` (places paper orders) and `pi_backtest_button` (queues a job)
+  are refused and never requested; widgets outside the inventory are refused too. Paper and
+  execution actions stay separately authorized in the widget itself. The MCP exposure policy
+  denies the same two endpoints; `test_agent_capabilities_1272.py` keeps the lists equal and
+  the inventory equal to `tests/unit/fixtures/native_workspace_matrix.json`.
+- **Provenance.** Each widget's `data_state` / `data_source` / `data_as_of` (row columns, the
+  `Data State` metric card, the Markdown `Data state` line, or a figure's `layout.meta`) is
+  shown as a reasoning step and given to the model, which must say when data is demo, cached
+  or unavailable.
+- **Credentials.** The request's `api_keys` and tool tokens are never sent to the model;
+  credential-like fields and values in widget data are redacted.
+- **MCP.** The MCP adapter forces `raw=true` on the cloned chart tools, so MCP clients also get
+  rows with the provenance columns.
