@@ -87,6 +87,17 @@ def _raw(url: str) -> str:
     return f"{url}{'&' if '?' in url else '?'}raw=true"
 
 
+_PROVENANCE = ("data_state", "data_source", "data_as_of")
+
+
+def _strip(rows: Any) -> Any:
+    """Drop the #1269 provenance columns (asserted as strings) from raw rows."""
+    assert isinstance(rows, list)
+    for row in rows:
+        assert all(isinstance(row[key], str) for key in _PROVENANCE), row
+    return [{k: v for k, v in row.items() if k not in _PROVENANCE} for row in rows]
+
+
 def _notes(figure: dict[str, Any]) -> str:
     return " ".join(a["text"] for a in figure["layout"].get("annotations", []))
 
@@ -130,7 +141,7 @@ def _typed(value: Any) -> Any:
 @pytest.mark.parametrize("url", sorted(_ROWS))
 def test_raw_mode_returns_the_frozen_pre_1268_rows(url: str) -> None:
     """``raw=true`` returns exactly the rows (and JSON number types) of pre-#1268."""
-    assert _typed(_get(_raw(url))) == _typed(_ROWS[url])
+    assert _typed(_strip(_get(_raw(url)))) == _typed(_ROWS[url])
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +326,8 @@ def test_unwired_account_is_an_explicit_unavailable_figure(widget_id: str) -> No
     assert not collect_response_issues(
         widget_id, _WIDGETS[widget_id], response.status_code, response.text
     )
-    assert _get(_raw(url)) == _ROWS[url]
+    assert _strip(_get(_raw(url))) == _ROWS[url]
+    assert {r["data_state"] for r in _get(_raw(url))} == {"unavailable"}
 
 
 def test_live_tier_rows_are_labelled_live_with_their_source() -> None:
@@ -329,10 +341,15 @@ def test_live_tier_rows_are_labelled_live_with_their_source() -> None:
 
     _TIER_CALLS[("equity/revenue-geography", "fmp_cached")] = _fake_tier
     figure = _get("/pi/equity/revenue-geography?symbol=AAPL")
-    assert figure["layout"]["meta"] == {"state": "live", "source": "fmp_cached"}
+    meta = figure["layout"]["meta"]
+    assert (meta["state"], meta["source"], meta["asOf"]) == (
+        "cached",  # #1269: fmp_cached is cached, as-of unknown
+        "fmp_cached",
+        "unknown",
+    )
     assert "demo" not in _notes(figure).lower()
     assert figure["data"][0]["labels"] == ["Americas", "Europe"]
-    assert _get("/pi/equity/revenue-geography?symbol=AAPL&raw=true") == [
+    assert _strip(_get("/pi/equity/revenue-geography?symbol=AAPL&raw=true")) == [
         {"region": "Americas", "revenue": 10.0},
         {"region": "Europe", "revenue": 5.0},
     ]
@@ -342,8 +359,14 @@ def test_empty_rows_render_an_explicit_empty_state() -> None:
     """No rows gives a trace-free figure with an explanation for every builder."""
     from openbb_portfolio_intel.widget_backend import terminal_charts as tc
 
+    from openbb_portfolio_intel.widget_backend.provenance import (
+        DataState,
+        Provenance,
+    )
+
     context = tc.ChartContext(
-        params={"symbol": "AAPL", "account_id": "demo"}, source="stub"
+        params={"symbol": "AAPL", "account_id": "demo"},
+        provenance=Provenance(DataState.DEMO, "stub", "sample"),
     )
     builders = [
         tc.xray_country_figure,
@@ -360,7 +383,8 @@ def test_empty_rows_render_an_explicit_empty_state() -> None:
     for build in builders:
         figure = build([], context)
         assert figure["data"] == [], build.__name__
-        assert figure["layout"]["meta"]["state"] == "empty", build.__name__
+        # #1269: an empty result is "unavailable", never a success shape.
+        assert figure["layout"]["meta"]["state"] == "unavailable", build.__name__
         assert "no " in _notes(figure).lower(), build.__name__
         assert "title" not in figure["layout"], build.__name__
 

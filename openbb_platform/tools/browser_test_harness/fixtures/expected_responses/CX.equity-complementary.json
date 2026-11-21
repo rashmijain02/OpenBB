@@ -1,6 +1,9 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "id": "SPY",
       "kind": "ETF",
       "name": "SPDR S&P 500",
@@ -8,6 +11,9 @@
       "weight_pct": 7.0
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "id": "QQQ",
       "kind": "ETF",
       "name": "Invesco QQQ Trust",
@@ -15,6 +21,9 @@
       "weight_pct": 8.9
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "id": "VOO",
       "kind": "ETF",
       "name": "Vanguard S&P 500",
@@ -22,6 +31,9 @@
       "weight_pct": 7.0
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "id": "XLK",
       "kind": "ETF",
       "name": "SPDR Technology",
@@ -29,6 +41,9 @@
       "weight_pct": 22.1
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "id": "BLOCKED",
       "kind": "Bond",
       "name": "corporate bond ladder",

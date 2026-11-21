@@ -2,6 +2,9 @@
   "body": [
     {
       "avg_price": 227.45,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "qty": 100,
       "side": "BUY",
       "status": "FILLED",
@@ -10,6 +13,9 @@
     },
     {
       "avg_price": 118.2,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "qty": 50,
       "side": "BUY",
       "status": "FILLED",
@@ -18,6 +24,9 @@
     },
     {
       "avg_price": 244.1,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "qty": 25,
       "side": "SELL",
       "status": "FILLED",

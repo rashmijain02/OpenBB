@@ -39,6 +39,7 @@ from openbb_portfolio_intel.providers.chain import (
     ChainedFetcherAllTiersFailed,
 )
 from openbb_portfolio_intel.providers.registry import TIER_REGISTRY, track_key
+from openbb_portfolio_intel.widget_backend.provenance import demo_mode
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,10 @@ def route_through_chain(
     Returns:
         The tier's response (possibly shaped), or the stub fallback.
     """
+    if demo_mode() == "only":
+        # Explicit demo mode (#1269): onboarding/tests never call a provider.
+        record_tier_used(endpoint, "stub")
+        return stub_fallback()
     tiers = TIER_REGISTRY.get(track_key(family, track))
     if not tiers:
         # No tiers registered for this family — treat identically to

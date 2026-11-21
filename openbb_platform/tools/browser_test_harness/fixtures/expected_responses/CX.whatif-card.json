@@ -3,24 +3,36 @@
     {
       "after": 4.8999999999999995,
       "before": 4.8,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "delta": 0.1,
       "metric": "Symbol Weight (%)"
     },
     {
       "after": 37.300000000000004,
       "before": 37.2,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "delta": 0.1,
       "metric": "Sector Weight (%)"
     },
     {
       "after": 4.9,
       "before": 5.0,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "delta": -0.1,
       "metric": "Cash Weight (%)"
     },
     {
       "after": 1.1,
       "before": 1.08,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "delta": 0.02,
       "metric": "Beta vs SPY"
     }

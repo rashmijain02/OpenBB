@@ -108,7 +108,7 @@ def test_provenance_endpoint_registered() -> None:
 
 
 def test_provenance_reflects_serving_source() -> None:
-    """When the ledger says fmp_cached serves an endpoint, mode is LIVE."""
+    """When the ledger says fmp_cached serves an endpoint, mode is Cached (#1269)."""
     from openbb_portfolio_intel.widget_backend import widgets_endpoints as we
 
     we._TIER_IN_USE.clear()
@@ -117,7 +117,7 @@ def test_provenance_reflects_serving_source() -> None:
         body = _client.get("/pi/context/provenance").json()
     finally:
         we._TIER_IN_USE.clear()
-    assert "LIVE" in body
+    assert "**Data mode:** Cached" in body
     assert "fmp_cached" in body
 
 
@@ -150,7 +150,9 @@ def test_f2_contains_full_fundamentals_set() -> None:
 def test_f2_provenance_is_top_chrome_and_health_is_bottom() -> None:
     layout = _f2_layout()
     assert layout[0]["i"] == "pi_data_provenance", "provenance must be the top strip"
-    assert layout[-1]["i"] == "pi_provider_health", "health table must be the bottom slot"
+    assert (
+        layout[-1]["i"] == "pi_provider_health"
+    ), "health table must be the bottom slot"
 
 
 def test_f2_chrome_bars_are_decently_sized() -> None:

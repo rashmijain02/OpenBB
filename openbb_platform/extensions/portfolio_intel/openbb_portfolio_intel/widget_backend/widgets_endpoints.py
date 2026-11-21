@@ -54,13 +54,23 @@ from openbb_portfolio_intel.providers.registry import (
     TRACK_A_DEFAULT,
 )
 from openbb_portfolio_intel.providers.retrofit import with_chain
-from openbb_portfolio_intel.widget_backend import terminal_charts
+from openbb_portfolio_intel.widget_backend import (
+    provenance as pv,
+    terminal_charts,
+)
 from openbb_portfolio_intel.widget_backend._app import app
 from openbb_portfolio_intel.widget_backend._shared import (
     _SYMBOL_RE,
+    account_display,
     require_auth,
     require_live_trading_principal,
     validate_account,
+)
+from openbb_portfolio_intel.widget_backend.provenance import (
+    DataState,
+    Provenance,
+    mark_unavailable,
+    widget,
 )
 from openbb_portfolio_intel.widget_backend.table_contracts import (
     ALERT_KIND_LABELS,
@@ -75,7 +85,12 @@ from openbb_portfolio_intel.widget_backend.table_contracts import (
     metric_cards,
     relabel,
 )
-from openbb_portfolio_intel.widget_backend.terminal_charts import plotly_chart
+from openbb_portfolio_intel.widget_backend.terminal_charts import (
+    DEMO_BOOK,
+    demo_symbol,
+    plotly_chart,
+    weights_assess,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +99,13 @@ logger = logging.getLogger(__name__)
 # and _validate_account) keep working without a global rename.
 _require_auth = require_auth
 _validate_account = validate_account
+
+# Data-state reasons (#1268, #1269): shown after "Demo:" / "Unavailable:".
+_BOOK = "synthetic sample book"
+_SYMBOL_DEMO = (
+    "no live provider answered; these are sample values, not live market data"
+)
+_PREVIEW = "preview stub; this action is not wired yet"
 
 
 # ---------------------------------------------------------------------------
@@ -104,11 +126,13 @@ def record_tier_used(endpoint: str, tier: str) -> None:
     the provider-health widget can render "endpoint X: currently served
     by tier Y". Kept module-level so the retrofit sites are one-liners.
 
-    Also stamps the per-request ``SERVING_TIER`` context so a native chart
-    endpoint labels its figure live vs demo from its own request (#1268).
+    Also records the tier on the per-request provenance record, which the
+    response body and the ``X-PI-Data-*`` headers are both built from, so a
+    concurrent request can never relabel this one (#1268, #1269). The shared
+    ledger only feeds the provider-health and provenance summary widgets.
     """
     _TIER_IN_USE[endpoint] = tier
-    terminal_charts.SERVING_TIER.set(tier)
+    pv.record_tier(tier)
 
 
 # Human-readable role for each Track A tier — rendered in the provider-health
@@ -278,7 +302,9 @@ def _validate_price_history_from_call(
 
 
 @app.get("/pi/xray/country")
-@plotly_chart(terminal_charts.xray_country_figure)
+@plotly_chart(
+    terminal_charts.xray_country_figure, demo=DEMO_BOOK, assess=weights_assess("weight")
+)
 @with_chain(
     endpoint="pi/xray/country",
     family="xray/country",
@@ -302,11 +328,13 @@ def xray_country(
             {"country": "Germany", "weight": 0.03},
             {"country": "Other", "weight": 0.08},
         ]
-    logger.warning("xray/country: account resolver not wired for %r", account_id)
+    logger.warning("xray/country: account resolver not wired for this account")
+    mark_unavailable(_UNWIRED)
     return [{"country": "(no data — account resolver not wired)", "weight": 0.0}]
 
 
 @app.get("/pi/lookthrough/top25")
+@widget("table", demo=_BOOK)
 @with_chain(
     endpoint="pi/lookthrough/top25",
     family="lookthrough/top25",
@@ -353,7 +381,8 @@ def lookthrough_top25(
             {"symbol": s, "name": n, "effective_weight": w, "rank": i + 1}
             for i, (s, n, w) in enumerate(demo)
         ]
-    logger.warning("lookthrough/top25: account resolver not wired for %r", account_id)
+    logger.warning("lookthrough/top25: account resolver not wired for this account")
+    mark_unavailable(_UNWIRED)
     return [
         {
             "symbol": "(no-data)",
@@ -364,12 +393,11 @@ def lookthrough_top25(
     ]
 
 
-# Data-state card text for the metric widgets (#1268).
-_DEMO_BOOK_STATE = "Demo: synthetic sample book"
-_UNWIRED_STATE = "Unavailable: account resolver not wired for this account"
+_UNWIRED = "account resolver not wired for this account"
 
 
 @app.get("/pi/concentration")
+@widget("metric", demo=_BOOK)
 @with_chain(
     endpoint="pi/concentration",
     family="concentration",
@@ -417,15 +445,10 @@ def concentration(
             0.464,
         ]
         hhi = sum(w * w for w in weights)
-        return metric_cards(
-            [("Concentration (HHI)", round(hhi, 4))],
-            available=True,
-            state=_DEMO_BOOK_STATE,
-        )
-    logger.warning("concentration: account resolver not wired for %r", account_id)
-    return metric_cards(
-        [("Concentration (HHI)", 0.0)], available=False, state=_UNWIRED_STATE
-    )
+        return metric_cards([("Concentration (HHI)", round(hhi, 4))], available=True)
+    logger.warning("concentration: account resolver not wired for this account")
+    mark_unavailable(_UNWIRED)
+    return metric_cards([("Concentration (HHI)", 0.0)], available=False)
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +457,7 @@ def concentration(
 
 
 @app.get("/pi/events/calendar")
+@widget("table", demo=_BOOK)
 @relabel("type", EVENT_TYPE_LABELS)
 @with_chain(
     endpoint="pi/events/calendar",
@@ -491,6 +515,7 @@ def events_calendar(
                 "detail": "Q2 2026",
             },
         ]
+    mark_unavailable(_UNWIRED)
     return [
         {
             "symbol": "(no-data)",
@@ -507,6 +532,7 @@ def events_calendar(
 
 
 @app.get("/pi/smart-money/ribbon")
+@widget("table", demo=_BOOK)
 @relabel("kind", SMART_MONEY_KIND_LABELS)
 @with_chain(
     endpoint="pi/smart-money/ribbon",
@@ -546,6 +572,7 @@ def smart_money_ribbon(
                 "date": "2026-07-17",
             },
         ]
+    mark_unavailable(_UNWIRED)
     return [
         {
             "symbol": "(no-data)",
@@ -563,6 +590,7 @@ def smart_money_ribbon(
 
 
 @app.get("/pi/risk/dashboard")
+@widget("metric", demo=_BOOK)
 @with_chain(
     endpoint="pi/risk/dashboard",
     family="risk/dashboard",
@@ -584,12 +612,13 @@ def risk_dashboard(
         ("Beta vs SPY", beta_spy),
     ]
     if account_id == "demo":
-        return metric_cards(values, available=True, state=_DEMO_BOOK_STATE)
-    return metric_cards(values, available=False, state=_UNWIRED_STATE)
+        return metric_cards(values, available=True)
+    mark_unavailable(_UNWIRED)
+    return metric_cards(values, available=False)
 
 
 @app.get("/pi/risk/vol")
-@plotly_chart(terminal_charts.risk_vol_figure)
+@plotly_chart(terminal_charts.risk_vol_figure, demo=DEMO_BOOK)
 @with_chain(
     endpoint="pi/risk/vol",
     family="risk/vol",
@@ -613,6 +642,7 @@ def risk_vol(
             }
             for d in range(1, 31)
         ]
+    mark_unavailable(_UNWIRED)
     return [{"date": "", "vol_20d": 0.0, "vol_60d": 0.0}]
 
 
@@ -622,6 +652,7 @@ def risk_vol(
 
 
 @app.get("/pi/paper/ticket")
+@widget("markdown", demo=_PREVIEW)
 def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     request: Request,
     account_id: str = "demo",
@@ -654,7 +685,7 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
     )
     return (
         f"## Paper Order — {verb}\n\n"
-        f"- **Account:** `{account_id}`\n"
+        f"- **Account:** {account_display(account_id)}\n"
         f"- **Side:** {side.upper()}\n"
         f"- **Symbol:** `{sym}`\n"
         f"- **Quantity:** {qty}\n\n"
@@ -663,6 +694,7 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
 
 
 @app.get("/pi/paper/blotter")
+@widget("table", demo=_BOOK)
 @with_chain(
     endpoint="pi/paper/blotter",
     family="paper/blotter",
@@ -704,6 +736,7 @@ def paper_blotter(
                 "avg_price": 244.10,
             },
         ]
+    mark_unavailable(_UNWIRED)
     return [
         {
             "time": "",
@@ -717,7 +750,7 @@ def paper_blotter(
 
 
 @app.get("/pi/paper/performance")
-@plotly_chart(terminal_charts.paper_performance_figure)
+@plotly_chart(terminal_charts.paper_performance_figure, demo=DEMO_BOOK)
 @with_chain(
     endpoint="pi/paper/performance",
     family="paper/performance",
@@ -740,10 +773,12 @@ def paper_performance(
             }
             for d in range(1, 31)
         ]
+    mark_unavailable(_UNWIRED)
     return [{"date": "", "equity": 0.0}]
 
 
 @app.get("/pi/paper/perf-kpis")
+@widget("metric", demo=f"{_BOOK}, 30 trading days")
 @with_chain(
     endpoint="pi/paper/perf-kpis",
     family="paper/perf-kpis",
@@ -764,12 +799,9 @@ def paper_perf_kpis(
         ("Maximum Drawdown (%)", -1.87),
     ]
     if account_id == "demo":
-        return metric_cards(
-            values,
-            available=True,
-            state="Demo: synthetic sample book, 30 trading days",
-        )
-    return metric_cards(values, available=False, state=_UNWIRED_STATE)
+        return metric_cards(values, available=True)
+    mark_unavailable(_UNWIRED)
+    return metric_cards(values, available=False)
 
 
 # ---------------------------------------------------------------------------
@@ -778,6 +810,7 @@ def paper_perf_kpis(
 
 
 @app.get("/pi/whatif/card")
+@widget("table", demo=_PREVIEW)
 @relabel("metric", WHATIF_ROW_LABELS)
 @with_chain(
     endpoint="pi/whatif/card",
@@ -836,6 +869,7 @@ def whatif_card(
 
 
 @app.get("/pi/news")
+@widget("table", demo=_BOOK)
 @with_chain(
     endpoint="pi/news",
     family="news",
@@ -880,6 +914,7 @@ def pi_news(
                 "severity": "material",
             },
         ]
+    mark_unavailable(_UNWIRED)
     return [
         {
             "symbol": "(no-data)",
@@ -891,6 +926,7 @@ def pi_news(
 
 
 @app.get("/pi/sentiment")
+@widget("metric", demo="synthetic sample, 7-day window")
 @with_chain(
     endpoint="pi/sentiment",
     family="sentiment",
@@ -907,13 +943,13 @@ def pi_sentiment(
     _validate_account(account_id)
     values: list[tuple[str, float | str]] = [("News Sentiment Score (-1 to +1)", 0.62)]
     if account_id == "demo":
-        return metric_cards(
-            values, available=True, state="Demo: synthetic sample, 7-day window"
-        )
-    return metric_cards(values, available=False, state=_UNWIRED_STATE)
+        return metric_cards(values, available=True)
+    mark_unavailable(_UNWIRED)
+    return metric_cards(values, available=False)
 
 
 @app.get("/pi/alerts")
+@widget("table", demo=_BOOK)
 @relabel("kind", ALERT_KIND_LABELS)
 @with_chain(
     endpoint="pi/alerts",
@@ -948,6 +984,7 @@ def pi_alerts(request: Request, account_id: str = "demo") -> list[dict[str, str]
                 "detail": "Recall notice",
             },
         ]
+    mark_unavailable(_UNWIRED)
     return [
         {
             "severity": "info",
@@ -959,6 +996,7 @@ def pi_alerts(request: Request, account_id: str = "demo") -> list[dict[str, str]
 
 
 @app.get("/pi/backtest/oneclick")
+@widget("markdown", demo=_PREVIEW)
 @with_chain(
     endpoint="pi/backtest/oneclick",
     family="backtest/oneclick",
@@ -973,7 +1011,7 @@ def pi_backtest_oneclick(request: Request, account_id: str = "demo") -> str:
     _validate_account(account_id)
     return (
         "## Backtest — kicked off\n\n"
-        f"- **Account:** `{account_id}`\n"
+        f"- **Account:** {account_display(account_id)}\n"
         "- **Status:** queued (stub — full wiring to `openbb_backtest.run` pending)\n\n"
         "> Preview stub: real button hands off the paper book's rules to "
         "`openbb-backtest` for a walk-forward run."
@@ -986,6 +1024,7 @@ def pi_backtest_oneclick(request: Request, account_id: str = "demo") -> str:
 
 
 @app.get("/pi/equity/header")
+@widget("markdown", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/header",
     family="equity/header",
@@ -1012,6 +1051,7 @@ def equity_header(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/pi/equity/key-stats")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/key-stats",
     family="equity/key-stats",
@@ -1051,7 +1091,7 @@ def equity_key_stats(
 
 
 @app.get("/pi/equity/financials")
-@plotly_chart(terminal_charts.equity_financials_figure)
+@plotly_chart(terminal_charts.equity_financials_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/financials",
     family="equity/financials",
@@ -1087,6 +1127,7 @@ def equity_financials(
 
 
 @app.get("/pi/equity/technicals")
+@widget("table", demo=_SYMBOL_DEMO)
 @relabel("metric", TECHNICAL_ROW_LABELS)
 @with_chain(
     endpoint="pi/equity/technicals",
@@ -1179,6 +1220,7 @@ def _latest_issuer_fiscal_period_and_release_date(
 
 
 @app.get("/pi/equity/analyst-forecasts")
+@widget("table", demo=_SYMBOL_DEMO)
 @relabel("metric", FORECAST_ROW_LABELS, FORECAST_ROW_PATTERNS)
 @with_chain(
     endpoint="pi/equity/analyst-forecasts",
@@ -1327,6 +1369,7 @@ def equity_analyst_forecasts(
 
 
 @app.get("/pi/equity/complementary")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/complementary",
     family="equity/complementary",
@@ -1380,6 +1423,7 @@ def equity_complementary(
 
 
 @app.get("/pi/equity/competitors")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/competitors",
     family="equity/competitors",
@@ -1554,7 +1598,7 @@ def _demo_ohlc_series(symbol: str, days: int = 126) -> list[dict]:
 
 
 @app.get("/pi/equity/price-history")
-@plotly_chart(terminal_charts.price_history_figure)
+@plotly_chart(terminal_charts.price_history_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/price-history",
     family="equity/price-history",
@@ -1635,6 +1679,7 @@ def equity_price_history(
 
 
 @app.get("/pi/equity/price-performance")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/price-performance",
     family="equity/price-performance",
@@ -1665,6 +1710,7 @@ def equity_price_performance(
 
 
 @app.get("/pi/equity/management-team")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/management-team",
     family="equity/management-team",
@@ -1718,7 +1764,7 @@ def equity_management_team(
 
 
 @app.get("/pi/equity/revenue-geography")
-@plotly_chart(terminal_charts.revenue_geography_figure)
+@plotly_chart(terminal_charts.revenue_geography_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/revenue-geography",
     family="equity/revenue-geography",
@@ -1747,7 +1793,7 @@ def equity_revenue_geography(
 
 
 @app.get("/pi/equity/revenue-business-line")
-@plotly_chart(terminal_charts.revenue_business_line_figure)
+@plotly_chart(terminal_charts.revenue_business_line_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/revenue-business-line",
     family="equity/revenue-business-line",
@@ -1784,6 +1830,7 @@ def equity_revenue_business_line(
 
 
 @app.get("/pi/equity/institutional-ownership")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/institutional-ownership",
     family="equity/institutional-ownership",
@@ -1808,7 +1855,11 @@ def equity_institutional_ownership(
 
 
 @app.get("/pi/equity/stock-ownership")
-@plotly_chart(terminal_charts.stock_ownership_figure)
+@plotly_chart(
+    terminal_charts.stock_ownership_figure,
+    demo=demo_symbol,
+    assess=weights_assess("pct", whole=100.0, of="shares outstanding"),
+)
 @with_chain(
     endpoint="pi/equity/stock-ownership",
     family="equity/stock-ownership",
@@ -1832,6 +1883,7 @@ def equity_stock_ownership(
 
 
 @app.get("/pi/equity/insider-trading")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/insider-trading",
     family="equity/insider-trading",
@@ -1883,6 +1935,7 @@ def equity_insider_trading(
 
 
 @app.get("/pi/equity/earnings-history")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/earnings-history",
     family="equity/earnings-history",
@@ -1920,6 +1973,7 @@ def equity_earnings_history(
 
 
 @app.get("/pi/equity/stock-splits")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/stock-splits",
     family="equity/stock-splits",
@@ -1948,6 +2002,7 @@ def equity_stock_splits(
 
 
 @app.get("/pi/equity/dividend-payment")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/dividend-payment",
     family="equity/dividend-payment",
@@ -1975,6 +2030,7 @@ def equity_dividend_payment(
 
 
 @app.get("/pi/equity/company-filings")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/company-filings",
     family="equity/company-filings",
@@ -2034,6 +2090,7 @@ def equity_company_filings(
 
 
 @app.get("/pi/equity/earnings-transcripts")
+@widget("markdown", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/earnings-transcripts",
     family="equity/earnings-transcripts",
@@ -2058,7 +2115,7 @@ def equity_earnings_transcripts(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/pi/equity/price-target-history")
-@plotly_chart(terminal_charts.price_target_history_figure)
+@plotly_chart(terminal_charts.price_target_history_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/price-target-history",
     family="equity/price-target-history",
@@ -2130,6 +2187,7 @@ def _validate_statements_from_call(
 
 
 @app.get("/pi/equity/statements")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/statements",
     family="equity/statements",
@@ -2234,7 +2292,7 @@ def _validate_charting_from_call(
 
 
 @app.get("/pi/equity/charting")
-@plotly_chart(terminal_charts.charting_figure)
+@plotly_chart(terminal_charts.charting_figure, demo=demo_symbol)
 @with_chain(
     endpoint="pi/equity/charting",
     family="charting",
@@ -2296,6 +2354,7 @@ def equity_charting(
 
 
 @app.get("/pi/equity/peer-multiples")
+@widget("table", demo=_SYMBOL_DEMO)
 @with_chain(
     endpoint="pi/equity/peer-multiples",
     family="equity/peer-multiples",
@@ -2641,6 +2700,39 @@ def _decorate_rows(rows: list[dict], meta: dict) -> list[dict]:
     return [{**row, **display} for row in rows]
 
 
+_SNAPSHOT_SOURCE = "eod-snapshot"
+
+
+def _snapshot_provenance(meta: dict, has_snapshots: bool) -> Provenance:
+    """Return the data state derived from EOD snapshot metadata (#1269).
+
+    No snapshot is ``unavailable``; missing segments are ``partial``; a
+    snapshot older than the latest completed session is ``stale``; otherwise
+    it is ``cached`` (a persisted result) as of its session date.
+    """
+    as_of = meta.get("as_of_session")
+    if not has_snapshots or as_of is None:
+        return Provenance(
+            DataState.UNAVAILABLE,
+            _SNAPSHOT_SOURCE,
+            "no EOD snapshot available; run the post-close snapshot job",
+        )
+    badge = str(meta.get("badge") or "EOD snapshot")
+    if meta.get("is_partial"):
+        state = DataState.PARTIAL
+    elif meta.get("is_stale"):
+        state = DataState.STALE
+    else:
+        state = DataState.CACHED
+    return Provenance(state, _SNAPSHOT_SOURCE, f"EOD planning snapshot: {badge}", as_of)
+
+
+def _mark_snapshot(meta: dict, snapshots: list) -> None:
+    """Record the snapshot-derived state on the current request."""
+    record = _snapshot_provenance(meta, bool(snapshots))
+    pv.mark(record.state, record.reason, source=record.source, as_of=record.as_of)
+
+
 def _snapshot_markdown_header(meta: dict) -> str:
     annotation = (
         f" · **{meta['earnings_annotation']}**"
@@ -2655,6 +2747,7 @@ def _snapshot_markdown_header(meta: dict) -> str:
 
 
 @app.get("/tt/scan/segment-movers")
+@widget("table")
 def tt_scan_segment_movers(
     request: Request,
 ) -> dict:
@@ -2665,6 +2758,7 @@ def tt_scan_segment_movers(
     _require_auth(request)
     source_rows, snapshots = _read_snapshot_rows("techtrade.movers")
     meta = _snapshot_meta(snapshots, expected_segments=tuple(GICS_SECTOR_ETFS))
+    _mark_snapshot(meta, snapshots)
     rows = []
     by_segment: dict[str, list[dict]] = {}
     for row in source_rows:
@@ -2693,6 +2787,7 @@ def tt_scan_segment_movers(
 
 
 @app.get("/tt/scan/table")
+@widget("table")
 def tt_scan_table(request: Request, segment: str = "") -> dict:
     """Scan Table — filtered ticker scan results (#1692, #1941).
 
@@ -2707,6 +2802,7 @@ def tt_scan_table(request: Request, segment: str = "") -> dict:
         snapshots,
         expected_segments=(segment,) if segment else tuple(GICS_SECTOR_ETFS),
     )
+    _mark_snapshot(meta, snapshots)
     if not rows:
         context = f"scan table{f' segment={segment}' if segment else ''}"
         rows = _fresh_empty_rows(context) if snapshots else _loud_empty_rows(context)
@@ -2715,11 +2811,13 @@ def tt_scan_table(request: Request, segment: str = "") -> dict:
 
 
 @app.get("/tt/scan/export")
+@widget("markdown")
 def tt_scan_export(request: Request) -> str:
     """Export button markdown (#1692) — CSV export link for the scan."""
     _require_auth(request)
     rows, snapshots = _read_snapshot_rows("techtrade.plan")
     meta = _snapshot_meta(snapshots, expected_segments=tuple(GICS_SECTOR_ETFS))
+    _mark_snapshot(meta, snapshots)
     if rows:
         symbols = ", ".join(
             sorted({str(row["symbol"]) for row in rows if row.get("symbol")})
@@ -2799,7 +2897,8 @@ def _validate_basket_id(basket_id: str) -> str:
     if not _BASKET_ID_RE.match(basket_id):
         raise HTTPException(
             status_code=400,
-            detail=f"basket_id must match [A-Za-z0-9_.-]{{1,64}}; got {basket_id!r}",
+            # Fixed text: the rejected value is never reflected (#1269).
+            detail="basket_id must match [A-Za-z0-9_.-]{1,64}",
         )
     return basket_id
 
@@ -2840,6 +2939,7 @@ def _store_health(track: str, tiers: list) -> None:
     _PROVIDER_HEALTH_CACHE[track] = {
         "tiers": tiers,
         "checked_at": time.monotonic(),
+        "checked_at_utc": pv.now_iso(),
     }
 
 
@@ -2888,6 +2988,7 @@ async def _probe_tiers_map(
 
 
 @app.get("/pi/health/providers")
+@widget("table")
 async def provider_health(request: Request) -> list[dict[str, object]]:
     """Return Provider Health as **table rows** (#1685 + #1715 + #1956 + #1961 + #1976).
 
@@ -2932,6 +3033,7 @@ async def provider_health(request: Request) -> list[dict[str, object]]:
         ]
 
     track_a = _cached_health("A")
+    from_cache = track_a is not None
     if track_a is None:
         # Probe the Track A tiers once (#1961: Track A only). This endpoint is
         # an async route, so we AWAIT the probes on the running event loop — do
@@ -2974,10 +3076,42 @@ async def provider_health(request: Request) -> list[dict[str, object]]:
             "serving": _serving_for(name),
         }
 
-    return [_row(t) for t in track_a]
+    rows = [_row(t) for t in track_a]
+    _mark_health(track_a, from_cache)
+    return rows
+
+
+def _mark_health(tiers: list, from_cache: bool) -> None:
+    """Record the provider-health table's own data state (#1269)."""
+    if all(getattr(h, "status", "unknown") == "unknown" for h in tiers):
+        pv.mark(
+            DataState.UNAVAILABLE,
+            "no reachability probe answered (cold cache or no probers registered)",
+            source="health-probes",
+        )
+    elif from_cache:
+        entry = _PROVIDER_HEALTH_CACHE.get("A") or {}
+        pv.mark(
+            DataState.CACHED,
+            f"probe results are cached for up to {_PROVIDER_HEALTH_TTL_S:.0f}s",
+            source="health-probes",
+            as_of=str(entry.get("checked_at_utc") or pv.UNKNOWN),
+        )
+    else:
+        pv.mark(
+            DataState.LIVE,
+            "probed at request time",
+            source="health-probes",
+            as_of=pv.now_iso(),
+        )
 
 
 @app.get("/pi/context/provenance")
+@widget(
+    "markdown",
+    source="provider-health",
+    reason="backend serving summary read at request time",
+)
 async def data_provenance(request: Request) -> str:
     """Return the Data-Provenance strip markdown (#1976).
 
@@ -3004,14 +3138,8 @@ async def data_provenance(request: Request) -> str:
     if _TIER_IN_USE:
         source = Counter(_TIER_IN_USE.values()).most_common(1)[0][0]
 
-    if source in ("fmp_cached", "fmp"):
-        mode = "LIVE"
-    elif source and "snapshot" in source:
-        mode = "DELAYED"
-    elif source:
-        mode = "PUBLIC"
-    else:
-        mode = "—"
+    # Same classification the endpoint responses use (#1269).
+    mode = pv.state_for_tier(source).label if source else "—"
 
     # Read cached health only — do NOT probe here (keep this route instant).
     cached = _cached_health("A")
@@ -3075,6 +3203,7 @@ _DEMO_BASKET_CONSENSUS: list[dict[str, str | float | int]] = [
 
 
 @app.get("/pi/equity/basket-analyst-consensus")
+@widget("table", demo="synthetic demo basket")
 def equity_basket_analyst_consensus(
     request: Request, basket_id: str = "demo"
 ) -> list[dict[str, str | float | int]]:
@@ -3116,24 +3245,29 @@ def equity_basket_analyst_consensus(
                     "mode) until per-user session auth ships. See #1714 "
                     "ownership follow-up + #1748 security review."
                 ),
-                "basket_id": basket_id,
             },
         )
 
     try:
         positions = resolve_basket(basket_id)
     except BasketNotFoundError as exc:
+        # Fixed message (#1269 security review): the resolver's text names the
+        # basket/user id and can carry an internal snapshot id.
         raise HTTPException(
             status_code=404,
             detail={
                 "detail": "basket_not_found",
-                "basket_id": basket_id,
-                "message": str(exc),
+                "message": "No usable positions snapshot exists for this basket.",
             },
         ) from exc
     except ValueError as exc:  # bad basket_id shape (defense-in-depth)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400, detail="basket_id must match [A-Za-z0-9_.-]{1,64}"
+        ) from exc
 
+    mark_unavailable(
+        "per-symbol consensus is not wired yet; the zero values are placeholders"
+    )
     # For each resolved symbol emit a stub consensus row. Per-symbol
     # obb.equity.estimates.consensus() calls will replace this loop as
     # ChainedFetcher tier registrations land (#1715 Phase 2B).
@@ -3160,12 +3294,14 @@ def equity_basket_analyst_consensus(
 
 
 @app.get("/tt/position/signal-card")
+@widget("markdown")
 def tt_position_signal_card(request: Request, symbol: str = "AAPL") -> str:
     """Return Signal Card markdown (#1696) — active signal for a symbol."""
     _require_auth(request)
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.signals", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         message = (
             _fresh_empty_rows(f"signal symbol={sym}")[0]["note"]
@@ -3192,12 +3328,14 @@ def tt_position_signal_card(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/tt/position/plan-card")
+@widget("markdown")
 def tt_position_plan_card(request: Request, symbol: str = "AAPL") -> str:
     """Return Plan Card markdown (#1696) — entry/stop/target for a trade."""
     _require_auth(request)
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.plan", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         message = (
             _fresh_empty_rows(f"plan symbol={sym}")[0]["note"]
@@ -3227,6 +3365,7 @@ def tt_position_plan_card(request: Request, symbol: str = "AAPL") -> str:
 
 
 @app.get("/tt/position/order-legs")
+@widget("table")
 def tt_position_order_legs(
     request: Request, symbol: str = "AAPL"
 ) -> list[dict[str, object]]:
@@ -3235,6 +3374,7 @@ def tt_position_order_legs(
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.orders", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         rows = (
             _fresh_empty_rows(f"order legs symbol={sym}")
@@ -3245,6 +3385,7 @@ def tt_position_order_legs(
 
 
 @app.get("/tt/position/simulate")
+@widget("table")
 def tt_position_simulate(
     request: Request, symbol: str = "AAPL"
 ) -> list[dict[str, object]]:
@@ -3253,6 +3394,7 @@ def tt_position_simulate(
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.simulate", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         rows = (
             _fresh_empty_rows(f"simulation symbol={sym}")
@@ -3268,6 +3410,7 @@ def tt_position_simulate(
 
 
 @app.get("/tt/validation/verdict")
+@widget("table")
 def tt_validation_verdict(
     request: Request, symbol: str = "AAPL"
 ) -> list[dict[str, object]]:
@@ -3276,6 +3419,7 @@ def tt_validation_verdict(
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.validate", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         rows = (
             _fresh_empty_rows(f"validation symbol={sym}")
@@ -3286,6 +3430,7 @@ def tt_validation_verdict(
 
 
 @app.get("/tt/tuning/report")
+@widget("table")
 def tt_tuning_report(
     request: Request, symbol: str = "AAPL", segment: str = ""
 ) -> list[dict[str, object]]:
@@ -3304,6 +3449,7 @@ def tt_tuning_report(
         rows.extend(segment_rows)
         snapshots.extend(segment_snapshots)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     source_meta = _snapshot_meta(source_snapshots, symbol=sym)
     if source_meta.get("earnings_annotation"):
         meta["earnings_annotation"] = source_meta["earnings_annotation"]
@@ -3317,12 +3463,14 @@ def tt_tuning_report(
 
 
 @app.get("/tt/audit/journal")
+@widget("table")
 def tt_audit_journal(request: Request, symbol: str = "AAPL") -> list[dict[str, object]]:
     """Return persisted Audit Journal rows (#1699)."""
     _require_auth(request)
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.audit", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
+    _mark_snapshot(meta, snapshots)
     if not rows:
         rows = (
             _fresh_empty_rows(f"audit symbol={sym}")
@@ -3457,6 +3605,11 @@ def _render_engine_status() -> str:
 
 
 @app.get("/tt/engine/status")
+@widget(
+    "markdown",
+    source="techtrade-engine",
+    reason="engine capabilities observed at request time",
+)
 def tt_engine_status(request: Request) -> str:
     """Return Engine Status markdown (#1931, full-wiring of #1700).
 
@@ -3470,6 +3623,11 @@ def tt_engine_status(request: Request) -> str:
 
 
 @app.get("/tt/execute/bridge")
+@widget(
+    "markdown",
+    source="backend-config",
+    reason="bridge readiness read from backend configuration",
+)
 def tt_execute_bridge(request: Request, verdict: str = "PASS") -> str:
     """Return Execute Bridge markdown (#1700 T5, wired to real endpoints per #1719).
 
@@ -3521,6 +3679,11 @@ def tt_execute_bridge(request: Request, verdict: str = "PASS") -> str:
 
 
 @app.get("/tt/execute/paper-status/markdown")
+@widget(
+    "markdown",
+    source="paper-engine",
+    reason="paper engine state read at request time",
+)
 def tt_execute_paper_status_markdown(request: Request) -> str:
     """Render the paper engine snapshot as a markdown widget (#1777).
 
@@ -3588,7 +3751,7 @@ def tt_execute_paper_status_markdown(request: Request) -> str:
         lines: list[str] = [
             "## Paper Trading Engine",
             "",
-            f"**Account** `{acct.account_id}`",
+            f"**Account** {account_display(str(acct.account_id))}",
             "",
             "| Field | Value |",
             "| --- | --- |",

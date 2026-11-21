@@ -47,6 +47,17 @@ _BRINSON_SERIES = [
 ]
 
 
+_PROVENANCE = ("data_state", "data_source", "data_as_of")
+
+
+def _strip(rows: Any) -> Any:
+    """Drop the #1269 provenance columns (asserted as strings) from raw rows."""
+    assert isinstance(rows, list)
+    for row in rows:
+        assert all(isinstance(row[key], str) for key in _PROVENANCE), row
+    return [{k: v for k, v in row.items() if k not in _PROVENANCE} for row in rows]
+
+
 def _get(path: str) -> Any:
     response = _CLIENT.get(path)
     assert response.status_code == 200, response.text
@@ -87,7 +98,7 @@ def test_xray_sector_default_is_a_plotly_pie_of_the_demo_rows() -> None:
 
 def test_xray_sector_raw_mode_keeps_the_sector_weight_rows() -> None:
     """``raw=true`` keeps the original ``{sector, weight}`` rows."""
-    rows = _get("/pi/xray/sector?account_id=demo&raw=true")
+    rows = _strip(_get("/pi/xray/sector?account_id=demo&raw=true"))
     assert rows == [{"sector": s, "weight": w} for s, w in _DEMO_SECTORS]
 
 
@@ -111,7 +122,7 @@ def test_xray_sector_unwired_account_is_an_explicit_unavailable_figure() -> None
 
 def test_brinson_raw_mode_keeps_the_percentage_point_rows() -> None:
     """``raw=true`` keeps the percentage-point attribution rows."""
-    rows = _get("/pi/attribution?window=1Y&benchmark_symbol=SPY&raw=true")
+    rows = _strip(_get("/pi/attribution?window=1Y&benchmark_symbol=SPY&raw=true"))
     assert isinstance(rows, list) and rows
     assert set(rows[0]) == {"sector", "allocation", "selection", "interaction", "total"}
     assert rows[0]["sector"] == "S0"
@@ -173,9 +184,17 @@ def test_empty_brinson_rows_render_an_explicit_empty_state() -> None:
         brinson_attribution_figure,
     )
 
-    figure = brinson_attribution_figure([], window="1Y", benchmark_symbol="SPY")
+    from openbb_portfolio_intel.widget_backend.provenance import (
+        DataState,
+        Provenance,
+    )
+
+    figure = brinson_attribution_figure(
+        [], Provenance(DataState.DEMO, "stub", "synthetic demo book")
+    )
     assert figure["data"] == []
-    assert figure["layout"]["meta"]["state"] == "empty"
+    # #1269: an empty result is "unavailable", never a success shape.
+    assert figure["layout"]["meta"]["state"] == "unavailable"
     assert "no attribution rows" in _annotation_text(figure).lower()
 
 

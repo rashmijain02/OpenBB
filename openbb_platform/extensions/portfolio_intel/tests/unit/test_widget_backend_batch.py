@@ -119,6 +119,15 @@ def test_risk_vol_chart_returns_percentage_point_time_series_rows() -> None:
     assert resp.status_code == 200
     rows = resp.json()
     assert rows and all("date" in r and "vol_20d" in r for r in rows)
+    assert {r["data_state"] for r in rows} == {"demo"}  # #1269
+    rows = [
+        {
+            k: v
+            for k, v in r.items()
+            if k not in ("data_state", "data_source", "data_as_of")
+        }
+        for r in rows
+    ]
     assert rows[1] == {
         "date": "2026-06-02",
         "vol_20d": 16.0,

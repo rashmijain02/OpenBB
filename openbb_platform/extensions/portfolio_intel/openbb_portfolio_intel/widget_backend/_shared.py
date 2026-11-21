@@ -127,6 +127,17 @@ def require_live_trading_principal(
     return principal
 
 
+def account_display(account_id: str) -> str:
+    """Return how a response may name an account (#1269 redaction).
+
+    Only the synthetic ``demo`` account is echoed; any other identifier is
+    withheld so it never appears in a response, figure or log line.
+    """
+    return (
+        "`demo`" if account_id == "demo" else "selected account (identifier withheld)"
+    )
+
+
 def validate_account(account_id: str) -> None:
     """Shared account_id validator. Rejects empty + metacharacters."""
     if not account_id:

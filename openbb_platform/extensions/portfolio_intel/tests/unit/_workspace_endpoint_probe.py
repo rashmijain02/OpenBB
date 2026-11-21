@@ -121,7 +121,13 @@ def _probe() -> dict[str, list[Any]]:
             if p.get("value") not in (None, "")
         }
         response = client.get("/" + widget["endpoint"].lstrip("/"), params=params)
-        results[widget_id] = [response.status_code, response.text]
+        # Status, body, and the #1269 per-request provenance headers.
+        results[widget_id] = [
+            response.status_code,
+            response.text,
+            response.headers.get("x-pi-data-state"),
+            response.headers.get("x-pi-data-source"),
+        ]
     return results
 
 

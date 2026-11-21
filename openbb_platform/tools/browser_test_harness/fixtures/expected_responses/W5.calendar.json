@@ -1,30 +1,45 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-25",
       "detail": "Q3 2026",
       "symbol": "AAPL",
       "type": "Earnings"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-30",
       "detail": "FY26 Q4",
       "symbol": "MSFT",
       "type": "Earnings"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-08-08",
       "detail": "$0.24/sh",
       "symbol": "AAPL",
       "type": "Ex-Dividend"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-22",
       "detail": "Item 7.01",
       "symbol": "NVDA",
       "type": "Form 8-K"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "date": "2026-07-24",
       "detail": "Q2 2026",
       "symbol": "META",

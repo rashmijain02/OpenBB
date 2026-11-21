@@ -1,17 +1,19 @@
 """Plotly figure adapters for the Terminal chart widgets (#1268).
 
 Workspace renders a ``type: chart`` endpoint's default response as a Plotly
-figure. The ten Terminal chart endpoints keep computing the rows they always
-did; :func:`plotly_chart` wraps each one so the default response is a figure
-built from those rows and ``raw=true`` returns the rows unchanged. The figure
-builders only re-shape: every plotted value is a row value, unscaled.
+figure. The chart endpoints keep computing the rows they always did;
+:func:`plotly_chart` wraps each one so the default response is a figure
+built from those rows and ``raw=true`` returns the rows. The figure builders
+only re-shape: every plotted value is a row value, unscaled.
 
-Each figure records its data state in ``layout.meta`` (``state`` plus the
-``source`` tier that served the rows) and never sets ``layout.title``
-(Workspace shows the widget name). Demo, empty, and unavailable states are
-also written into an annotation so they cannot be mistaken for live data.
-Trace ``meta.glossaryKey`` names the Local Viewer glossary record, and the
-hover text repeats that record's one-line summary.
+Each figure carries the request's provenance record in ``layout.meta``
+(``state``, ``source``, ``asOf``, ``reason``; #1269) and never sets
+``layout.title`` (Workspace shows the widget name). Every state except
+``live`` is also written into an annotation. ``raw=true`` rows carry the
+same record as three string columns (``data_state``, ``data_source``,
+``data_as_of``), so agents reading rows see it too. Trace
+``meta.glossaryKey`` names the Local Viewer glossary record, and the hover
+text repeats that record's one-line summary.
 """
 
 from __future__ import annotations
@@ -19,27 +21,28 @@ from __future__ import annotations
 import functools
 import inspect
 from collections.abc import Callable, Mapping, Sequence
-from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import TypeAdapter
 
+from openbb_portfolio_intel.widget_backend import provenance as pv
 from openbb_portfolio_intel.widget_backend.overview_charts import (
     Figure,
-    header_note,
-    layout,
-    state_figure,
+    brinson_attribution_figure,
+    finish,
+    unavailable_figure,
+    weight_pie,
+    xray_sector_figure,
+)
+from openbb_portfolio_intel.widget_backend.provenance import (
+    DataState,
+    Provenance,
+    with_state,
 )
 
 Rows = Sequence[Mapping[str, Any]]
-
-#: Tier that served the current request's rows (set by ``record_tier_used``).
-#: A context variable rather than the shared ledger, so concurrent requests
-#: to the same endpoint cannot read each other's tier.
-SERVING_TIER: ContextVar[str | None] = ContextVar("pi_serving_tier", default=None)
-
-STUB = "stub"
+STUB = pv.STUB
 
 
 @dataclass(frozen=True)
@@ -47,12 +50,12 @@ class ChartContext:
     """What a figure builder knows besides the rows."""
 
     params: Mapping[str, Any]
-    source: str
+    provenance: Provenance
 
     @property
-    def is_live(self) -> bool:
-        """Return True when a provider tier (not the stub) served the rows."""
-        return self.source != STUB
+    def source(self) -> str:
+        """Return the tier or source that served the rows."""
+        return self.provenance.source
 
     @property
     def symbol(self) -> str:
@@ -61,16 +64,27 @@ class ChartContext:
 
 
 ChartBuilder = Callable[[Rows, ChartContext], Figure]
+#: Demo reason, fixed or computed from the endpoint's bound parameters.
+DemoReason = str | Callable[[Mapping[str, Any]], str]
+#: Optional re-assessment of the record from the rows (e.g. partial weights).
+Assess = Callable[[Rows, Provenance], Provenance]
 
 
-def plotly_chart(build: ChartBuilder) -> Callable[[Callable[..., Any]], Any]:
+def plotly_chart(
+    build: ChartBuilder, *, demo: DemoReason, assess: Assess | None = None
+) -> Callable[[Callable[..., Any]], Any]:
     """Serve a row endpoint as a Plotly figure, keeping rows for ``raw=true``.
 
     The wrapped function's rows are first validated and serialized through its
     declared return annotation, exactly as FastAPI's inferred response model
-    did before #1268, so ``raw=true`` stays byte-compatible. The wrapper adds
-    a ``raw`` query parameter and drops the return annotation, so FastAPI
+    did before #1268, so raw row values keep their JSON types. The wrapper
+    adds a ``raw`` query parameter and drops the return annotation, so FastAPI
     infers no response model that would reject the figure.
+
+    The request's provenance (tier, explicit mark, or ``demo``) is resolved
+    once; no rows means ``unavailable``; ``assess`` may refine it (partial).
+    The figure and the raw rows carry that same record, and it is published
+    for the response headers.
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -82,19 +96,36 @@ def plotly_chart(build: ChartBuilder) -> Callable[[Callable[..., Any]], Any]:
 
         @functools.wraps(func)
         def wrapper(*args: Any, raw: bool = False, **kwargs: Any) -> Any:
-            token = SERVING_TIER.set(None)
-            try:
-                rows = func(*args, **kwargs)
-                source = SERVING_TIER.get() or STUB
-            finally:
-                SERVING_TIER.reset(token)
-            if adapter is not None:
-                rows = adapter.dump_python(adapter.validate_python(rows), mode="json")
-            if raw:
-                return rows
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
-            return build(rows, ChartContext(dict(bound.arguments), source))
+            params = dict(bound.arguments)
+            with pv.scope() as holder:
+                rows = func(*args, **kwargs)
+                if adapter is not None:
+                    rows = adapter.dump_python(
+                        adapter.validate_python(rows), mode="json"
+                    )
+                reason = demo(params) if callable(demo) else demo
+                record, withheld = pv.gate_demo(
+                    pv.resolve(holder, demo=reason),
+                    explicit=holder.marked is not None or pv.explicit_demo(params),
+                )
+                if withheld:
+                    rows = []
+                elif not rows and record.state is not DataState.UNAVAILABLE:
+                    record = with_state(
+                        record, DataState.UNAVAILABLE, "no rows were returned"
+                    )
+                elif assess is not None:
+                    record = assess(rows, record)
+                if raw:
+                    pv.publish(record)
+                    if not rows:
+                        return [pv.unavailable_row(record)]
+                    return pv.stamp_rows(rows, record)
+                figure = build(rows, ChartContext(params, record))
+                pv.publish(Provenance.from_meta(figure["layout"]["meta"]))
+                return figure
 
         raw_param = inspect.Parameter(
             "raw", inspect.Parameter.KEYWORD_ONLY, default=False, annotation=bool
@@ -110,6 +141,36 @@ def plotly_chart(build: ChartBuilder) -> Callable[[Callable[..., Any]], Any]:
         return wrapper
 
     return decorator
+
+
+def weights_assess(field: str, *, whole: float = 1.0, of: str = "the book") -> Assess:
+    """Mark a weight pie ``partial`` when its weights do not sum to ``whole``.
+
+    The pie's ``%{percent}`` is the share of the plotted total, so with
+    partial or unnormalised weights it is not the stored weight; the state
+    says so and the hover shows each stored value.
+    """
+
+    def assess(rows: Rows, record: Provenance) -> Provenance:
+        if record.state is DataState.UNAVAILABLE:
+            return record
+        total = sum(
+            float(row[field])
+            for row in rows
+            if isinstance(row.get(field), int | float)
+            and not isinstance(row.get(field), bool)
+        )
+        if abs(total - whole) <= 0.005 * whole:
+            return record
+        return with_state(
+            record,
+            DataState.PARTIAL,
+            f"weights sum to {total / whole:.1%} of {of}, so slice shares are of "
+            "the plotted total; hover shows each stored weight "
+            f"({record.state.value} data: {record.reason})",
+        )
+
+    return assess
 
 
 # ---------------------------------------------------------------------------
@@ -131,52 +192,28 @@ GLOSSARY_SUMMARY: dict[str, str] = {
     "volume": "The number of shares traded during a period.",
 }
 
-_DEMO_BOOK = "Demo portfolio (synthetic); not your account."
-_UNWIRED = "account resolver not wired for this account."
+#: Demo reason for the synthetic book (#1269).
+DEMO_BOOK = "demo portfolio (synthetic); not your account"
 
 
-def _demo_symbol_note(ctx: ChartContext) -> str:
+def demo_symbol(params: Mapping[str, Any]) -> str:
+    """Return the demo reason for sample symbol data."""
+    symbol = str(params.get("symbol", "")).strip().upper()
     return (
-        "Demo data: no live provider answered, so these are sample values, "
-        f"not live {ctx.symbol} data."
+        "no live provider answered, so these are sample values, "
+        f"not live {symbol} data"
     )
 
 
-def _state(ctx: ChartContext, *, account_scoped: bool) -> str:
-    if ctx.is_live:
-        return "live"
-    if account_scoped and ctx.params.get("account_id") != "demo":
-        return "unavailable"
-    return "demo"
+def _guard(rows: Rows, ctx: ChartContext, *, what: str) -> Figure | None:
+    """Return the unavailable figure when there is nothing real to plot."""
+    if ctx.provenance.state is DataState.UNAVAILABLE or not rows:
+        return unavailable_figure(ctx.provenance, what)
+    return None
 
 
-def _finish(
-    traces: list[dict[str, Any]],
-    ctx: ChartContext,
-    state: str,
-    demo_note: str,
-    **extra: Any,
-) -> Figure:
-    """Return the figure, adding the demo annotation when the rows are demo."""
-    if state == "demo":
-        extra["annotations"] = [*extra.get("annotations", []), header_note(demo_note)]
-    return {"data": traces, "layout": layout(state, source=ctx.source, **extra)}
-
-
-def _guard(
-    rows: Rows, ctx: ChartContext, *, account_scoped: bool, what: str
-) -> tuple[str, Figure | None]:
-    """Return ``(state, figure)``; the figure is set for unavailable/empty."""
-    state = _state(ctx, account_scoped=account_scoped)
-    if state == "unavailable":
-        return state, state_figure(
-            state, f"Unavailable: no {what}, {_UNWIRED}", source=ctx.source
-        )
-    if not rows:
-        return "empty", state_figure(
-            "empty", f"No {what} returned for these parameters.", source=ctx.source
-        )
-    return state, None
+def _finish(traces: list[dict[str, Any]], ctx: ChartContext, **extra: Any) -> Figure:
+    return finish(traces, ctx.provenance, **extra)
 
 
 def _line(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -227,20 +264,28 @@ def _date_axis() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def xray_sector_chart(rows: Rows, ctx: ChartContext) -> Figure:
+    """Sector weights (fractions of the book) as a pie (#1267)."""
+    return xray_sector_figure(rows, ctx.provenance)
+
+
+def brinson_chart(rows: Rows, ctx: ChartContext) -> Figure:
+    """Brinson-Fachler effects per sector (#1267)."""
+    return brinson_attribution_figure(rows, ctx.provenance)
+
+
 def xray_country_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Country weights (fractions of the book) as a pie."""
-    state, early = _guard(rows, ctx, account_scoped=True, what="country weights")
+    early = _guard(rows, ctx, what="country weights")
     if early:
         return early
-    trace = _pie(rows, "country", "weight", "Country Weight", "Weight: %{percent}")
-    return _finish(
-        [trace], ctx, state, _DEMO_BOOK, legend={"title": {"text": "Country"}}
-    )
+    trace = weight_pie(rows, "country", "Country Weight")
+    return _finish([trace], ctx, legend={"title": {"text": "Country"}})
 
 
 def revenue_geography_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Latest-period revenue by region as a pie."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="regional revenue")
+    early = _guard(rows, ctx, what="regional revenue")
     if early:
         return early
     trace = _pie(
@@ -250,18 +295,12 @@ def revenue_geography_figure(rows: Rows, ctx: ChartContext) -> Figure:
         "Revenue by Region",
         "Revenue (millions): %{value:,.0f}<br>Share: %{percent}",
     )
-    return _finish(
-        [trace],
-        ctx,
-        state,
-        _demo_symbol_note(ctx),
-        legend={"title": {"text": "Region"}},
-    )
+    return _finish([trace], ctx, legend={"title": {"text": "Region"}})
 
 
 def revenue_business_line_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Latest-period revenue by business segment as a pie."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="segment revenue")
+    early = _guard(rows, ctx, what="segment revenue")
     if early:
         return early
     trace = _pie(
@@ -271,18 +310,12 @@ def revenue_business_line_figure(rows: Rows, ctx: ChartContext) -> Figure:
         "Revenue by Segment",
         "Revenue (millions): %{value:,.0f}<br>Share: %{percent}",
     )
-    return _finish(
-        [trace],
-        ctx,
-        state,
-        _demo_symbol_note(ctx),
-        legend={"title": {"text": "Segment"}},
-    )
+    return _finish([trace], ctx, legend={"title": {"text": "Segment"}})
 
 
 def stock_ownership_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Ownership split (percent of shares outstanding) as a pie."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="ownership split")
+    early = _guard(rows, ctx, what="ownership split")
     if early:
         return early
     trace = _pie(
@@ -292,13 +325,7 @@ def stock_ownership_figure(rows: Rows, ctx: ChartContext) -> Figure:
         "Ownership Share",
         "Held: %{value:.1f}% of shares<br>Share of chart: %{percent}",
     )
-    return _finish(
-        [trace],
-        ctx,
-        state,
-        _demo_symbol_note(ctx),
-        legend={"title": {"text": "Holder type"}},
-    )
+    return _finish([trace], ctx, legend={"title": {"text": "Holder type"}})
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +335,7 @@ def stock_ownership_figure(rows: Rows, ctx: ChartContext) -> Figure:
 
 def risk_vol_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Return rolling 20/60-day realized volatility (already percentage points)."""
-    state, early = _guard(rows, ctx, account_scoped=True, what="volatility series")
+    early = _guard(rows, ctx, what="volatility series")
     if early:
         return early
     traces = [
@@ -320,8 +347,6 @@ def risk_vol_figure(rows: Rows, ctx: ChartContext) -> Figure:
     return _finish(
         traces,
         ctx,
-        state,
-        _DEMO_BOOK,
         xaxis=_date_axis(),
         yaxis={"title": {"text": "Realized volatility (%)"}},
     )
@@ -329,7 +354,7 @@ def risk_vol_figure(rows: Rows, ctx: ChartContext) -> Figure:
 
 def paper_performance_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Paper-account equity curve in account currency."""
-    state, early = _guard(rows, ctx, account_scoped=True, what="paper equity curve")
+    early = _guard(rows, ctx, what="paper equity curve")
     if early:
         return early
     trace = _line(
@@ -343,8 +368,6 @@ def paper_performance_figure(rows: Rows, ctx: ChartContext) -> Figure:
     return _finish(
         [trace],
         ctx,
-        state,
-        _DEMO_BOOK,
         xaxis=_date_axis(),
         yaxis={"title": {"text": "Equity (account currency)"}},
     )
@@ -352,7 +375,7 @@ def paper_performance_figure(rows: Rows, ctx: ChartContext) -> Figure:
 
 def price_target_history_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Analyst price targets against the close when each was published."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="price targets")
+    early = _guard(rows, ctx, what="price targets")
     if early:
         return early
     traces = [
@@ -364,8 +387,6 @@ def price_target_history_figure(rows: Rows, ctx: ChartContext) -> Figure:
     return _finish(
         traces,
         ctx,
-        state,
-        _demo_symbol_note(ctx),
         xaxis=_date_axis(),
         yaxis={"title": {"text": "Price"}},
     )
@@ -395,7 +416,7 @@ def _two_pane(lower_title: str, **lower: Any) -> dict[str, Any]:
 
 def price_history_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Daily close (line mode) or OHLC candles with a volume pane (candle mode)."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="price history")
+    early = _guard(rows, ctx, what="price history")
     if early:
         return early
     if ctx.params.get("chart_type") == "candle":
@@ -414,16 +435,12 @@ def price_history_figure(rows: Rows, ctx: ChartContext) -> Figure:
         return _finish(
             [_candles(rows), volume],
             ctx,
-            state,
-            _demo_symbol_note(ctx),
             **_two_pane("Volume"),
         )
     trace = _line(rows, "date", "close", "Closing Price", "closing_price", "%{y:,.2f}")
     return _finish(
         [trace],
         ctx,
-        state,
-        _demo_symbol_note(ctx),
         xaxis=_date_axis(),
         yaxis={"title": {"text": "Price"}},
     )
@@ -431,7 +448,7 @@ def price_history_figure(rows: Rows, ctx: ChartContext) -> Figure:
 
 def charting_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """OHLC candles with SMA20/SMA50 overlays and RSI14 in a 0-100 lower pane."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="OHLC rows")
+    early = _guard(rows, ctx, what="OHLC rows")
     if early:
         return early
     traces = [
@@ -447,8 +464,6 @@ def charting_figure(rows: Rows, ctx: ChartContext) -> Figure:
     return _finish(
         traces,
         ctx,
-        state,
-        _demo_symbol_note(ctx),
         **_two_pane("RSI", range=[0, 100]),
     )
 
@@ -460,7 +475,7 @@ def charting_figure(rows: Rows, ctx: ChartContext) -> Figure:
 
 def equity_financials_figure(rows: Rows, ctx: ChartContext) -> Figure:
     """Revenue/net income bars ($B, left axis) and net margin line (%, right)."""
-    state, early = _guard(rows, ctx, account_scoped=False, what="annual financials")
+    early = _guard(rows, ctx, what="annual financials")
     if early:
         return early
     bars = [
@@ -499,8 +514,6 @@ def equity_financials_figure(rows: Rows, ctx: ChartContext) -> Figure:
     return _finish(
         traces,
         ctx,
-        state,
-        _demo_symbol_note(ctx),
         barmode="group",
         xaxis={"type": "category", "title": {"text": "Fiscal year"}},
         yaxis={"title": {"text": "Billions ($B)"}},

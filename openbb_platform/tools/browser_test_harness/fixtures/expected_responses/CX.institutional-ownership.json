@@ -1,26 +1,41 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "holder": "Vanguard Group Inc",
       "pct_owned": 8.82,
       "shares": 1359000000
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "holder": "BlackRock Inc",
       "pct_owned": 6.82,
       "shares": 1050000000
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "holder": "Berkshire Hathaway Inc",
       "pct_owned": 5.88,
       "shares": 906000000
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "holder": "State Street Corp",
       "pct_owned": 3.83,
       "shares": 590000000
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "holder": "FMR LLC (Fidelity)",
       "pct_owned": 2.21,
       "shares": 340000000

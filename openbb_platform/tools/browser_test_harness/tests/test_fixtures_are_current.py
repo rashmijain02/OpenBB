@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from openbb_browser_test_harness.drivers.standalone_driver import StandaloneDriver
+from openbb_browser_test_harness.normalize import normalize_observed_at
 from openbb_browser_test_harness.stories import STORIES
 
 _FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "expected_responses"
@@ -180,8 +181,9 @@ async def test_fixtures_are_current() -> None:
                 current["body"] = resp.json()
             except ValueError:
                 current["body_text"] = resp.text
-            # Compare shape+values.
-            if current != saved:
+            # Compare shape+values; only observation times (#1269) are
+            # normalized, so state and shape changes still drift.
+            if normalize_observed_at(current) != normalize_observed_at(saved):
                 drifted.append(step.id)
     finally:
         await driver.teardown()

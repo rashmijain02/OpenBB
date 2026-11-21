@@ -24,7 +24,7 @@
       "annotations": [
         {
           "showarrow": false,
-          "text": "Demo data: no live provider answered, so these are sample values, not live AAPL data.",
+          "text": "Demo: no live provider answered, so these are sample values, not live AAPL data.",
           "x": 0.5,
           "xref": "paper",
           "y": 1.08,
@@ -37,6 +37,8 @@
         }
       },
       "meta": {
+        "asOf": "unknown",
+        "reason": "no live provider answered, so these are sample values, not live AAPL data",
         "source": "stub",
         "state": "demo"
       }

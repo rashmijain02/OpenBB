@@ -25,8 +25,18 @@ def _widgets() -> dict:
     return json.loads(_WIDGETS.read_text(encoding="utf-8"))
 
 
+_PROVENANCE = ("data_state", "data_source", "data_as_of")
+
+
 def _widget(widget_id: str) -> dict:
-    return _widgets()[widget_id]
+    """Return a widget without the #1269 provenance columns (tested separately)."""
+    widget = _widgets()[widget_id]
+    table = (widget.get("data") or {}).get("table") or {}
+    if table.get("columnsDefs"):
+        table["columnsDefs"] = [
+            c for c in table["columnsDefs"] if c["field"] not in _PROVENANCE
+        ]
+    return widget
 
 
 def _viewer_label_glossary() -> dict[str, str]:

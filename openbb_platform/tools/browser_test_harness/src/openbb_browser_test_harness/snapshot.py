@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 from .drivers.standalone_driver import StandaloneDriver
+from .normalize import normalize_observed_at
 from .stories import STORIES
 
 _HARNESS_ROOT = Path(__file__).resolve().parents[2]  # browser_test_harness/
@@ -63,9 +64,9 @@ async def _snapshot_all() -> int:
                     "status_code": resp.status_code,
                 }
                 try:
-                    payload["body"] = resp.json()
+                    payload["body"] = normalize_observed_at(resp.json())
                 except ValueError:
-                    payload["body_text"] = resp.text
+                    payload["body_text"] = normalize_observed_at(resp.text)
                 out = _FIXTURE_ROOT / f"{key}.json"
                 out.write_text(
                     json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"

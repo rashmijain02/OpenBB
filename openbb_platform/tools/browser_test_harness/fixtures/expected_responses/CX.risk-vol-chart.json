@@ -152,7 +152,7 @@
       "annotations": [
         {
           "showarrow": false,
-          "text": "Demo portfolio (synthetic); not your account.",
+          "text": "Demo: demo portfolio (synthetic); not your account.",
           "x": 0.5,
           "xref": "paper",
           "y": 1.08,
@@ -160,6 +160,8 @@
         }
       ],
       "meta": {
+        "asOf": "unknown",
+        "reason": "demo portfolio (synthetic); not your account",
         "source": "stub",
         "state": "demo"
       },

@@ -2,30 +2,45 @@
   "body": [
     {
       "change_pct": 0.85,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "name": "Microsoft Corp.",
       "price": 428.1,
       "symbol": "MSFT"
     },
     {
       "change_pct": -0.42,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "name": "Alphabet Inc. Class A",
       "price": 178.4,
       "symbol": "GOOGL"
     },
     {
       "change_pct": 1.2,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "name": "Meta Platforms Inc.",
       "price": 512.75,
       "symbol": "META"
     },
     {
       "change_pct": 0.33,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "name": "Amazon.com Inc.",
       "price": 194.3,
       "symbol": "AMZN"
     },
     {
       "change_pct": 2.1,
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "name": "NVIDIA Corp.",
       "price": 118.2,
       "symbol": "NVDA"

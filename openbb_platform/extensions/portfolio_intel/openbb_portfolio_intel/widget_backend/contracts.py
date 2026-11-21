@@ -24,6 +24,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeGuard
 
+from openbb_portfolio_intel.widget_backend.provenance import (
+    BODY_STATES,
+    DATA_STATE_LABEL,
+    MARKDOWN_STATE_RE,
+    METRIC_STATE_RE,
+    ROW_FIELDS,
+)
+
 WIDGET_TYPES = frozenset(
     {
         "advanced_charting",
@@ -601,6 +609,81 @@ def _is_metric(value: Any) -> bool:
     return isinstance(value, dict) and "label" in value and "value" in value
 
 
+def _row_state_ok(row: Mapping[str, Any]) -> bool:
+    """Return True when a row carries the three provenance columns (#1269)."""
+    return row.get("data_state") in BODY_STATES and all(
+        isinstance(row.get(field), str) for field in ROW_FIELDS
+    )
+
+
+def _check_table(
+    out: _Collector, path: str, widget: Mapping[str, Any], payload: Any
+) -> None:
+    if not isinstance(payload, list) or not all(isinstance(r, dict) for r in payload):
+        out.add("response.shape.table", path, "table must return an array of objects")
+        return
+    if not payload:
+        out.add("response.empty", path, "table returned no rows (loud-empty rule)")
+        return
+    table = (widget.get("data") or {}).get("table") or {}
+    present = {key for row in payload for key in row}
+    no_data = all(row.get("data_state") == "unavailable" for row in payload)
+    for column in [] if no_data else table.get("columnsDefs") or []:
+        field = column.get("field") if isinstance(column, dict) else None
+        if isinstance(field, str) and field not in present:
+            out.add(
+                "response.table.column_missing",
+                f"{path}.{field}",
+                f"declared column {field!r} is absent from every row",
+            )
+    if not all(_row_state_ok(row) for row in payload):
+        out.add(
+            "response.state.table",
+            path,
+            "every row needs data_state/data_source/data_as_of strings",
+        )
+
+
+def _check_chart(out: _Collector, path: str, payload: Any) -> None:
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        out.add("response.shape.chart", path, "chart must return a Plotly figure")
+        return
+    layout = payload.get("layout")
+    layout = layout if isinstance(layout, dict) else {}
+    meta = layout.get("meta")
+    meta = meta if isinstance(meta, dict) else {}
+    state = meta.get("state")
+    if state not in BODY_STATES or not isinstance(meta.get("source"), str):
+        out.add("response.state.chart", path, "layout.meta needs a state and source")
+    elif state != "live" and not layout.get("annotations"):
+        out.add(
+            "response.state.annotation",
+            path,
+            f"a {state} figure must say so in an annotation",
+        )
+
+
+def _check_metric(out: _Collector, path: str, payload: Any) -> None:
+    valid = _is_metric(payload) or (
+        isinstance(payload, list) and payload and all(map(_is_metric, payload))
+    )
+    if not valid:
+        out.add("response.shape.metric", path, "metric needs {label, value}")
+        return
+    cards = payload if isinstance(payload, list) else [payload]
+    if not any(
+        card["label"] == DATA_STATE_LABEL
+        and isinstance(card["value"], str)
+        and METRIC_STATE_RE.match(card["value"])
+        for card in cards
+    ):
+        out.add(
+            "response.state.metric",
+            path,
+            "metric needs a 'Data State' card with '<State>: <reason>'",
+        )
+
+
 def collect_response_issues(
     widget_id: str, widget: Mapping[str, Any], status: int, body: str
 ) -> list[ContractIssue]:
@@ -610,6 +693,11 @@ def collect_response_issues(
     ``columnsDefs`` field); chart -> Plotly figure object with a ``data``
     array; markdown -> non-empty string; metric -> ``{label, value}`` object
     or a non-empty array of them. Bodies must be strict, finite JSON.
+
+    A response of the right shape must also carry a valid data state (#1269):
+    table rows the provenance columns, a chart ``layout.meta`` (plus an
+    annotation unless live), a metric a ``Data State`` card, Markdown a
+    ``**Data state:**`` line.
     """
     out = _Collector()
     path = f"responses.{widget_id}"
@@ -627,37 +715,20 @@ def collect_response_issues(
         payload = payload.get(data_key, payload)
     widget_type = widget.get("type")
     if widget_type == "table":
-        if not isinstance(payload, list) or not all(
-            isinstance(r, dict) for r in payload
-        ):
-            out.add(
-                "response.shape.table", path, "table must return an array of objects"
-            )
-        elif not payload:
-            out.add("response.empty", path, "table returned no rows (loud-empty rule)")
-        else:
-            table = (widget.get("data") or {}).get("table") or {}
-            present = {key for row in payload for key in row}
-            for column in table.get("columnsDefs") or []:
-                field = column.get("field") if isinstance(column, dict) else None
-                if isinstance(field, str) and field not in present:
-                    out.add(
-                        "response.table.column_missing",
-                        f"{path}.{field}",
-                        f"declared column {field!r} is absent from every row",
-                    )
+        _check_table(out, path, widget, payload)
     elif widget_type == "chart":
-        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
-            out.add("response.shape.chart", path, "chart must return a Plotly figure")
+        _check_chart(out, path, payload)
     elif widget_type == "markdown":
         if not isinstance(payload, str) or not payload.strip():
             out.add("response.shape.markdown", path, "markdown must return text")
+        elif not MARKDOWN_STATE_RE.search(payload):
+            out.add(
+                "response.state.markdown",
+                path,
+                "markdown must state '**Data state:** <State>'",
+            )
     elif widget_type == "metric":
-        valid = _is_metric(payload) or (
-            isinstance(payload, list) and payload and all(map(_is_metric, payload))
-        )
-        if not valid:
-            out.add("response.shape.metric", path, "metric needs {label, value}")
+        _check_metric(out, path, payload)
     return out.issues
 
 

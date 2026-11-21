@@ -1,5 +1,5 @@
 {
-  "body": "**Symbol:** `AAPL`  \nResearch tabs (F1-F7) share this ticker.",
+  "body": "**Symbol:** `AAPL`  \nResearch tabs (F1-F7) share this ticker.\n\n---\n\n**Data state:** Live - echoes the selected ticker; no provider data is shown. Source: `request`; as of <observed-at>.",
   "endpoint": "pi/context/symbol",
   "params": {
     "symbol": "AAPL"

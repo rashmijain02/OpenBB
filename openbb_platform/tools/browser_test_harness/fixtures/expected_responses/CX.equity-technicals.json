@@ -1,46 +1,73 @@
 {
   "body": [
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Analyst Consensus",
       "note": "24 analysts",
       "value": "BUY"
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Resistance 3",
       "note": "",
       "value": 234.66
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Resistance 2",
       "note": "",
       "value": 232.58
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Resistance 1",
       "note": "",
       "value": 230.36
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Pivot",
       "note": "pivot",
       "value": 228.28
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Support 1",
       "note": "",
       "value": 226.06
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Support 2",
       "note": "",
       "value": 223.98
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "Support 3",
       "note": "",
       "value": 221.76
     },
     {
+      "data_as_of": "unknown",
+      "data_source": "stub",
+      "data_state": "demo",
       "metric": "ATM Implied Volatility Term Structure",
       "note": "gap 999",
       "value": "BLOCKED"
