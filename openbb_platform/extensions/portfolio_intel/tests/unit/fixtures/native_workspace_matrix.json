@@ -15,7 +15,7 @@
     {
       "id": "custom-portfolio-intelligence-overview",
       "name": "Portfolio Intelligence - Overview",
-      "description": "Default portfolio-intel dashboard: X-Ray, What-If, and Brinson attribution.",
+      "description": "First-look Portfolio Intelligence dashboard on the synthetic demo account: sector X-Ray, a what-if trade preview, and one-year Brinson-Fachler attribution versus SPY. Group 1 links the what-if symbol; Group 2 links the account.",
       "tabs": [
         {
           "id": "overview",
@@ -23,13 +23,35 @@
           "placements": 3
         }
       ],
-      "groups": [],
-      "params": {}
+      "groups": [
+        {
+          "name": "Group 1",
+          "type": "ticker",
+          "widgetIds": [
+            "pi_whatif_diff"
+          ],
+          "defaultValue": "AAPL"
+        },
+        {
+          "name": "Group 2",
+          "type": "param",
+          "paramName": "account_id",
+          "widgetIds": [
+            "pi_xray_sector"
+          ],
+          "defaultValue": "demo"
+        }
+      ],
+      "prompts": [
+        "Which sectors dominate the demo book's X-Ray, and how concentrated is it?",
+        "What would buying 100 more shares of AAPL change in the demo book?",
+        "Explain the one-year Brinson-Fachler attribution versus SPY: which sectors added or lost active return, and was it allocation or selection?"
+      ]
     },
     {
       "id": "custom-portfolio-intelligence-terminal",
       "name": "Portfolio Intelligence - Terminal",
-      "description": "Eleven-tab persona surface: seven research tabs (symbol-scoped) plus four portfolio tabs (book-scoped). Sandbox-style clone extended with X-Ray, Risk, Paper Trading, and Alerts (EPIC #1634). Context bars: research tabs share `symbol`; portfolio tabs share `account_id`.",
+      "description": "Twelve-tab Portfolio Intelligence terminal. It starts on a sample (demo) account and sample data until you connect your own. Research tabs F1-F7 follow the symbol in Group 1; portfolio tabs F8-F11 and Morning Review follow the account in Group 2. Every tab shows where its data comes from and whether the data providers are healthy. The suggested prompts walk a ten-step weekly review: provider health and company profile, financials, sector X-Ray, risk and attribution, upcoming events, alerts, paper trading, the morning review and analyst views of a sample basket.",
       "tabs": [
         {
           "id": "overview",
@@ -92,16 +114,78 @@
           "placements": 8
         }
       ],
-      "groups": [],
-      "params": {
-        "symbol": "AAPL",
-        "account_id": "demo"
-      }
+      "groups": [
+        {
+          "name": "Group 1",
+          "type": "ticker",
+          "widgetIds": [
+            "pi_symbol_context",
+            "pi_equity_profile_header",
+            "pi_equity_key_stats",
+            "pi_equity_price_history",
+            "pi_equity_financial_charts",
+            "pi_financial_statements",
+            "pi_peer_multiples",
+            "pi_earnings_history",
+            "pi_revenue_business_line",
+            "pi_revenue_geography",
+            "pi_price_target_history",
+            "pi_dividend_payment",
+            "pi_equity_technicals",
+            "pi_equity_competitors",
+            "pi_equity_complementary",
+            "pi_equity_analyst_forecasts",
+            "pi_whatif_card",
+            "pi_whatif_diff",
+            "pi_paper_ticket"
+          ],
+          "defaultValue": "AAPL"
+        },
+        {
+          "name": "Group 2",
+          "type": "param",
+          "paramName": "account_id",
+          "widgetIds": [
+            "pi_event_calendar",
+            "pi_book_context",
+            "pi_xray_sector",
+            "pi_xray_country",
+            "pi_concentration_gauge",
+            "pi_lookthrough_top25",
+            "pi_risk_dashboard",
+            "pi_risk_vol_chart",
+            "pi_paper_ticket",
+            "pi_paper_perf_kpis",
+            "pi_backtest_button",
+            "pi_paper_performance",
+            "pi_paper_blotter",
+            "pi_alerts_panel",
+            "pi_sentiment_gauge",
+            "pi_smart_money_ribbon",
+            "pi_news_ribbon"
+          ],
+          "defaultValue": "demo"
+        }
+      ],
+      "prompts": [
+        "Weekly review, step 1 of 10 (F1: Overview > Provider Health Table): Are all my data providers healthy, or is anything showing sample data before I start my weekly review?",
+        "Weekly review, step 2 of 10 (F1: Overview > Equity Profile - Header + Live Price): What does AAPL do, and where is its price trading right now?",
+        "Weekly review, step 3 of 10 (F2: Financials > Equity Profile - Financial Statement Charts): How have AAPL's revenue, net income and net margin trended over the last five years?",
+        "Weekly review, step 4 of 10 (F8: X-Ray > X-Ray - Sector Weights): How is my portfolio split across sectors?",
+        "Weekly review, step 5 of 10 (F9: Risk & Attribution > Risk Dashboard): How risky is my portfolio right now, and what drove its return versus the benchmark?",
+        "Weekly review, step 6 of 10 (F6: Calendar > Event Calendar): Which earnings, dividends or filings are coming up for my holdings?",
+        "Weekly review, step 7 of 10 (F11: Alerts & Catalysts > Alerts Panel): Which alerts and smart-money moves need my attention?",
+        "Weekly review, step 8 of 10 (F10: Paper Trading > Paper Performance KPIs (PAPER)): How is my paper trading account doing on return, Sharpe ratio and drawdown?",
+        "Weekly review, step 9 of 10 (Morning Review (W8) > Alerts Panel): Can you give me a one-page morning review of my portfolio: risk, paper performance, upcoming events and alerts?",
+        "Weekly review, step 10 of 10 (F7: Estimates > Basket Analyst Consensus): What do analysts think of the stocks in my basket? (This view uses a sample basket for now.)",
+        "Summarize AAPL from the research tabs: fundamentals, technicals, peers and analyst estimates.",
+        "Review the demo book's concentration, risk and upcoming catalysts, and list the three items that need attention this week."
+      ]
     },
     {
       "id": "custom-techtrade-desk",
       "name": "Techtrade Trading Desk",
-      "description": "Systematic-trader desk surface (F13, EPIC #1691). Morning Scan (T1) ships first; T2-T6 (Position Workbench, Validation, Tuning, Audit, Engine Status) land per-widget in follow-up cycles.",
+      "description": "Systematic-trader desk over persisted TechTrade artifacts: Morning Scan (T1), Position Workbench (T2), Validation (T3), Tuning (T4), Engine Status (T5) and Audit Journal (T6). Group 1 links the symbol across the scan table, workbench, validation, tuning and audit. Calculation, validation, approval and paper artifacts stay separate; the Execute Bridge only reports readiness and places no orders.",
       "tabs": [
         {
           "id": "morning-scan",
@@ -134,11 +218,29 @@
           "placements": 2
         }
       ],
-      "groups": [],
-      "params": {
-        "segment": "",
-        "symbol": "AAPL"
-      }
+      "groups": [
+        {
+          "name": "Group 1",
+          "type": "ticker",
+          "widgetIds": [
+            "tt_scan_table",
+            "tt_signal_card",
+            "tt_plan_card",
+            "tt_order_legs",
+            "tt_simulate_result",
+            "tt_validation_verdict",
+            "tt_tuning_report",
+            "tt_audit_journal"
+          ],
+          "defaultValue": "AAPL"
+        }
+      ],
+      "prompts": [
+        "Which segments have the strongest signals in this morning's scan, and which symbols should I look at first?",
+        "Walk me through the AAPL signal, trading plan and order legs, including the stop, target and reward-to-risk.",
+        "Did the AAPL strategy pass validation? Explain the PBO, deflated Sharpe and out-of-sample Sharpe behind the verdict.",
+        "Compare AAPL's validated replay returns with its realized forward simulation in the audit journal."
+      ]
     }
   ],
   "widgets": [
@@ -178,7 +280,10 @@
           "x": 0,
           "y": 6,
           "w": 30,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -188,7 +293,10 @@
           "x": 20,
           "y": 12,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -220,7 +328,10 @@
           "x": 28,
           "y": 6,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -262,7 +373,8 @@
           "x": 0,
           "y": 18,
           "w": 30,
-          "h": 10
+          "h": 10,
+          "groups": []
         }
       ]
     },
@@ -294,7 +406,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -304,7 +419,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -314,7 +432,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -324,7 +445,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -334,7 +458,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -378,7 +505,8 @@
           "x": 0,
           "y": 9,
           "w": 40,
-          "h": 9
+          "h": 9,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -388,7 +516,8 @@
           "x": 0,
           "y": 14,
           "w": 40,
-          "h": 9
+          "h": 9,
+          "groups": []
         }
       ]
     },
@@ -404,7 +533,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -437,7 +566,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -474,7 +603,10 @@
           "x": 0,
           "y": 15,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -484,7 +616,10 @@
           "x": 12,
           "y": 6,
           "w": 8,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -494,7 +629,10 @@
           "x": 0,
           "y": 6,
           "w": 8,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -519,7 +657,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -529,7 +668,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -539,7 +679,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -549,7 +690,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -559,7 +701,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -569,7 +712,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -579,7 +723,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -589,7 +734,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -599,7 +745,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -609,7 +756,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -619,7 +767,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -629,7 +778,8 @@
           "x": 0,
           "y": 0,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": []
         }
       ]
     },
@@ -645,7 +795,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -668,7 +818,10 @@
           "x": 20,
           "y": 48,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -684,7 +837,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -708,7 +861,10 @@
           "x": 20,
           "y": 28,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -724,7 +880,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -745,7 +901,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -768,7 +924,10 @@
           "x": 0,
           "y": 6,
           "w": 40,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -784,7 +943,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -808,7 +967,10 @@
           "x": 0,
           "y": 6,
           "w": 40,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -824,7 +986,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -849,7 +1011,10 @@
           "x": 0,
           "y": 12,
           "w": 40,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -865,7 +1030,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -887,7 +1052,10 @@
           "x": 20,
           "y": 6,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -903,7 +1071,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -925,7 +1093,10 @@
           "x": 0,
           "y": 11,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -935,7 +1106,10 @@
           "x": 0,
           "y": 6,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -945,7 +1119,10 @@
           "x": 0,
           "y": 6,
           "w": 40,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -961,7 +1138,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -995,7 +1172,10 @@
           "x": 20,
           "y": 11,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1005,7 +1185,10 @@
           "x": 20,
           "y": 6,
           "w": 20,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1021,7 +1204,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1037,7 +1220,10 @@
           "x": 0,
           "y": 6,
           "w": 40,
-          "h": 5
+          "h": 5,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1053,7 +1239,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1076,7 +1262,10 @@
           "x": 0,
           "y": 6,
           "w": 20,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1122,7 +1311,10 @@
           "x": 0,
           "y": 6,
           "w": 40,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1132,7 +1324,10 @@
           "x": 0,
           "y": 16,
           "w": 30,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1142,7 +1337,10 @@
           "x": 0,
           "y": 12,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1158,7 +1356,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -1187,7 +1385,10 @@
           "x": 0,
           "y": 16,
           "w": 40,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1203,7 +1404,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1224,7 +1425,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1269,7 +1470,10 @@
           "x": 12,
           "y": 15,
           "w": 28,
-          "h": 12
+          "h": 12,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1285,7 +1489,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1336,7 +1540,10 @@
           "x": 0,
           "y": 34,
           "w": 30,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1378,7 +1585,10 @@
           "x": 0,
           "y": 24,
           "w": 32,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1410,7 +1620,10 @@
           "x": 16,
           "y": 6,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1420,7 +1633,10 @@
           "x": 20,
           "y": 6,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1458,7 +1674,10 @@
           "x": 0,
           "y": 14,
           "w": 32,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1480,7 +1699,7 @@
         },
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -1514,7 +1733,11 @@
           "x": 0,
           "y": 6,
           "w": 16,
-          "h": 8
+          "h": 8,
+          "groups": [
+            "Group 1",
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1530,7 +1753,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1555,7 +1778,10 @@
           "x": 0,
           "y": 28,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1571,7 +1797,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1592,7 +1818,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1614,7 +1840,10 @@
           "x": 0,
           "y": 48,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1649,7 +1878,8 @@
           "x": 0,
           "y": 21,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1659,7 +1889,8 @@
           "x": 0,
           "y": 58,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1669,7 +1900,8 @@
           "x": 0,
           "y": 18,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1679,7 +1911,8 @@
           "x": 0,
           "y": 24,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1689,7 +1922,8 @@
           "x": 0,
           "y": 16,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1699,7 +1933,8 @@
           "x": 0,
           "y": 18,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1709,7 +1944,8 @@
           "x": 0,
           "y": 28,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1719,7 +1955,8 @@
           "x": 0,
           "y": 27,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1729,7 +1966,8 @@
           "x": 0,
           "y": 33,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1739,7 +1977,8 @@
           "x": 0,
           "y": 34,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1749,7 +1988,8 @@
           "x": 0,
           "y": 44,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1759,7 +1999,8 @@
           "x": 0,
           "y": 22,
           "w": 40,
-          "h": 7
+          "h": 7,
+          "groups": []
         }
       ]
     },
@@ -1775,7 +2016,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1797,7 +2038,10 @@
           "x": 0,
           "y": 38,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1813,7 +2057,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -1835,7 +2079,10 @@
           "x": 20,
           "y": 38,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -1867,7 +2114,10 @@
           "x": 0,
           "y": 6,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -1877,7 +2127,10 @@
           "x": 8,
           "y": 6,
           "w": 12,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1915,7 +2168,10 @@
           "x": 20,
           "y": 6,
           "w": 20,
-          "h": 8
+          "h": 8,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1947,7 +2203,10 @@
           "x": 30,
           "y": 6,
           "w": 10,
-          "h": 6
+          "h": 6,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -1988,7 +2247,10 @@
           "x": 0,
           "y": 26,
           "w": 40,
-          "h": 8
+          "h": 8,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -2004,7 +2266,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2031,7 +2293,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2052,7 +2314,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2068,7 +2330,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2078,7 +2343,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2088,7 +2356,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2098,7 +2369,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2108,7 +2382,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2118,7 +2395,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2128,7 +2408,10 @@
           "x": 0,
           "y": 3,
           "w": 40,
-          "h": 3
+          "h": 3,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2144,7 +2427,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -2174,7 +2457,10 @@
           "x": 0,
           "y": 23,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2190,7 +2476,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -2212,7 +2498,10 @@
           "x": 20,
           "y": 0,
           "w": 20,
-          "h": 9
+          "h": 9,
+          "groups": [
+            "Group 1"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2222,7 +2511,10 @@
           "x": 20,
           "y": 23,
           "w": 20,
-          "h": 10
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2260,7 +2552,10 @@
           "x": 20,
           "y": 6,
           "w": 20,
-          "h": 9
+          "h": 9,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -2298,7 +2593,10 @@
           "x": 0,
           "y": 0,
           "w": 20,
-          "h": 9
+          "h": 9,
+          "groups": [
+            "Group 2"
+          ]
         },
         {
           "appId": "custom-portfolio-intelligence-terminal",
@@ -2308,7 +2606,10 @@
           "x": 0,
           "y": 6,
           "w": 20,
-          "h": 9
+          "h": 9,
+          "groups": [
+            "Group 2"
+          ]
         }
       ]
     },
@@ -2324,7 +2625,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2339,8 +2640,11 @@
           "tabName": "T6: Audit Journal",
           "x": 0,
           "y": 0,
-          "w": 30,
-          "h": 12
+          "w": 40,
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2365,7 +2669,8 @@
           "x": 0,
           "y": 0,
           "w": 20,
-          "h": 8
+          "h": 8,
+          "groups": []
         }
       ]
     },
@@ -2397,7 +2702,8 @@
           "x": 20,
           "y": 0,
           "w": 20,
-          "h": 8
+          "h": 8,
+          "groups": []
         }
       ]
     },
@@ -2433,10 +2739,11 @@
           "appName": "Techtrade Trading Desk",
           "tabId": "morning-scan",
           "tabName": "T1: Morning Scan",
-          "x": 20,
+          "x": 30,
           "y": 0,
           "w": 10,
-          "h": 4
+          "h": 4,
+          "groups": []
         }
       ]
     },
@@ -2452,7 +2759,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2467,8 +2774,11 @@
           "tabName": "T2: Position Workbench",
           "x": 0,
           "y": 8,
-          "w": 30,
-          "h": 8
+          "w": 40,
+          "h": 8,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2484,7 +2794,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2497,10 +2807,13 @@
           "appName": "Techtrade Trading Desk",
           "tabId": "position-workbench",
           "tabName": "T2: Position Workbench",
-          "x": 15,
+          "x": 20,
           "y": 0,
-          "w": 15,
-          "h": 8
+          "w": 20,
+          "h": 8,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2530,9 +2843,12 @@
           "tabId": "morning-scan",
           "tabName": "T1: Morning Scan",
           "x": 0,
-          "y": 8,
-          "w": 30,
-          "h": 12
+          "y": 10,
+          "w": 40,
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2562,8 +2878,9 @@
           "tabName": "T1: Morning Scan",
           "x": 0,
           "y": 0,
-          "w": 20,
-          "h": 8
+          "w": 30,
+          "h": 10,
+          "groups": []
         }
       ]
     },
@@ -2579,7 +2896,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2594,8 +2911,11 @@
           "tabName": "T2: Position Workbench",
           "x": 0,
           "y": 0,
-          "w": 15,
-          "h": 8
+          "w": 20,
+          "h": 8,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2611,7 +2931,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2632,8 +2952,11 @@
           "tabName": "T2: Position Workbench",
           "x": 0,
           "y": 16,
-          "w": 30,
-          "h": 10
+          "w": 40,
+          "h": 10,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2649,7 +2972,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         },
@@ -2670,8 +2993,11 @@
           "tabName": "T4: Tuning",
           "x": 0,
           "y": 0,
-          "w": 30,
-          "h": 12
+          "w": 40,
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     },
@@ -2687,7 +3013,7 @@
       "parameters": [
         {
           "name": "symbol",
-          "type": "text",
+          "type": "ticker",
           "default": "AAPL",
           "show": null
         }
@@ -2702,8 +3028,11 @@
           "tabName": "T3: Validation",
           "x": 0,
           "y": 0,
-          "w": 30,
-          "h": 12
+          "w": 40,
+          "h": 12,
+          "groups": [
+            "Group 1"
+          ]
         }
       ]
     }

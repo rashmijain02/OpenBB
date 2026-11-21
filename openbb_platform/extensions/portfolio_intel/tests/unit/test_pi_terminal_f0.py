@@ -202,23 +202,25 @@ def test_terminal_app_tab_labels_present() -> None:
 
 
 def test_terminal_app_declares_symbol_and_book_contexts() -> None:
-    """#1636 — the terminal app declares both a ``symbol`` and ``book`` param context.
+    """#1636 — the terminal app declares both a ``symbol`` and ``book`` context.
 
     Tabs 1-7 are symbol-scoped (research). Tabs 8-11 are book-scoped
-    (portfolio). The app-level params carry both defaults so Workspace
-    can share them across the shell.
+    (portfolio). Since #1270 the shared contexts are schema-native parameter
+    groups (a ``ticker`` group for the symbol, an ``account_id`` group for
+    the book) with their defaults, not a non-schema app-level ``params``.
     """
     e = _terminal_entry()
-    params = e.get("params") or {}
-    # Support both shapes: dict-of-defaults or list-of-param-specs.
-    if isinstance(params, list):
-        names = {p.get("paramName") for p in params if isinstance(p, dict)}
-    else:
-        names = set(params.keys()) if isinstance(params, dict) else set()
+    assert "params" not in e, "app-level params is not an apps-schema key"
+    groups = e.get("groups") or []
+    defaults = {
+        ("symbol" if g.get("type") == "ticker" else g.get("paramName")): g.get(
+            "defaultValue"
+        )
+        for g in groups
+    }
     assert (
-        "symbol" in names
-    ), f"Terminal app must declare a top-level ``symbol`` param context; got {names!r}"
-    assert "account_id" in names or "book" in names, (
-        f"Terminal app must declare a top-level book context (``account_id`` or"
-        f" ``book``); got {names!r}"
-    )
+        defaults.get("symbol") == "AAPL"
+    ), f"Terminal app must declare a symbol (ticker) group; got {defaults!r}"
+    assert (
+        defaults.get("account_id") == "demo"
+    ), f"Terminal app must declare a book (``account_id``) group; got {defaults!r}"

@@ -10,8 +10,8 @@ Covers 5 sub-tasks:
 - **#1686 T12.2** — Morning Review one-pager tab (layout-only, 5 REUSE widgets)
 - **#1687 T12.3** — pi_basket_analyst_consensus (STUB, demo-only, HTTP 422
   for non-demo basket_id)
-- **#1688 T12.4** — guidedTour manifest on the terminal app entry (W0-W9
-  step order)
+- **#1688 T12.4** — weekly review routine (10-step order); since #1270 it is
+  schema-native ``prompts`` instead of a ``guidedTour`` key
 - **#1689 T12.5** — pytest substitute for the Playwright tour smoke
 
 Follow-up tickets referenced by the stubs and TODOs:
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 os.environ.setdefault("PI_WIDGET_BACKEND_AUTH_MODE", "loopback-dev")
@@ -247,38 +248,66 @@ def test_basket_consensus_rejects_malformed_basket_id() -> None:
         assert r.status_code == 400, f"{bad!r} accepted; must be 400"
 
 
+# T12.4 #1688 — weekly review routine (schema-native since #1270)
 # ===========================================================================
-# T12.4 #1688 — guidedTour manifest
-# ===========================================================================
+# The non-schema ``guidedTour`` key became one suggested agent prompt per
+# step (``prompts`` is in apps-schema.json): a plain question a user would ask
+# the Workspace agent, prefixed with the step number and the tab and widget
+# display names, so the tab / focus-widget diagnostics still run. Internal
+# codes (step ids, notebook ids) stay out of the user-facing text.
+
+_ROUTINE = re.compile(
+    r"^Weekly review, step (?P<step>\d+) of (?P<total>\d+) "
+    r"\((?P<tab>[^>]+) > (?P<widget>.+?)\): (?P<note>.+)$"
+)
 
 
-def _tour() -> dict:
-    return _terminal_app().get("guidedTour", {})
+def _tour() -> list[dict]:
+    """Parse the routine prompts into ``{step, tab, focusWidget, note}`` steps."""
+    term = _terminal_app()
+    tab_ids = {tab["name"]: tab_id for tab_id, tab in term.get("tabs", {}).items()}
+    widget_ids = {w["name"]: wid for wid, w in _widgets().items()}
+    steps = []
+    for prompt in term.get("prompts", []):
+        match = _ROUTINE.match(prompt)
+        if match:
+            steps.append(
+                {
+                    "step": int(match["step"]),
+                    "total": int(match["total"]),
+                    "tab": tab_ids.get(match["tab"]),
+                    "focusWidget": widget_ids.get(match["widget"]),
+                    "note": match["note"],
+                }
+            )
+    return steps
 
 
 def test_guided_tour_declared() -> None:
-    """#1688 — guidedTour key exists on the terminal app entry."""
-    t = _tour()
-    assert t, "guidedTour missing from terminal app"
-    assert t.get("id") == "sunday-routine"
-    steps = t.get("steps", [])
-    assert len(steps) == 10, f"expected W0-W9 (10 steps); got {len(steps)}"
+    """#1688 — the weekly review is declared as ten schema-native prompts."""
+    term = _terminal_app()
+    assert "guidedTour" not in term, "guidedTour is not an apps-schema key"
+    assert "weekly review" in term.get("description", "").lower()
+    steps = _tour()
+    assert len(steps) == 10, f"expected 10 routine steps; got {len(steps)}"
+    assert all(step["total"] == 10 for step in steps)
+    # Each step is a question a user would ask the agent.
+    assert all("?" in step["note"] for step in steps)
 
 
-def test_guided_tour_steps_are_ordered_W0_to_W9() -> None:
+def test_guided_tour_steps_are_ordered_1_to_10() -> None:
     """P1-6 mutation named test: reordering steps or skipping one fails here."""
-    steps = _tour().get("steps", [])
-    labels = [s.get("step") for s in steps]
-    expected = [f"W{i}" for i in range(10)]
-    assert labels == expected, f"tour steps not in W0-W9 order; got {labels!r}"
+    labels = [s.get("step") for s in _tour()]
+    expected = list(range(1, 11))
+    assert labels == expected, f"tour steps not in 1-10 order; got {labels!r}"
 
 
 def test_every_step_tab_exists() -> None:
-    """P1-6 mutation named test: renaming a tab in the tour manifest fails
-    here because the resolver returns None.
+    """P1-6 mutation named test: renaming a tab in the routine fails here
+    because the tab-name lookup returns None.
     """
     term_tabs = set(_terminal_app().get("tabs", {}).keys())
-    for step in _tour().get("steps", []):
+    for step in _tour():
         tab_id = step.get("tab")
         assert tab_id in term_tabs, (
             f"tour step {step.get('step')!r} points at unknown tab "
@@ -287,9 +316,9 @@ def test_every_step_tab_exists() -> None:
 
 
 def test_every_step_focuswidget_exists() -> None:
-    """P1-6 mutation named test: pointing at an unknown widget id fails here."""
+    """P1-6 mutation named test: naming an unknown widget fails here."""
     known = set(_widgets().keys())
-    for step in _tour().get("steps", []):
+    for step in _tour():
         wid = step.get("focusWidget")
         assert wid in known, (
             f"tour step {step.get('step')!r} points at unknown widget " f"{wid!r}"
@@ -307,7 +336,9 @@ def test_tour_substitute_every_step_tab_has_nonblank_layout() -> None:
     """
     term = _terminal_app()
     tabs = term.get("tabs", {})
-    for step in _tour().get("steps", []):
+    steps = _tour()
+    assert steps
+    for step in steps:
         tab_id = step["tab"]
         layout = tabs[tab_id]["layout"]
         assert layout, f"tour step {step['step']} at tab {tab_id} has empty layout"
@@ -318,7 +349,9 @@ def test_tour_substitute_focuswidget_is_present_on_its_tab() -> None:
     else Workspace can't scroll/highlight it.
     """
     tabs = _terminal_app().get("tabs", {})
-    for step in _tour().get("steps", []):
+    steps = _tour()
+    assert steps
+    for step in steps:
         tab_id = step["tab"]
         focus = step["focusWidget"]
         ids_on_tab = {slot["i"] for slot in tabs[tab_id]["layout"]}

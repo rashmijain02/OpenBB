@@ -172,6 +172,18 @@ def _set_column_header(widgets: dict[str, Any], _apps: Any) -> None:
             ),
             "layout.width",
         ),
+        (
+            lambda _w, a: _terminal(a)["tabs"]["financials"]["layout"][3].update(
+                x=10, y=8
+            ),
+            "layout.overlap",
+        ),
+        (
+            lambda _w, a: _terminal(a)["tabs"]["technicals"]["layout"][3]["state"][
+                "params"
+            ].update(chart_type="bars"),
+            "layout.state.param.value",
+        ),
         (lambda _w, a: _terminal(a).update(id="terminal"), "app.id"),
         (lambda _w, a: _terminal(a).update(id="custom-"), "app.id"),
         (
@@ -192,8 +204,14 @@ def test_widget_and_layout_mutations_are_rejected(
     assert expected_code in _new_codes(widgets, apps)
 
 
-def _add_range_group(app_def: dict[str, Any], name: str = "Group 1") -> None:
-    """Add a valid static group and mark one price-history placement."""
+def _add_range_group(app_def: dict[str, Any]) -> str:
+    """Prepend a valid static group and mark one price-history placement.
+
+    The app keeps its own groups; the new group takes the next free
+    ``Group N`` name and is placed first so mutations can target
+    ``groups[0]``.
+    """
+    name = f"Group {len(app_def.get('groups', [])) + 1}"
     app_def["groups"] = [
         {
             "name": name,
@@ -201,14 +219,16 @@ def _add_range_group(app_def: dict[str, Any], name: str = "Group 1") -> None:
             "paramName": "range",
             "defaultValue": "3M",
             "widgetIds": ["pi_equity_price_history"],
-        }
+        },
+        *app_def.get("groups", []),
     ]
     slot = next(
         p
         for p in app_def["tabs"]["overview"]["layout"]
         if p["i"] == "pi_equity_price_history"
     )
-    slot["groups"] = [name]
+    slot["groups"] = [*slot.get("groups", []), name]
+    return name
 
 
 def test_valid_app_parameter_group_passes() -> None:
@@ -267,16 +287,170 @@ def test_ticker_group_accepts_member_without_symbol_param() -> None:
     """Discovery widgets may join a symbol group without a symbol param."""
     widgets, apps = _manifests()
     terminal = _terminal(apps)
-    terminal["groups"] = [
-        {"name": "Group 1", "type": "ticker", "widgetIds": ["pi_alerts_panel"]}
-    ]
+    ticker = next(g for g in terminal["groups"] if g["type"] == "ticker")
+    ticker["widgetIds"].append("pi_alerts_panel")
     for placement in terminal["tabs"]["alerts"]["layout"]:
         if placement["i"] == "pi_alerts_panel":
-            placement["groups"] = ["Group 1"]
+            placement["groups"] = [*placement.get("groups", []), ticker["name"]]
     assert "symbol" not in {
         p["paramName"] for p in widgets["pi_alerts_panel"]["params"]
     }
     assert _new_codes(widgets, apps) == set()
+
+
+def _one_widget_manifest(
+    param: dict[str, Any], group: dict[str, Any] | None = None, **slot: Any
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Return a one-widget, one-tab manifest for focused validator tests."""
+    widgets = {
+        "w1": {
+            "name": "W",
+            "description": "d",
+            "endpoint": "w1",
+            "type": "markdown",
+            "params": [param],
+        }
+    }
+    placement: dict[str, Any] = {"i": "w1", "x": 0, "y": 0, "w": 20, "h": 8, **slot}
+    app: dict[str, Any] = {
+        "id": "custom-x",
+        "name": "X",
+        "groups": [],
+        "tabs": {"t": {"id": "t", "name": "T", "layout": [placement]}},
+    }
+    if group is not None:
+        app["groups"] = [{**group, "name": "Group 1", "widgetIds": ["w1"]}]
+        placement["groups"] = ["Group 1"]
+    return widgets, [app]
+
+
+def test_ticker_group_rejects_a_text_symbol_param() -> None:
+    """Workspace's ticker group only writes ``type: ticker`` params.
+
+    ``updateWidgetGroupValues`` resolves the target via ``getTickerParamName``,
+    which returns the first ``ticker``-typed param; a ``text`` symbol param is
+    never updated, so the link silently does nothing.
+    """
+    text = {"paramName": "symbol", "type": "text", "value": "AAPL"}
+    widgets, apps = _one_widget_manifest(text, {"type": "ticker"})
+    codes = {i.code for i in collect_manifest_issues(widgets, apps)}
+    assert "group.type.mismatch" in codes
+    ticker = {"paramName": "symbol", "type": "ticker", "value": "AAPL"}
+    widgets, apps = _one_widget_manifest(ticker, {"type": "ticker"})
+    assert not collect_manifest_issues(widgets, apps)
+
+
+def test_state_param_value_must_be_an_inline_option() -> None:
+    """A preset value outside a dropdown's options cannot be selected."""
+    param = {
+        "paramName": "range",
+        "type": "text",
+        "value": "1M",
+        "options": [{"label": "1M", "value": "1M"}, {"label": "1Y", "value": "1Y"}],
+    }
+    widgets, apps = _one_widget_manifest(param, state={"params": {"range": "5Y"}})
+    codes = {i.code for i in collect_manifest_issues(widgets, apps)}
+    assert codes == {"layout.state.param.value"}
+    widgets, apps = _one_widget_manifest(param, state={"params": {"range": "1Y"}})
+    assert not collect_manifest_issues(widgets, apps)
+
+
+def test_group_default_must_be_an_inline_option() -> None:
+    """A static group's defaultValue must be one of the members' options."""
+    param = {
+        "paramName": "account_id",
+        "type": "text",
+        "value": "demo",
+        "options": [{"label": "Demo", "value": "demo"}],
+    }
+    group = {"type": "param", "paramName": "account_id", "defaultValue": "acct-9"}
+    widgets, apps = _one_widget_manifest(param, group)
+    codes = {i.code for i in collect_manifest_issues(widgets, apps)}
+    assert codes == {"group.default.value"}
+    group["defaultValue"] = "demo"
+    widgets, apps = _one_widget_manifest(param, group)
+    assert not collect_manifest_issues(widgets, apps)
+
+
+def test_empty_options_accept_any_value() -> None:
+    """``options: []`` accepts any value, as ``isValidParamOption`` does.
+
+    Workspace's runtime check is ``options?.length === 0 || ...``, so an
+    empty list is a valid ``param``-group target with any default or preset.
+    """
+    param = {"paramName": "region", "type": "text", "value": "", "options": []}
+    group = {"type": "param", "paramName": "region", "defaultValue": "EU"}
+    widgets, apps = _one_widget_manifest(
+        param, group, state={"params": {"region": "US"}}
+    )
+    assert not collect_manifest_issues(widgets, apps)
+
+
+def test_multi_select_values_are_checked_by_containment() -> None:
+    """A multi-select value is valid when it contains an option value.
+
+    ``isValidParamOption`` tests ``String(groupValue).includes(option.value)``
+    for some option; a list value stringifies to its comma-joined items.
+    """
+    param = {
+        "paramName": "sector",
+        "type": "text",
+        "value": "Tech",
+        "multiSelect": True,
+        "options": [
+            {"label": "Tech", "value": "Tech"},
+            {"label": "Energy", "value": "Energy"},
+        ],
+    }
+    group = {"type": "param", "paramName": "sector", "defaultValue": "Tech,Energy"}
+    widgets, apps = _one_widget_manifest(
+        param, group, state={"params": {"sector": ["Tech", "Energy"]}}
+    )
+    assert not collect_manifest_issues(widgets, apps)
+    group["defaultValue"] = "Utilities"
+    widgets, apps = _one_widget_manifest(
+        param, group, state={"params": {"sector": ["Utilities"]}}
+    )
+    codes = sorted(i.code for i in collect_manifest_issues(widgets, apps))
+    assert codes == ["group.default.value", "layout.state.param.value"]
+    # A list stringifies like JavaScript (comma-joined, no brackets or quotes).
+    param["options"] = [{"label": "Tech + Energy", "value": "Tech,Energy"}]
+    widgets, apps = _one_widget_manifest(
+        param, state={"params": {"sector": ["Tech", "Energy"]}}
+    )
+    assert not collect_manifest_issues(widgets, apps)
+
+
+def _two_slot_app(second: dict[str, int], reverse: bool = False) -> list[ContractIssue]:
+    widgets, apps = _one_widget_manifest(
+        {"paramName": "symbol", "type": "ticker", "value": "AAPL"}
+    )
+    widgets["w2"] = {**widgets["w1"], "endpoint": "w2"}
+    layout = apps[0]["tabs"]["t"]["layout"]
+    layout.append({"i": "w2", **second})
+    if reverse:
+        layout.reverse()
+    return collect_manifest_issues(widgets, apps)
+
+
+def test_overlapping_placements_in_one_tab_are_rejected() -> None:
+    """Two items sharing any grid cell overlap; touching edges do not."""
+    overlap = _two_slot_app({"x": 19, "y": 7, "w": 10, "h": 4})
+    assert [i.code for i in overlap] == ["layout.overlap"]
+    assert "w1" in overlap[0].message and "w2" in overlap[0].message
+    for reverse in (False, True):
+        assert not _two_slot_app({"x": 20, "y": 0, "w": 20, "h": 8}, reverse)
+        assert not _two_slot_app({"x": 0, "y": 8, "w": 40, "h": 4}, reverse)
+
+
+def test_same_coordinates_in_different_tabs_do_not_overlap() -> None:
+    """The overlap check is per tab."""
+    widgets, apps = _one_widget_manifest(
+        {"paramName": "symbol", "type": "ticker", "value": "AAPL"}
+    )
+    apps[0]["tabs"]["u"] = copy.deepcopy(apps[0]["tabs"]["t"])
+    apps[0]["tabs"]["u"]["id"] = "u"
+    assert not collect_manifest_issues(widgets, apps)
 
 
 def test_static_param_group_requires_inline_options() -> None:

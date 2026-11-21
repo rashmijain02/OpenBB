@@ -209,6 +209,7 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
                     "y": slot.get("y"),
                     "w": slot.get("w"),
                     "h": slot.get("h"),
+                    "groups": list(slot.get("groups") or []),
                 }
                 if widget_id in placements:
                     placements[widget_id].append(placement)
@@ -234,7 +235,7 @@ def build_matrix(backend_dir: Path) -> dict[str, Any]:
                     for tab in tabs
                 ],
                 "groups": app.get("groups") or [],
-                "params": app.get("params") or {},
+                "prompts": app.get("prompts") or [],
             }
         )
 

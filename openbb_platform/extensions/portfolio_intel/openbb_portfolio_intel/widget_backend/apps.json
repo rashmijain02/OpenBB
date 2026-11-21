@@ -5,7 +5,7 @@
     "img": "",
     "img_dark": "",
     "img_light": "",
-    "description": "Default portfolio-intel dashboard: X-Ray, What-If, and Brinson attribution.",
+    "description": "First-look Portfolio Intelligence dashboard on the synthetic demo account: sector X-Ray, a what-if trade preview, and one-year Brinson-Fachler attribution versus SPY. Group 1 links the what-if symbol; Group 2 links the account.",
     "allowCustomization": true,
     "tabs": {
       "overview": {
@@ -18,6 +18,9 @@
             "y": 0,
             "w": 20,
             "h": 9,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -30,6 +33,9 @@
             "y": 0,
             "w": 20,
             "h": 9,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -53,7 +59,30 @@
         ]
       }
     },
-    "groups": []
+    "groups": [
+      {
+        "name": "Group 1",
+        "type": "ticker",
+        "widgetIds": [
+          "pi_whatif_diff"
+        ],
+        "defaultValue": "AAPL"
+      },
+      {
+        "name": "Group 2",
+        "type": "param",
+        "paramName": "account_id",
+        "widgetIds": [
+          "pi_xray_sector"
+        ],
+        "defaultValue": "demo"
+      }
+    ],
+    "prompts": [
+      "Which sectors dominate the demo book's X-Ray, and how concentrated is it?",
+      "What would buying 100 more shares of AAPL change in the demo book?",
+      "Explain the one-year Brinson-Fachler attribution versus SPY: which sectors added or lost active return, and was it allocation or selection?"
+    ]
   },
   {
     "id": "custom-portfolio-intelligence-terminal",
@@ -61,12 +90,8 @@
     "img": "",
     "img_dark": "",
     "img_light": "",
-    "description": "Eleven-tab persona surface: seven research tabs (symbol-scoped) plus four portfolio tabs (book-scoped). Sandbox-style clone extended with X-Ray, Risk, Paper Trading, and Alerts (EPIC #1634). Context bars: research tabs share `symbol`; portfolio tabs share `account_id`.",
+    "description": "Twelve-tab Portfolio Intelligence terminal. It starts on a sample (demo) account and sample data until you connect your own. Research tabs F1-F7 follow the symbol in Group 1; portfolio tabs F8-F11 and Morning Review follow the account in Group 2. Every tab shows where its data comes from and whether the data providers are healthy. The suggested prompts walk a ten-step weekly review: provider health and company profile, financials, sector X-Ray, risk and attribution, upcoming events, alerts, paper trading, the morning review and analyst views of a sample basket.",
     "allowCustomization": true,
-    "params": {
-      "symbol": "AAPL",
-      "account_id": "demo"
-    },
     "tabs": {
       "overview": {
         "id": "overview",
@@ -88,6 +113,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -100,6 +128,9 @@
             "y": 6,
             "w": 40,
             "h": 5,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -112,6 +143,9 @@
             "y": 11,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -124,6 +158,9 @@
             "y": 11,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -163,6 +200,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -175,6 +215,9 @@
             "y": 6,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -187,6 +230,9 @@
             "y": 6,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -199,6 +245,9 @@
             "y": 16,
             "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -212,6 +261,9 @@
             "y": 28,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -224,6 +276,9 @@
             "y": 28,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -236,6 +291,9 @@
             "y": 38,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -248,6 +306,9 @@
             "y": 38,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -260,6 +321,9 @@
             "y": 48,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -272,6 +336,9 @@
             "y": 48,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -310,6 +377,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -322,6 +392,9 @@
             "y": 6,
             "w": 20,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -334,6 +407,9 @@
             "y": 6,
             "w": 20,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -373,6 +449,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -385,6 +464,9 @@
             "y": 6,
             "w": 40,
             "h": 6,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -397,6 +479,9 @@
             "y": 12,
             "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -435,6 +520,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -447,6 +535,9 @@
             "y": 6,
             "w": 40,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -485,6 +576,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -497,6 +591,9 @@
             "y": 6,
             "w": 40,
             "h": 12,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo",
@@ -536,6 +633,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -548,6 +648,9 @@
             "y": 6,
             "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -598,6 +701,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -610,6 +716,9 @@
             "y": 6,
             "w": 20,
             "h": 9,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -622,6 +731,9 @@
             "y": 6,
             "w": 20,
             "h": 9,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -634,6 +746,9 @@
             "y": 15,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -646,6 +761,9 @@
             "y": 15,
             "w": 28,
             "h": 12,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -684,6 +802,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -696,6 +817,9 @@
             "y": 6,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -708,6 +832,9 @@
             "y": 6,
             "w": 8,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -720,6 +847,9 @@
             "y": 6,
             "w": 20,
             "h": 8,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -745,6 +875,9 @@
             "y": 23,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -758,6 +891,9 @@
             "y": 23,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL",
@@ -797,6 +933,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -809,6 +948,10 @@
             "y": 6,
             "w": 16,
             "h": 8,
+            "groups": [
+              "Group 1",
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo",
@@ -825,6 +968,9 @@
             "y": 6,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -837,6 +983,9 @@
             "y": 6,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -849,6 +998,9 @@
             "y": 14,
             "w": 32,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -861,6 +1013,9 @@
             "y": 24,
             "w": 32,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -899,6 +1054,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -911,6 +1069,9 @@
             "y": 6,
             "w": 30,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -923,6 +1084,9 @@
             "y": 6,
             "w": 10,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -935,6 +1099,9 @@
             "y": 16,
             "w": 30,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo",
@@ -948,6 +1115,9 @@
             "y": 26,
             "w": 40,
             "h": 8,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -960,6 +1130,9 @@
             "y": 34,
             "w": 30,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo",
@@ -999,6 +1172,9 @@
             "y": 3,
             "w": 40,
             "h": 3,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -1011,6 +1187,9 @@
             "y": 6,
             "w": 8,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -1023,6 +1202,9 @@
             "y": 6,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -1035,6 +1217,9 @@
             "y": 6,
             "w": 12,
             "h": 6,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -1047,6 +1232,9 @@
             "y": 12,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo",
@@ -1060,6 +1248,9 @@
             "y": 12,
             "w": 20,
             "h": 10,
+            "groups": [
+              "Group 2"
+            ],
             "state": {
               "params": {
                 "account_id": "demo"
@@ -1079,74 +1270,73 @@
         ]
       }
     },
-    "groups": [],
-    "guidedTour": {
-      "id": "sunday-routine",
-      "name": "Portfolio Sunday Routine",
-      "description": "Steps the W0-W9 notebook-aligned portfolio review flow.",
-      "steps": [
-        {
-          "step": "W0",
-          "tab": "overview",
-          "focusWidget": "pi_provider_health",
-          "note": "Confirm provider tier health before the review starts."
-        },
-        {
-          "step": "W1",
-          "tab": "overview",
-          "focusWidget": "pi_equity_profile_header",
-          "note": "Ground yourself on a single symbol (NB01)."
-        },
-        {
-          "step": "W2",
-          "tab": "financials",
-          "focusWidget": "pi_equity_financial_charts",
-          "note": "Review the fundamentals (NB02)."
-        },
-        {
-          "step": "W3",
-          "tab": "xray",
-          "focusWidget": "pi_xray_sector",
-          "note": "Portfolio composition breakdown (NB03)."
-        },
-        {
-          "step": "W4",
-          "tab": "risk",
-          "focusWidget": "pi_risk_dashboard",
-          "note": "Risk metrics + Brinson attribution (NB03/NB05)."
-        },
-        {
-          "step": "W5",
-          "tab": "calendar",
-          "focusWidget": "pi_event_calendar",
-          "note": "Upcoming catalysts (NB04)."
-        },
-        {
-          "step": "W6",
-          "tab": "alerts",
-          "focusWidget": "pi_alerts_panel",
-          "note": "Active alerts and smart-money moves (NB04)."
-        },
-        {
-          "step": "W7",
-          "tab": "paper",
-          "focusWidget": "pi_paper_perf_kpis",
-          "note": "Paper account performance vs. plan (NB05)."
-        },
-        {
-          "step": "W8",
-          "tab": "morning-review",
-          "focusWidget": "pi_alerts_panel",
-          "note": "One-page Morning Review composite (NB06/07)."
-        },
-        {
-          "step": "W9",
-          "tab": "estimates",
-          "focusWidget": "pi_basket_analyst_consensus",
-          "note": "Basket-consensus analyst view (NB08) - DEMO ONLY (basket input wiring is #1714)."
-        }
-      ]
-    }
+    "groups": [
+      {
+        "name": "Group 1",
+        "type": "ticker",
+        "widgetIds": [
+          "pi_symbol_context",
+          "pi_equity_profile_header",
+          "pi_equity_key_stats",
+          "pi_equity_price_history",
+          "pi_equity_financial_charts",
+          "pi_financial_statements",
+          "pi_peer_multiples",
+          "pi_earnings_history",
+          "pi_revenue_business_line",
+          "pi_revenue_geography",
+          "pi_price_target_history",
+          "pi_dividend_payment",
+          "pi_equity_technicals",
+          "pi_equity_competitors",
+          "pi_equity_complementary",
+          "pi_equity_analyst_forecasts",
+          "pi_whatif_card",
+          "pi_whatif_diff",
+          "pi_paper_ticket"
+        ],
+        "defaultValue": "AAPL"
+      },
+      {
+        "name": "Group 2",
+        "type": "param",
+        "paramName": "account_id",
+        "widgetIds": [
+          "pi_event_calendar",
+          "pi_book_context",
+          "pi_xray_sector",
+          "pi_xray_country",
+          "pi_concentration_gauge",
+          "pi_lookthrough_top25",
+          "pi_risk_dashboard",
+          "pi_risk_vol_chart",
+          "pi_paper_ticket",
+          "pi_paper_perf_kpis",
+          "pi_backtest_button",
+          "pi_paper_performance",
+          "pi_paper_blotter",
+          "pi_alerts_panel",
+          "pi_sentiment_gauge",
+          "pi_smart_money_ribbon",
+          "pi_news_ribbon"
+        ],
+        "defaultValue": "demo"
+      }
+    ],
+    "prompts": [
+      "Weekly review, step 1 of 10 (F1: Overview > Provider Health Table): Are all my data providers healthy, or is anything showing sample data before I start my weekly review?",
+      "Weekly review, step 2 of 10 (F1: Overview > Equity Profile - Header + Live Price): What does AAPL do, and where is its price trading right now?",
+      "Weekly review, step 3 of 10 (F2: Financials > Equity Profile - Financial Statement Charts): How have AAPL's revenue, net income and net margin trended over the last five years?",
+      "Weekly review, step 4 of 10 (F8: X-Ray > X-Ray - Sector Weights): How is my portfolio split across sectors?",
+      "Weekly review, step 5 of 10 (F9: Risk & Attribution > Risk Dashboard): How risky is my portfolio right now, and what drove its return versus the benchmark?",
+      "Weekly review, step 6 of 10 (F6: Calendar > Event Calendar): Which earnings, dividends or filings are coming up for my holdings?",
+      "Weekly review, step 7 of 10 (F11: Alerts & Catalysts > Alerts Panel): Which alerts and smart-money moves need my attention?",
+      "Weekly review, step 8 of 10 (F10: Paper Trading > Paper Performance KPIs (PAPER)): How is my paper trading account doing on return, Sharpe ratio and drawdown?",
+      "Weekly review, step 9 of 10 (Morning Review (W8) > Alerts Panel): Can you give me a one-page morning review of my portfolio: risk, paper performance, upcoming events and alerts?",
+      "Weekly review, step 10 of 10 (F7: Estimates > Basket Analyst Consensus): What do analysts think of the stocks in my basket? (This view uses a sample basket for now.)",
+      "Summarize AAPL from the research tabs: fundamentals, technicals, peers and analyst estimates.",
+      "Review the demo book's concentration, risk and upcoming catalysts, and list the three items that need attention this week."
+    ]
   },
   {
     "id": "custom-techtrade-desk",
@@ -1154,12 +1344,8 @@
     "img": "",
     "img_dark": "",
     "img_light": "",
-    "description": "Systematic-trader desk surface (F13, EPIC #1691). Morning Scan (T1) ships first; T2-T6 (Position Workbench, Validation, Tuning, Audit, Engine Status) land per-widget in follow-up cycles.",
+    "description": "Systematic-trader desk over persisted TechTrade artifacts: Morning Scan (T1), Position Workbench (T2), Validation (T3), Tuning (T4), Engine Status (T5) and Audit Journal (T6). Group 1 links the symbol across the scan table, workbench, validation, tuning and audit. Calculation, validation, approval and paper artifacts stay separate; the Execute Bridge only reports readiness and places no orders.",
     "allowCustomization": true,
-    "params": {
-      "segment": "",
-      "symbol": "AAPL"
-    },
     "tabs": {
       "morning-scan": {
         "id": "morning-scan",
@@ -1169,15 +1355,15 @@
             "i": "tt_segment_movers",
             "x": 0,
             "y": 0,
-            "w": 20,
-            "h": 8,
+            "w": 30,
+            "h": 10,
             "state": {
               "params": {}
             }
           },
           {
             "i": "tt_export_button",
-            "x": 20,
+            "x": 30,
             "y": 0,
             "w": 10,
             "h": 4,
@@ -1188,9 +1374,12 @@
           {
             "i": "tt_scan_table",
             "x": 0,
-            "y": 8,
-            "w": 30,
+            "y": 10,
+            "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "segment": ""
@@ -1207,8 +1396,11 @@
             "i": "tt_signal_card",
             "x": 0,
             "y": 0,
-            "w": 15,
+            "w": 20,
             "h": 8,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1217,10 +1409,13 @@
           },
           {
             "i": "tt_plan_card",
-            "x": 15,
+            "x": 20,
             "y": 0,
-            "w": 15,
+            "w": 20,
             "h": 8,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1231,8 +1426,11 @@
             "i": "tt_order_legs",
             "x": 0,
             "y": 8,
-            "w": 30,
+            "w": 40,
             "h": 8,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1243,8 +1441,11 @@
             "i": "tt_simulate_result",
             "x": 0,
             "y": 16,
-            "w": 30,
+            "w": 40,
             "h": 10,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1261,8 +1462,11 @@
             "i": "tt_validation_verdict",
             "x": 0,
             "y": 0,
-            "w": 30,
+            "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1279,8 +1483,11 @@
             "i": "tt_tuning_report",
             "x": 0,
             "y": 0,
-            "w": 30,
+            "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1297,8 +1504,11 @@
             "i": "tt_audit_journal",
             "x": 0,
             "y": 0,
-            "w": 30,
+            "w": 40,
             "h": 12,
+            "groups": [
+              "Group 1"
+            ],
             "state": {
               "params": {
                 "symbol": "AAPL"
@@ -1336,6 +1546,28 @@
         ]
       }
     },
-    "groups": []
+    "groups": [
+      {
+        "name": "Group 1",
+        "type": "ticker",
+        "widgetIds": [
+          "tt_scan_table",
+          "tt_signal_card",
+          "tt_plan_card",
+          "tt_order_legs",
+          "tt_simulate_result",
+          "tt_validation_verdict",
+          "tt_tuning_report",
+          "tt_audit_journal"
+        ],
+        "defaultValue": "AAPL"
+      }
+    ],
+    "prompts": [
+      "Which segments have the strongest signals in this morning's scan, and which symbols should I look at first?",
+      "Walk me through the AAPL signal, trading plan and order legs, including the stop, target and reward-to-risk.",
+      "Did the AAPL strategy pass validation? Explain the PBO, deflated Sharpe and out-of-sample Sharpe behind the verdict.",
+      "Compare AAPL's validated replay returns with its realized forward simulation in the audit journal."
+    ]
   }
 ]

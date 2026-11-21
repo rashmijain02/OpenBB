@@ -15,7 +15,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker (allowlisted)"
       }
     ]
@@ -37,7 +37,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id (allowlisted)"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -59,7 +65,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -81,7 +93,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -102,7 +120,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ],
     "data": {
@@ -166,7 +190,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -229,7 +259,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       },
       {
         "paramName": "horizon_days",
@@ -257,7 +293,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ],
     "data": {
@@ -324,7 +366,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -346,7 +394,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -367,13 +421,19 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       },
       {
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -416,7 +476,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ],
     "data": {
@@ -488,7 +554,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -509,7 +581,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -529,7 +607,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -557,7 +635,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -697,7 +775,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       },
       {
         "paramName": "horizon_days",
@@ -725,7 +809,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -788,7 +878,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -809,7 +905,13 @@
         "value": "demo",
         "label": "Account",
         "type": "text",
-        "description": "Paper account id"
+        "description": "Account to analyze. Only the synthetic demo account is wired; other accounts show an explicit unavailable state.",
+        "options": [
+          {
+            "label": "Demo account (synthetic)",
+            "value": "demo"
+          }
+        ]
       }
     ]
   },
@@ -829,7 +931,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -883,7 +985,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -905,7 +1007,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -926,7 +1028,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -984,7 +1086,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1042,7 +1144,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1110,7 +1212,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1174,7 +1276,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -1245,7 +1347,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1266,7 +1368,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1288,7 +1390,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1310,7 +1412,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1331,7 +1433,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1353,7 +1455,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1374,7 +1476,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1395,7 +1497,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1460,7 +1562,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1481,7 +1583,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1541,7 +1643,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1562,7 +1664,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1584,7 +1686,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -1605,7 +1707,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -1681,7 +1783,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -1731,7 +1833,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ],
@@ -1998,7 +2100,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -2019,7 +2121,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -2040,7 +2142,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -2062,7 +2164,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -2083,7 +2185,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]
@@ -2104,7 +2206,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       },
       {
@@ -2132,7 +2234,7 @@
         "paramName": "symbol",
         "value": "AAPL",
         "label": "Symbol",
-        "type": "text",
+        "type": "ticker",
         "description": "Ticker"
       }
     ]

@@ -1335,6 +1335,23 @@
     return out;
   }
 
+  // App-level shared context (#1954) seeded from the app's schema-native
+  // parameter groups (#1270): a `ticker` group drives `symbol`; a `param` or
+  // `endpointParam` group drives its `paramName`. The group's `defaultValue`
+  // is the starting value; the first group wins when two groups share a
+  // param. Apps without groups get no context bar.
+  function appContextParams(app) {
+    const out = {};
+    const groups = (app && Array.isArray(app.groups)) ? app.groups : [];
+    for (const g of groups) {
+      if (!g || typeof g !== "object") continue;
+      const name = g.type === "ticker" ? "symbol" : g.paramName;
+      if (!name || name in out) continue;
+      out[name] = (g.defaultValue !== undefined && g.defaultValue !== null) ? String(g.defaultValue) : "";
+    }
+    return out;
+  }
+
   // Pretty label for an app-level context field (#1954). Known shared params get
   // curated labels; anything else is title-cased from snake_case.
   function contextParamLabel(name) {
@@ -2626,10 +2643,10 @@
     renderSidebar(idx);
     $("app-badge").textContent = (APP && APP.name) || "app";
     if (!APP) { $("grid").innerHTML = '<div class="state err">No apps in /apps.json.</div>'; return; }
-    // Seed the app-level shared context (#1954) from apps.json `params`, layering
-    // any per-app persisted selection over it. Apps without a `params` block get
-    // an empty context (no bar) and keep the legacy per-widget behavior.
-    GLOBAL_PARAMS = loadGlobalParams(APP.params || {});
+    // Seed the app-level shared context (#1954) from the app's parameter groups
+    // (#1270), layering any per-app persisted selection over it. Apps without
+    // groups get an empty context (no bar) and keep per-widget controls.
+    GLOBAL_PARAMS = loadGlobalParams(appContextParams(APP));
     renderContextBar();
     renderTabs();
   }
