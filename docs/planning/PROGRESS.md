@@ -87,8 +87,8 @@ Built a complete OpenBB-compatible data provider at `openbb_platform/providers/f
 | Market Holidays | `Tools/populate_market_holidays.py` | Seed 2010–2026 US market holidays |
 
 Also delivered:
-- `rules/COLLABORATION_RULES.md` — PII hygiene, AI session practices
-- `.github/copilot/` — 5 copilot instruction files
+- `docs/archive/rules/COLLABORATION_RULES.md` — PII hygiene, AI session practices
+- `docs/archive/github-copilot/` — 5 copilot instruction files
 - `context/openbb/` — 5 architecture documentation files
 
 **Status:** ✅ Complete

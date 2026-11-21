@@ -20,13 +20,33 @@ open a PR, or merge to a repository under any other owner (including
   [Portfolio Intelligence Engine](https://github.com/users/rashmijain02/projects/1/views/1)
   (Project 1, owner `rashmijain02`). It is the single source of truth for status.
 
-## Required Agent Model
+## Development strategy and model policy
 
-Use `gpt-5.6-sol` exclusively for every agent and subagent working on this
-repository. Specify it explicitly on every dispatch that accepts a model. If it
-is unavailable, stop and report the blocker; do not substitute another model.
-This restriction applies to execution agents, not models deployed, trained,
-evaluated, or documented by the product.
+Development follows **Dev Strategy v4** (`docs/dev-strategy.md`, approved by the owner on
+2026-11-20). Plan and ship in GitHub Copilot CLI with Spec Kit (`openbb-spec`, `openbb-issues`,
+`openbb-ship`); execute in Claude Code with Superpowers (`openbb-execute`). Specs live in
+`specs/gh-<NN>-<slug>/`; principles in `.specify/memory/constitution.md`. Small fixes and tricky
+bugs have shorter routes; `openbb-dev-cycle` routes to the right one.
+
+**Roles (D9).** The **owner** is Rashmi Jain (`rashmijain02`). The owner approves specs (gate
+G1), merges PRs, and alone requests promotion PRs. Reviewers are named by function: code reviewer,
+security reviewer, privacy reviewer.
+
+**Model policy by role (D1).** Name the model explicitly on every dispatch that accepts one. If it
+is unavailable, stop and report the blocker; never fall back to another model family.
+
+| Where | Phases | Models |
+|---|---|---|
+| GitHub Copilot CLI | Phase 1 (specify, plan, issues), Phase 3 (ship), small-fix route | GPT family, chosen by task complexity |
+| Claude Code | Phase 2 (execute), tricky-bug / refactor route | Claude: Opus main agent; Claude subagents (`opus`, `sonnet`; `haiku` for read-only search) |
+
+This policy governs execution agents only, not models the product deploys, trains, evaluates or
+documents.
+
+**Git authority (D6).** Without asking: read, test, verify, claim/heartbeat/release with
+`pi_claim.py`, set board fields, commit on your own feature branch, create up to 3 issues. Ask
+each time before: `git push`, `gh pr create`, `gh pr merge`, closing issues by hand, or creating
+more than 3 issues. Never merge locally into `portfolio`, `portfolio_validations` or `develop`.
 
 ## Workspace override — Portfolio Validation checkout
 
@@ -40,15 +60,15 @@ Portfolio Intelligence branch targets below.
 2. **Side branches only:** never commit directly to `portfolio_validations`.
    Create a tracked side branch from `portfolio_validations` (or from the tip
    of an active stack rooted there).
-3. **Internal cycle first:** every side branch must complete the full internal
-   `/openbb-dev-cycle`, then merge through a fork-internal PR whose eventual
-   target is `portfolio_validations`.
+3. **Dev Strategy v4 first:** every side branch goes through the small-fix route
+   (`portfolio-validation`) or the full relay (`docs/dev-strategy.md`), then merges
+   through a fork-internal PR whose eventual target is `portfolio_validations`.
 4. **Drain stacks before promotion:** merge stacked side-branch PRs into
    `portfolio_validations` in dependency order and confirm the integration
    branch is clean and synchronized before proposing any promotion.
 5. **Promotion requires an explicit PR request:** the only promotion path is a
    fork-internal PR from `portfolio_validations` → `portfolio`. Create and
-   merge that PR only when Daisy explicitly requests that exact promotion PR.
+   merge that PR only when the owner explicitly requests that exact promotion PR.
    Generic instructions to merge, push, clean up branches, or create
    side-branch PRs do not authorize promotion. Never merge or push
    `portfolio_validations` directly into `portfolio`, and never target
@@ -69,14 +89,14 @@ session context loss.
 - **Base of `portfolio`:** `develop` (origin/HEAD)
 - **Absorb-from-develop branches:** `chore/absorb-develop-plain`, `chore/absorb-develop-into-portfolio` — used to periodically bring `develop` INTO `portfolio` (one-way, see workflow below)
 - **Feature branches:** `feat/pi-*` (e.g. `feat/pi-app/paper-migration`, `feat/pi-widgets/playwright-harness`) — cut FROM `portfolio`, PR back INTO `portfolio`
-- **Bead epic:** `bd-qy83` (Portfolio Intelligence), children `bd-qy83.1.*`
+- **Program epic:** #242 (Portfolio Intelligence Engine epic), closed. New programs attach their own epic on Project 1.
 - **Local workspace path:** `H:\masterswork\git\OpenBB-Portfolio\OpenBB` (distinct from `H:\masterswork\git\OpenBB` which tracks `develop` for non-portfolio work)
 
 ### Workflow rules — Portfolio Intelligence Engine
 
 1. **One-way absorb only.** Merges/rebases flow **`develop` → `portfolio`** to
    keep portfolio current. Do **NOT** open a PR from `portfolio` → `develop`
-   without an explicit, loud sign-off from the user (Daisy). Silence is not
+   without an explicit, loud sign-off from the owner (Rashmi Jain). Silence is not
    consent. Until that sign-off arrives, `portfolio` accumulates work
    locally-to-the-fork and never proposes back to base.
 2. **Side branches only.** Never commit directly to `portfolio`. All work
@@ -86,10 +106,10 @@ session context loss.
 3. **Every unit of work is a tracked GitHub Issue in `rashmijain02/OpenBB`.**
    Every such issue is added to Project 1 (Portfolio Intelligence Engine).
    No issue → no work. Commits/PRs cite the issue per the "Communication
-   Conventions" and "Coordination — GitHub Issues primary, bd fallback"
+   Conventions" and "Coordination — GitHub Issues only"
    sections below.
-4. **Upstream promotion is user-initiated AND fork-internal only.** When
-   Daisy explicitly says "open a PR from portfolio to develop" (or
+4. **Upstream promotion is owner-initiated AND fork-internal only.** When
+   the owner explicitly says "open a PR from portfolio to develop" (or
    equivalent unambiguous instruction), only then create the PR from
    `portfolio` → `develop` — **inside `rashmijain02/OpenBB` only**
    (`--repo rashmijain02/OpenBB`). Never propose to
@@ -261,6 +281,11 @@ per-call user approval):**
   "yes" does not extend to the next `TaskCreate`.
 - **`TodoWrite`** — same prohibition, same escalation path.
 - **Ad-hoc markdown TODO lists / scratch task files** — same.
+
+**Exception (D3, Dev Strategy v4):** during a Phase 2 run of `openbb-execute` in Claude Code,
+`TodoWrite` may mirror the committed `specs/gh-<NN>-<slug>/tasks.md` for that session only. It
+never holds work that is not in `tasks.md` and never outlives the session; status still lives on
+Project 1. `tasks.md` itself is a committed plan, not a tracker.
 
 Rationale: local task tools have lower friction than `gh issue create`,
 and low-friction wins over correct unless the correct path is a hard
@@ -1154,7 +1179,7 @@ print(p7.action_label, p7.composite_score)
      endpoints, fetchers, and fixtures directly to `providers/fmp_cached/` under the same PR-review discipline as the
      rest of the fork. The `area:fmp-cached-gap` label is still the right tracker for surfacing debt; but the fix can
      now land in the same session that surfaces the gap.
-- **Reviewer discipline** (Mira gate, Zev veto): any PR introducing an `fmp` fallback that does *not* have a paired `area:fmp-cached-gap` GH issue is rejected. Codified rule, no judgment required.
+- **Reviewer discipline** (code-reviewer gate, owner veto): any PR introducing an `fmp` fallback that does *not* have a paired `area:fmp-cached-gap` GH issue is rejected. Codified rule, no judgment required.
 - Rationale: `fmp_cached` gives reproducible tests, deterministic dev loops, and cost control. The fallback exists so a missing endpoint never blocks the roadmap — but every use of the fallback is tracked debt on Project 1.
 
 ### FMP subscription tier — mark tests when our key can't call an endpoint
@@ -1257,7 +1282,7 @@ gh issue create --title "..." --body "..."     # New issue
 ### Rules
 
 - Use `gh` (GitHub CLI) for ALL task tracking — do NOT use `bd`, TodoWrite,
-  TaskCreate, or ad-hoc markdown TODO lists.
+  TaskCreate, or ad-hoc markdown TODO lists (one TodoWrite exception: D3 above).
 - Do NOT run `bd` commands or create `.beads/` state in any branch.
 - Cross-session memory belongs in `docs/MEMORIES.md` (checked-in file), not
   in `bd remember` or scratch `MEMORY.md` files.
@@ -1267,7 +1292,8 @@ gh issue create --title "..." --body "..."     # New issue
 ## Session Completion
 
 **When ending a work session**, complete ALL steps below. Work is NOT
-complete until `git push` succeeds (when the current profile authorizes it).
+complete until it is pushed and in a PR, and both need the user's yes each
+time (D6 in `docs/dev-strategy.md`).
 
 **MANDATORY WORKFLOW:**
 
@@ -1276,13 +1302,9 @@ complete until `git push` succeeds (when the current profile authorizes it).
 2. **Run quality gates** (if code changed) — tests, linters, builds.
 3. **Update issue status** — `gh issue close <NN>` for finished work;
    comment progress on any that remain in-flight.
-4. **Handle git per active profile**:
-
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
+4. **Handle git per D6**: commit on your feature branch; ask before
+   `git push`. After a yes, push and confirm `git status` shows
+   "up to date with origin".
 
 5. **Hand off** — summarize changes, validation, issue status, and any
    blocked commit/push step.

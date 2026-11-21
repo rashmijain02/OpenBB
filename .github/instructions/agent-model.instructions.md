@@ -1,17 +1,19 @@
 ---
-description: Required execution model for all repository agents and subagents
+description: Execution model policy by role for repository agents and subagents (Dev Strategy v4, D1)
 applyTo: '**'
 ---
 
-# Agent Model Policy
+# Agent Model Policy (Dev Strategy v4, D1)
 
-- Use `gpt-5.6-sol` for every agent and subagent launched to work on this
-  repository.
-- Specify `gpt-5.6-sol` explicitly whenever an agent-dispatch interface accepts
-  a model. Do not rely on a session default or use model aliases, cheaper tiers,
-  fallback models, or provider-specific alternatives.
-- If `gpt-5.6-sol` is unavailable, stop and report the blocker rather than
-  dispatching another model.
-- This policy governs execution agents. It does not restrict models that the
-  repository deploys, trains, evaluates, documents, or exposes as product
-  functionality.
+You are running in GitHub Copilot CLI or another Copilot surface.
+
+- Copilot runs Phase 1 (specify, plan, issues), Phase 3 (ship) and the small-fix route of
+  `docs/dev-strategy.md`. Use **GPT-family** models for these, chosen by task complexity.
+- Name the selected model explicitly whenever an agent-dispatch interface accepts one. Do not rely
+  on a session default.
+- If the model you need is unavailable, stop and report the blocker. Do not fall back to a model
+  from another family.
+- Phase 2 (execute) belongs to Claude Code with Claude models. Do not run it here; hand off with
+  "Use openbb-execute for #NN" in Claude Code.
+- This policy governs execution agents. It does not restrict models that the repository deploys,
+  trains, evaluates, documents, or exposes as product functionality.
