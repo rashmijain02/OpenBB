@@ -95,7 +95,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step W3 — Sector composition pie",
         human_description="Read pi_xray_sector on the X-Ray tab.",
-        human_expected="6 sector rows totaling ~1.0; Information Technology ~0.38.",
+        human_expected=(
+            "Pie of 6 sectors titled as the synthetic demo portfolio; "
+            "Information Technology ~38%."
+        ),
         endpoint="pi/xray/sector",
         params={"account_id": "demo"},
     ),
@@ -154,8 +157,8 @@ _STEPS: tuple[Step, ...] = (
         human_title="Step W4 — Brinson attribution waterfall",
         human_description="Read pi_brinson_attribution.",
         human_expected=(
-            "Sector rows with percentage-point allocation, selection, interaction, "
-            "and total active return."
+            "Demo-book chart by sector: allocation, selection, interaction bars "
+            "and total active return markers, in percentage points."
         ),
         endpoint="pi/attribution",
         params={"window": "1Y", "benchmark_symbol": "SPY"},

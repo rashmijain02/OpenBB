@@ -375,22 +375,6 @@ def test_glossary_records_are_specific_and_link_to_term_pages() -> None:
             },
         ),
         (
-            "pi_brinson_attribution",
-            {
-                "sector": "Sector",
-                "allocation": "Allocation Effect (%)",
-                "selection": "Selection Effect (%)",
-                "interaction": "Interaction Effect (%)",
-                "total": "Total Active Return (%)",
-            },
-            {
-                "Allocation Effect (%)": "allocation_effect",
-                "Selection Effect (%)": "selection_effect",
-                "Interaction Effect (%)": "interaction_effect",
-                "Total Active Return (%)": "total_active_return",
-            },
-        ),
-        (
             "pi_whatif_card",
             {
                 "symbol_weight_%": "Symbol Weight (%)",
@@ -475,6 +459,30 @@ def test_all_21_widgets_have_exact_label_and_glossary_contracts(
         assert actual_labels[raw] == label
     for label, key in glossary.items():
         assert actual_glossary[label] == key
+
+
+def test_brinson_figure_carries_exact_labels_and_glossary_keys() -> None:
+    """#1267 moved Brinson labels/glossary from manifest keys into the figure.
+
+    Workspace's schema rejects ``data.chart`` / ``data.metricGlossary``, so the
+    series labels are the Plotly trace names, the axis label is the x-axis
+    title, and each trace carries its glossary key in ``meta.glossaryKey``.
+    """
+    response = _CLIENT.get("/pi/attribution?window=1Y&benchmark_symbol=SPY")
+    assert response.status_code == 200
+    figure = response.json()
+    assert figure["layout"]["xaxis"]["title"]["text"] == "Sector"
+    assert {
+        trace["name"]: trace["meta"]["glossaryKey"] for trace in figure["data"]
+    } == {
+        "Allocation Effect (%)": "allocation_effect",
+        "Selection Effect (%)": "selection_effect",
+        "Interaction Effect (%)": "interaction_effect",
+        "Total Active Return (%)": "total_active_return",
+    }
+    text = _VIEWER.read_text(encoding="utf-8")
+    for trace in figure["data"]:
+        assert f"{trace['meta']['glossaryKey']}: Object.freeze({{" in text
 
 
 def test_1997_basket_consensus_columns_match_endpoint_shape() -> None:

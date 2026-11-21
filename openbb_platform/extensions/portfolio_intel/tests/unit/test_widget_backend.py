@@ -224,7 +224,7 @@ def test_cors_does_NOT_use_wildcard() -> None:
 
 def test_xray_sector_demo_returns_non_empty_records_list() -> None:
     """Chart with raw=true must return list-of-dicts (loud empty guard)."""
-    resp = _client.get("/pi/xray/sector?account_id=demo")
+    resp = _client.get("/pi/xray/sector?account_id=demo&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert isinstance(rows, list) and rows, "demo path must never return []"
@@ -234,7 +234,7 @@ def test_xray_sector_demo_returns_non_empty_records_list() -> None:
 
 def test_xray_sector_non_demo_returns_marker_row_not_empty_list() -> None:
     """Account-resolver-not-wired path returns a marker row, not silent [] ."""
-    resp = _client.get("/pi/xray/sector?account_id=NOT_WIRED_YET")
+    resp = _client.get("/pi/xray/sector?account_id=NOT_WIRED_YET&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows, "must NOT return empty list — Workspace would render blank"
@@ -406,8 +406,8 @@ def test_whatif_invalid_delta_shares_handled_gracefully() -> None:
 
 
 def test_attribution_returns_waterfall_rows() -> None:
-    """Chart values are percent points with allocation/selection/interaction/total."""
-    resp = _client.get("/pi/attribution?window=1Y&benchmark_symbol=SPY")
+    """Raw rows are percent points with allocation/selection/interaction/total."""
+    resp = _client.get("/pi/attribution?window=1Y&benchmark_symbol=SPY&raw=true")
     assert resp.status_code == 200
     rows = resp.json()
     assert isinstance(rows, list) and rows

@@ -92,14 +92,18 @@ def _has_pie_chart_hint(widget_spec: dict) -> bool:
     return bool(label and value)
 
 
-def test_xray_sector_declares_pie_chart_mapping() -> None:
-    """#1633 — pi_xray_sector widget carries a pie chart mapping."""
-    m = _read("widgets.json")
-    spec = m.get("pi_xray_sector", {})
-    assert _has_pie_chart_hint(spec), (
-        "pi_xray_sector must carry chart.type=pie with labelColumn+valueColumn"
-        " so Workspace knows how to render the raw sector/weight rows. See #1633."
-    )
+def test_xray_sector_returns_plotly_pie_figure() -> None:
+    """#1633 / #1267 — pi_xray_sector renders as a pie via Contract B.
+
+    The non-schema ``data.chart`` mapping was removed (#1267); the endpoint's
+    default response is a Plotly figure whose single trace is a pie.
+    """
+    r = _client.get("/pi/xray/sector?account_id=demo")
+    assert r.status_code == 200
+    figure = r.json()
+    assert isinstance(figure, dict) and isinstance(figure.get("data"), list)
+    assert [trace.get("type") for trace in figure["data"]] == ["pie"]
+    assert figure["data"][0]["labels"] and figure["data"][0]["values"]
 
 
 def test_xray_country_declares_pie_chart_mapping() -> None:

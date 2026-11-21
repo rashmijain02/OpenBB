@@ -4,11 +4,6 @@
   "issues": [
     {
       "code": "widget.data.unknown_key",
-      "path": "widgets.pi_xray_sector.data.chart",
-      "tracking": "#1267"
-    },
-    {
-      "code": "widget.data.unknown_key",
       "path": "widgets.pi_xray_country.data.chart",
       "tracking": "#1268"
     },
@@ -116,16 +111,6 @@
       "code": "widget.table.unknown_key",
       "path": "widgets.pi_whatif_card.data.table.rowLabels",
       "tracking": "#1268"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_brinson_attribution.data.chart",
-      "tracking": "#1267"
-    },
-    {
-      "code": "widget.data.unknown_key",
-      "path": "widgets.pi_brinson_attribution.data.metricGlossary",
-      "tracking": "#1267"
     },
     {
       "code": "widget.data.unknown_key",
@@ -349,11 +334,6 @@
     },
     {
       "code": "response.shape.chart",
-      "path": "responses.pi_xray_sector",
-      "tracking": "#1267"
-    },
-    {
-      "code": "response.shape.chart",
       "path": "responses.pi_xray_country",
       "tracking": "#1268"
     },
@@ -376,11 +356,6 @@
       "code": "response.shape.metric",
       "path": "responses.pi_paper_perf_kpis",
       "tracking": "#1268"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.pi_brinson_attribution",
-      "tracking": "#1267"
     },
     {
       "code": "response.shape.chart",
