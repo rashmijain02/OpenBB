@@ -144,6 +144,7 @@ def _agent() -> dict[str, dict[str, Any]]:
     from openbb_ai.models import LlmClientFunctionCallResultMessage
     from openbb_portfolio.copilot import widget_context
     from openbb_portfolio_intel.widget_backend.agent_policy import (
+        agent_widget_origins,
         build_agent_capabilities,
     )
     from openbb_portfolio_intel.widget_backend.main import app
@@ -152,6 +153,8 @@ def _agent() -> dict[str, dict[str, Any]]:
     backend = Path(build_agent_capabilities.__code__.co_filename).parent
     widgets = json.loads((backend / "widgets.json").read_text(encoding="utf-8"))
     caps = build_agent_capabilities()
+    origins = agent_widget_origins()
+    origin = sorted(origins)[0]
     client = TestClient(app, raise_server_exceptions=False)
     results: dict[str, dict[str, Any]] = {}
     for widget_id, cap in caps.items():
@@ -171,7 +174,11 @@ def _agent() -> dict[str, dict[str, Any]]:
             body = response.text
         message = LlmClientFunctionCallResultMessage(
             function="get_widget_data",
-            input_arguments={"data_sources": [{"id": widget_id, "input_args": params}]},
+            input_arguments={
+                "data_sources": [
+                    {"id": widget_id, "origin": origin, "input_args": params}
+                ]
+            },
             data=[
                 {
                     "items": [
@@ -183,7 +190,7 @@ def _agent() -> dict[str, dict[str, Any]]:
                 }
             ],
         )
-        context, lines = widget_context(message, caps)
+        context, lines, _omitted = widget_context(message, caps, origins)
         state = lines[0].split(": ", 1)[1].split(" ", 1)[0] if lines else "none"
         shape = (
             "rows"

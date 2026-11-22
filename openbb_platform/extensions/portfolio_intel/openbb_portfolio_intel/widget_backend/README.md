@@ -199,18 +199,30 @@ The `desktop/src/pi/` canvas from #981 / #982 / #1004 was a scope error — that
 This backend also serves the custom Workspace agent (`/agents.json` and `/query`, from
 `openbb_portfolio.copilot`). It answers through the local model proxy and is read-only.
 
+**Where your data goes.** To answer, the agent sends the data of the widgets you select to the
+model behind `COPILOT_PROXY_BASE_URL`. With the default `copilot-api` proxy that is GitHub
+Copilot, an external model provider. Account, basket, owner and user identifier fields are
+removed and credentials are redacted first, but holdings, weights and other values in the
+selected widgets do leave this machine. Do not select widgets whose data you do not want sent.
+
 - **Discovery.** `/agents.json` advertises `streaming` and `widget-dashboard-select`, and
   nothing else. Widget access is advertised only because this backend registers an agent
   inventory on `app.state` (`agent_policy.build_agent_capabilities()`, built from
   `widgets.json`); a backend without one stays text-only.
 - **Reads.** The agent reads the widgets the user selected through Workspace's own
-  `get_widget_data` call. It has no HTTP client or backend token of its own. It passes each
+  `get_widget_data` call, and only widgets whose Workspace origin is this backend: the
+  connector name `portfolio-intel` (see "Connect to Workspace"), or the comma-separated names
+  in `PI_AGENT_WIDGET_ORIGINS` if you named the connector differently. It has no HTTP client or backend token of its own. It passes each
   widget's current parameters unchanged and adds `raw=true` for chart widgets, so it gets rows,
   not Plotly figures. At most 8 widgets, 50 rows per widget and 24,000 characters of context
-  per question. The model answer has a time limit (`COPILOT_PROXY_TIMEOUT_SECONDS`, default 60)
+  per question; a widget that does not fit is left out and named as omitted. The model answer has a time limit (`COPILOT_PROXY_TIMEOUT_SECONDS`, default 60)
   and a token cap.
-- **Denied.** `pi_paper_ticket` (places paper orders) and `pi_backtest_button` (queues a job)
-  are refused and never requested; widgets outside the inventory are refused too. Paper and
+- **Denied.** Safe by default: any widget that looks like an action (a `confirm` parameter, an
+  execute / paper / backtest / order endpoint or category, a non-GET method) is denied unless it
+  is on `agent_policy.AGENT_READ_ALLOWLIST` (the read-only paper blotter, performance and KPIs,
+  execute bridge and paper status). `pi_paper_ticket` (places paper orders) and
+  `pi_backtest_button` (queues a job) are refused and never requested; widgets outside the
+  inventory are refused too. Paper and
   execution actions stay separately authorized in the widget itself. The MCP exposure policy
   denies the same two endpoints; `test_agent_capabilities_1272.py` keeps the lists equal and
   the inventory equal to `tests/unit/fixtures/native_workspace_matrix.json`.
@@ -218,7 +230,9 @@ This backend also serves the custom Workspace agent (`/agents.json` and `/query`
   `Data State` metric card, the Markdown `Data state` line, or a figure's `layout.meta`) is
   shown as a reasoning step and given to the model, which must say when data is demo, cached
   or unavailable.
-- **Credentials.** The request's `api_keys` and tool tokens are never sent to the model;
-  credential-like fields and values in widget data are redacted.
+- **Credentials and identifiers.** The request's `api_keys` and tool tokens are never sent to
+  the model. Credential-like fields (`apiKey`, `authToken`, `sessionId`, ...) and values
+  (bearer/basic tokens, JWTs, AWS keys, `key=`/`sig=`/`token:` values, `user:pass@` in URLs)
+  are redacted, and identifier fields are dropped.
 - **MCP.** The MCP adapter forces `raw=true` on the cloned chart tools, so MCP clients also get
   rows with the provenance columns.

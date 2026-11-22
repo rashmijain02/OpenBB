@@ -323,14 +323,17 @@ app.include_router(_local_viewer_router)
 try:
     from openbb_portfolio.copilot import (  # noqa: E402
         CAPABILITIES_STATE as _AGENT_CAPABILITIES_STATE,
+        ORIGINS_STATE as _AGENT_ORIGINS_STATE,
         router as _copilot_router,
     )
 
     from openbb_portfolio_intel.widget_backend.agent_policy import (  # noqa: E402
+        agent_widget_origins,
         build_agent_capabilities,
     )
 
     setattr(app.state, _AGENT_CAPABILITIES_STATE, build_agent_capabilities())
+    setattr(app.state, _AGENT_ORIGINS_STATE, agent_widget_origins())
     app.include_router(_copilot_router)
 except ImportError as _copilot_exc:  # pragma: no cover - env-dependent
     logger.warning(

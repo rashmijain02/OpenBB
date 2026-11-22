@@ -122,7 +122,7 @@ def _sse(text: str) -> list[tuple[str, dict[str, Any]]]:
 def _selected(widget_id: str, **params: Any) -> dict[str, Any]:
     return {
         "uuid": str(uuid4()),
-        "origin": "Portfolio Intelligence",
+        "origin": "portfolio-intel",
         "widget_id": widget_id,
         "name": widget_id,
         "description": "selected",
@@ -253,3 +253,85 @@ def test_no_credential_reaches_widget_data_or_agent_context(agent_reads):
         k for k, v in agent_reads.items() if v["body_leak"] or v["context_leak"]
     }
     assert not leaked
+
+
+# ---------------------------------------------------------------------------
+# Review fixes (#1272 round 2)
+# ---------------------------------------------------------------------------
+def test_backend_registers_its_connector_origin():
+    from openbb_portfolio_intel.widget_backend.agent_policy import (  # pylint: disable=import-outside-toplevel
+        agent_widget_origins,
+    )
+
+    assert getattr(app.state, copilot.ORIGINS_STATE) == frozenset({"portfolio-intel"})
+    assert agent_widget_origins() == frozenset({"portfolio-intel"})
+
+
+def test_origins_can_be_configured(monkeypatch):
+    from openbb_portfolio_intel.widget_backend.agent_policy import (  # pylint: disable=import-outside-toplevel
+        agent_widget_origins,
+    )
+
+    monkeypatch.setenv("PI_AGENT_WIDGET_ORIGINS", " My PI , other ")
+    assert agent_widget_origins() == frozenset({"my pi", "other"})
+
+
+def test_query_refuses_widgets_from_another_backend(monkeypatch):
+    async def no_model(_messages):  # noqa: ANN001
+        raise AssertionError("no model call before widget data arrives")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(copilot, "_proxy_deltas", no_model)
+    foreign = _selected("pi_alerts_panel", account_id="demo")
+    foreign["origin"] = "Some Other Backend"
+    body = {
+        "messages": [{"role": "human", "content": "Explain"}],
+        "widgets": {"primary": [foreign, _selected("pi_news_ribbon", account_id="demo")]},
+    }
+    events = _sse(TestClient(app).post("/query", json=body).text)
+    calls = [data for name, data in events if name == "copilotFunctionCall"]
+    assert [s["id"] for s in calls[0]["input_arguments"]["data_sources"]] == [
+        "pi_news_ribbon"
+    ]
+
+
+def test_allowlist_is_exactly_the_read_only_action_like_widgets():
+    from openbb_portfolio.agent_capabilities import (  # pylint: disable=import-outside-toplevel
+        action_markers,
+    )
+    from openbb_portfolio_intel.widget_backend.agent_policy import (  # pylint: disable=import-outside-toplevel
+        AGENT_READ_ALLOWLIST,
+        MANIFEST,
+    )
+
+    widgets = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    action_like = {k for k, w in widgets.items() if action_markers(w)}
+    assert action_like == set(AGENT_READ_ALLOWLIST) | set(AGENT_DENIED_WIDGETS)
+
+
+def test_a_new_action_like_widget_is_denied_by_default(tmp_path):
+    """SECURITY-2: adding an action widget to the manifest never makes it readable."""
+    from openbb_portfolio_intel.widget_backend.agent_policy import (  # pylint: disable=import-outside-toplevel
+        MANIFEST,
+    )
+
+    widgets = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    widgets["tt_execute_submit"] = {
+        "name": "Submit Paper Batch",
+        "type": "markdown",
+        "endpoint": "tt/execute/submit",
+        "category": "Techtrade",
+        "params": [{"paramName": "confirm", "value": "false", "type": "text"}],
+    }
+    widgets["pi_paper_rebalance"] = {
+        "name": "Rebalance",
+        "type": "table",
+        "endpoint": "pi/paper/rebalance",
+        "category": "Portfolio Intelligence",
+    }
+    manifest = tmp_path / "widgets.json"
+    manifest.write_text(json.dumps(widgets), encoding="utf-8")
+    caps = build_agent_capabilities(manifest)
+    assert not caps["tt_execute_submit"].readable
+    assert not caps["pi_paper_rebalance"].readable
+    assert caps["pi_paper_blotter"].readable

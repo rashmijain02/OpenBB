@@ -117,3 +117,36 @@ POST /query (tool result) 200 ['copilotStatusUpdate', 'copilotMessageChunk']
 - `tt_scan_table` and `tt_segment_movers` bodies carry no data state (#1271 shape debt), so the
   agent reports `unknown` for them; the test records them shrink-only.
 - The 6902 portfolio backend's own widgets are not in any agent inventory (text-only there).
+
+## Round 2: review fixes (uncommitted on top of `5e0a86acb`)
+
+| Finding | Fix |
+|---|---|
+| PRIVACY-1 (MEDIUM) minimize | `sanitize` drops identifier fields (keys normalized to lowercase alphanumerics, starting with account / basket / owner / user / customer / client / holder / login / email / phone) and masks written-out ids (`account_id=…`, `**Account ID:** …`) before any context is built. No real widget column is affected (checked against the matrix `tableFields`). |
+| PRIVACY-1 (MEDIUM) disclose | `COPILOT_DESCRIPTION` and the README "Workspace agent" section say selected widget data is sent to the configured external model provider (GitHub Copilot by default); every data turn's status step ends with the same disclosure. |
+| SECURITY-1 (LOW) | Key matching on normalized keys (exact `key`/`sig`/`jwt`/`token`/…, suffixes `token`/`secret`/`apikey`/`accesskey`/`sessionid`/…, prefixes). Values: `Bearer`/`Basic` tokens (must contain a digit or symbol, so "Basic Materials" survives), JWTs, AWS `AKIA`/`ASIA` keys, `key=`/`access_key=`/`sig=`/`token=` and `token:`/`password:` values, `user:pass@` in URLs. |
+| SECURITY-2 (LOW) | Safe by default: `agent_capabilities.action_markers` flags non-GET `method`, `confirm`-like params, and execute / paper / backtest / order / trigger / … endpoint segments or category words. Flagged widgets are denied unless on `agent_policy.AGENT_READ_ALLOWLIST` (paper blotter, performance, KPIs, execute bridge, paper status). A stale or needless allowlist entry raises. Denied set on the real manifest is unchanged (`pi_paper_ticket`, `pi_backtest_button`). |
+| Code (a) origin | The inventory applies only to widgets whose Workspace `origin` (casefolded) is this backend: `portfolio-intel` (the README connector name) or `PI_AGENT_WIDGET_ORIGINS`. Other origins are refused in turn 1 and their data is dropped in turn 2. No origins registered means no widget reads. |
+| Code (b) context cap | Blocks are capped at 20,000 chars each; a block that would push the context past 24,000 is left out whole. The status step lists only included widgets plus "Omitted (context limit): …"; the model context names them too. |
+
+### Evidence (round 2)
+
+- **Red first** (`.dev-cycle/red2-gh-1272.log`): agent tests 40 failed, 16 passed (the new
+  `origins` argument plus the new behaviors); PI tests with the round-2 copilot but the old
+  policy and `main.py`: 8 failed, 4 passed.
+- **Mutation** (`.dev-cycle/mutation2-gh-1272.log`): 25 of 25 killed. Identifier fields kept,
+  identifier text not masked, disclosure dropped, camelCase not normalized, key suffixes ignored,
+  URL userinfo, JWT, AWS and Basic kept, Bearer and Basic over-redacting prose, action markers /
+  confirm / category / method ignored, stale allowlist accepted, origin check off (both turns),
+  origin case-sensitive, cap truncating instead of omitting, omitted not reported, allowlist
+  emptied, backend origin not registered, origins env ignored. Two needed fixes: the first
+  identifier-text mutant was faulty (re-run correctly, killed), and the prose test gained
+  "Basic Materials" / "Bearer instruments", which also found and fixed Bearer over-redaction.
+- **Tests:** portfolio tests 74 passed, 1 skipped; PI agent + mount 18 passed; MCP chart rows +
+  adapter 23 passed. Full PI unit: 2068 passed, 1 failed, 2 skipped; the failure is the wall-clock
+  test `test_pi_terminal_f12.py::test_provider_health_never_blocks_on_cold_cache` (1.58s against a
+  1s limit while parallel suites loaded the machine); that file alone: 19 passed.
+- **CI lint parity:** codespell, black, ruff clean; mypy `--no-site-packages` 0 issues; pylint has
+  only the local-only C0328 (CRLF checkout of the unchanged adapter file).
+- **Real path** (`.dev-cycle/realpath2-gh-1272.log`): as round 1, and the status step now ends
+  with the external-provider disclosure.

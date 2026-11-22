@@ -77,13 +77,23 @@ COPILOT_DESCRIPTION = (
     "Answers using your local GitHub Copilot proxy (copilot-api on :4141) "
     "instead of the OpenBB-hosted model. Reads the Portfolio Intelligence "
     "widgets you select, read-only, and says whether their data is live, "
-    "cached, demo or unavailable. It cannot place, approve or cancel orders, "
-    "paper trades or backtests, and it does not give investment advice."
+    "cached, demo or unavailable. The selected widget data (account and user "
+    "identifiers removed, credentials redacted) is sent to the configured "
+    "external model provider (GitHub Copilot by default) to answer. It cannot "
+    "place, approve or cancel orders, paper trades or backtests, and it does "
+    "not give investment advice."
+)
+DISCLOSURE = (
+    "Selected widget data (identifiers removed, credentials redacted) is sent "
+    "to the configured external model provider."
 )
 
 # ``app.state`` attribute a host backend sets to its widget inventory
 # (``dict[str, WidgetCapability]``). Without it the agent is text-only.
 CAPABILITIES_STATE = "agent_widget_capabilities"
+# ``app.state`` attribute with the casefolded Workspace ``origin`` names that
+# identify the host backend. Widgets from any other origin are refused.
+ORIGINS_STATE = "agent_widget_origins"
 
 # Workspace features ``/query`` implements. ``/agents.json`` never advertises
 # anything outside this set.
@@ -94,6 +104,7 @@ MAX_WIDGET_READS = 8
 MAX_ROWS_PER_WIDGET = 50
 MAX_CELL_CHARS = 300
 MAX_TEXT_CHARS = 6000
+MAX_WIDGET_CHARS = 20000
 MAX_CONTEXT_CHARS = 24000
 MAX_ANSWER_TOKENS = 1500
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -181,6 +192,12 @@ def _capabilities(app: Any) -> Mapping[str, WidgetCapability] | None:
     return caps if isinstance(caps, Mapping) else None
 
 
+def _origins(app: Any) -> frozenset[str]:
+    """Return the casefolded Workspace origins of the host app (none: no reads)."""
+    names = getattr(getattr(app, "state", None), ORIGINS_STATE, None) or ()
+    return frozenset(str(name).casefold() for name in names)
+
+
 @router.get("/agents.json", include_in_schema=False)
 async def agents_json(request: Request) -> JSONResponse:
     """Serve the agent descriptor.
@@ -196,21 +213,106 @@ async def agents_json(request: Request) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
-# Credential redaction
+# Credential redaction and identifier minimization
 # ---------------------------------------------------------------------------
-_SECRET_KEY_RE = re.compile(
-    r"(?i)(^|[_\-\s])(api[_\-]?key|apikey|access[_\-]?token|refresh[_\-]?token|"
-    r"token|secret|client[_\-]?secret|password|passwd|authorization|cookie|"
-    r"credentials?|bearer|private[_\-]?key)($|[_\-\s])"
+# Keys are compared lowercased with every non-alphanumeric removed, so
+# ``api_key``, ``apiKey``, ``x-api-key`` and ``API-KEY`` look alike.
+_SECRET_KEYS_EXACT = frozenset(
+    {
+        "auth",
+        "authorization",
+        "bearer",
+        "cookie",
+        "credential",
+        "credentials",
+        "jwt",
+        "key",
+        "passwd",
+        "password",
+        "pwd",
+        "secret",
+        "session",
+        "sig",
+        "signature",
+        "token",
+    }
 )
-_SECRET_VALUE_RES = (
-    (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=\-]+"), "Bearer [redacted]"),
+_SECRET_KEY_SUFFIXES = (
+    "accesskey",
+    "apikey",
+    "authorization",
+    "cookie",
+    "credential",
+    "credentials",
+    "jwt",
+    "passwd",
+    "password",
+    "privatekey",
+    "secret",
+    "secretkey",
+    "sessionid",
+    "sessiontoken",
+    "token",
+)
+_SECRET_KEY_PREFIXES = ("accesskey", "apikey", "password", "secretkey")
+
+# Account, basket, owner and user identifiers are not needed to explain the
+# data, so they never leave the backend.
+_IDENTIFIER_PREFIXES = (
+    "account",
+    "basket",
+    "client",
+    "customer",
+    "email",
+    "holder",
+    "login",
+    "owner",
+    "phone",
+    "user",
+)
+
+_SECRET_VALUE_RES: tuple[tuple[re.Pattern[str], str], ...] = (
+    # user:password@ inside a URL
+    (re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s:@]+:[^/\s@]+@"), r"\1[redacted]@"),
+    # ``Bearer <token>`` / ``Basic <base64>``; the token must hold a digit or
+    # symbol so prose ("Basic Materials", "bearer bonds") is untouched.
     (
         re.compile(
-            r"(?i)\b(api[_\-]?key|apikey|access[_\-]?token|token|secret|"
-            r"password|passwd)=([^&\s\"'#]+)"
+            r"(?i)\bbearer\s+(?=[A-Za-z0-9._~+/=\-]*[0-9=+/_.\-])"
+            r"[A-Za-z0-9._~+/=\-]{8,}"
+        ),
+        "Bearer [redacted]",
+    ),
+    (
+        re.compile(
+            r"\bBasic\s+(?=[A-Za-z0-9._~+/=\-]*[0-9=+/_.\-])[A-Za-z0-9._~+/=\-]{8,}"
+        ),
+        "Basic [redacted]",
+    ),
+    # JSON Web Tokens
+    (
+        re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]*"),
+        "[redacted]",
+    ),
+    # AWS access key ids
+    (re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"), "[redacted]"),
+    # name=value (query strings, config lines)
+    (
+        re.compile(
+            r"(?i)\b(api[_\-]?key|access[_\-]?key|secret[_\-]?key|access[_\-]?token|"
+            r"auth[_\-]?token|session[_\-]?id|token|secret|password|passwd|key|"
+            r"sig|signature|jwt)=([^&\s\"'#]+)"
         ),
         r"\1=[redacted]",
+    ),
+    # name: value
+    (
+        re.compile(
+            r"(?i)\b(api[_\-]?key|access[_\-]?key|secret[_\-]?key|access[_\-]?token|"
+            r"auth[_\-]?token|session[_\-]?id|token|secret|password|passwd|jwt)"
+            r"\s*:\s*(?!\[redacted\])[^\s,;\"']+"
+        ),
+        r"\1: [redacted]",
     ),
     (
         re.compile(
@@ -219,23 +321,55 @@ _SECRET_VALUE_RES = (
         ),
         "[redacted]",
     ),
+    # Identifiers written into text: ``account_id=…``, ``**Account ID:** …``
+    (
+        re.compile(
+            r"(?i)\b((?:account|basket|owner|user|customer|client)[ _\-]?"
+            r"(?:id|ids|number|no|name))\b\s*(?:\*\*)?\s*[:=]\s*(?:\*\*)?\s*"
+            r"[^\s,;&|*]+"
+        ),
+        r"\1: [redacted]",
+    ),
 )
 _REDACTED = "[redacted]"
 
 
+def _norm(key: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(key).lower())
+
+
+def _is_secret_key(key: Any) -> bool:
+    norm = _norm(key)
+    return (
+        norm in _SECRET_KEYS_EXACT
+        or norm.endswith(_SECRET_KEY_SUFFIXES)
+        or norm.startswith(_SECRET_KEY_PREFIXES)
+    )
+
+
+def _is_identifier_key(key: Any) -> bool:
+    return _norm(key).startswith(_IDENTIFIER_PREFIXES)
+
+
 def redact_text(text: str) -> str:
-    """Redact credential-looking substrings (bearer tokens, ``apikey=`` …)."""
+    """Redact credential-looking substrings and written-out account identifiers."""
     for pattern, replacement in _SECRET_VALUE_RES:
         text = pattern.sub(replacement, text)
     return text
 
 
 def sanitize(value: Any) -> Any:
-    """Return a copy of widget data with credential fields and values redacted."""
+    """Return a copy of widget data that is safe to send to the model.
+
+    Identifier fields (account, basket, owner, user, ...) are dropped,
+    credential fields are replaced by ``[redacted]``, and credential-looking
+    values inside strings are redacted.
+    """
     if isinstance(value, Mapping):
         return {
-            str(key): (_REDACTED if _SECRET_KEY_RE.search(str(key)) else sanitize(item))
+            str(key): (_REDACTED if _is_secret_key(key) else sanitize(item))
             for key, item in value.items()
+            if not _is_identifier_key(key)
         }
     if isinstance(value, list):
         return [sanitize(item) for item in value]
@@ -338,15 +472,30 @@ def _refusal(widget: Widget, cap: WidgetCapability | None) -> str:
     )
 
 
+def _from_this_backend(origin: Any, origins: frozenset[str]) -> bool:
+    return str(origin or "").casefold() in origins
+
+
 def plan_widget_reads(
     widgets: list[Widget],
     caps: Mapping[str, WidgetCapability],
+    origins: frozenset[str] = frozenset(),
 ) -> tuple[list[WidgetRequest], list[str]]:
-    """Return the bounded, read-only widget requests and the refusal notes."""
+    """Return the bounded, read-only widget requests and the refusal notes.
+
+    The inventory applies only to widgets whose Workspace ``origin`` is one of
+    ``origins`` (this backend); widgets from any other backend are refused.
+    """
     requests: list[WidgetRequest] = []
     notes: list[str] = []
     skipped = 0
     for widget in widgets:
+        if not _from_this_backend(widget.origin, origins):
+            notes.append(
+                f"I can't read {widget.name} (`{widget.widget_id}`): it comes "
+                f"from {widget.origin!r}, not from this backend."
+            )
+            continue
         cap = caps.get(widget.widget_id)
         if cap is None or not cap.readable:
             notes.append(_refusal(widget, cap))
@@ -417,16 +566,32 @@ def _render(payload: Any) -> str:
 def widget_context(
     message: LlmClientFunctionCallResultMessage,
     caps: Mapping[str, WidgetCapability],
-) -> tuple[str, list[str]]:
-    """Return the model context and per-widget provenance lines."""
+    origins: frozenset[str] = frozenset(),
+) -> tuple[str, list[str], list[str]]:
+    """Return the model context, provenance lines and omitted widget names.
+
+    Data for a widget outside the inventory or from another backend is
+    dropped. Each widget block is capped at ``MAX_WIDGET_CHARS``; a block
+    that would push the context past ``MAX_CONTEXT_CHARS`` is left out whole
+    and named in the omitted list, so the provenance lines describe exactly
+    the widgets the model sees.
+    """
     sources = message.input_arguments.get("data_sources") or []
     blocks: list[str] = []
     lines: list[str] = []
+    omitted: list[str] = []
+    size = 0
     for index, item in enumerate(message.data):
         source = sources[index] if index < len(sources) else {}
-        widget_id = str(source.get("id", "")) if isinstance(source, Mapping) else ""
+        if not isinstance(source, Mapping):
+            source = {}
+        widget_id = str(source.get("id", ""))
         cap = caps.get(widget_id)
-        if cap is None or not cap.readable:
+        if (
+            cap is None
+            or not cap.readable
+            or not _from_this_backend(source.get("origin"), origins)
+        ):
             logger.warning(
                 "copilot dropped data for a widget outside its read inventory: %r",
                 widget_id,
@@ -440,13 +605,21 @@ def widget_context(
             payload = sanitize(payload)
             provenance = extract_provenance(payload)
             body = _render(payload)
+        if len(body) > MAX_WIDGET_CHARS:
+            body = body[:MAX_WIDGET_CHARS] + "\n(widget data truncated)"
         line = _describe(cap.name, provenance)
+        block = f"### {line}\n{body}"
+        if size + len(block) > MAX_CONTEXT_CHARS:
+            omitted.append(cap.name)
+            continue
+        size += len(block) + 2
         lines.append(line)
-        blocks.append(f"### {line}\n{body}")
-    context = "\n\n".join(blocks)
-    if len(context) > MAX_CONTEXT_CHARS:
-        context = context[:MAX_CONTEXT_CHARS] + "\n(context truncated)"
-    return context, lines
+        blocks.append(block)
+    if omitted:
+        blocks.append(
+            "Omitted (context limit; not shown to you): " + ", ".join(omitted) + "."
+        )
+    return "\n\n".join(blocks), lines, omitted
 
 
 # ---------------------------------------------------------------------------
@@ -599,6 +772,7 @@ async def _sse_stream(
 async def _answer(
     request: QueryRequest,
     caps: Mapping[str, WidgetCapability] | None,
+    origins: frozenset[str] = frozenset(),
 ) -> AsyncGenerator[dict, None]:
     """Stream one ``/query`` turn.
 
@@ -609,7 +783,8 @@ async def _answer(
       ``get_widget_data`` call; Workspace calls back with the data).
     * Otherwise: a text-only answer.
 
-    ``request.api_keys`` and ``request.tools`` are never read.
+    ``request.api_keys`` and ``request.tools`` are never read. Widgets are
+    read only when their ``origin`` is in ``origins`` (this backend).
     """
     inventory: Mapping[str, WidgetCapability] = caps or {}
     messages = request.messages
@@ -620,12 +795,12 @@ async def _answer(
         isinstance(last, LlmClientFunctionCallResultMessage)
         and last.function == "get_widget_data"
     ):
-        context, lines = widget_context(last, inventory)
-        if lines:
-            yield reasoning_step("Data provenance - " + "; ".join(lines)).model_dump(
-                exclude_none=True
-            )
-        else:
+        context, lines, omitted = widget_context(last, inventory, origins)
+        step = "Data provenance - " + ("; ".join(lines) or "no readable widget data")
+        if omitted:
+            step += f". Omitted (context limit): {', '.join(omitted)}"
+        yield reasoning_step(f"{step}. {DISCLOSURE}").model_dump(exclude_none=True)
+        if not lines:
             context = "(no readable widget data was returned)"
     elif (
         last is not None
@@ -633,7 +808,9 @@ async def _answer(
         and request.widgets is not None
         and request.widgets.primary
     ):
-        reads, notes = plan_widget_reads(list(request.widgets.primary), inventory)
+        reads, notes = plan_widget_reads(
+            list(request.widgets.primary), inventory, origins
+        )
         if notes:
             yield message_chunk("\n".join(notes) + "\n\n").model_dump(exclude_none=True)
         if reads:
@@ -649,7 +826,11 @@ async def _answer(
 async def query(request: QueryRequest, http_request: Request) -> EventSourceResponse:
     """Stream an answer for the conversation via the local Copilot proxy."""
     return EventSourceResponse(
-        content=_answer(request, _capabilities(http_request.app)),
+        content=_answer(
+            request,
+            _capabilities(http_request.app),
+            _origins(http_request.app),
+        ),
         media_type="text/event-stream",
     )
 
@@ -662,6 +843,7 @@ __all__ = [
     "sanitize",
     "widget_context",
     "CAPABILITIES_STATE",
+    "ORIGINS_STATE",
     "COPILOT_ID",
     "COPILOT_NAME",
     "IMPLEMENTED_FEATURES",

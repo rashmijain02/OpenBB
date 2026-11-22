@@ -40,6 +40,9 @@ from openbb_portfolio.agent_capabilities import (
 )
 
 SENTINEL = "SENTINEL-CREDENTIAL-1272"
+ORIGIN = "Portfolio Intelligence"
+# Case-insensitive: Workspace shows the connector name as the user typed it.
+ORIGINS = frozenset({"portfolio intelligence"})
 
 MANIFEST: dict[str, dict[str, Any]] = {
     "demo_chart": {
@@ -75,10 +78,10 @@ def _caps() -> dict[str, WidgetCapability]:
     return capabilities_from_manifest(MANIFEST, DENIED)
 
 
-def _widget(widget_id: str, **params: Any) -> dict[str, Any]:
+def _widget(widget_id: str, _origin: str = ORIGIN, **params: Any) -> dict[str, Any]:
     return {
         "uuid": str(uuid4()),
-        "origin": "Portfolio Intelligence",
+        "origin": _origin,
         "widget_id": widget_id,
         "name": MANIFEST.get(widget_id, {}).get("name", widget_id),
         "description": "synthetic",
@@ -104,6 +107,7 @@ def _request(*widgets: dict[str, Any], text: str = "Summarize this") -> QueryReq
 def _tool_request(
     sources: list[tuple[str, dict[str, Any]]],
     payloads: list[Any],
+    origin: str = ORIGIN,
     **extra: Any,
 ) -> QueryRequest:
     """A follow-up request carrying Workspace's ``get_widget_data`` results."""
@@ -134,7 +138,7 @@ def _tool_request(
                         "data_sources": [
                             {
                                 "widget_uuid": str(uuid4()),
-                                "origin": "Portfolio Intelligence",
+                                "origin": origin,
                                 "id": widget_id,
                                 "input_args": args,
                             }
@@ -150,7 +154,7 @@ def _tool_request(
                     "data_sources": [
                         {
                             "widget_uuid": str(uuid4()),
-                            "origin": "Portfolio Intelligence",
+                            "origin": origin,
                             "id": widget_id,
                             "input_args": args,
                         }
@@ -253,7 +257,7 @@ def test_query_without_widgets_keeps_text_only_behaviour(monkeypatch):
     recorder = _Recorder(("hi",))
     monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
     req = QueryRequest(messages=[{"role": "human", "content": "hello"}])
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     assert [e["event"] for e in events] == ["copilotMessageChunk"]
     assert len(recorder.calls) == 1
 
@@ -267,7 +271,7 @@ def test_selected_widgets_become_one_get_widget_data_call(monkeypatch):
         _widget("demo_chart", symbol="AAPL"),
         _widget("demo_table", account_id="demo"),
     )
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     calls = _events(events, "copilotFunctionCall")
     assert len(calls) == 1
     assert calls[0]["function"] == "get_widget_data"
@@ -283,7 +287,7 @@ def test_every_chart_read_requests_raw_true(monkeypatch):
     caps = _caps()
     charts = [k for k, c in caps.items() if c.kind == "chart" and c.readable]
     req = _request(*(_widget(k, raw="false") for k in charts))
-    events = asyncio.run(_collect(copilot._answer(req, caps)))
+    events = asyncio.run(_collect(copilot._answer(req, caps, ORIGINS)))
     sources = _events(events, "copilotFunctionCall")[0]["input_arguments"][
         "data_sources"
     ]
@@ -297,7 +301,7 @@ def test_denied_widget_is_refused_and_never_requested(monkeypatch):
         _widget("demo_ticket", side="buy", quantity="100", confirm="true"),
         _widget("demo_table"),
     )
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     sources = _events(events, "copilotFunctionCall")[0]["input_arguments"][
         "data_sources"
     ]
@@ -310,7 +314,7 @@ def test_denied_widget_is_refused_and_never_requested(monkeypatch):
 def test_unknown_widget_is_refused(monkeypatch):
     _no_model(monkeypatch)
     req = _request(_widget("someone_elses_widget"), _widget("demo_table"))
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     sources = _events(events, "copilotFunctionCall")[0]["input_arguments"][
         "data_sources"
     ]
@@ -323,7 +327,7 @@ def test_only_denied_widgets_answer_with_refusal_and_model(monkeypatch):
     recorder = _Recorder(("I can only read data.",))
     monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
     req = _request(_widget("demo_ticket", confirm="true"), text="Buy 100 AAPL")
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     assert not _events(events, "copilotFunctionCall")
     text = "".join(c["delta"] for c in _events(events, "copilotMessageChunk"))
     assert "Demo Order Ticket" in text
@@ -335,7 +339,7 @@ def test_only_denied_widgets_answer_with_refusal_and_model(monkeypatch):
 def test_widget_reads_are_capped(monkeypatch):
     _no_model(monkeypatch)
     many = [_widget("demo_table", n=i) for i in range(copilot.MAX_WIDGET_READS + 3)]
-    events = asyncio.run(_collect(copilot._answer(_request(*many), _caps())))
+    events = asyncio.run(_collect(copilot._answer(_request(*many), _caps(), ORIGINS)))
     sources = _events(events, "copilotFunctionCall")[0]["input_arguments"][
         "data_sources"
     ]
@@ -353,7 +357,7 @@ def test_agent_never_emits_any_function_but_get_widget_data(monkeypatch):
         _widget("demo_chart"),
         _widget("demo_markdown"),
     )
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     functions = {c["function"] for c in _events(events, "copilotFunctionCall")}
     assert functions == {"get_widget_data"}
 
@@ -407,7 +411,7 @@ def test_provenance_reaches_user_and_model(monkeypatch):
             ],
         ],
     )
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
     assert "Demo Price Chart: demo" in steps
     assert "Demo Risk: cached" in steps
@@ -440,7 +444,7 @@ def test_unknown_provenance_is_said_out_loud(monkeypatch):
     recorder = _Recorder()
     monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
     req = _tool_request([("demo_table", {})], [[{"a": 1}]])
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
     assert "Demo Holdings: unknown" in steps
 
@@ -453,7 +457,7 @@ def test_rows_and_context_are_bounded(monkeypatch):
         for i in range(copilot.MAX_ROWS_PER_WIDGET * 4)
     ]
     req = _tool_request([("demo_table", {})], [rows])
-    asyncio.run(_collect(copilot._answer(req, _caps())))
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     context = "\n".join(m["content"] for m in recorder.calls[0])
     assert f'"i": {copilot.MAX_ROWS_PER_WIDGET - 1}' in context
     assert f'"i": {copilot.MAX_ROWS_PER_WIDGET},' not in context
@@ -468,7 +472,7 @@ def test_widget_error_is_reported_as_unavailable(monkeypatch):
         [("demo_table", {})],
         [{"error_type": "widget_error", "content": "HTTP 503 provider down"}],
     )
-    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
     assert "Demo Holdings: unavailable" in steps
     assert "HTTP 503 provider down" in json.dumps(recorder.calls[0])
@@ -482,7 +486,7 @@ def test_data_for_denied_widget_is_dropped(monkeypatch):
         [("demo_ticket", {"confirm": "true"})],
         ["## Paper Order - COMMITTED ticket-body-1272"],
     )
-    asyncio.run(_collect(copilot._answer(req, _caps())))
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     assert "ticket-body-1272" not in json.dumps(recorder.calls[0])
 
 
@@ -512,7 +516,7 @@ def test_credentials_never_reach_the_model(monkeypatch):
             }
         ],
     )
-    asyncio.run(_collect(copilot._answer(req, _caps())))
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     sent = json.dumps(recorder.calls[0])
     assert SENTINEL not in sent
     assert "AAPL" in sent and "Jane Analyst" in sent
@@ -525,7 +529,7 @@ def test_markdown_credentials_are_redacted(monkeypatch):
         [("demo_markdown", {})],
         [f"See https://x.test/?api_key={SENTINEL} with Bearer {SENTINEL}"],
     )
-    asyncio.run(_collect(copilot._answer(req, _caps())))
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
     assert SENTINEL not in json.dumps(recorder.calls[0])
 
 
@@ -588,3 +592,216 @@ def test_proxy_request_is_bounded(monkeypatch):
     assert seen["client"]["timeout"] == 7.0
     assert seen["client"]["max_retries"] == 0
     assert seen["max_tokens"] == copilot.MAX_ANSWER_TOKENS
+
+
+# ---------------------------------------------------------------------------
+# Review fixes (#1272 round 2): privacy, redaction, safe default, origin, cap
+# ---------------------------------------------------------------------------
+SYN_ACCOUNT = "ACCT-SYNTHETIC-1272"
+
+
+def test_identifier_columns_never_reach_the_model(monkeypatch):
+    """PRIVACY-1a: account, basket, owner and user identifiers are dropped."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    rows = [
+        {
+            "symbol": "AAPL",
+            "weight": 0.12,
+            "account_id": SYN_ACCOUNT,
+            "accountId": SYN_ACCOUNT,
+            "account_number": SYN_ACCOUNT,
+            "basket_id": SYN_ACCOUNT,
+            "owner_name": SYN_ACCOUNT,
+            "user_id": SYN_ACCOUNT,
+            "customerId": SYN_ACCOUNT,
+            "note": f"rebalanced account_id={SYN_ACCOUNT} today",
+            "data_state": "demo",
+        }
+    ]
+    req = _tool_request([("demo_table", {"account_id": SYN_ACCOUNT})], [rows])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sent = json.dumps(recorder.calls[0])
+    assert SYN_ACCOUNT not in sent
+    assert "AAPL" in sent and "0.12" in sent
+
+
+def test_markdown_identifiers_are_masked(monkeypatch):
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    text = f"## Book\n\n- **Account ID:** {SYN_ACCOUNT}\n- basket_id: {SYN_ACCOUNT}\n"
+    req = _tool_request([("demo_markdown", {})], [text])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    assert SYN_ACCOUNT not in json.dumps(recorder.calls[0])
+
+
+def test_external_model_provider_is_disclosed(monkeypatch):
+    """PRIVACY-1b: description and the in-session step say where data goes."""
+    assert "sent to" in copilot.COPILOT_DESCRIPTION
+    assert "model provider" in copilot.COPILOT_DESCRIPTION
+    monkeypatch.setattr(copilot, "_proxy_deltas", _Recorder())
+    req = _tool_request([("demo_table", {})], [_ROWS])
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
+    assert "model provider" in steps
+
+
+_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.c3ludGhldGljLXNpZw"
+_AWS = "AKIA" + "SYNTHETIC1272ABC"
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        {"authToken": SENTINEL},
+        {"sessionId": SENTINEL},
+        {"jwt": SENTINEL},
+        {"apiKey": SENTINEL},
+        {"accessKey": SENTINEL},
+        {"x-api-key": SENTINEL},
+        {"client_secret": SENTINEL},
+        {"note": f"https://x.test/a?key={SENTINEL}"},
+        {"note": f"https://x.test/a?access_key={SENTINEL}&b=1"},
+        {"note": f"https://x.test/a?sig={SENTINEL}"},
+        {"note": f"Authorization: Basic {SENTINEL}"},
+        {"note": f"token: {SENTINEL}"},
+        {"note": f"password : {SENTINEL}"},
+        {"note": f"https://user:{SENTINEL}@db.example.test/x"},
+        {"note": f"jwt {_JWT}"},
+        {"note": f"aws {_AWS}"},
+    ],
+)
+def test_broad_credential_redaction(monkeypatch, row):
+    """SECURITY-1: camelCase/joined keys and common secret value shapes."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    req = _tool_request([("demo_table", {})], [[{"symbol": "AAPL", **row}]])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sent = json.dumps(recorder.calls[0])
+    for secret in (SENTINEL, _JWT, _AWS):
+        assert secret not in sent
+    assert "AAPL" in sent
+
+
+def test_ordinary_columns_survive_redaction():
+    row = {
+        "signal": "BUY",
+        "as_of_session": "2026-07-01",
+        "author": "Jane Analyst",
+        "monkey": "ok",
+        "key_stat": "pe",
+        "data_source": "stub",
+        "description": "Data state: Demo",
+        "sector": "Basic Materials",
+        "summary": "Basic Materials led; Bearer instruments were flat",
+    }
+    assert copilot.sanitize(row) == row
+
+
+def test_action_like_widgets_are_denied_by_default():
+    """SECURITY-2: a new action-like widget is denied unless allowlisted."""
+    manifest = {
+        **MANIFEST,
+        "demo_paper_rebalance": {
+            "name": "Rebalance",
+            "type": "markdown",
+            "endpoint": "pi/paper/rebalance",
+        },
+        "demo_confirm": {
+            "name": "Confirm",
+            "type": "markdown",
+            "endpoint": "pi/demo/do",
+            "params": [{"paramName": "confirm", "value": "false"}],
+        },
+        "demo_execute": {"name": "Exec", "type": "table", "endpoint": "tt/execute/submit"},
+        "demo_post": {
+            "name": "Post",
+            "type": "table",
+            "endpoint": "pi/demo/post",
+            "method": "POST",
+        },
+        "demo_backtest": {
+            "name": "BT",
+            "type": "markdown",
+            "endpoint": "pi/demo/run",
+            "category": "Backtest",
+        },
+    }
+    caps = capabilities_from_manifest(manifest, DENIED)
+    action_like = (
+        "demo_paper_rebalance",
+        "demo_confirm",
+        "demo_execute",
+        "demo_post",
+        "demo_backtest",
+    )
+    for widget_id in action_like:
+        assert not caps[widget_id].readable, widget_id
+        assert "allowlist" in (caps[widget_id].denied_reason or ""), widget_id
+    assert caps["demo_table"].readable
+    allowed = capabilities_from_manifest(
+        manifest, DENIED, allow={"demo_paper_rebalance"}
+    )
+    assert allowed["demo_paper_rebalance"].readable
+
+
+def test_allowlist_must_name_an_action_like_manifest_widget():
+    with pytest.raises(ValueError, match="demo_table"):
+        capabilities_from_manifest(MANIFEST, DENIED, allow={"demo_table"})
+    with pytest.raises(ValueError, match="ghost"):
+        capabilities_from_manifest(MANIFEST, DENIED, allow={"ghost"})
+
+
+def test_widgets_from_another_backend_are_refused(monkeypatch):
+    """Code note (a): the inventory applies only to this backend's origin."""
+    _no_model(monkeypatch)
+    req = _request(
+        _widget("demo_table", _origin="Another Backend"),
+        _widget("demo_chart", _origin="PORTFOLIO INTELLIGENCE", symbol="AAPL"),
+    )
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sources = _events(events, "copilotFunctionCall")[0]["input_arguments"][
+        "data_sources"
+    ]
+    assert [s["id"] for s in sources] == ["demo_chart"]
+    text = "".join(c["delta"] for c in _events(events, "copilotMessageChunk"))
+    assert "Another Backend" in text
+
+
+def test_no_origins_means_no_widget_reads(monkeypatch):
+    monkeypatch.setattr(copilot, "_proxy_deltas", _Recorder())
+    req = _request(_widget("demo_table"))
+    events = asyncio.run(_collect(copilot._answer(req, _caps())))
+    assert not _events(events, "copilotFunctionCall")
+
+
+def test_data_from_another_backend_is_dropped(monkeypatch):
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    req = _tool_request(
+        [("demo_table", {})],
+        [[{"x": "foreign-body-1272", "data_state": "demo"}]],
+        origin="Another Backend",
+    )
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    assert "foreign-body-1272" not in json.dumps(recorder.calls[0])
+
+
+def test_context_cap_reports_only_included_widgets(monkeypatch):
+    """Code note (b): widgets cut by the context cap are named as omitted."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    big = [{"i": i, "n": "y" * 280, "data_state": "demo"} for i in range(50)]
+    req = _tool_request(
+        [("demo_table", {}), ("demo_chart", {"raw": True}), ("demo_metric", {})],
+        [big, big, [{"label": "Data State", "value": "Cached: x"}]],
+    )
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
+    assert "Demo Holdings: demo" in steps
+    assert "Demo Risk: cached" in steps
+    assert "Demo Price Chart: demo" not in steps
+    assert "omitted" in steps.lower() and "Demo Price Chart" in steps
+    context = "\n".join(m["content"] for m in recorder.calls[0])
+    assert len(context) < copilot.MAX_CONTEXT_CHARS + 4000
+    assert "Demo Price Chart" in context and "omitted" in context.lower()
