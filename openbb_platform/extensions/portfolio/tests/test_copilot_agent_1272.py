@@ -24,6 +24,7 @@ import ast
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
@@ -805,3 +806,228 @@ def test_context_cap_reports_only_included_widgets(monkeypatch):
     context = "\n".join(m["content"] for m in recorder.calls[0])
     assert len(context) < copilot.MAX_CONTEXT_CHARS + 4000
     assert "Demo Price Chart" in context and "omitted" in context.lower()
+
+
+# ---------------------------------------------------------------------------
+# Review fixes (#1272 round 3)
+# ---------------------------------------------------------------------------
+SYN_ID = "IDENT-SYNTHETIC-1273X"
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "acct_id",
+        "primary_account_id",
+        "pm_user",
+        "portfolio_id",
+        "accountID",
+        "AcctNo",
+        "primaryaccountid",
+        "userName",
+        "basketRef",
+        "household_id",
+        "CUSTOMER_NUMBER",
+        "owner",
+        "client",
+    ],
+)
+def test_identifier_keys_by_token_are_dropped(monkeypatch, key):
+    """PRIVACY-1a: identifier keys at any position and case are dropped."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    rows = [{"symbol": "AAPL", key: SYN_ID, "meta": {"inner": {key: SYN_ID}}}]
+    req = _tool_request([("demo_table", {})], [rows])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sent = json.dumps(recorder.calls[0])
+    assert SYN_ID not in sent
+    assert "AAPL" in sent
+
+
+def test_non_identifier_columns_are_kept():
+    row = {
+        "ownership_pct": 1.5,
+        "portfolio_value": 10.0,
+        "portfolio_weight": 0.2,
+        "holder": "Example Fund LP",
+        "accrued": 1,
+        "users_note": None,
+    }
+    kept = copilot.sanitize(row)
+    for key in ("ownership_pct", "portfolio_value", "portfolio_weight", "holder", "accrued"):
+        assert key in kept, key
+
+
+def test_markdown_table_identifier_columns_are_masked(monkeypatch):
+    """PRIVACY-1b: a header cell matching the identifier rule masks its column."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    text = (
+        "## Holdings\n\n"
+        "| Symbol | Acct ID | Weight | Portfolio Id |\n"
+        "|:---|---|---:|---|\n"
+        f"| AAPL | {SYN_ID} | 0.25 | {SYN_ID}-P |\n"
+        f"| MSFT | {SYN_ID}2 | 0.75 | {SYN_ID}-Q |\n\n"
+        "| Note |\n|---|\n| keep-me-1273 |\n"
+    )
+    req = _tool_request([("demo_markdown", {})], [text])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sent = json.dumps(recorder.calls[0])
+    assert SYN_ID not in sent
+    for kept in ("AAPL", "MSFT", "0.25", "0.75", "keep-me-1273", "Acct ID"):
+        assert kept in sent, kept
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"columns": ["symbol", "account_id"], "data": [["AAPL", SYN_ID]]},
+        {"columns": [{"field": "portfolio_id"}, {"field": "symbol"}], "rows": [[SYN_ID, "AAPL"]]},
+        {"columns": [{"name": "pm_user"}, {"headerName": "symbol"}], "values": [[SYN_ID, "AAPL"]]},
+        {"index": [0], "columns": ["AcctNo", "symbol"], "data": [[SYN_ID, "AAPL"]]},
+        [["acct_id", "symbol"], [SYN_ID, "AAPL"]],
+    ],
+)
+def test_column_oriented_identifier_columns_are_dropped(monkeypatch, payload):
+    """PRIVACY-1b: column/row-oriented payloads lose identifier columns."""
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    req = _tool_request([("demo_table", {})], [payload])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    sent = json.dumps(recorder.calls[0])
+    assert SYN_ID not in sent
+    assert "AAPL" in sent
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "a-" * 100_000 + "://",
+        "x://" + "a" * 200_000,
+        "account id" + " " * 200_000 + "x",
+        "**Account ID" + " " * 100_000 + "**" + " " * 100_000 + "x",
+        "token" + " " * 200_000 + "x",
+        "bearer " + "a" * 200_000,
+        "| account | x |\n" * 20_000,
+    ],
+)
+def test_redaction_is_linear_on_adversarial_input(text):
+    """ReDoS: large adversarial strings are redacted well inside a second."""
+    start = time.perf_counter()
+    copilot.redact_text(text)
+    assert time.perf_counter() - start < 1.0
+
+
+def test_oversized_widget_payload_is_refused_before_sanitize(monkeypatch):
+    recorder = _Recorder()
+    monkeypatch.setattr(copilot, "_proxy_deltas", recorder)
+    calls = {"n": 0}
+    real = copilot.sanitize
+
+    def counting(value):
+        calls["n"] += 1
+        return real(value)
+
+    monkeypatch.setattr(copilot, "sanitize", counting)
+    huge = "z" * (copilot.MAX_PAYLOAD_CHARS + 1)
+    req = _tool_request([("demo_markdown", {})], [huge])
+    events = asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    steps = " ".join(s["message"] for s in _events(events, "copilotStatusUpdate"))
+    assert "Demo Notes: unavailable" in steps
+    assert calls["n"] == 0
+    assert huge[:1000] not in json.dumps(recorder.calls[0])
+
+
+def test_rows_are_limited_before_sanitize(monkeypatch):
+    seen: list[int] = []
+    real = copilot.sanitize
+
+    def spy(value):
+        if isinstance(value, list):
+            seen.append(len(value))
+        return real(value)
+
+    monkeypatch.setattr(copilot, "sanitize", spy)
+    monkeypatch.setattr(copilot, "_proxy_deltas", _Recorder())
+    rows = [{"i": i, "data_state": "demo"} for i in range(5000)]
+    req = _tool_request([("demo_table", {})], [rows])
+    asyncio.run(_collect(copilot._answer(req, _caps(), ORIGINS)))
+    assert seen and max(seen) <= copilot.MAX_ROWS_PER_WIDGET
+
+
+def test_query_body_size_is_capped(monkeypatch):
+    monkeypatch.setattr(copilot, "MAX_REQUEST_BYTES", 2000)
+    _no_model(monkeypatch)
+    client = TestClient(_app(_caps()))
+    body = {"messages": [{"role": "human", "content": "x" * 5000}]}
+    assert client.post("/query", json=body).status_code == 413
+    small = {"messages": [{"role": "human", "content": "hi"}], "widgets": {"primary": []}}
+    monkeypatch.setattr(copilot, "_proxy_deltas", _Recorder(("ok",)))
+    assert client.post("/query", json=small).status_code == 200
+    assert client.post("/query", content=b"{not json").status_code == 422
+
+
+@pytest.mark.parametrize(
+    "widget",
+    [
+        {"name": "A", "type": "table", "endpoint": "pi/demo/place-order"},
+        {"name": "B", "type": "table", "endpoint": "pi/demo/x", "category": "Paper-Trading"},
+        {
+            "name": "C",
+            "type": "table",
+            "endpoint": "pi/demo/y",
+            "params": [{"paramName": "confirmed", "value": "false"}],
+        },
+        {
+            "name": "D",
+            "type": "table",
+            "endpoint": "pi/demo/z",
+            "params": [{"paramName": "confirm_order", "value": "false"}],
+        },
+    ],
+)
+def test_action_classification_splits_hyphens_and_confirm_prefixes(widget):
+    caps = capabilities_from_manifest({**MANIFEST, "demo_new": widget}, DENIED)
+    assert not caps["demo_new"].readable
+
+
+def test_lowercase_basic_token_is_redacted():
+    assert SENTINEL not in copilot.redact_text(f"authorization: basic {SENTINEL}")
+
+
+def test_qualified_identifier_keys_are_dropped():
+    """``portfolio``/``book``/``member`` count only next to an id-like token."""
+    kept = copilot.sanitize(
+        {"book_id": SYN_ID, "id_portfolio": SYN_ID, "member-no": SYN_ID, "book": "x"}
+    )
+    assert kept == {"book": "x"}
+
+
+def test_chunked_query_body_is_capped(monkeypatch):
+    """A body without Content-Length is still cut off at the stream cap."""
+    monkeypatch.setattr(copilot, "MAX_REQUEST_BYTES", 2000)
+    _no_model(monkeypatch)
+    client = TestClient(_app(_caps()))
+
+    def chunks():
+        yield b'{"messages": [{"role": "human", "content": "'
+        yield b"x" * 3000
+        yield b'"}]}'
+
+    assert client.post("/query", content=chunks()).status_code == 413
+
+
+def test_declared_oversize_body_is_refused_without_reading(monkeypatch):
+    monkeypatch.setattr(copilot, "MAX_REQUEST_BYTES", 2000)
+    from starlette.requests import Request  # pylint: disable=import-outside-toplevel
+
+    async def receive():
+        raise AssertionError("the body must not be read")
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/query",
+        "headers": [(b"content-length", b"999999999")],
+    }
+    assert asyncio.run(copilot._read_body(Request(scope, receive))) is None

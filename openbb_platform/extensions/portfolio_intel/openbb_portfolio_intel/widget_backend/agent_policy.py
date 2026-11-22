@@ -46,6 +46,7 @@ AGENT_READ_ALLOWLIST: frozenset[str] = frozenset(
         "pi_paper_perf_kpis",  # paper KPI cards
         "tt_execute_bridge",  # describes the execution gates; submits nothing
         "tt_execute_paper_status",  # paper engine snapshot
+        "tt_order_legs",  # planned order legs of a TechTrade plan; places nothing
     }
 )
 

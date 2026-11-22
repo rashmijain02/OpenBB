@@ -46,6 +46,7 @@ ACTION_WORDS = frozenset(
 )
 ACTION_PARAMS = frozenset({"confirm", "confirmation", "execute", "commit", "dry_run"})
 _WORD_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+_SPLIT_RE = re.compile(r"[/_\-]")
 
 
 @dataclass(frozen=True)
@@ -88,14 +89,19 @@ def action_markers(widget: Mapping[str, Any]) -> list[str]:
         for param in widget.get("params") or []
         if isinstance(param, Mapping)
     }
-    markers += [f"parameter {name}" for name in sorted(params & ACTION_PARAMS)]
+    actions = {
+        name for name in params if name in ACTION_PARAMS or name.startswith("confirm")
+    }
+    markers += [f"parameter {name}" for name in sorted(actions)]
     endpoint = str(widget.get("endpoint") or "").lower()
-    segments = set(re.split(r"[/_]", endpoint)) | {endpoint.rsplit("/", 1)[-1]}
+    segments = set(endpoint.split("/"))
+    segments |= set(_SPLIT_RE.split(endpoint))
     markers += [f"endpoint {word}" for word in sorted(segments & ACTION_WORDS)]
     category = " ".join(
         str(widget.get(key) or "") for key in ("category", "subCategory")
     ).lower()
     words = set(_WORD_RE.findall(category))
+    words |= {part for word in words for part in word.split("-")}
     markers += [f"category {word}" for word in sorted(words & ACTION_WORDS)]
     return markers
 

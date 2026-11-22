@@ -220,7 +220,7 @@ selected widgets do leave this machine. Do not select widgets whose data you do 
 - **Denied.** Safe by default: any widget that looks like an action (a `confirm` parameter, an
   execute / paper / backtest / order endpoint or category, a non-GET method) is denied unless it
   is on `agent_policy.AGENT_READ_ALLOWLIST` (the read-only paper blotter, performance and KPIs,
-  execute bridge and paper status). `pi_paper_ticket` (places paper orders) and
+  execute bridge, paper status and TechTrade order legs). `pi_paper_ticket` (places paper orders) and
   `pi_backtest_button` (queues a job) are refused and never requested; widgets outside the
   inventory are refused too. Paper and
   execution actions stay separately authorized in the widget itself. The MCP exposure policy
@@ -233,6 +233,12 @@ selected widgets do leave this machine. Do not select widgets whose data you do 
 - **Credentials and identifiers.** The request's `api_keys` and tool tokens are never sent to
   the model. Credential-like fields (`apiKey`, `authToken`, `sessionId`, ...) and values
   (bearer/basic tokens, JWTs, AWS keys, `key=`/`sig=`/`token:` values, `user:pass@` in URLs)
-  are redacted, and identifier fields are dropped.
+  are redacted. Identifier fields (account / acct, basket, owner, user, customer, client,
+  `portfolio_id` and similar, matched by name token at any depth) are dropped, and so are
+  identifier columns in column-oriented payloads and in Markdown tables. Redaction uses only
+  linear-time patterns.
+- **Size caps.** `/query` bodies over 8 MB get HTTP 413, and any widget payload over 1,000,000
+  characters is reported unavailable without being parsed. Rows, nested lists and strings are cut
+  to their limits before redaction runs.
 - **MCP.** The MCP adapter forces `raw=true` on the cloned chart tools, so MCP clients also get
   rows with the provenance columns.

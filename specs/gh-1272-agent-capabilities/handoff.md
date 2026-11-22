@@ -150,3 +150,50 @@ POST /query (tool result) 200 ['copilotStatusUpdate', 'copilotMessageChunk']
   only the local-only C0328 (CRLF checkout of the unchanged adapter file).
 - **Real path** (`.dev-cycle/realpath2-gh-1272.log`): as round 1, and the status step now ends
   with the external-provider disclosure.
+
+## Round 3: privacy bypasses, ReDoS, size caps (uncommitted on top of `e6c01eb0c`)
+
+| Item | Fix |
+|---|---|
+| PRIVACY-1a identifier keys | New `openbb_portfolio/agent_privacy.py` (split out of `copilot.py`, which had passed pylint's 1000-line limit). Keys are split into camelCase/snake/kebab tokens: an identifier if any token is account/acct/basket/owner/user/username/customer/client/login/email/phone/ssn (at any position: `pm_user`, `primary_account_id`), if portfolio/book/household/member/person sits next to an id-like token (`portfolio_id`, `book_id`, `id_portfolio`), or if the joined key contains a word+id compound (`primaryaccountid`, `AcctNo`). Applies at any depth. `ownership_pct`, `portfolio_value` and `holder` (institution names) are kept; no real matrix column matches. |
+| PRIVACY-1b tables and columns | Markdown tables: a header cell matching the identifier rule masks that column's cells (line-by-line parse, no regex). Column-oriented payloads (`{"columns": [...], "data"/"rows"/"values": [[...]]}`, with column names as strings or `field`/`name`/`headerName` objects) and header-first lists of lists lose identifier columns. |
+| ReDoS | All value patterns are bounded: the URL userinfo pattern uses `{0,31}`/`{1,256}`; identifier and `name: value` whitespace uses `[ \t]{0,4..8}`; the bearer/basic lookahead is `{0,512}`. Measured: `"a-"*100k` 91.9s before, 0.09s after; 200k-space identifier and token runs 0.03s. |
+| Size caps before sanitize | `/query` reads the body itself: a declared `Content-Length` over `MAX_REQUEST_BYTES` (8 MB) is refused without reading, and a chunked body is cut off at the cap, both with HTTP 413; an invalid body gets 422. A widget payload over `MAX_PAYLOAD_CHARS` (1,000,000) is reported unavailable without parsing. Rows (50), nested lists (200), cells (300 + 512 margin) and text (6000 + 512 margin) are cut before redaction runs. |
+| Item 4 | Endpoint and category words are also split on `-`; `confirm*` params (`confirmed`, `confirm_order`) are action-like; `basic <token>` is matched case-insensitively. `tt_order_legs` (`tt/position/order-legs`, a read-only GET of planned legs) now matches `order`, so it was added to `AGENT_READ_ALLOWLIST`; the denied set is unchanged. |
+
+### `/query` auth (finding for the lead; not changed)
+
+- Pre-existing: on base `b886835ce`, `openbb_portfolio/copilot.py` has no auth on `/agents.json` or
+  `/query` (it has been that way since #1794). The widget backend's `require_auth` (bearer token
+  unless `PI_WIDGET_BACKEND_AUTH_MODE=loopback-dev`) covers `/pi/*` only.
+- Workspace (`terminalpro/.../useGetCopilotRequestHeaders.tsx`, `AddCopilotDialog.tsx`): for a
+  custom agent it sends only `Content-Type`, `X-Trace-Id` and the user-configured headers or query
+  parameters from the "add agent" dialog (key/value, location `headers` or `query`). It does not
+  attach its own bearer token (that goes only to the built-in OpenBB copilot). So the agent can be
+  protected by asking users to configure `Authorization: Bearer <PI_WIDGET_BACKEND_TOKEN>` in that
+  dialog.
+- Not changed: the Local Viewer chat (`index.html`) sends no `Authorization` header, so requiring
+  the bearer on `/query` in `required` mode would break viewer chat. That is not backward-compatible.
+  The exposure is limited: `/query` has no backend data access (widget data comes from the
+  caller), but an unauthenticated caller can spend the model proxy's quota. The backend binds to
+  loopback by default.
+- Option for the lead: call `require_auth` from `/agents.json` and `/query` through an
+  `app.state` hook (no-op in `loopback-dev`), and make the viewer send the token, for example as a
+  follow-up with #1273.
+
+### Evidence (round 3)
+
+- **Red first** (`.dev-cycle/red3-gh-1272.log`): 22 failed, 62 passed (ReDoS cases excluded from
+  that run); ReDoS before the fix: `"a-"*100k` took 91.88s in `redact_text`.
+- **Mutation** (`.dev-cycle/mutation3-gh-1272.log`): 18 of 18 killed. The qualified-id, body-cap
+  and declared-length mutants survived at first because overlapping guards masked them; new tests
+  (`book_id`/`id_portfolio`, chunked body, declared oversize length without reading) kill them.
+- **Tests:** portfolio tests + PI agent and mount 130 passed, 1 skipped; MCP chart rows +
+  adapter 23 passed. Full PI unit: 2146 passed, 1 failed, 2 skipped; the failure is again the
+  wall-clock `test_pi_terminal_f12.py::test_provider_health_never_blocks_on_cold_cache` (1.56s against
+  1s on a shared machine), which passed 3 of 3 when rerun alone.
+- **CI lint parity** (6 changed non-test files including `agent_privacy.py`): codespell, black and
+  ruff clean; mypy `--no-site-packages` and `--platform linux` 0 issues; pylint clean apart from
+  local-only C0328.
+- **Real path** (`.dev-cycle/realpath3-gh-1272.log`): same flow as before, with body parsing
+  through the size-capped reader.

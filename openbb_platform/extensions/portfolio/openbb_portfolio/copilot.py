@@ -50,7 +50,7 @@ from typing import Any
 
 import openai
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from openbb_ai import get_widget_data, message_chunk, reasoning_step
 from openbb_ai.models import (
     ClientFunctionCallError,
@@ -60,9 +60,11 @@ from openbb_ai.models import (
     Widget,
     WidgetRequest,
 )
+from pydantic import ValidationError
 from sse_starlette.sse import EventSourceResponse
 
 from openbb_portfolio.agent_capabilities import WidgetCapability
+from openbb_portfolio.agent_privacy import redact_text, sanitize
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +107,12 @@ MAX_ROWS_PER_WIDGET = 50
 MAX_CELL_CHARS = 300
 MAX_TEXT_CHARS = 6000
 MAX_WIDGET_CHARS = 20000
+# Size caps applied before any parsing or sanitizing.
+MAX_REQUEST_BYTES = 8_000_000
+MAX_PAYLOAD_CHARS = 1_000_000
+MAX_NESTED_ITEMS = 200
+# Extra characters kept before redaction so a cut never splits a secret.
+REDACTION_MARGIN = 512
 MAX_CONTEXT_CHARS = 24000
 MAX_ANSWER_TOKENS = 1500
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -210,172 +218,6 @@ async def agents_json(request: Request) -> JSONResponse:
     caps = _capabilities(request.app) or {}
     widget_access = any(cap.readable for cap in caps.values())
     return JSONResponse(content=agents_descriptor(f"{base}/query", widget_access))
-
-
-# ---------------------------------------------------------------------------
-# Credential redaction and identifier minimization
-# ---------------------------------------------------------------------------
-# Keys are compared lowercased with every non-alphanumeric removed, so
-# ``api_key``, ``apiKey``, ``x-api-key`` and ``API-KEY`` look alike.
-_SECRET_KEYS_EXACT = frozenset(
-    {
-        "auth",
-        "authorization",
-        "bearer",
-        "cookie",
-        "credential",
-        "credentials",
-        "jwt",
-        "key",
-        "passwd",
-        "password",
-        "pwd",
-        "secret",
-        "session",
-        "sig",
-        "signature",
-        "token",
-    }
-)
-_SECRET_KEY_SUFFIXES = (
-    "accesskey",
-    "apikey",
-    "authorization",
-    "cookie",
-    "credential",
-    "credentials",
-    "jwt",
-    "passwd",
-    "password",
-    "privatekey",
-    "secret",
-    "secretkey",
-    "sessionid",
-    "sessiontoken",
-    "token",
-)
-_SECRET_KEY_PREFIXES = ("accesskey", "apikey", "password", "secretkey")
-
-# Account, basket, owner and user identifiers are not needed to explain the
-# data, so they never leave the backend.
-_IDENTIFIER_PREFIXES = (
-    "account",
-    "basket",
-    "client",
-    "customer",
-    "email",
-    "holder",
-    "login",
-    "owner",
-    "phone",
-    "user",
-)
-
-_SECRET_VALUE_RES: tuple[tuple[re.Pattern[str], str], ...] = (
-    # user:password@ inside a URL
-    (re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s:@]+:[^/\s@]+@"), r"\1[redacted]@"),
-    # ``Bearer <token>`` / ``Basic <base64>``; the token must hold a digit or
-    # symbol so prose ("Basic Materials", "bearer bonds") is untouched.
-    (
-        re.compile(
-            r"(?i)\bbearer\s+(?=[A-Za-z0-9._~+/=\-]*[0-9=+/_.\-])"
-            r"[A-Za-z0-9._~+/=\-]{8,}"
-        ),
-        "Bearer [redacted]",
-    ),
-    (
-        re.compile(
-            r"\bBasic\s+(?=[A-Za-z0-9._~+/=\-]*[0-9=+/_.\-])[A-Za-z0-9._~+/=\-]{8,}"
-        ),
-        "Basic [redacted]",
-    ),
-    # JSON Web Tokens
-    (
-        re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]*"),
-        "[redacted]",
-    ),
-    # AWS access key ids
-    (re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"), "[redacted]"),
-    # name=value (query strings, config lines)
-    (
-        re.compile(
-            r"(?i)\b(api[_\-]?key|access[_\-]?key|secret[_\-]?key|access[_\-]?token|"
-            r"auth[_\-]?token|session[_\-]?id|token|secret|password|passwd|key|"
-            r"sig|signature|jwt)=([^&\s\"'#]+)"
-        ),
-        r"\1=[redacted]",
-    ),
-    # name: value
-    (
-        re.compile(
-            r"(?i)\b(api[_\-]?key|access[_\-]?key|secret[_\-]?key|access[_\-]?token|"
-            r"auth[_\-]?token|session[_\-]?id|token|secret|password|passwd|jwt)"
-            r"\s*:\s*(?!\[redacted\])[^\s,;\"']+"
-        ),
-        r"\1: [redacted]",
-    ),
-    (
-        re.compile(
-            r"\b(sk-[A-Za-z0-9_\-]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|"
-            r"github_pat_[A-Za-z0-9_]{8,})"
-        ),
-        "[redacted]",
-    ),
-    # Identifiers written into text: ``account_id=…``, ``**Account ID:** …``
-    (
-        re.compile(
-            r"(?i)\b((?:account|basket|owner|user|customer|client)[ _\-]?"
-            r"(?:id|ids|number|no|name))\b\s*(?:\*\*)?\s*[:=]\s*(?:\*\*)?\s*"
-            r"[^\s,;&|*]+"
-        ),
-        r"\1: [redacted]",
-    ),
-)
-_REDACTED = "[redacted]"
-
-
-def _norm(key: Any) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(key).lower())
-
-
-def _is_secret_key(key: Any) -> bool:
-    norm = _norm(key)
-    return (
-        norm in _SECRET_KEYS_EXACT
-        or norm.endswith(_SECRET_KEY_SUFFIXES)
-        or norm.startswith(_SECRET_KEY_PREFIXES)
-    )
-
-
-def _is_identifier_key(key: Any) -> bool:
-    return _norm(key).startswith(_IDENTIFIER_PREFIXES)
-
-
-def redact_text(text: str) -> str:
-    """Redact credential-looking substrings and written-out account identifiers."""
-    for pattern, replacement in _SECRET_VALUE_RES:
-        text = pattern.sub(replacement, text)
-    return text
-
-
-def sanitize(value: Any) -> Any:
-    """Return a copy of widget data that is safe to send to the model.
-
-    Identifier fields (account, basket, owner, user, ...) are dropped,
-    credential fields are replaced by ``[redacted]``, and credential-looking
-    values inside strings are redacted.
-    """
-    if isinstance(value, Mapping):
-        return {
-            str(key): (_REDACTED if _is_secret_key(key) else sanitize(item))
-            for key, item in value.items()
-            if not _is_identifier_key(key)
-        }
-    if isinstance(value, list):
-        return [sanitize(item) for item in value]
-    if isinstance(value, str):
-        return redact_text(value)
-    return value
 
 
 # ---------------------------------------------------------------------------
@@ -530,6 +372,12 @@ def _payload(item: Any) -> tuple[Any, str | None]:
     if isinstance(item, ClientFunctionCallError):
         return None, f"{item.error_type}: {item.content}"
     if isinstance(item, DataContent):
+        size = sum(len(part.content) for part in item.items)
+        if size > MAX_PAYLOAD_CHARS:
+            return None, (
+                f"payload too large ({size} characters; the agent reads at most "
+                f"{MAX_PAYLOAD_CHARS})"
+            )
         parsed = [_parse(part.content) for part in item.items]
         return (parsed[0] if len(parsed) == 1 else parsed), None
     return None, "unsupported data format for this agent"
@@ -545,7 +393,35 @@ def _clip(value: Any) -> Any:
     return value
 
 
-def _render(payload: Any) -> str:
+def _preclip(value: Any, depth: int = 0) -> Any:
+    """Bound nested lists and strings before sanitizing (with a safety margin)."""
+    if isinstance(value, str):
+        return value[: MAX_CELL_CHARS + REDACTION_MARGIN]
+    if isinstance(value, Mapping):
+        return {
+            key: _preclip(item, depth + 1)
+            for key, item in list(value.items())[:MAX_NESTED_ITEMS]
+        }
+    if isinstance(value, list):
+        return [_preclip(item, depth + 1) for item in value[:MAX_NESTED_ITEMS]]
+    return value
+
+
+def _bound(payload: Any) -> tuple[Any, int]:
+    """Limit rows (and text) before sanitizing; return it and the row total."""
+    if isinstance(payload, str):
+        return payload[: MAX_TEXT_CHARS + REDACTION_MARGIN], 0
+    if isinstance(payload, Mapping) and isinstance(payload.get("rows"), list):
+        rows = payload["rows"]
+        bounded = dict(payload)
+        bounded["rows"] = [_preclip(row) for row in rows[:MAX_ROWS_PER_WIDGET]]
+        return _preclip(bounded), len(rows)
+    if isinstance(payload, list):
+        return [_preclip(row) for row in payload[:MAX_ROWS_PER_WIDGET]], len(payload)
+    return _preclip(payload), 0
+
+
+def _render(payload: Any, total: int = 0) -> str:
     """Render sanitized widget data for the model, bounded in size."""
     if isinstance(payload, Mapping) and isinstance(payload.get("layout"), Mapping):
         return "(chart figure without rows; only its data state is available)"
@@ -554,7 +430,7 @@ def _render(payload: Any) -> str:
     if isinstance(payload, list):
         shown = _clip(payload[:MAX_ROWS_PER_WIDGET])
         text = json.dumps(shown, default=str)
-        omitted = len(payload) - len(shown)
+        omitted = max(total, len(payload)) - len(shown)
         if omitted > 0:
             text += f"\n({omitted} more rows omitted)"
         return text
@@ -602,9 +478,10 @@ def widget_context(
             provenance = _provenance("unavailable", "error")
             body = f"(no data: {redact_text(error)[:MAX_CELL_CHARS]})"
         else:
+            payload, total = _bound(payload)
             payload = sanitize(payload)
             provenance = extract_provenance(payload)
-            body = _render(payload)
+            body = _render(payload, total)
         if len(body) > MAX_WIDGET_CHARS:
             body = body[:MAX_WIDGET_CHARS] + "\n(widget data truncated)"
         line = _describe(cap.name, provenance)
@@ -822,9 +699,41 @@ async def _answer(
         yield event
 
 
+async def _read_body(http_request: Request) -> bytes | None:
+    """Read the request body, or ``None`` once it exceeds ``MAX_REQUEST_BYTES``."""
+    declared = http_request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_REQUEST_BYTES:
+        return None
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in http_request.stream():
+        size += len(chunk)
+        if size > MAX_REQUEST_BYTES:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/query", include_in_schema=False)
-async def query(request: QueryRequest, http_request: Request) -> EventSourceResponse:
-    """Stream an answer for the conversation via the local Copilot proxy."""
+async def query(http_request: Request) -> Response:
+    """Stream an answer for the conversation via the local Copilot proxy.
+
+    The body is size-capped (``MAX_REQUEST_BYTES``, HTTP 413) before it is
+    parsed as a ``QueryRequest`` (HTTP 422 when invalid).
+    """
+    body = await _read_body(http_request)
+    if body is None:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"request body exceeds {MAX_REQUEST_BYTES} bytes"},
+        )
+    try:
+        request = QueryRequest.model_validate_json(body)
+    except ValidationError as exc:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": f"invalid query request: {exc.error_count()} errors"},
+        )
     return EventSourceResponse(
         content=_answer(
             request,
