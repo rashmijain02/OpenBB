@@ -406,7 +406,7 @@
   },
   "pi_paper_ticket": {
     "name": "Paper Order Ticket (PAPER)",
-    "description": "Two-step paper-order ticket. Emits an intended-order preview; commit requires a second call.",
+    "description": "Paper-order ticket preview. It never places or records an order: confirm=true only confirms the preview (state not_submitted). Paper orders are submitted only through the gated POST /tt/execute/write-batch.",
     "category": "Portfolio Intelligence",
     "type": "markdown",
     "endpoint": "pi/paper/ticket",
@@ -455,7 +455,7 @@
         "value": "false",
         "label": "Confirm",
         "type": "text",
-        "description": "true to commit (two-step)"
+        "description": "true confirms the preview; no order is placed"
       }
     ]
   },

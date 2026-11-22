@@ -570,12 +570,65 @@ def test_cancel_without_execution_env_is_refused(
     assert seams.calls == []
 
 
-def test_paper_ticket_commits_only_on_explicit_confirmation() -> None:
-    """The paper ticket defaults to a preview; commit needs confirm=true."""
+def _ticket(confirm: str) -> str:
+    return _CLIENT.get(
+        "/pi/paper/ticket",
+        params={
+            "account_id": "demo",
+            "symbol": "AAPL",
+            "side": "buy",
+            "quantity": "100",
+            "confirm": confirm,
+        },
+    ).json()
+
+
+def _claims_commit(body: str) -> bool:
+    """True when the text says an order was committed/submitted/placed."""
+    lowered = body.lower().replace("no order placed", "").replace("not_submitted", "")
+    return bool(re.search(r"committed|submitted|order placed", lowered))
+
+
+def test_paper_ticket_defaults_to_a_preview() -> None:
     params = {p["paramName"]: p for p in _WIDGETS["pi_paper_ticket"]["params"]}
     assert params["confirm"]["value"] == "false"
-    preview = _CLIENT.get("/pi/paper/ticket").json()
-    assert "PREVIEW" in preview and "COMMITTED" not in preview
+    preview = _ticket("false")
+    assert "**Ticket state:** `preview`" in preview
+    assert not _claims_commit(preview)
+
+
+@pytest.mark.parametrize("confirm", ["true", "TRUE"])
+def test_paper_ticket_never_claims_a_commit_it_did_not_make(
+    monkeypatch: pytest.MonkeyPatch, sandbox: Path, confirm: str
+) -> None:
+    """``confirm=true`` writes nothing, so the ticket must not claim a commit.
+
+    It says exactly what happened (preview confirmed, no order placed) and
+    names the only gated path that submits paper orders.
+    """
+    monkeypatch.setenv("PI_ALLOW_T5_EXECUTE", "true")
+    seams = _OrderSeams(monkeypatch)
+    before = _tree(sandbox)
+    body = _ticket(confirm)
+    assert seams.calls == [] and _tree(sandbox) == before  # nothing happened...
+    assert not _claims_commit(body)  # ...so nothing is claimed
+    assert "COMMITTED" not in body
+    assert "**Ticket state:** `not_submitted`" in body
+    assert "Preview confirmed. No order placed." in body
+    assert "POST /tt/execute/write-batch" in body
+
+
+def test_gated_write_batch_reports_the_commit_it_made(
+    monkeypatch: pytest.MonkeyPatch, sandbox: Path
+) -> None:
+    """Positive control: the real gated paper path reports its submission."""
+    monkeypatch.setenv("PI_ALLOW_T5_EXECUTE", "true")
+    response = _CLIENT.post("/tt/execute/write-batch?verdict=PASS&confirm=yes")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["order_ids"]) == 3
+    assert body["batch_sha"]
+    assert (sandbox / "paper.db").exists()  # the write really happened
 
 
 # ---------------------------------------------------------------------------

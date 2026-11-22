@@ -662,7 +662,12 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
     quantity: str = "100",
     confirm: str = "false",
 ) -> str:
-    """Two-step paper order ticket. First call previews, second commits."""
+    """Paper order ticket: a preview only; it never places or records an order.
+
+    ``confirm=true`` confirms the preview (state ``not_submitted``) and says
+    that no order was placed (#1271). Paper orders are submitted only
+    through the gated ``POST /tt/execute/write-batch``.
+    """
     _require_auth(request)
     _validate_account(account_id)
     sym = symbol.strip().upper()
@@ -676,16 +681,21 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
         raise HTTPException(status_code=400, detail="quantity not int") from exc
     if qty <= 0:
         raise HTTPException(status_code=400, detail="quantity must be positive")
-    commit = confirm.lower() == "true"
-    verb = "COMMITTED" if commit else "PREVIEW"
+    # #1271: nothing is written here, so the ticket never claims a commit.
+    confirmed = confirm.lower() == "true"
+    state = "not_submitted" if confirmed else "preview"
+    title = "PREVIEW CONFIRMED" if confirmed else "PREVIEW"
     tail = (
-        "> Order committed to the paper ledger (stub — full wiring to "
-        "`paper.ledger.LedgerStore.append` pending)."
-        if commit
-        else "> Preview only. Re-submit with `confirm=true` to commit."
+        "> Preview confirmed. No order placed. Paper orders are submitted "
+        "only through `POST /tt/execute/write-batch` (requires "
+        "`PI_ALLOW_T5_EXECUTE=true`, `verdict=PASS` and `confirm=yes`)."
+        if confirmed
+        else "> Preview only. No order placed. `confirm=true` confirms the "
+        "preview; it does not submit an order."
     )
     return (
-        f"## Paper Order — {verb}\n\n"
+        f"## Paper Order — {title}\n\n"
+        f"**Ticket state:** `{state}`\n\n"
         f"- **Account:** {account_display(account_id)}\n"
         f"- **Side:** {side.upper()}\n"
         f"- **Symbol:** `{sym}`\n"
