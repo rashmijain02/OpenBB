@@ -261,6 +261,9 @@ The backend itself holds no durable state. Data it serves comes from:
 | End-of-day snapshots | [EOD snapshot refresh](eod-snapshot-refresh.md) |
 | Cache jobs run through MCP | [MCP cache jobs](mcp-cache-jobs.md) |
 
+For the full backup, restore, retention and verification procedure, see the
+[cache and data-store runbook](portfolio-intelligence-cache-runbook.md).
+
 The provider cache can be rebuilt from the provider, so a backup saves time
 and API quota rather than unique data. Back it up with your database's own
 tool (for example `mysqldump --single-transaction <database>` to a location
