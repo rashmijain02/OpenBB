@@ -73,8 +73,10 @@ class LauncherError(RuntimeError):
 
 
 def _getuid() -> int:
-    getuid = getattr(os, "getuid", None)
-    return int(getuid()) if getuid else -1
+    try:
+        return int(os.getuid())
+    except AttributeError:  # os.getuid is absent on Windows
+        return -1
 
 
 def _token(environ: Mapping[str, str]) -> str | None:
