@@ -137,7 +137,17 @@ Responses never echo a non-demo account identifier, credential or home path (red
 
 ## CORS
 
-Locked to `https://pro.openbb.co` on purpose. This backend is a Workspace data source, not a public API. If you're running a self-hosted Workspace, add its origin to `_ALLOWED_ORIGINS` in `main.py` — do NOT open to `"*"`.
+Exact origins only: `https://pro.openbb.co` and the self-hosted Workspace `http://127.0.0.1:1420` by default. This backend is a Workspace data source, not a public API. For another Workspace origin set `PI_WIDGET_BACKEND_ALLOWED_ORIGINS` (comma-separated); a wildcard, `null` or an origin with a path stops startup. See [Operator setup](#operator-setup).
+
+## Operator setup
+
+Portable setup for any OS and deployment (#1273): the cross-platform launcher
+`python -m openbb_portfolio_intel.widget_backend.serve start|status|stop|run`,
+auth and header configuration, CORS origins, `/health` liveness and the
+authenticated `/health/details`, startup manifest
+validation, demo versus live mode, access-log redaction, limits, and
+provider-cache backup references are in the
+[Portfolio Intelligence operator setup guide](../../../../../docs/operations/portfolio-intelligence-operator-setup.md).
 
 ## Authentication
 

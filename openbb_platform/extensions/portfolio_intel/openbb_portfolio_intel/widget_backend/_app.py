@@ -9,10 +9,12 @@ onto it without importing each other.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 # Disable openbb's import-time ``auto_build`` BEFORE openbb is ever imported in
@@ -42,15 +44,23 @@ def _default_auto_build_off() -> None:
 _default_auto_build_off()
 
 import anyio  # noqa: E402  # pylint: disable=wrong-import-position
-from fastapi import FastAPI  # noqa: E402  # pylint: disable=wrong-import-position
+from fastapi import (  # noqa: E402  # pylint: disable=wrong-import-position
+    FastAPI,
+    HTTPException,
+    Request,
+)
 from fastapi.middleware.cors import (  # noqa: E402  # pylint: disable=wrong-import-position
     CORSMiddleware,
+)
+from fastapi.responses import (  # noqa: E402  # pylint: disable=wrong-import-position
+    JSONResponse,
 )
 from starlette.datastructures import (  # noqa: E402  # pylint: disable=wrong-import-position
     MutableHeaders,
 )
 
 from openbb_portfolio_intel.widget_backend import (  # noqa: E402  # pylint: disable=wrong-import-position
+    operator_config,
     provenance,
 )
 
@@ -60,8 +70,28 @@ provenance.demo_mode()
 
 logger = logging.getLogger(__name__)
 
-# CORS: exact hosted and self-hosted Workspace origins reach this backend.
-_ALLOWED_ORIGINS = ["https://pro.openbb.co", "http://127.0.0.1:1420"]
+# CORS: exact Workspace origins only. Defaults are the hosted and the
+# self-hosted Workspace; PI_WIDGET_BACKEND_ALLOWED_ORIGINS replaces them per
+# deployment and an unsafe value (wildcard, null, path) stops startup (#1273).
+_ALLOWED_ORIGINS = operator_config.allowed_origins()
+
+# Access logs keep request paths but never query values such as
+# ``account_id`` / ``basket_id`` or a query-string credential (#1273, #1269).
+operator_config.install_access_log_redaction()
+
+# Per-launch nonce from the supported launcher (#1273 review SECURITY-1). Read
+# once and removed from the environment so child processes never inherit it.
+_INSTANCE_NONCE = os.environ.pop(operator_config.INSTANCE_NONCE_ENV, "").strip()
+
+_MANIFEST_DIR = Path(__file__).parent.resolve()
+_DEBT_BASELINE = (
+    Path(__file__).resolve().parents[2]
+    / "tests"
+    / "unit"
+    / "fixtures"
+    / "workspace_contract_debt.json"
+)
+_VALIDATOR_HINT = "python scripts/validate_portfolio_workspace_manifests.py"
 
 # Response header carrying the provider tier that served the request
 # (e.g. ``fmp_cached`` vs ``stub``) so the local viewer can render a
@@ -161,6 +191,56 @@ def _register_health_probers() -> None:
         )
 
 
+def _read_manifests() -> tuple[Any, Any]:
+    """Read the served ``widgets.json`` and ``apps.json`` (UTF-8)."""
+    return (
+        json.loads((_MANIFEST_DIR / "widgets.json").read_text(encoding="utf-8")),
+        json.loads((_MANIFEST_DIR / "apps.json").read_text(encoding="utf-8")),
+    )
+
+
+def _validate_manifests_on_startup(target: Any) -> dict[str, Any]:
+    """Check the manifests against the Workspace contract and log the verdict.
+
+    Report-only (#1273): recorded debt is expected, so startup continues, but
+    any new issue, stale baseline entry or unreadable manifest is logged as a
+    WARNING naming each problem and the validator command. The report is kept
+    on ``target.state.manifest_report`` and served by ``/health``.
+    """
+    try:
+        widgets, apps = _read_manifests()
+        routes = {getattr(route, "path", "") for route in target.routes}
+        report = operator_config.manifest_report(
+            widgets, apps, routes=routes, baseline=_DEBT_BASELINE
+        )
+    except Exception as exc:  # noqa: BLE001 - startup must not die on validation
+        report = {"ok": False, "error": f"manifest unreadable: {type(exc).__name__}"}
+        logger.warning(
+            "Workspace manifest validation failed: %s. Run %s for detail.",
+            report["error"],
+            _VALIDATOR_HINT,
+        )
+    else:
+        if report["ok"]:
+            logger.info(
+                "Workspace manifest validation passed: %d widgets, %d apps, "
+                "%d recorded-debt issue(s)",
+                report["widgets"],
+                report["apps"],
+                report["recorded_debt"],
+            )
+        else:
+            problems = [*report["new"], *report["stale_baseline"]]
+            logger.warning(
+                "Workspace manifest validation found %d problem(s): %s. Run %s.",
+                len(problems),
+                "; ".join(problems),
+                _VALIDATOR_HINT,
+            )
+    target.state.manifest_report = report
+    return report
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Server lifespan — registers real provider-health probers on boot (#1956).
@@ -180,6 +260,7 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     the import.
     """
     provenance.demo_mode()  # re-validated on server start (#1269)
+    _validate_manifests_on_startup(_app)  # reported, not fatal (#1273)
     await anyio.to_thread.run_sync(_warm_openbb)
     _register_health_probers()
     try:
@@ -216,6 +297,74 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 app.state.background_tasks = set()
+
+
+@app.get("/health", include_in_schema=False)
+def health() -> JSONResponse:
+    """Unauthenticated liveness probe (#1273): ``{"status": "ok"}`` and nothing else.
+
+    Deployment detail lives behind auth at ``/health/details``.
+    """
+    return JSONResponse(content={"status": "ok"}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/health/instance", include_in_schema=False)
+def health_instance(request: Request) -> JSONResponse:
+    """Prove possession of the launcher's per-launch nonce (#1273).
+
+    Returns `HMAC-SHA256(nonce, challenge)` for the challenge header, so the
+    launcher can confirm it reached the server it started before sending the
+    bearer token. 404 when no nonce was configured or the challenge is not
+    16-128 characters. Reveals nothing about the nonce or the deployment.
+    """
+    challenge = request.headers.get(operator_config.CHALLENGE_HEADER, "")
+    if not _INSTANCE_NONCE or not 16 <= len(challenge) <= 128:
+        raise HTTPException(status_code=404, detail="not found")
+    return JSONResponse(
+        content={"proof": operator_config.instance_proof(_INSTANCE_NONCE, challenge)},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/health/details", include_in_schema=False)
+def health_details(request: Request) -> JSONResponse:
+    """Return authenticated operator detail (#1273); never returns secrets.
+
+    Requires the normal bearer token in ``required`` mode. In ``loopback-dev``
+    mode (no token) it is served to loopback clients only. Reports the pid
+    (the launcher confirms identity before ``stop``), the auth and demo
+    modes, the CORS origins and the manifest verdict computed at startup
+    (lazily when no lifespan ran).
+    """
+    # Lazy: `_shared` enforces the auth configuration at import, which this
+    # leaf module must not do (`main` imports it first in a real server).
+    # pylint: disable-next=import-outside-toplevel
+    from openbb_portfolio_intel.widget_backend import _shared
+
+    _shared.require_auth(request)
+    auth_mode = _shared._AUTH_MODE  # pylint: disable=protected-access
+    if auth_mode == "loopback-dev":
+        client = request.client.host if request.client else ""
+        if not operator_config.is_loopback_host(client):
+            raise HTTPException(
+                status_code=403,
+                detail="health details are loopback-only in loopback-dev mode",
+            )
+    report = getattr(app.state, "manifest_report", None)
+    if report is None:
+        report = _validate_manifests_on_startup(app)
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "service": "portfolio-intel-widget-backend",
+            "pid": os.getpid(),
+            "auth_mode": auth_mode,
+            "demo_mode": provenance.demo_mode(),
+            "allowed_origins": list(_ALLOWED_ORIGINS),
+            "manifest": report,
+        },
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class _DataSourceHeaderMiddleware:
