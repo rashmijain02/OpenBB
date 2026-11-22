@@ -491,7 +491,7 @@ def test_lifespan_runs_startup_manifest_validation() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Launcher status / stop
+# Launcher status / stop / start (#1273 review: SECURITY-1, CODE-1..3)
 # ---------------------------------------------------------------------------
 
 _HEALTH = {
@@ -511,19 +511,46 @@ _HEALTH = {
         "stale_baseline": [],
     },
 }
+_NONCE = "launch-nonce-for-tests"
+
+
+def _write_record(state_dir: Path, **extra) -> Path:
+    record = {
+        "pid": 4242,
+        "launcher_pid": 1111,
+        "host": "127.0.0.1",
+        "port": 6120,
+        "nonce": _NONCE,
+    }
+    record.update(extra)
+    path = state_dir / "backend-6120.json"
+    path.write_text(json.dumps(record), encoding="utf-8")
+    return path
+
+
+def _details(payload):
+    return lambda host, port, token=None, timeout=5.0: payload
+
+
+@pytest.fixture
+def ours(monkeypatch):
+    """Make the server prove our nonce, with pid 4242 descending from 1111."""
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: True)
+    monkeypatch.setattr(serve, "_process_parents", lambda: {4242: 1111, 1111: 1})
 
 
 def test_status_reports_health_modes_manifest_without_token(
-    monkeypatch, tmp_path, capsys
+    monkeypatch, tmp_path, capsys, ours
 ) -> None:
+    _write_record(tmp_path)
     monkeypatch.setenv("PI_WIDGET_BACKEND_TOKEN", _SENTINEL_TOKEN)
     seen = []
 
-    def _details(host, port, token=None, timeout=5.0):
+    def _fetch(host, port, token=None, timeout=5.0):
         seen.append(token)
         return _HEALTH
 
-    monkeypatch.setattr(serve, "fetch_details", _details)
+    monkeypatch.setattr(serve, "fetch_details", _fetch)
     code = serve.main(["status", "--state-dir", str(tmp_path)])
     out = capsys.readouterr()
     assert code == 0
@@ -535,125 +562,496 @@ def test_status_reports_health_modes_manifest_without_token(
     assert _SENTINEL_TOKEN not in out.out + out.err
 
 
-def test_status_fails_when_manifest_invalid(monkeypatch, tmp_path, capsys) -> None:
+def test_status_fails_when_manifest_invalid(
+    monkeypatch, tmp_path, capsys, ours
+) -> None:
+    _write_record(tmp_path)
     bad = json.loads(json.dumps(_HEALTH))
     bad["manifest"].update(ok=False, new=["widgets.x pi_x: broken"])
-    monkeypatch.setattr(
-        serve, "fetch_details", lambda host, port, token=None, timeout=5.0: bad
-    )
+    monkeypatch.setattr(serve, "fetch_details", _details(bad))
     assert serve.main(["status", "--state-dir", str(tmp_path)]) == 1
     assert "widgets.x pi_x: broken" in capsys.readouterr().out
 
 
 def test_status_fails_when_unreachable(monkeypatch, tmp_path, capsys) -> None:
-    monkeypatch.setattr(
-        serve, "fetch_details", lambda host, port, token=None, timeout=5.0: None
-    )
+    _write_record(tmp_path)
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: None)
+    monkeypatch.setattr(serve, "fetch_details", _details(None))
     assert serve.main(["status", "--state-dir", str(tmp_path)]) == 1
     assert "health: unreachable" in capsys.readouterr().out
 
 
-def test_status_reports_unauthorized_details(monkeypatch, tmp_path, capsys) -> None:
-    monkeypatch.setattr(
-        serve,
-        "fetch_details",
-        lambda host, port, token=None, timeout=5.0: dict(serve.UNAUTHORIZED),
-    )
+def test_status_reports_unauthorized_details(
+    monkeypatch, tmp_path, capsys, ours
+) -> None:
+    _write_record(tmp_path)
+    monkeypatch.setattr(serve, "fetch_details", _details(dict(serve.UNAUTHORIZED)))
     assert serve.main(["status", "--state-dir", str(tmp_path)]) == 1
     out = capsys.readouterr().out
     assert "health details: unauthorized" in out
     assert "auth mode" not in out
 
 
-def test_stop_refuses_when_details_unauthorized(monkeypatch, tmp_path, capsys) -> None:
-    state = tmp_path / "backend-6120.json"
-    state.write_text(
-        json.dumps({"pid": 4242, "host": "127.0.0.1", "port": 6120}), encoding="utf-8"
-    )
-    killed = []
-    monkeypatch.setattr(serve, "_terminate", killed.append)
+def test_status_never_sends_token_to_foreign_server(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    """A process that cannot prove the launch nonce never sees the token."""
+    _write_record(tmp_path)
+    monkeypatch.setenv("PI_WIDGET_BACKEND_TOKEN", _SENTINEL_TOKEN)
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: False)
+    sent = []
     monkeypatch.setattr(
         serve,
         "fetch_details",
-        lambda host, port, token=None, timeout=5.0: dict(serve.UNAUTHORIZED),
+        lambda host, port, token=None, timeout=5.0: sent.append(token) or _HEALTH,
     )
+    assert serve.main(["status", "--state-dir", str(tmp_path)]) == 1
+    assert sent == []
+    assert "not started by this launcher" in capsys.readouterr().out
+
+
+def test_status_without_record_does_not_send_token(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    monkeypatch.setenv("PI_WIDGET_BACKEND_TOKEN", _SENTINEL_TOKEN)
+    sent = []
+    monkeypatch.setattr(
+        serve,
+        "fetch_details",
+        lambda host, port, token=None, timeout=5.0: sent.append(token) or _HEALTH,
+    )
+    monkeypatch.setattr(serve, "_liveness", lambda host, port, timeout=5.0: True)
+    assert serve.main(["status", "--state-dir", str(tmp_path)]) == 1
+    assert sent == []
+    assert "details not queried" in capsys.readouterr().out
+
+
+def test_stop_refuses_when_details_unauthorized(
+    monkeypatch, tmp_path, capsys, ours
+) -> None:
+    state = _write_record(tmp_path)
+    killed = []
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    monkeypatch.setattr(serve, "fetch_details", _details(dict(serve.UNAUTHORIZED)))
     assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 1
     assert killed == []
     assert state.exists()
     assert "refused this shell's credentials" in capsys.readouterr().err
 
 
-def test_stop_refuses_when_backend_pid_does_not_match(monkeypatch, tmp_path) -> None:
-    (tmp_path / "backend-6120.json").write_text(
-        json.dumps({"pid": 9999, "host": "127.0.0.1", "port": 6120}), encoding="utf-8"
+def test_stop_refuses_foreign_server_on_port(monkeypatch, tmp_path, capsys) -> None:
+    state = _write_record(tmp_path)
+    killed, sent = [], []
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: False)
+    monkeypatch.setattr(
+        serve,
+        "fetch_details",
+        lambda host, port, token=None, timeout=5.0: sent.append(token) or _HEALTH,
     )
+    assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 1
+    assert killed == [] and sent == []
+    assert state.exists()
+
+
+def test_stop_refuses_when_backend_pid_does_not_match(
+    monkeypatch, tmp_path, ours
+) -> None:
+    _write_record(tmp_path, pid=9999)
     killed = []
     monkeypatch.setattr(serve, "_terminate", killed.append)
-    monkeypatch.setattr(
-        serve, "fetch_details", lambda host, port, token=None, timeout=5.0: _HEALTH
-    )
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
     assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 1
     assert killed == []
 
 
-def test_stop_terminates_confirmed_backend(monkeypatch, tmp_path) -> None:
-    state = tmp_path / "backend-6120.json"
-    state.write_text(
-        json.dumps({"pid": 4242, "host": "127.0.0.1", "port": 6120}), encoding="utf-8"
-    )
+def test_stop_refuses_pid_outside_launcher_tree(monkeypatch, tmp_path, capsys) -> None:
+    state = _write_record(tmp_path)
     killed = []
-    answers = iter([_HEALTH, None])
     monkeypatch.setattr(serve, "_terminate", killed.append)
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: True)
+    monkeypatch.setattr(serve, "_process_parents", lambda: {4242: 77, 77: 1})
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
+    assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 1
+    assert killed == []
+    assert state.exists()
+    assert "process tree" in capsys.readouterr().err
+
+
+def test_stop_terminates_confirmed_backend(monkeypatch, tmp_path) -> None:
+    state = _write_record(tmp_path)
+    killed = []
+    answers = iter([True, None])
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    monkeypatch.setattr(serve, "_process_parents", lambda: {4242: 1111, 1111: 1})
     monkeypatch.setattr(
-        serve,
-        "fetch_details",
-        lambda host, port, token=None, timeout=5.0: next(answers, None),
+        serve, "_verify_instance", lambda h, p, n, timeout=5.0: next(answers, None)
     )
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
     assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 0
     assert killed == [4242]
     assert not state.exists()
 
 
-def test_stop_with_unreachable_backend_signals_nothing(monkeypatch, tmp_path) -> None:
-    state = tmp_path / "backend-6120.json"
-    state.write_text(
-        json.dumps({"pid": 4242, "host": "127.0.0.1", "port": 6120}), encoding="utf-8"
-    )
+def test_stop_fails_and_keeps_record_when_backend_survives(
+    monkeypatch, tmp_path, ours, capsys
+) -> None:
+    """CODE-2: still answering after SIGTERM + timeout is a failure."""
+    state = _write_record(tmp_path)
     killed = []
     monkeypatch.setattr(serve, "_terminate", killed.append)
-    monkeypatch.setattr(
-        serve, "fetch_details", lambda host, port, token=None, timeout=5.0: None
-    )
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
+    monkeypatch.setattr(serve.time, "sleep", lambda _s: None)
+    code = serve.main(["stop", "--state-dir", str(tmp_path), "--timeout", "0.2"])
+    assert code == 1
+    assert killed == [4242]
+    assert state.exists()
+    assert "still answering" in capsys.readouterr().err
+
+
+def test_stop_with_unreachable_backend_signals_nothing(monkeypatch, tmp_path) -> None:
+    state = _write_record(tmp_path)
+    killed = []
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: None)
     assert serve.main(["stop", "--state-dir", str(tmp_path)]) == 0
     assert killed == []
     assert not state.exists()
 
 
-def test_start_records_server_pid_reported_by_health(monkeypatch, tmp_path) -> None:
-    class _Proc:
-        pid = 1111
+class _Proc:
+    pid = 1111
 
-        def poll(self):
-            return None
+    def poll(self):
+        return None
 
-    answers = iter([None, _HEALTH])
-    monkeypatch.setattr(serve, "_spawn", lambda *a, **k: _Proc())
-    monkeypatch.setattr(
-        serve,
-        "fetch_details",
-        lambda host, port, token=None, timeout=5.0: next(answers, _HEALTH),
-    )
+
+def _start_env(monkeypatch) -> None:
     monkeypatch.setattr(serve.time, "sleep", lambda _s: None)
     monkeypatch.setenv("PI_WIDGET_BACKEND_AUTH_MODE", "required")
     monkeypatch.setenv("PI_WIDGET_BACKEND_TOKEN", _SENTINEL_TOKEN)
     monkeypatch.delenv("PI_WIDGET_BACKEND_ALLOWED_ORIGINS", raising=False)
     monkeypatch.delenv("PI_DEMO_MODE", raising=False)
     monkeypatch.setattr(serve, "_port_in_use", lambda host, port: False)
+
+
+def test_start_records_server_pid_and_passes_nonce(monkeypatch, tmp_path) -> None:
+    spawned = {}
+
+    def _spawn(command, log_path, env):
+        spawned["env"] = env
+        return _Proc()
+
+    answers = iter([None, True])
+    monkeypatch.setattr(serve, "_spawn", _spawn)
+    monkeypatch.setattr(
+        serve, "_verify_instance", lambda h, p, n, timeout=5.0: next(answers, True)
+    )
+    monkeypatch.setattr(serve, "_process_parents", lambda: {4242: 1111, 1111: 1})
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
+    _start_env(monkeypatch)
     assert serve.main(["start", "--state-dir", str(tmp_path)]) == 0
     record = json.loads((tmp_path / "backend-6120.json").read_text(encoding="utf-8"))
     assert record["pid"] == 4242
     assert record["launcher_pid"] == 1111
+    assert record["nonce"] == spawned["env"][operator_config.INSTANCE_NONCE_ENV]
+    assert len(record["nonce"]) >= 32
     assert _SENTINEL_TOKEN not in json.dumps(record)
+
+
+def test_start_refuses_foreign_server_and_kills_own_tree(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    """A port answered by a foreign server never receives the token."""
+    sent, killed = [], []
+    monkeypatch.setattr(serve, "_spawn", lambda command, log_path, env: _Proc())
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: False)
+    monkeypatch.setattr(
+        serve,
+        "fetch_details",
+        lambda host, port, token=None, timeout=5.0: sent.append(token) or _HEALTH,
+    )
+    monkeypatch.setattr(serve, "_process_parents", lambda: {2222: 1111, 1111: 1})
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    _start_env(monkeypatch)
+    assert serve.main(["start", "--state-dir", str(tmp_path)]) == 1
+    assert sent == []
+    assert set(killed) == {1111, 2222}
+    assert not (tmp_path / "backend-6120.json").exists()
+    assert "did not prove" in capsys.readouterr().err
+
+
+def test_start_refuses_reported_pid_outside_launcher_tree(
+    monkeypatch, tmp_path
+) -> None:
+    killed = []
+    monkeypatch.setattr(serve, "_spawn", lambda command, log_path, env: _Proc())
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: True)
+    monkeypatch.setattr(serve, "_process_parents", lambda: {4242: 77, 1111: 1})
+    monkeypatch.setattr(serve, "fetch_details", _details(_HEALTH))
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    _start_env(monkeypatch)
+    assert serve.main(["start", "--state-dir", str(tmp_path)]) == 1
+    assert 4242 not in killed
+    assert not (tmp_path / "backend-6120.json").exists()
+
+
+def test_start_timeout_kills_the_whole_process_tree(monkeypatch, tmp_path) -> None:
+    """CODE-1: the venv redirector's grandchild server is killed too."""
+    killed = []
+    monkeypatch.setattr(serve, "_spawn", lambda command, log_path, env: _Proc())
+    monkeypatch.setattr(serve, "_verify_instance", lambda h, p, n, timeout=5.0: None)
+    monkeypatch.setattr(
+        serve, "_process_parents", lambda: {2222: 1111, 3333: 2222, 1111: 1, 50: 1}
+    )
+    monkeypatch.setattr(serve, "_terminate", killed.append)
+    _start_env(monkeypatch)
+    code = serve.main(["start", "--state-dir", str(tmp_path), "--timeout", "0"])
+    assert code == 1
+    assert set(killed) == {1111, 2222, 3333}
+    assert killed.index(3333) < killed.index(1111), "children before parents"
+
+
+def test_kill_tree_kills_a_real_grandchild() -> None:
+    """Real processes: parent -> grandchild; killing the tree ends both."""
+    code = (
+        "import subprocess, sys, time\n"
+        "c = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        "print(c.pid, flush=True)\n"
+        "time.sleep(60)\n"
+    )
+    parent = subprocess.Popen(  # pylint: disable=consider-using-with
+        [sys.executable, "-c", code], stdout=subprocess.PIPE, text=True
+    )
+    try:
+        grandchild = int(parent.stdout.readline())
+        assert serve._in_tree(grandchild, parent.pid, serve._process_parents())
+        serve._kill_tree(parent.pid)
+        parent.wait(timeout=15)
+        deadline = time.monotonic() + 15
+        while grandchild in serve._process_parents() and time.monotonic() < deadline:
+            time.sleep(0.2)
+        assert grandchild not in serve._process_parents()
+    finally:
+        if parent.poll() is None:
+            parent.kill()
+        parent.stdout.close()
+
+
+# ---------------------------------------------------------------------------
+# Private state directory and log (SECURITY-1)
+# ---------------------------------------------------------------------------
+
+
+def test_default_state_dir_is_per_user_not_shared_temp(monkeypatch, tmp_path) -> None:
+    import tempfile  # pylint: disable=import-outside-toplevel
+
+    path = serve._default_state_dir()
+    assert not str(path).startswith(tempfile.gettempdir())
+    assert path.name == "openbb-pi-widget-backend"
+
+
+class _Stat:
+    def __init__(self, mode: int, uid: int) -> None:
+        self.st_mode = mode
+        self.st_uid = uid
+
+
+@pytest.mark.parametrize(
+    ("mode", "uid", "reason"),
+    [
+        (0o040700, 0, "owner"),  # pre-planted by another user
+        (0o040777, 1000, "mode"),  # world-writable
+        (0o040750, 1000, "mode"),  # group-readable
+        (0o120777, 1000, "symlink"),  # symlink to elsewhere
+    ],
+)
+def test_posix_state_dir_checks_owner_mode_and_symlink(
+    monkeypatch, tmp_path, mode, uid, reason
+) -> None:
+    monkeypatch.setattr(serve, "_IS_POSIX", True)
+    monkeypatch.setattr(serve, "_getuid", lambda: 1000)
+    monkeypatch.setattr(serve, "_lstat", lambda path: _Stat(mode, uid))
+    with pytest.raises(serve.LauncherError, match=reason):
+        serve.ensure_private_dir(tmp_path / "state")
+
+
+def test_posix_state_dir_accepts_private_owned_dir(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(serve, "_IS_POSIX", True)
+    monkeypatch.setattr(serve, "_getuid", lambda: 1000)
+    monkeypatch.setattr(serve, "_lstat", lambda path: _Stat(0o040700, 1000))
+    assert serve.ensure_private_dir(tmp_path / "state") == tmp_path / "state"
+
+
+def test_start_refuses_pre_planted_state_dir(monkeypatch, tmp_path, capsys) -> None:
+    spawned = []
+    monkeypatch.setattr(serve, "_IS_POSIX", True)
+    monkeypatch.setattr(serve, "_getuid", lambda: 1000)
+    monkeypatch.setattr(serve, "_lstat", lambda path: _Stat(0o040777, 0))
+    monkeypatch.setattr(serve, "_spawn", lambda *a, **k: spawned.append(a))
+    _start_env(monkeypatch)
+    assert serve.main(["start", "--state-dir", str(tmp_path)]) == 2
+    assert spawned == []
+    assert "refusing state directory" in capsys.readouterr().err
+
+
+def test_start_refuses_symlinked_log(monkeypatch, tmp_path, capsys) -> None:
+    log = tmp_path / "backend-6120.log"
+    target = tmp_path / "elsewhere.txt"
+    target.write_text("", encoding="utf-8")
+    try:
+        log.symlink_to(target)
+    except OSError:  # Windows without symlink privilege
+        real = serve._islink
+        monkeypatch.setattr(serve, "_islink", lambda p: Path(p) == log or real(p))
+    spawned = []
+    monkeypatch.setattr(serve, "_spawn", lambda *a, **k: spawned.append(a))
+    _start_env(monkeypatch)
+    assert serve.main(["start", "--state-dir", str(tmp_path)]) == 2
+    assert spawned == []
+    assert "symlink" in capsys.readouterr().err
+    assert target.read_text(encoding="utf-8") == ""
+
+
+def test_open_private_refuses_symlink(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "backend-6120.json"
+    monkeypatch.setattr(serve, "_islink", lambda p: Path(p) == path)
+    with pytest.raises(serve.LauncherError, match="symlink"):
+        serve._open_private(path, os.O_WRONLY | os.O_CREAT)
+    assert not path.exists()
+
+
+def test_open_private_creates_owner_only_file(tmp_path) -> None:
+    path = tmp_path / "f.log"
+    fd = serve._open_private(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
+    os.close(fd)
+    if os.name != "nt":
+        assert (path.stat().st_mode & 0o077) == 0
+
+
+# ---------------------------------------------------------------------------
+# Address families (CODE-3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("host", "probe"),
+    [
+        ("0.0.0.0", "127.0.0.1"),
+        ("", "127.0.0.1"),
+        ("::", "::1"),
+        ("[::1]", "::1"),
+        ("::1", "::1"),
+        ("127.0.0.1", "127.0.0.1"),
+    ],
+)
+def test_probe_host_is_family_aware(host: str, probe: str) -> None:
+    assert serve._probe_host(host) == probe
+
+
+def _ipv6_listener():
+    if not socket.has_ipv6:
+        pytest.skip("no IPv6")
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    try:
+        sock.bind(("::1", 0))
+    except OSError:
+        sock.close()
+        pytest.skip("cannot bind ::1")
+    sock.listen(16)
+    return sock
+
+
+def test_port_in_use_detects_ipv6_listener() -> None:
+    sock = _ipv6_listener()
+    try:
+        port = sock.getsockname()[1]
+        assert serve._port_in_use("::1", port) is True
+        assert serve._port_in_use("::", port) is True
+    finally:
+        sock.close()
+
+
+def test_port_in_use_detects_ipv4_listener_for_dual_stack_bind() -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        sock.listen(16)
+        port = sock.getsockname()[1]
+        assert serve._port_in_use("127.0.0.1", port) is True
+        assert serve._port_in_use("::", port) is True
+    assert serve._port_in_use("127.0.0.1", port) is False
+
+
+# ---------------------------------------------------------------------------
+# Per-launch instance proof (SECURITY-1)
+# ---------------------------------------------------------------------------
+
+
+def test_instance_proof_is_keyed_hmac() -> None:
+    a = operator_config.instance_proof("nonce-a", "challenge-1")
+    assert a == operator_config.instance_proof("nonce-a", "challenge-1")
+    assert a != operator_config.instance_proof("nonce-b", "challenge-1")
+    assert a != operator_config.instance_proof("nonce-a", "challenge-2")
+    assert "nonce-a" not in a
+
+
+_INSTANCE_PROBE = """
+from fastapi.testclient import TestClient
+from openbb_portfolio_intel.widget_backend import _app, operator_config
+import os
+print(operator_config.INSTANCE_NONCE_ENV in os.environ)
+c = TestClient(_app.app)
+r = c.get("/health/instance", headers={operator_config.CHALLENGE_HEADER: "c" * 32})
+print(r.status_code, r.json().get("proof") == operator_config.instance_proof("N" * 40, "c" * 32))
+print(c.get("/health/instance").status_code)
+"""
+
+
+def test_backend_proves_launch_nonce_without_revealing_it() -> None:
+    result = _run_backend_snippet(
+        _INSTANCE_PROBE,
+        {
+            "PI_WIDGET_BACKEND_AUTH_MODE": "loopback-dev",
+            "PI_WIDGET_BACKEND_INSTANCE_NONCE": "N" * 40,
+        },
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "False", "nonce must be removed from the environment"
+    assert lines[1] == "200 True"
+    assert lines[2] == "404"
+    assert "N" * 40 not in result.stdout
+
+
+def test_backend_without_nonce_has_no_instance_proof() -> None:
+    client = TestClient(app)
+    resp = client.get(
+        "/health/instance", headers={operator_config.CHALLENGE_HEADER: "c" * 32}
+    )
+    assert resp.status_code == 404
+
+
+def test_verify_instance_against_real_backend(monkeypatch) -> None:
+    """Real uvicorn on 127.0.0.1 with a nonce: right nonce passes, wrong fails."""
+    import uvicorn  # pylint: disable=import-outside-toplevel
+
+    monkeypatch.setattr(backend_app, "_INSTANCE_NONCE", "R" * 40)
+    port = _free_port()
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="127.0.0.1", port=port, lifespan="off")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 30
+        while not server.started and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert serve._verify_instance("127.0.0.1", port, "R" * 40) is True
+        assert serve._verify_instance("127.0.0.1", port, "W" * 40) is False
+    finally:
+        server.should_exit = True
+        thread.join(timeout=15)
+    assert serve._verify_instance("127.0.0.1", port, "R" * 40, timeout=1) is None
 
 
 # ---------------------------------------------------------------------------

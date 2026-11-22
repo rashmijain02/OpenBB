@@ -19,15 +19,15 @@
 | `openbb_platform/extensions/portfolio_intel/openbb_portfolio_intel/widget_backend/_app.py` | CORS origins from configuration; access-log redaction installed at import; report-only startup manifest validation in the lifespan; unauthenticated liveness `/health` and authenticated `/health/details`. |
 | `openbb_platform/extensions/portfolio_intel/openbb_portfolio_intel/widget_backend/README.md` | CORS paragraph corrected; new "Operator setup" section linking the guide. |
 | `docs/operations/portfolio-intelligence-operator-setup.md` | New portable operator guide. |
-| `openbb_platform/extensions/portfolio_intel/tests/unit/test_operator_setup_1273.py` | 47 tests. |
+| `openbb_platform/extensions/portfolio_intel/tests/unit/test_operator_setup_1273.py` | 78 tests. |
 
 No manifest (`widgets.json`, `apps.json`), agent, MCP or `third_party/workspace` file changed.
 
 ## Evidence
 
-- **New tests:** `pytest tests/unit/test_operator_setup_1273.py` -> 47 passed.
+- **New tests:** `pytest tests/unit/test_operator_setup_1273.py` -> 78 passed.
 - **Backend regression:** `test_operator_setup_1273.py` + `test_widget_backend.py` -> 193 passed (round 1).
-- **Full unit suite:** `pytest openbb_platform/extensions/portfolio_intel/tests/unit -m "not integration"` -> 1980 passed, 1 skipped, 21 deselected.
+- **Full unit suite:** `pytest openbb_platform/extensions/portfolio_intel/tests/unit -m "not integration"` -> 2111 passed, 1 skipped, 21 deselected (round 3).
 - **Launcher Pester tests:** `scripts/tests/Run-WidgetBackend.Tests.ps1` -> 9 passed, 0 failed (PowerShell launcher unchanged).
 - **Lint (CI parity, changed non-test files):** codespell, black --check, mypy (`--no-site-packages`), pylint (`.pylintrc`, 10.00/10), ruff -> clean. markdownlint (`.markdownlintrc`) on the new guide -> clean; the README's two findings (bare fence, double blank line) predate this change.
 - **Real-path check:** `serve start|status|stop` on 127.0.0.1:6121 in required mode with a throwaway token; log at `.dev-cycle/verify-gh-1273.log` (excerpt below).
@@ -76,6 +76,28 @@ startup validation catches any exception so it never stops startup; `/health/det
   It needs the bearer token in `required` mode (401 without it) and in `loopback-dev` mode answers loopback clients only (403 otherwise). `serve status` and `serve stop` call it with the shell's `PI_WIDGET_BACKEND_TOKEN`, sent only as a header. `stop` refuses to signal when the details are refused.
 - Red first: 14 tests failed before the change (the old `/health` exposed the fields; `fetch_details` did not exist). Mutations N1 to N6 are all killed (N5 needed a tighter assertion, then failed as expected).
 - Provider-cache backup runbook: no change; the lead will file a follow-up issue. The `main.py` docstring is left as is.
+
+## Review fixes (round 3, uncommitted on top of 3a9bce494)
+
+- SECURITY-1: launcher state moved from the shared temp dir to a per-user dir
+  (`$XDG_STATE_HOME` or `~/.local/state`, `%LOCALAPPDATA%` on Windows), created
+  `0700`; on POSIX the owner and mode are checked and a wrong one is refused.
+  Symlinked dirs, logs and state files are refused; files open `O_NOFOLLOW`
+  and `0600`. `start` passes a per-launch nonce to the server (popped from the
+  server's environment). The launcher sends the token only after an HMAC proof
+  over a random challenge (`/health/instance`). `start` and `stop` also require
+  the reported pid to descend from the spawned process.
+- CODE-1: every `start` failure (timeout, failed proof, pid outside the tree)
+  kills the whole spawned tree, children first (Toolhelp on Windows, `/proc`
+  or `ps` elsewhere).
+- CODE-2: `stop` exits 1 and keeps the record if the backend still answers
+  after SIGTERM plus `--timeout`.
+- CODE-3: probes are address-family aware (`::1`; `::` probes `::1` and
+  `127.0.0.1`).
+- Evidence: red 29 failed and 6 errors; green 78 passed; 18 mutations killed
+  (R1 to R18); a real grandchild-kill test; real run with a foreign
+  `http.server` on 6122, which saw only `GET /health/instance` and never the
+  token.
 
 ## Not done / follow-ups
 

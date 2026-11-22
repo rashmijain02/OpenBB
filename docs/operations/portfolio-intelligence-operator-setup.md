@@ -87,19 +87,39 @@ What the launcher guarantees:
   invalid auth or demo mode, a missing token in `required` mode, an unsafe
   origin, or `loopback-dev` with a non-loopback `--host`.
 - It warns when `required` mode binds a non-loopback host.
-- `start` records the server's pid and port in a state file under the
-  operating system's temporary directory (`openbb-pi-widget-backend/`, or
-  `--state-dir`), with the backend log beside it.
+- Launcher state (the pid record, a per-launch nonce and the backend log) lives
+  in a per-user directory: `$XDG_STATE_HOME/openbb-pi-widget-backend` (default
+  `~/.local/state/openbb-pi-widget-backend`) on Linux and macOS,
+  `%LOCALAPPDATA%\openbb-pi-widget-backend` on Windows, or `--state-dir`. It is
+  never the shared temporary directory. The directory is created with mode
+  `0700`; on Linux and macOS the launcher refuses it when another user owns it
+  or its mode is wider than `0700`. Symlinked state or log files are refused,
+  and files are opened without following symlinks where the OS supports it.
+- `start` gives the server it launches a fresh per-launch nonce through the
+  environment (the server removes it from its own environment at import).
+  `start`, `status` and `stop` send the bearer token only after the server on
+  the port proves that nonce with an HMAC over a random challenge
+  (`GET /health/instance`), so a process that bound the port first never
+  receives the token. A port answered by any other process is refused.
+- `start` checks that the pid the backend reports belongs to the process tree
+  it spawned. On a timeout or any failed check it stops the whole launched
+  process tree; on Windows the virtual environment's `python.exe` is a
+  redirector and the real server is a grandchild, which is stopped too.
 - `status` prints health, the server's auth mode, demo mode, allowed origins
   and manifest verdict, read from the authenticated `/health/details` with
   the `PI_WIDGET_BACKEND_TOKEN` of your shell (sent only as a bearer
   header). It reports only whether the token is set, never its value. Exit
   code 0 means healthy with valid manifests; a refused token is reported as
-  `health details: unauthorized`.
-- `stop` signals only the pid that the running backend reports on
-  `/health/details` and that `start` recorded, so it needs the same token. If they differ it refuses; if the backend no
-  longer answers it removes the stale record without signalling anything.
-
+  `health details: unauthorized`. For a backend this launcher did not start,
+  `status` checks liveness only and does not query details or send the token.
+- `stop` signals only a pid that the proven backend reports on
+  `/health/details`, that matches the record and that descends from the
+  process `start` spawned, so it needs the same token. Otherwise it refuses.
+  If the backend no longer answers, it removes the stale record without
+  signalling anything. If the backend still answers `--timeout` seconds after
+  SIGTERM, `stop` exits 1 and keeps the record.
+- IPv6 binds work: `--host ::1` is probed on `::1`, and `--host ::` is probed
+  on both `::1` and `127.0.0.1` because it may be dual-stack.
 On Windows, `.\scripts\run_widget_backend.ps1` remains a supported foreground
 launcher (always `127.0.0.1`, with `-AuthMode` and `-Token`); see
 [local Workspace development](workspace-local-development.md).

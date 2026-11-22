@@ -79,6 +79,10 @@ _ALLOWED_ORIGINS = operator_config.allowed_origins()
 # ``account_id`` / ``basket_id`` or a query-string credential (#1273, #1269).
 operator_config.install_access_log_redaction()
 
+# Per-launch nonce from the supported launcher (#1273 review SECURITY-1). Read
+# once and removed from the environment so child processes never inherit it.
+_INSTANCE_NONCE = os.environ.pop(operator_config.INSTANCE_NONCE_ENV, "").strip()
+
 _MANIFEST_DIR = Path(__file__).parent.resolve()
 _DEBT_BASELINE = (
     Path(__file__).resolve().parents[2]
@@ -302,6 +306,24 @@ def health() -> JSONResponse:
     Deployment detail lives behind auth at ``/health/details``.
     """
     return JSONResponse(content={"status": "ok"}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/health/instance", include_in_schema=False)
+def health_instance(request: Request) -> JSONResponse:
+    """Prove possession of the launcher's per-launch nonce (#1273).
+
+    Returns `HMAC-SHA256(nonce, challenge)` for the challenge header, so the
+    launcher can confirm it reached the server it started before sending the
+    bearer token. 404 when no nonce was configured or the challenge is not
+    16-128 characters. Reveals nothing about the nonce or the deployment.
+    """
+    challenge = request.headers.get(operator_config.CHALLENGE_HEADER, "")
+    if not _INSTANCE_NONCE or not 16 <= len(challenge) <= 128:
+        raise HTTPException(status_code=404, detail="not found")
+    return JSONResponse(
+        content={"proof": operator_config.instance_proof(_INSTANCE_NONCE, challenge)},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/health/details", include_in_schema=False)

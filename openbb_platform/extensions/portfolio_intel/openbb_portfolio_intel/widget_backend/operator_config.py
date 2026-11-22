@@ -16,6 +16,8 @@ FastAPI app) shared by the app (``_app``) and the supported launcher
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import ipaddress
 import logging
 import os
@@ -32,6 +34,10 @@ TOKEN_ENV = "PI_WIDGET_BACKEND_TOKEN"  # noqa: S105  # nosec B105 - env var name
 AUTH_MODES = ("required", "loopback-dev")
 DEFAULT_AUTH_MODE = "required"
 DEFAULT_ALLOWED_ORIGINS = ("https://pro.openbb.co", "http://127.0.0.1:1420")
+# Per-launch secret the launcher hands to the server it starts; the server
+# proves possession with an HMAC so the token is never sent to an impostor.
+INSTANCE_NONCE_ENV = "PI_WIDGET_BACKEND_INSTANCE_NONCE"
+CHALLENGE_HEADER = "X-PI-Instance-Challenge"
 
 ACCESS_LOGGER = "uvicorn.access"
 REDACTED = "<redacted>"
@@ -40,6 +46,13 @@ _MAX_REPORTED_ISSUES = 20
 
 class OperatorConfigError(ValueError):
     """Raised for an unsafe or invalid operator configuration."""
+
+
+def instance_proof(nonce: str, challenge: str) -> str:
+    """Return the HMAC-SHA256 proof of `nonce` for `challenge` (hex)."""
+    return hmac.new(
+        nonce.encode("utf-8"), challenge.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
 
 # ---------------------------------------------------------------------------
