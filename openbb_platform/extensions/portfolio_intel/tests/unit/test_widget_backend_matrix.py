@@ -99,10 +99,13 @@ def test_native_plotly_chart_widgets_are_recognised() -> None:
     for widget_id, state in _PLOTLY_CHARTS.items():
         assert by_id[widget_id]["chart"]["plotly"] is True, widget_id
         assert by_id[widget_id]["baselineState"] == state, widget_id
-    # TechTrade charts still return row envelopes (#1271): not Plotly yet.
+    # TechTrade charts are Plotly figures with raw=true rows since #1271.
     for widget_id in ("tt_segment_movers", "tt_simulate_result"):
-        assert by_id[widget_id]["chart"]["plotly"] is False, widget_id
-        assert by_id[widget_id]["baselineState"] == "contract-repair", widget_id
+        assert by_id[widget_id]["chart"]["plotly"] is True, widget_id
+        assert by_id[widget_id]["baselineState"] == "native-ready", widget_id
+    # The scan table declares its columns (#1271).
+    assert by_id["tt_scan_table"]["baselineState"] == "native-ready"
+    assert by_id["tt_scan_table"]["tableFields"][0] == "symbol"
 
 
 def test_plotly_route_detection_reads_the_decorator_and_raw_parameter() -> None:
@@ -110,7 +113,8 @@ def test_plotly_route_detection_reads_the_decorator_and_raw_parameter() -> None:
     builder = _load_builder()
     routes = builder._plotly_routes(BACKEND)  # pylint: disable=protected-access
     assert {"/pi/xray/sector", "/pi/attribution", "/pi/equity/charting"} <= routes
-    assert "/tt/scan/segment-movers" not in routes
+    assert {"/tt/scan/segment-movers", "/tt/position/simulate"} <= routes
+    assert "/tt/scan/table" not in routes
     assert "/pi/lookthrough/top25" not in routes
 
 

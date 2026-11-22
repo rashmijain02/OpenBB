@@ -555,8 +555,15 @@
     const defs = widget && widget.data && widget.data.table && widget.data.table.columnsDefs;
     // #1269: honour Workspace's ``hide`` (data_source / data_as_of stay in
     // the rows for agents but are not shown as columns).
-    const cols = (defs && defs.length)
-      ? defs.filter((c) => !c.hide).map((c) => ({
+    // #1271: a note-only marker row (no snapshot, or a completed run with no
+    // rows) carries none of the declared fields; Workspace shows every row
+    // key, so show the row's own keys rather than a row of blank cells.
+    const visible = (defs || []).filter((c) => !c.hide);
+    const PROVENANCE = ["data_state", "data_source", "data_as_of"];
+    const declaredPresent = visible.some((c) => !PROVENANCE.includes(c.field)
+      && rows.some((r) => r && c.field in r));
+    const cols = (visible.length && declaredPresent)
+      ? visible.map((c) => ({
         field: c.field,
         header: c.headerName || c.field,
         tooltip: typeof c.headerTooltip === "string" ? c.headerTooltip : "",
@@ -1256,7 +1263,9 @@
     // the combo model, so a percent line is not crushed by a $B bar scale.
     const right = xy.filter((t) => t.yaxis === "y2");
     const bars = xy.filter((t) => t.type === "bar" && t.yaxis !== "y2");
-    if (right.length && bars.length) {
+    // Bars only (#1271, e.g. TechTrade segment movers) use the combo model with
+    // no line series, so categories render as bars rather than a line.
+    if (bars.length && (right.length || bars.length === xy.length)) {
       const axisTitle = (axis) => {
         const title = axis && axis.title;
         return String((title && typeof title === "object" ? title.text : title) || "");
@@ -2170,6 +2179,42 @@
       definition: "The observation time reported for the data: a UTC timestamp, an end-of-day session date, or unknown.",
       interpretation: "Unknown means the source does not say how old the data is; it is not a claim that the data is current.",
       source: "https://en.wikipedia.org/wiki/Timestamp",
+    }),
+    // TechTrade scan plan columns (#1271).
+    signal_score: Object.freeze({
+      label: "Signal Score",
+      summary: "Composite confluence score of the trading signal; a higher score means the factors agree more strongly.",
+      definition: "The signal score combines trend, momentum, volatility and volume factors under the selected preset into one ranking number.",
+      interpretation: "Use it to rank candidates within a segment; it is not a probability or an expected return.",
+      source: "https://en.wikipedia.org/wiki/Technical_analysis",
+    }),
+    entry_price: Object.freeze({
+      label: "Entry",
+      summary: "Planned price at which the trade is entered.",
+      definition: "The entry price is the price the trading plan uses to open the position.",
+      interpretation: "Stop and target distances, reward-to-risk and position size are all measured from this price.",
+      source: "https://www.investopedia.com/terms/e/entry-point.asp",
+    }),
+    stop_loss_price: Object.freeze({
+      label: "Stop",
+      summary: "Planned exit price that caps the loss if the trade moves against the position.",
+      definition: "The stop price is the level at which the plan exits a losing position.",
+      interpretation: "The gap between entry and stop is the planned risk per share.",
+      source: "https://www.investopedia.com/terms/s/stop-lossorder.asp",
+    }),
+    profit_target_price: Object.freeze({
+      label: "Target",
+      summary: "Planned exit price that takes the profit if the trade reaches its objective.",
+      definition: "The target price is the level at which the plan exits a winning position.",
+      interpretation: "The gap between entry and target is the planned reward per share.",
+      source: "https://www.investopedia.com/terms/t/take-profitorder.asp",
+    }),
+    reward_to_risk: Object.freeze({
+      label: "Reward:Risk",
+      summary: "Planned gain to the target divided by the planned loss to the stop.",
+      definition: "Reward-to-risk = (target - entry) / (entry - stop) for a long plan, and the mirror image for a short plan.",
+      interpretation: "Above 1 means the planned gain exceeds the planned loss; it says nothing about how likely either is.",
+      source: "https://www.investopedia.com/terms/r/riskrewardratio.asp",
     }),
     net_margin_pct: Object.freeze({
       label: "Net Margin (%)",

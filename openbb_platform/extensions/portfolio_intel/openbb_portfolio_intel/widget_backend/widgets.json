@@ -1889,12 +1889,11 @@
   },
   "tt_segment_movers": {
     "name": "Techtrade - Segment Movers",
-    "description": "Strongest persisted TechTrade signal by market segment (#1692).",
+    "description": "Strongest persisted mover in each market segment as a bar of its percent change (bar label: the symbol). From the latest EOD snapshot, not a live quote; partial or stale coverage is stated on the chart. raw=true returns {segment, symbol, change_pct, bucket} rows. Read-only.",
     "category": "Techtrade",
     "type": "chart",
     "endpoint": "tt/scan/segment-movers",
     "raw": true,
-    "dataKey": "rows",
     "gridData": {
       "w": 20,
       "h": 8
@@ -1904,11 +1903,10 @@
   },
   "tt_scan_table": {
     "name": "Techtrade - Scan Table",
-    "description": "Filtered persisted TechTrade scan results (#1692).",
+    "description": "Latest persisted TechTrade scan: one row per planned trade with its signal, action, entry/stop/target prices and reward-to-risk. Optional Segment filter. Click a symbol to load it into the Position Workbench, Validation, Tuning and Audit tabs (Group 1). Read-only: reading the scan never places an order. A missing or empty snapshot shows one unavailable note row.",
     "category": "Techtrade",
     "type": "table",
     "endpoint": "tt/scan/table",
-    "dataKey": "rows",
     "gridData": {
       "w": 30,
       "h": 12
@@ -1921,8 +1919,124 @@
         "label": "Segment filter",
         "type": "text",
         "description": "Optional segment name to filter rows"
+      },
+      {
+        "paramName": "symbol",
+        "value": "AAPL",
+        "label": "Symbol",
+        "type": "ticker",
+        "show": false,
+        "description": "Hidden link to the symbol group; a symbol click sets it. The scan itself is not filtered by symbol."
       }
-    ]
+    ],
+    "data": {
+      "table": {
+        "columnsDefs": [
+          {
+            "field": "symbol",
+            "headerName": "Symbol",
+            "cellDataType": "text",
+            "pinned": "left",
+            "renderFn": "cellOnClick",
+            "renderFnParams": {
+              "actionType": "groupBy",
+              "groupBy": {
+                "paramName": "symbol"
+              }
+            }
+          },
+          {
+            "field": "segment",
+            "headerName": "Segment",
+            "cellDataType": "text"
+          },
+          {
+            "field": "direction",
+            "headerName": "Direction",
+            "cellDataType": "text"
+          },
+          {
+            "field": "action",
+            "headerName": "Action",
+            "cellDataType": "text"
+          },
+          {
+            "field": "conviction",
+            "headerName": "Conviction",
+            "cellDataType": "text"
+          },
+          {
+            "field": "score",
+            "headerName": "Signal Score",
+            "cellDataType": "number",
+            "headerTooltip": "Composite confluence score of the trading signal; a higher score means the factors agree more strongly."
+          },
+          {
+            "field": "rank_in_segment",
+            "headerName": "Rank in Segment",
+            "cellDataType": "number"
+          },
+          {
+            "field": "entry_price",
+            "headerName": "Entry",
+            "cellDataType": "number",
+            "headerTooltip": "Planned price at which the trade is entered."
+          },
+          {
+            "field": "stop_price",
+            "headerName": "Stop",
+            "cellDataType": "number",
+            "headerTooltip": "Planned exit price that caps the loss if the trade moves against the position."
+          },
+          {
+            "field": "target_price",
+            "headerName": "Target",
+            "cellDataType": "number",
+            "headerTooltip": "Planned exit price that takes the profit if the trade reaches its objective."
+          },
+          {
+            "field": "risk_reward",
+            "headerName": "Reward:Risk",
+            "cellDataType": "number",
+            "headerTooltip": "Planned gain to the target divided by the planned loss to the stop."
+          },
+          {
+            "field": "position_size",
+            "headerName": "Position Size (shares)",
+            "cellDataType": "number"
+          },
+          {
+            "field": "as_of",
+            "headerName": "Signal Date",
+            "cellDataType": "text"
+          },
+          {
+            "field": "snapshot_badge",
+            "headerName": "Snapshot",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_state",
+            "headerName": "Data State",
+            "cellDataType": "text"
+          },
+          {
+            "field": "data_source",
+            "headerName": "Data Source",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "Provider tier or backend source that produced the row; stub means synthetic demo data."
+          },
+          {
+            "field": "data_as_of",
+            "headerName": "Data As Of",
+            "cellDataType": "text",
+            "hide": true,
+            "headerTooltip": "When the row was observed (UTC), its snapshot session, or unknown when the source does not report it."
+          }
+        ]
+      }
+    }
   },
   "tt_export_button": {
     "name": "Techtrade - Export Scan",
@@ -2149,7 +2263,7 @@
   },
   "tt_simulate_result": {
     "name": "Techtrade - Simulated P&L",
-    "description": "Simulated P&L trajectory over the plan horizon (#1696). Stub-shaped over openbb_techtrade.engine.simulate_router.",
+    "description": "Marked P&L of the plan's simulated fills by simulation day, in account currency, from the latest EOD snapshot. raw=true returns the snapshot rows {symbol, segment, day, timestamp, price, pnl}. Read-only: nothing is submitted to the paper engine.",
     "category": "Techtrade",
     "type": "chart",
     "endpoint": "tt/position/simulate",

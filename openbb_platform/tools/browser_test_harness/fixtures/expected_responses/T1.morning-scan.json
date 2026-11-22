@@ -1,40 +1,30 @@
 {
   "body": {
-    "as_of_session": null,
-    "badge": "No EOD snapshot available",
-    "computed_at": null,
-    "disclaimer": "EOD planning snapshot \u2014 not a live/intraday quote",
-    "earnings_annotation": null,
-    "exchange_calendar": "XNYS",
-    "freshness": "red",
-    "is_partial": false,
-    "is_stale": true,
-    "missing_segments": [
-      "Information Technology",
-      "Financials",
-      "Energy",
-      "Health Care",
-      "Consumer Discretionary",
-      "Consumer Staples",
-      "Industrials",
-      "Materials",
-      "Real Estate",
-      "Utilities",
-      "Communication Services"
-    ],
-    "rows": [
-      {
-        "as_of_session": null,
-        "disclaimer": "EOD planning snapshot \u2014 not a live/intraday quote",
-        "earnings_annotation": null,
-        "exchange_calendar": "XNYS",
-        "freshness": "red",
-        "note": "No EOD snapshot available (segment movers) \u2014 run the post-close snapshot job.",
-        "snapshot_badge": "No EOD snapshot available",
-        "survivorship": null
+    "data": [],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Unavailable: no segment movers, no EOD snapshot available; run the post-close snapshot job.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 0.5,
+          "yref": "paper"
+        }
+      ],
+      "meta": {
+        "asOf": "unknown",
+        "reason": "no EOD snapshot available; run the post-close snapshot job",
+        "source": "eod-snapshot",
+        "state": "unavailable"
+      },
+      "xaxis": {
+        "visible": false
+      },
+      "yaxis": {
+        "visible": false
       }
-    ],
-    "survivorship": null
+    }
   },
   "endpoint": "tt/scan/segment-movers",
   "params": {},

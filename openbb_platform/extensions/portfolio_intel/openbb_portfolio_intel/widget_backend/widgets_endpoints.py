@@ -56,6 +56,7 @@ from openbb_portfolio_intel.providers.registry import (
 from openbb_portfolio_intel.providers.retrofit import with_chain
 from openbb_portfolio_intel.widget_backend import (
     provenance as pv,
+    techtrade_charts,
     terminal_charts,
 )
 from openbb_portfolio_intel.widget_backend._app import app
@@ -2733,6 +2734,22 @@ def _mark_snapshot(meta: dict, snapshots: list) -> None:
     pv.mark(record.state, record.reason, source=record.source, as_of=record.as_of)
 
 
+def _mark_no_rows(meta: dict, snapshots: list, what: str) -> None:
+    """Mark a snapshot read that produced no rows as ``unavailable`` (#1271).
+
+    Without a snapshot ``_mark_snapshot`` already says so. A completed run
+    with no rows is not data either, but it is not "no snapshot": the
+    reason says the run completed, and the snapshot session stays as-of.
+    """
+    if snapshots:
+        pv.mark(
+            DataState.UNAVAILABLE,
+            f"latest EOD snapshot completed with no {what}",
+            source=_SNAPSHOT_SOURCE,
+            as_of=meta.get("as_of_session"),
+        )
+
+
 def _snapshot_markdown_header(meta: dict) -> str:
     annotation = (
         f" · **{meta['earnings_annotation']}**"
@@ -2747,13 +2764,14 @@ def _snapshot_markdown_header(meta: dict) -> str:
 
 
 @app.get("/tt/scan/segment-movers")
-@widget("table")
+@plotly_chart(techtrade_charts.segment_movers_figure, demo=techtrade_charts.NO_DEMO)
 def tt_scan_segment_movers(
     request: Request,
-) -> dict:
+) -> list[dict[str, object]]:
     """Segment Movers — top gainers/losers by segment (#1692, #1941).
 
-    Summarizes the strongest persisted movers row in each segment.
+    Summarizes the strongest persisted movers row in each segment. Served as
+    a Plotly bar figure; ``raw=true`` returns the rows (#1271). Read-only.
     """
     _require_auth(request)
     source_rows, snapshots = _read_snapshot_rows("techtrade.movers")
@@ -2777,22 +2795,20 @@ def tt_scan_segment_movers(
             }
         )
     if not rows:
-        rows = (
-            _fresh_empty_rows("segment movers")
-            if snapshots
-            else _loud_empty_rows("segment movers")
-        )
-    rows = _decorate_rows(rows, meta)
-    return {"rows": rows, **meta}
+        _mark_no_rows(meta, snapshots, "segment movers")
+        return []
+    return _decorate_rows(rows, meta)
 
 
 @app.get("/tt/scan/table")
 @widget("table")
-def tt_scan_table(request: Request, segment: str = "") -> dict:
+def tt_scan_table(request: Request, segment: str = "") -> list[dict[str, object]]:
     """Scan Table — filtered ticker scan results (#1692, #1941).
 
     Reads the latest ``daily_scan`` snapshot from the store. When a
-    ``segment`` filter is provided only matching rows are returned.
+    ``segment`` filter is provided only matching rows are returned. Returns
+    the rows directly (#1271: no ``{"rows": ...}`` envelope); a missing or
+    empty snapshot is one ``unavailable`` note row. Read-only.
     """
     _require_auth(request)
     if segment:
@@ -2805,9 +2821,9 @@ def tt_scan_table(request: Request, segment: str = "") -> dict:
     _mark_snapshot(meta, snapshots)
     if not rows:
         context = f"scan table{f' segment={segment}' if segment else ''}"
+        _mark_no_rows(meta, snapshots, "scan rows")
         rows = _fresh_empty_rows(context) if snapshots else _loud_empty_rows(context)
-    rows = _decorate_rows(rows, meta)
-    return {"rows": rows, **meta}
+    return _decorate_rows(rows, meta)
 
 
 @app.get("/tt/scan/export")
@@ -3385,22 +3401,24 @@ def tt_position_order_legs(
 
 
 @app.get("/tt/position/simulate")
-@widget("table")
+@plotly_chart(techtrade_charts.simulate_figure, demo=techtrade_charts.NO_DEMO)
 def tt_position_simulate(
     request: Request, symbol: str = "AAPL"
 ) -> list[dict[str, object]]:
-    """Return Simulate Result rows (#1696) — simulated P&L trajectory (chart raw)."""
+    """Return the simulated P&L trajectory for a symbol's plan (#1696).
+
+    Served as a Plotly line of marked P&L by simulation day; ``raw=true``
+    returns the snapshot rows (#1271). Read-only: simulation fills are
+    persisted by the snapshot job, never placed from here.
+    """
     _require_auth(request)
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.simulate", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
     _mark_snapshot(meta, snapshots)
     if not rows:
-        rows = (
-            _fresh_empty_rows(f"simulation symbol={sym}")
-            if snapshots
-            else _loud_empty_rows(f"simulation symbol={sym}")
-        )
+        _mark_no_rows(meta, snapshots, "simulation fills")
+        return []
     return _decorate_rows(rows, meta)
 
 
@@ -4541,7 +4559,8 @@ def tt_execute_paper_status(request: Request) -> dict:
         filled = len(engine.get_orders(status=OrderStatus.FILLED))
         return {
             "account": {
-                "account_id": acct.account_id,
+                # #1271: the same redaction as the Markdown variant (#1269).
+                "account_id": account_display(str(acct.account_id)),
                 "cash": str(acct.cash),
                 "realized_pl": str(acct.realized_pl),
                 "starting_cash": str(acct.starting_cash),

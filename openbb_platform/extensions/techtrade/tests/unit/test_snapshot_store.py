@@ -1708,7 +1708,10 @@ def test_mysql_failure_warning_reports_the_db_path_argument(
         store = get_default_snapshot_store(arg_target)
     assert isinstance(store, SqliteSnapshotStore)
     assert "falling back to SQLite" in caplog.text
-    assert str(arg_target) in caplog.text
+    # #1271: the WARNING names the file, never the absolute (home) path.
+    assert store_module.display_db_path(arg_target.resolve()) in caplog.text
+    assert arg_target.name in caplog.text
+    assert str(arg_target) not in caplog.text
     assert "should-not-be-reported.db" not in caplog.text
     store.close()
 
@@ -1725,7 +1728,9 @@ def test_mysql_failure_warning_reports_the_env_db_path_when_arg_omitted(
         store = get_default_snapshot_store()
     assert isinstance(store, SqliteSnapshotStore)
     assert "falling back to SQLite" in caplog.text
-    assert str(env_target) in caplog.text
+    assert store_module.display_db_path(env_target.resolve()) in caplog.text
+    assert env_target.name in caplog.text
+    assert str(env_target) not in caplog.text
     store.close()
 
 
@@ -1760,6 +1765,69 @@ def _raise_missing_dependency() -> None:
     raise ImportError("No module named 'pymysql'")
 
 
+# ---------------------------------------------------------------------------
+# The fallback WARNING never names the operator's home directory (#1271)
+# ---------------------------------------------------------------------------
+
+_HOME_SENTINEL = "OPERATOR-SENTINEL-HOME"
+
+
+def test_fallback_warning_redacts_the_home_directory(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """The per-user default is logged ``~``-relative, never with the home path.
+
+    Reverse-verified: logging ``resolved`` instead of its display form puts
+    the sentinel home directory back into ``caplog.text``.
+    """
+    fake_home = tmp_path / _HOME_SENTINEL
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    monkeypatch.setenv("PI_SNAPSHOT_ENGINE", "mysql")
+    monkeypatch.delenv("PI_SNAPSHOT_DB", raising=False)
+    monkeypatch.setattr(store_module, "_make_mysql_store", _raise_connection_error)
+    with caplog.at_level(logging.DEBUG, logger=_STORE_LOGGER):
+        store = get_default_snapshot_store()
+    try:
+        assert "~/.portfolio_intel/snapshot.db" in caplog.text
+        assert _HOME_SENTINEL not in caplog.text
+        assert str(fake_home) not in caplog.text
+    finally:
+        store.close()
+
+
+def test_fallback_warning_names_only_the_file_outside_home(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """A path outside the home directory is logged by its file name only."""
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    monkeypatch.setenv("PI_SNAPSHOT_ENGINE", "mysql")
+    monkeypatch.setattr(store_module, "_make_mysql_store", _raise_connection_error)
+    target = tmp_path / _HOME_SENTINEL / "outside.db"
+    with caplog.at_level(logging.DEBUG, logger=_STORE_LOGGER):
+        store = get_default_snapshot_store(target)
+    try:
+        assert "outside.db" in caplog.text
+        assert _HOME_SENTINEL not in caplog.text
+    finally:
+        store.close()
+
+
+def test_display_db_path_forms(monkeypatch, tmp_path) -> None:
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    inside = (fake_home / ".portfolio_intel" / "snapshot.db").resolve()
+    outside = (tmp_path / "srv" / "data" / "snapshot.db").resolve()
+    assert store_module.display_db_path(inside) == "~/.portfolio_intel/snapshot.db"
+    assert store_module.display_db_path(outside) == "snapshot.db"
+
+
 def test_mysql_fallback_warning_names_the_exception_type_not_its_message(
     monkeypatch, tmp_path, caplog
 ) -> None:
@@ -1780,7 +1848,8 @@ def test_mysql_fallback_warning_names_the_exception_type_not_its_message(
         assert isinstance(store, SqliteSnapshotStore)
         # Required by every caller of this seam, and by the tests above.
         assert "falling back to SQLite" in caplog.text
-        assert str(target.expanduser().resolve()) in caplog.text
+        assert store_module.display_db_path(target.resolve()) in caplog.text
+        assert str(target.expanduser().resolve()) not in caplog.text
         # The type is present, qualified by module so `OperationalError`
         # from a driver is not confused with one from sqlite3.
         assert "_FakeDriverError" in caplog.text
@@ -1920,10 +1989,11 @@ def test_env_db_path_tilde_expands_to_the_real_home_dir_and_matches_the_warning(
     try:
         assert isinstance(store, SqliteSnapshotStore)
         assert store._db_path == expected  # noqa: SLF001
-        # The WARNING must name the same expanded path the store opened,
-        # never the literal, un-expanded "~/..." argument.
-        assert str(expected) in caplog.text
-        assert "~" not in caplog.text
+        # The WARNING names the expanded path the store opened, relative to
+        # the home directory (#1271): the home prefix itself never appears.
+        assert "~/.portfolio_intel/snapshot.db" in caplog.text
+        assert str(expected) not in caplog.text
+        assert str(fake_home) not in caplog.text
     finally:
         store.close()
 
@@ -2012,7 +2082,8 @@ def test_mysql_failure_warning_reports_the_per_user_default_path(
         assert isinstance(store, SqliteSnapshotStore)
         assert store._db_path == expected_default  # noqa: SLF001
         assert "falling back to SQLite" in caplog.text
-        assert str(expected_default) in caplog.text
+        assert "~/.portfolio_intel/snapshot.db" in caplog.text
+        assert str(expected_default) not in caplog.text
         assert expected_default.is_file()
     finally:
         store.close()

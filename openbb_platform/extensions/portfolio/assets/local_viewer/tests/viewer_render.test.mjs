@@ -670,7 +670,9 @@ test("every manifest headerTooltip resolves to a curated glossary record (#1268)
       assert.ok(H.metricGlossaryKeyForSummary(column.headerTooltip), `${id}.${column.field}`);
     }
   }
-  assert.equal(seen, 19 + 2 * 18); // #1269: data_source/data_as_of on 18 tables
+  // #1269: data_source/data_as_of on every table with columnsDefs (19 since
+  // #1271 added tt_scan_table); #1271: five TechTrade plan columns.
+  assert.equal(seen, 19 + 5 + 2 * 19);
 });
 
 test("every rendered-label glossary key is a curated record", () => {
@@ -1512,4 +1514,45 @@ test("contextParamLabel maps known shared params and title-cases the rest", () =
   assert.equal(H.contextParamLabel("account_id"), "Account");
   assert.equal(H.contextParamLabel("benchmark_symbol"), "Benchmark");
   assert.equal(H.contextParamLabel("some_other_key"), "Some Other Key");
+});
+// --------------------------------------------------------------------------
+// TechTrade Desk native contracts (#1271)
+// --------------------------------------------------------------------------
+test("scan table renders declared columns and its symbol tooltip set (#1271)", () => {
+  const container = { innerHTML: "" };
+  H.renderTable(container, [{
+    symbol: "NVDA", segment: "Information Technology", score: 0.91, entry_price: 100,
+    risk_reward: 2, data_state: "stale", data_source: "eod-snapshot", data_as_of: "2026-09-11",
+  }], WIDGETS.tt_scan_table);
+  assert.match(container.innerHTML, /Signal Score/);
+  assert.match(container.innerHTML, /Reward:Risk/);
+  assert.match(container.innerHTML, />NVDA</);
+  assert.doesNotMatch(container.innerHTML, /eod-snapshot/);
+});
+
+test("a note-only marker row still shows its note under declared columns (#1271)", () => {
+  const container = { innerHTML: "" };
+  H.renderTable(container, [{
+    note: "No EOD snapshot available (scan table) - run the post-close snapshot job.",
+    data_state: "unavailable", data_source: "eod-snapshot", data_as_of: "unknown",
+  }], WIDGETS.tt_scan_table);
+  assert.match(container.innerHTML, /No EOD snapshot available/);
+});
+
+test("bar-only Plotly figures map to bars, not a line (#1271)", () => {
+  const parsed = H.plotlyFigureModel({
+    data: [{ type: "bar", name: "Change (%)", x: ["Energy", "Utilities"], y: [-2.75, 1.5] }],
+    layout: { meta: { state: "stale", source: "eod-snapshot" } },
+  });
+  assert.equal(parsed.model.kind, "combo");
+  assert.deepEqual(parsed.model.xLabels, ["Energy", "Utilities"]);
+  assert.deepEqual(parsed.model.bars[0].points.map((p) => p.y), [-2.75, 1.5]);
+  assert.deepEqual(parsed.model.lines, []);
+});
+
+test("every scan table headerTooltip names a TechTrade glossary record (#1271)", () => {
+  const keys = WIDGETS.tt_scan_table.data.table.columnsDefs
+    .filter((c) => c.headerTooltip && !c.field.startsWith("data_"))
+    .map((c) => H.metricGlossaryKeyForSummary(c.headerTooltip));
+  assert.deepEqual(keys, ["signal_score", "entry_price", "stop_loss_price", "profit_target_price", "reward_to_risk"]);
 });

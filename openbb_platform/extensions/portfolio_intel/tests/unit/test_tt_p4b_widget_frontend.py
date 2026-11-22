@@ -798,7 +798,11 @@ class TestPaperStatusMarkdown:
         response = _client.get("/tt/execute/paper-status")
 
         assert response.status_code == 200
-        assert response.json()["account"]["account_id"] == "mysql-paper"
+        # #1271: the paper account id is withheld like the Markdown variant.
+        assert response.json()["account"]["account_id"] == (
+            "selected account (identifier withheld)"
+        )
+        assert "mysql-paper" not in response.text
 
 
 # ---------------------------------------------------------------------------
