@@ -42,6 +42,7 @@ from openbb_techtrade.snapshot.store import (
     SnapshotRow,
     SnapshotStore,
     SqliteSnapshotStore,
+    display_db_path,
     get_default_snapshot_store,
 )
 
@@ -3429,6 +3430,16 @@ def tt_position_simulate(
     if not rows:
         _mark_no_rows(meta, snapshots, "simulation fills")
         return []
+    excluded = [row for row in rows if row.get("excluded")]
+    if excluded:
+        # A halted/delisted symbol has no fills: say so (#1271 review). The
+        # exclusion rows stay in ``raw=true``.
+        pv.mark(
+            DataState.UNAVAILABLE,
+            str(excluded[0].get("note") or "symbol excluded from EOD snapshot"),
+            source=_SNAPSHOT_SOURCE,
+            as_of=meta.get("as_of_session"),
+        )
     return _decorate_rows(rows, meta)
 
 
@@ -4140,7 +4151,9 @@ async def tt_execute_approve_plan(
         "batch_sha": batch.sha256(),
         "verdict": "PASS",
         "broker_id": broker_id,
-        "account_id": account_id,
+        # #1271 review: the id field is redacted; the confirmation phrase
+        # below must still name the account the gateway binds it to.
+        "account_id": account_display(account_id),
         "principal_id": principal_id,
         "confirmation": (
             f"SUBMIT {configured_mode.value.upper()} {broker_id} {account_id} "
@@ -4169,7 +4182,8 @@ def tt_execute_write_batch(  # pylint: disable=too-many-return-statements
 
     Returns a dict with:
       - ``batch_sha`` — 8-char short SHA
-      - ``csv_path`` / ``xlsx_path`` — absolute paths of the written files
+      - ``csv_path`` / ``xlsx_path`` — the written files, ``~``-relative or by
+        file name (never the absolute operator path, #1271)
       - ``order_ids`` — list of PENDING orders now in the paper engine
       - ``next_step`` — a human-legible next-action hint
 
@@ -4381,12 +4395,14 @@ def tt_execute_write_batch(  # pylint: disable=too-many-return-statements
 
     return {
         "batch_sha": batch.sha_short(),
-        "csv_path": str(art.csv_path),
-        "xlsx_path": str(art.xlsx_path),
+        # #1271 review: name the written files home-relative or by file name;
+        # the files stay where the sink wrote them.
+        "csv_path": display_db_path(Path(art.csv_path).resolve()),
+        "xlsx_path": display_db_path(Path(art.xlsx_path).resolve()),
         "submission_id": str(receipt.submission_id),
         "mode": receipt.mode.value,
         "broker_id": receipt.broker_id,
-        "account_id": receipt.account_id,
+        "account_id": account_display(str(receipt.account_id)),
         "principal_id": receipt.principal_id,
         "status": receipt.status.value,
         "order_uuids": [str(order.order_uuid) for order in receipt.orders],

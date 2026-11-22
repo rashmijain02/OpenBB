@@ -106,6 +106,14 @@ def simulate_figure(rows: Rows, ctx: ChartContext) -> Figure:
     timestamp, price, pnl, source}``; P&L is in account currency, marked at
     each fill price. One line per segment the symbol was planned in.
     """
+    # Only complete rows are plotted: an exclusion or marker row carries no
+    # ``day``/``pnl`` (#1271 review).
+    rows = [
+        row
+        for row in rows
+        if isinstance(row.get("day"), int | float)
+        and isinstance(row.get("pnl"), int | float)
+    ]
     early = _guard(rows, ctx, "simulation fills")
     if early:
         return early

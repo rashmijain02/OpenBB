@@ -382,7 +382,7 @@ class TestBrokerExecutionGateway:
                 "order_uuid": str(order_uuid),
                 "confirm": (
                     f"CANCEL PAPER {submitted['broker_id']} "
-                    f"{submitted['account_id']} {submitted['principal_id']} "
+                    f"paper {submitted['principal_id']} "
                     f"{order_uuid}"
                 ),
             },
@@ -401,7 +401,7 @@ class TestBrokerExecutionGateway:
         order_uuid = submitted["order_uuids"][0]
         confirmation = (
             f"CANCEL PAPER {submitted['broker_id']} "
-            f"{submitted['account_id']} {submitted['principal_id']} {order_uuid}"
+            f"paper {submitted['principal_id']} {order_uuid}"
         )
 
         rejected = _client.post(
@@ -477,7 +477,7 @@ def test_approve_plan_registers_server_validated_batch(
     restored = store.get_approved_batch(
         f"t4-{request_id}",
         broker_id=response.json()["broker_id"],
-        account_id=response.json()["account_id"],
+        account_id="paper",  # #1271: the response withholds the id
         principal_id=response.json()["principal_id"],
     )
     assert restored is not None

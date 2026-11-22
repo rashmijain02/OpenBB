@@ -117,10 +117,11 @@ class TestWriteBatchHappyPath:
         monkeypatch.setenv("PI_ALLOW_T5_EXECUTE", "true")
         r = _client.post("/tt/execute/write-batch?verdict=PASS&confirm=yes")
         assert r.status_code == 200
-        csv_path = Path(r.json()["csv_path"])
-        xlsx_path = Path(r.json()["xlsx_path"])
-        assert csv_path.exists()
-        assert xlsx_path.exists()
+        # #1271: the receipt names the files (home-relative or file name),
+        # not their absolute path; the files are still on disk.
+        out = Path(os.environ["PI_T5_EXECUTE_OUTPUT_DIR"])
+        assert list(out.rglob(Path(r.json()["csv_path"]).name))
+        assert list(out.rglob(Path(r.json()["xlsx_path"]).name))
 
     def test_idempotent_second_write(
         self, monkeypatch: pytest.MonkeyPatch, clean_env

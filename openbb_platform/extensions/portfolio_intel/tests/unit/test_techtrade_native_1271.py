@@ -687,3 +687,131 @@ def test_paper_status_json_still_names_the_demo_account(
 def test_every_placed_techtrade_widget_is_in_the_manifest() -> None:
     assert set(TT_WIDGETS) >= _PLACED
     assert widgets_endpoints.app is app
+
+
+# ---------------------------------------------------------------------------
+# Review fixes: excluded symbols, write-batch echoes (#1271 code review)
+# ---------------------------------------------------------------------------
+
+
+def _seed_excluded(store: SqliteSnapshotStore, dataset: str, symbol: str) -> None:
+    key = f"segment={SEGMENT.casefold()}"
+    payload = {
+        "rows": [],
+        "segment": SEGMENT,
+        "as_of_session": SESSION.isoformat(),
+        "exchange_calendar": "XNYS",
+        "earnings_symbols": [],
+        "excluded_symbols": [symbol],
+        "exclusion_reasons": {symbol: "halted"},
+        "survivorship": "not-applicable",
+    }
+    store.stage(
+        dataset,
+        key,
+        SESSION,
+        "excluded",
+        payload,
+        row_count=0,
+        engine_version="test",
+        payload_schema_version="1",
+    )
+    definition = DEFAULT_DATASET_REGISTRY.require(dataset)
+    assert store.validate(
+        dataset, key, SESSION, "excluded", lambda row: definition.validator(row, None)
+    ).ok
+    assert store.promote(dataset, key, SESSION, "excluded")
+
+
+def test_simulate_for_an_excluded_symbol_is_an_unavailable_figure(
+    tmp_path: Path,
+) -> None:
+    """A halted/delisted symbol is explained, never a 500 (CODE-2)."""
+    store = SqliteSnapshotStore(tmp_path / "excluded.db")
+    _seed_excluded(store, "techtrade.simulate", "AAPL")
+    with patch(_STORE_PATH, return_value=store):
+        response = _CLIENT.get("/tt/position/simulate?symbol=AAPL")
+        raw = _CLIENT.get("/tt/position/simulate?symbol=AAPL&raw=true")
+    store.close()
+    assert response.status_code == 200
+    figure = response.json()
+    assert figure["data"] == []
+    assert figure["layout"]["meta"]["state"] == "unavailable"
+    assert "excluded" in _annotation_text(figure).lower()
+    assert "halted" in _annotation_text(figure).lower()
+    assert _issues("tt_simulate_result", response) == []
+    rows = raw.json()
+    assert raw.status_code == 200
+    assert [(r["symbol"], r["excluded"], r["data_state"]) for r in rows] == [
+        ("AAPL", True, "unavailable")
+    ]
+    assert "halted" in rows[0]["note"]
+
+
+def test_simulate_figure_skips_rows_without_day_or_pnl() -> None:
+    """The builder plots only complete rows; no KeyError on partial rows."""
+    from openbb_portfolio_intel.widget_backend.provenance import (
+        DataState,
+        Provenance,
+    )
+    from openbb_portfolio_intel.widget_backend.techtrade_charts import (
+        simulate_figure,
+    )
+    from openbb_portfolio_intel.widget_backend.terminal_charts import ChartContext
+
+    ctx = ChartContext(
+        {"symbol": "NVDA"},
+        Provenance(DataState.CACHED, "eod-snapshot", "snapshot", "2026-09-11"),
+    )
+    figure = simulate_figure(
+        [{"symbol": "NVDA", "note": "partial"}, {**_SIMULATE[0]}], ctx
+    )
+    assert [t["y"] for t in figure["data"]] == [[-1.0]]
+    empty = simulate_figure([{"symbol": "NVDA", "note": "partial"}], ctx)
+    assert empty["data"] == [] and empty["layout"]["meta"]["state"] == "unavailable"
+
+
+def test_write_batch_receipt_withholds_account_and_absolute_paths(
+    monkeypatch: pytest.MonkeyPatch, sandbox: Path
+) -> None:
+    """The receipt names files home-relative or by name, not the operator path."""
+    monkeypatch.setenv("PI_ALLOW_T5_EXECUTE", "true")
+    response = _CLIENT.post("/tt/execute/write-batch?verdict=PASS&confirm=yes")
+    assert response.status_code == 200  # positive control: the write happened
+    body = response.json()
+    assert len(body["order_ids"]) == 3
+    assert body["account_id"] == account_display("paper")
+    for field in ("csv_path", "xlsx_path"):
+        shown = body[field]
+        assert str(sandbox) not in shown and not Path(shown).is_absolute(), field
+        written = list((sandbox / "t5_out").rglob(Path(shown).name))
+        assert written, f"{field}: the file itself is still written"
+    assert str(sandbox) not in response.text
+
+
+def test_approve_plan_withholds_the_account_id_field(
+    monkeypatch: pytest.MonkeyPatch, sandbox: Path
+) -> None:
+    from decimal import Decimal
+
+    from openbb_techtrade.execution.order_sink import OrderBatch, OrderTicket
+
+    batch = OrderBatch(
+        tickets=(OrderTicket("TSLA", "Buy", Decimal("2")),),
+        plan_id="validated-plan",
+        verdict_gate_pass=True,
+    )
+
+    async def approved_builder(_plan, _approval_id):
+        return batch
+
+    monkeypatch.setattr(
+        app.state, "t5_plan_approval_builder", approved_builder, raising=False
+    )
+    response = _CLIENT.post(
+        "/tt/execute/approve-plan",
+        params={"approval_request_id": "00000000-0000-4000-8000-000000001271"},
+        json={"symbol": "MSFT"},
+    )
+    assert response.status_code == 200
+    assert response.json()["account_id"] == account_display("paper")

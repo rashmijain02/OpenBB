@@ -2364,7 +2364,7 @@ class SqliteSnapshotStore:
                 "snapshot store: SQLite refused WAL at %s (journal_mode=%s); "
                 "concurrent readers may see 'database is locked' under a "
                 "long write",
-                self._db_path,
+                display_db_path(self._db_path),
                 mode,
             )
 

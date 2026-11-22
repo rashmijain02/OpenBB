@@ -4209,3 +4209,35 @@ def test_get_live_many_returns_only_requested_live_keys(tmp_path: Path) -> None:
         "segment=financials",
     ]
     store.close()
+
+
+def test_wal_refused_warning_redacts_the_home_directory(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """The WAL-refused WARNING names the store ``~``-relative (#1271 review).
+
+    Reverse-verified: logging ``self._db_path`` puts the sentinel home back.
+    """
+    fake_home = tmp_path / _HOME_SENTINEL
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    store = SqliteSnapshotStore(fake_home / ".portfolio_intel" / "snapshot.db")
+    real = store._conn  # noqa: SLF001
+
+    class _NoWal:
+        def execute(self, sql, *args):
+            if "journal_mode = WAL" in sql:
+                return real.execute("SELECT 'delete'")
+            return real.execute(sql, *args)
+
+    monkeypatch.setattr(store, "_conn", _NoWal())
+    try:
+        with caplog.at_level(logging.WARNING, logger=_STORE_LOGGER):
+            store._configure_connection()  # noqa: SLF001
+        assert "refused WAL" in caplog.text
+        assert "~/.portfolio_intel/snapshot.db" in caplog.text
+        assert _HOME_SENTINEL not in caplog.text
+    finally:
+        monkeypatch.setattr(store, "_conn", real)
+        store.close()
