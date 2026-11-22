@@ -62,50 +62,88 @@ _SECRET_KEY_PREFIXES = ("accesskey", "apikey", "password", "secretkey")
 
 # Account, basket, owner and user identifiers are not needed to explain the
 # data, so they never leave the backend. A key is split into camelCase /
-# snake_case / kebab-case tokens; it is an identifier when any token is one of
-# ``_ID_WORDS`` (at any position: ``pm_user``, ``primary_account_id``), when a
-# ``_ID_QUALIFIED`` token sits next to an id-like token (``portfolio_id``), or
-# when the joined key contains a word+id compound (``primaryaccountid``).
-_ID_WORDS = frozenset(
+# snake_case / kebab-case tokens and judged token by token:
+#
+# - a *strong* token is always an identifier (``holder_name``, ``investor``,
+#   ``acct_no``, ``email``);
+# - a *subject* token (account, user, basket, client, customer, owner) is an
+#   identifier when it ends the key (``pm_user``, ``owner``) or is next to an
+#   id form (``account_number``, ``user_email``), but not when it qualifies a
+#   metric (``account_value``, ``user_rating``, ``basket_return``,
+#   ``client_count``);
+# - a *qualified* token (portfolio, book, household, member, person) is an
+#   identifier only next to an id form (``portfolio_id``, ``id_portfolio``),
+#   so ``portfolio_notional`` and ``portfolio_refresh_ts`` survive;
+# - a lowercase run-together token is an identifier when it ends with a
+#   subject/qualified word plus an id form (``primaryaccountid``,
+#   ``accountnbr``, ``portfolioid``) or with a strong word
+#   (``accountholder``, ``useremail``). Matching is at the token end, so
+#   ``portfolionotional`` does not match ``portfoliono``.
+_ID_STRONG = frozenset(
+    {
+        "acc",
+        "accno",
+        "acct",
+        "acctno",
+        "accts",
+        "beneficiaries",
+        "beneficiary",
+        "email",
+        "holder",
+        "holders",
+        "investor",
+        "investors",
+        "login",
+        "phone",
+        "ssn",
+        "username",
+    }
+)
+# Strong words long enough to match at the end of a run-together token.
+_ID_STRONG_SUFFIXES = (
+    "beneficiary",
+    "email",
+    "holder",
+    "investor",
+    "username",
+)
+_ID_SUBJECT = frozenset(
     {
         "account",
         "accounts",
-        "acct",
-        "accts",
         "basket",
         "baskets",
         "client",
         "clients",
         "customer",
         "customers",
-        "email",
-        "login",
         "owner",
         "owners",
-        "phone",
-        "ssn",
         "user",
-        "username",
         "users",
     }
 )
 _ID_QUALIFIED = frozenset({"book", "household", "member", "person", "portfolio"})
-_ID_SUFFIXES = ("id", "ids", "key", "name", "no", "num", "number", "ref", "uuid")
+_ID_FORMS = frozenset(
+    {"email", "id", "ids", "key", "name", "nbr", "no", "num", "number", "ref", "uuid"}
+)
 _ID_COMPOUNDS = tuple(
-    word + suffix
+    word + form
     for word in (
         "account",
         "acct",
         "basket",
+        "book",
         "client",
         "customer",
         "household",
         "member",
         "owner",
+        "person",
         "portfolio",
         "user",
     )
-    for suffix in _ID_SUFFIXES
+    for form in sorted(_ID_FORMS)
 )
 _TOKEN_RE = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 
@@ -193,17 +231,26 @@ def is_secret_key(key: Any) -> bool:
     )
 
 
+def _single_token_identifier(token: str) -> bool:
+    return token.endswith(_ID_COMPOUNDS) or token.endswith(_ID_STRONG_SUFFIXES)
+
+
 def is_identifier_key(key: Any) -> bool:
     """Return whether a field name is an account/basket/owner/user identifier."""
     tokens = [token.lower() for token in _TOKEN_RE.findall(str(key)[:200])]
-    if any(token in _ID_WORDS for token in tokens):
-        return True
-    if any(token in _ID_QUALIFIED for token in tokens) and any(
-        token in _ID_SUFFIXES for token in tokens
-    ):
-        return True
-    norm = _norm(key)[:200]
-    return any(compound in norm for compound in _ID_COMPOUNDS)
+    for index, token in enumerate(tokens):
+        before = tokens[index - 1] if index else ""
+        after = tokens[index + 1] if index + 1 < len(tokens) else ""
+        near_form = before in _ID_FORMS or after in _ID_FORMS
+        if token in _ID_STRONG:
+            return True
+        if token in _ID_SUBJECT and (not after or near_form):
+            return True
+        if token in _ID_QUALIFIED and near_form:
+            return True
+        if _single_token_identifier(token):
+            return True
+    return False
 
 
 def _table_cells(line: str) -> list[str]:
@@ -258,12 +305,26 @@ def _mask_markdown_tables(text: str) -> str:
     return "\n".join(lines)
 
 
+# ``portfolio_id=…``, ``pm_user: …``, ``acctNo=…``, ``Account: …`` in prose.
+# The key may not start inside a word, and every quantifier is bounded.
+_KEY_VALUE_RE = re.compile(
+    r"(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9_\-]{0,40})[ \t]{0,4}(?:\*\*)?[ \t]{0,4}"
+    r"([:=])[ \t]{0,4}(?:\*\*)?[ \t]{0,4}(?!\[redacted\])([^\s,;&|*]{1,256})"
+)
+
+
+def _mask_identifier_value(match: re.Match[str]) -> str:
+    if not is_identifier_key(match.group(1)):
+        return match.group(0)
+    return f"{match.group(1)}{match.group(2)} {REDACTED}"
+
+
 def redact_text(text: str) -> str:
     """Redact credentials and written-out identifiers (linear-time patterns)."""
     text = _mask_markdown_tables(text)
     for pattern, replacement in _SECRET_VALUE_RES:
         text = pattern.sub(replacement, text)
-    return text
+    return _KEY_VALUE_RE.sub(_mask_identifier_value, text)
 
 
 def _column_name(column: Any) -> Any:

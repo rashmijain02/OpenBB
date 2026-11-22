@@ -235,8 +235,15 @@ selected widgets do leave this machine. Do not select widgets whose data you do 
   (bearer/basic tokens, JWTs, AWS keys, `key=`/`sig=`/`token:` values, `user:pass@` in URLs)
   are redacted. Identifier fields (account / acct, basket, owner, user, customer, client,
   `portfolio_id` and similar, matched by name token at any depth) are dropped, and so are
-  identifier columns in column-oriented payloads and in Markdown tables. Redaction uses only
-  linear-time patterns.
+  identifier columns in column-oriented payloads and in Markdown tables. Metrics about such an
+  entity (`account_value`, `portfolio_notional`, `user_rating`, `client_count`) are kept; holder,
+  investor and beneficiary names and the id / number / name / email forms are dropped. In
+  free text, `key=value` and `key: value` pairs with an identifier key (`portfolio_id=…`,
+  `pm_user: …`, `Account: …`) are masked. Redaction uses only linear-time patterns.
+- **Known limitation.** CSV text, JSON embedded inside a string, and Markdown tables without
+  `|` delimiters are not parsed. Identifier columns in those forms are caught only where a
+  `key=value` / `key: value` pair names them, so do not select widgets that return identifiers
+  in those shapes.
 - **Size caps.** `/query` bodies over 8 MB get HTTP 413, and any widget payload over 1,000,000
   characters is reported unavailable without being parsed. Rows, nested lists and strings are cut
   to their limits before redaction runs.

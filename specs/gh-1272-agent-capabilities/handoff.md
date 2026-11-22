@@ -197,3 +197,27 @@ POST /query (tool result) 200 ['copilotStatusUpdate', 'copilotMessageChunk']
   local-only C0328.
 - **Real path** (`.dev-cycle/realpath3-gh-1272.log`): same flow as before, with body parsing
   through the size-capped reader.
+
+## Round 4: identifier precision (uncommitted on top of `84b911ada`)
+
+- **PRIVACY-2:** `holder`, `investor` and `beneficiary` are *strong* identifier words again
+  (`holder_name`, `holderId`), together with the short forms `acc`, `accno`, `acct`, `acctno`
+  (`acct_no`) and `email`, `phone`, `login`, `ssn`, `username`. Lowercase run-together keys are
+  identifiers when the token ends with a word+id-form compound (`accountnbr`, `primaryaccountid`,
+  `portfolioid`) or a strong word (`accountholder`, `useremail`).
+- **Over-stripping:** matching is token-aware. A *subject* word (account, user, basket, client,
+  customer, owner) is an identifier when it ends the key or sits next to an id form (id, ids,
+  uuid, key, no, nbr, num, number, name, email, ref). A *qualified* word (portfolio, book,
+  household, member, person) is an identifier only next to an id form. Compounds match only at a
+  token's end. Kept: `portfolio_notional`, `portfolio_refresh_ts`, `portfolio_weight`,
+  `portfolio_value`, `account_value`, `user_rating`, `basket_return`, `client_count`, `book`.
+  Dropped: the id, number, name and email forms. No real matrix column matches.
+- **Text form:** a bounded `key=value` / `key: value` pattern masks the value when the key is an
+  identifier (`portfolio_id=`, `pm_user:`, `acctNo=`, `Account:`, `holder_name =`); metric pairs
+  are kept. CSV, JSON inside a string and Markdown tables without `|` delimiters are documented
+  as a known limitation in the README.
+- **Evidence:** red first 17 failed, 102 passed (`.dev-cycle/red4-gh-1272.log`). Mutation 13 of 14
+  killed; one is equivalent (`holder` is in both the strong set and the strong-suffix list)
+  (`.dev-cycle/mutation4-gh-1272.log`). Agent tests 137 passed, 1 skipped; PI agent and mount 18
+  passed; MCP chart rows and adapter 23 passed; CI lint parity clean (mypy `--platform linux` 0
+  issues). Full PI unit: 2148 passed, 1 skipped, exit 0.

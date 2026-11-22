@@ -845,17 +845,78 @@ def test_identifier_keys_by_token_are_dropped(monkeypatch, key):
 
 
 def test_non_identifier_columns_are_kept():
+    """Metrics about an account, portfolio, user, basket or client survive."""
     row = {
         "ownership_pct": 1.5,
         "portfolio_value": 10.0,
         "portfolio_weight": 0.2,
-        "holder": "Example Fund LP",
+        "portfolio_notional": 5.0,
+        "portfolio_refresh_ts": "2026-07-01T00:00:00Z",
+        "portfolionotional": 5.0,
+        "account_value": 100.0,
+        "user_rating": 4,
+        "basket_return": 0.03,
+        "client_count": 7,
         "accrued": 1,
-        "users_note": None,
+        "book": "x",
     }
-    kept = copilot.sanitize(row)
-    for key in ("ownership_pct", "portfolio_value", "portfolio_weight", "holder", "accrued"):
-        assert key in kept, key
+    assert copilot.sanitize(row) == row
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "holder",
+        "holder_name",
+        "holderId",
+        "investor",
+        "investor_id",
+        "beneficiary",
+        "acc",
+        "accno",
+        "acct_no",
+        "accountnbr",
+        "accountholder",
+        "useremail",
+        "account_number",
+        "user_email",
+        "client_name",
+        "basket_id",
+        "portfolio_no",
+        "portfolioid",
+    ],
+)
+def test_round4_identifier_keys_are_dropped(key):
+    """PRIVACY-2: holder/investor/beneficiary, short forms, run-together names."""
+    assert copilot.sanitize({key: SYN_ID, "symbol": "AAPL"}) == {"symbol": "AAPL"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"rebalanced portfolio_id={SYN_ID} today",
+        f"owner pm_user: {SYN_ID}",
+        f"see acctNo={SYN_ID}&x=1",
+        f"Account: {SYN_ID}",
+        f"holder_name = {SYN_ID}",
+    ],
+)
+def test_identifier_key_value_pairs_in_text_are_masked(text):
+    """Text form: ``key=value`` / ``key: value`` with an identifier key."""
+    out = copilot.redact_text(text)
+    assert SYN_ID not in out
+
+
+def test_metric_key_value_pairs_in_text_are_kept():
+    text = "portfolio_weight=0.2; account_value: 100; Source: `stub`"
+    assert copilot.redact_text(text) == text
+
+
+def test_key_value_masking_is_linear():
+    text = ("a" * 40 + "=") * 20_000 + "portfolio_id" + " " * 100_000
+    start = time.perf_counter()
+    copilot.redact_text(text)
+    assert time.perf_counter() - start < 1.0
 
 
 def test_markdown_table_identifier_columns_are_masked(monkeypatch):
