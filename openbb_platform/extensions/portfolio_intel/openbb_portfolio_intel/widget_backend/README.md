@@ -193,3 +193,59 @@ Reject-and-400 rather than silently coerce; the widget shows a Workspace-side er
 ## What this replaces
 
 The `desktop/src/pi/` canvas from #981 / #982 / #1004 was a scope error — that shipped a bespoke React canvas which is NOT how Workspace consumes widgets. It stays in the tree as a **local preview harness** (headless smoke testing of the SDK contract), but the shipping surface for portfolio-intel widgets is THIS backend + Workspace as the frontend.
+
+## Workspace agent (#1272)
+
+This backend also serves the custom Workspace agent (`/agents.json` and `/query`, from
+`openbb_portfolio.copilot`). It answers through the local model proxy and is read-only.
+
+**Where your data goes.** To answer, the agent sends the data of the widgets you select to the
+model behind `COPILOT_PROXY_BASE_URL`. With the default `copilot-api` proxy that is GitHub
+Copilot, an external model provider. Account, basket, owner and user identifier fields are
+removed and credentials are redacted first, but holdings, weights and other values in the
+selected widgets do leave this machine. Do not select widgets whose data you do not want sent.
+
+- **Discovery.** `/agents.json` advertises `streaming` and `widget-dashboard-select`, and
+  nothing else. Widget access is advertised only because this backend registers an agent
+  inventory on `app.state` (`agent_policy.build_agent_capabilities()`, built from
+  `widgets.json`); a backend without one stays text-only.
+- **Reads.** The agent reads the widgets the user selected through Workspace's own
+  `get_widget_data` call, and only widgets whose Workspace origin is this backend: the
+  connector name `portfolio-intel` (see "Connect to Workspace"), or the comma-separated names
+  in `PI_AGENT_WIDGET_ORIGINS` if you named the connector differently. It has no HTTP client or backend token of its own. It passes each
+  widget's current parameters unchanged and adds `raw=true` for chart widgets, so it gets rows,
+  not Plotly figures. At most 8 widgets, 50 rows per widget and 24,000 characters of context
+  per question; a widget that does not fit is left out and named as omitted. The model answer has a time limit (`COPILOT_PROXY_TIMEOUT_SECONDS`, default 60)
+  and a token cap.
+- **Denied.** Safe by default: any widget that looks like an action (a `confirm` parameter, an
+  execute / paper / backtest / order endpoint or category, a non-GET method) is denied unless it
+  is on `agent_policy.AGENT_READ_ALLOWLIST` (the read-only paper blotter, performance and KPIs,
+  execute bridge, paper status and TechTrade order legs). `pi_paper_ticket` (places paper orders) and
+  `pi_backtest_button` (queues a job) are refused and never requested; widgets outside the
+  inventory are refused too. Paper and
+  execution actions stay separately authorized in the widget itself. The MCP exposure policy
+  denies the same two endpoints; `test_agent_capabilities_1272.py` keeps the lists equal and
+  the inventory equal to `tests/unit/fixtures/native_workspace_matrix.json`.
+- **Provenance.** Each widget's `data_state` / `data_source` / `data_as_of` (row columns, the
+  `Data State` metric card, the Markdown `Data state` line, or a figure's `layout.meta`) is
+  shown as a reasoning step and given to the model, which must say when data is demo, cached
+  or unavailable.
+- **Credentials and identifiers.** The request's `api_keys` and tool tokens are never sent to
+  the model. Credential-like fields (`apiKey`, `authToken`, `sessionId`, ...) and values
+  (bearer/basic tokens, JWTs, AWS keys, `key=`/`sig=`/`token:` values, `user:pass@` in URLs)
+  are redacted. Identifier fields (account / acct, basket, owner, user, customer, client,
+  `portfolio_id` and similar, matched by name token at any depth) are dropped, and so are
+  identifier columns in column-oriented payloads and in Markdown tables. Metrics about such an
+  entity (`account_value`, `portfolio_notional`, `user_rating`, `client_count`) are kept; holder,
+  investor and beneficiary names and the id / number / name / email forms are dropped. In
+  free text, `key=value` and `key: value` pairs with an identifier key (`portfolio_id=…`,
+  `pm_user: …`, `Account: …`) are masked. Redaction uses only linear-time patterns.
+- **Known limitation.** CSV text, JSON embedded inside a string, and Markdown tables without
+  `|` delimiters are not parsed. Identifier columns in those forms are caught only where a
+  `key=value` / `key: value` pair names them, so do not select widgets that return identifiers
+  in those shapes.
+- **Size caps.** `/query` bodies over 8 MB get HTTP 413, and any widget payload over 1,000,000
+  characters is reported unavailable without being parsed. Rows, nested lists and strings are cut
+  to their limits before redaction runs.
+- **MCP.** The MCP adapter forces `raw=true` on the cloned chart tools, so MCP clients also get
+  rows with the provenance columns.
