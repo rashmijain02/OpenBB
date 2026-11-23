@@ -271,6 +271,13 @@ outside the repository), and never commit a dump. Restore by loading the dump
 into an empty database configured as in the database configuration guide,
 then restart the backend and confirm `status`.
 
+The backend does not create the provider-cache database or tables unless
+`FMP_CACHE_AUTO_CREATE_DB=true` is set; the default is `false`. Expired rows in
+the provider cache's TTL tables are not removed automatically. Count them with
+`python -m openbb_fmp_cached.utils.cache_prune` (a dry run) and delete them with
+`--apply`; see section 7 of the runbook for which tables expire and the
+safeguards that keep operator tables out of reach.
+
 ## 11. Troubleshooting
 
 | Symptom | Check |

@@ -59,7 +59,11 @@ Connection settings resolve in this order:
 | Password | `DB_PASSWORD` | none (required) |
 | Database | `DB_NAME` | `openbb_fmp_cache` |
 | Test database | `FMP_CACHE_TEST_MODE=true` | `openbb_fmp_cache_test`, with a `test_` table prefix |
-| Create tables on start | `FMP_CACHE_AUTO_CREATE_DB` | `false` in `init_database()` |
+| Create tables on start | `FMP_CACHE_AUTO_CREATE_DB` | `false`. Only the value `true` (any case) enables it |
+
+The auto-create default is defined once, in `auto_create_enabled()` in
+`database.py`; `init_database()` and `cache_schema.should_auto_create()` both
+use it.
 
 Startup fails if the user or password is missing. Never put the password on a
 command line; use an option file (section 4.3).
@@ -380,10 +384,14 @@ What the code actually does:
 
 | Store | Expiry or pruning | Source |
 |---|---|---|
-| Provider cache, most tables | None. `cleanup_expired_cache()` is a no-op that reports "No cleanup needed". Rows are overwritten or extended on refetch and never expire | `openbb_fmp_cached/utils/cache_schema.py` |
-| `aftermarket_quote` | A row is a hit only if `cached_at` is within 60 seconds and `is_valid` is true; stale rows are overwritten on the next miss, not deleted | `openbb_fmp_cached/models/aftermarket_quote.py` |
-| `ttl_cache` (for example exchange market hours) | A row is a hit only inside the fetcher's TTL, 86400 seconds for market hours; stale rows are overwritten on the next miss, not deleted | `openbb_fmp_cached/utils/cache_schema.py`, `openbb_fmp_cached/models/exchange_market_hours.py` |
-| Free-yield complementary cache | A cached row is used only if newer than 24 hours (`DEFAULT_TTL_HOURS`) | `openbb_fmp_cached/complementary/free_yield_service.py` |
+| Provider cache, expiring tables | Each table below is read only while `cached_at` is inside its reader's TTL. `prune_expired_cache()` (alias `cleanup_expired_cache()`) and the prune command (7.1) delete rows older than that TTL. Nothing runs it on a schedule | `openbb_fmp_cached/utils/cache_schema.py` (`CACHE_EXPIRY_RULES`) |
+| `aftermarket_quote` | 60 seconds | `openbb_fmp_cached/models/aftermarket_quote.py` |
+| `equity_quote` | 300 seconds | `openbb_fmp_cached/models/equity_quote.py` |
+| `ttl_cache`, `cache_name = ExchangeMarketHours` | 86400 seconds. Rows with any other `cache_name` have no registered TTL and are never pruned | `openbb_fmp_cached/models/exchange_market_hours.py` |
+| `complementary_market_yields` (free-yield cache; `test_` prefix in test mode) | 24 hours (`DEFAULT_TTL_HOURS`) | `openbb_fmp_cached/complementary/free_yield_service.py` |
+| `balance_sheet`, `cash_flow`, `income_statement`, `key_metrics`, `financial_ratios`, `etf_holdings` | 1 day | the matching `openbb_fmp_cached/models/<table>.py` |
+| `equity_profile`, `equity_peers`, `institutional_ownership` | 7 days | the matching `openbb_fmp_cached/models/<table>.py` |
+| Provider cache, every other table | None. Non-expiring: rows are overwritten or extended on refetch and only grow. This includes `equity_historical` and the other historical tables, the reference lists, and `sp500_constituents` (it serves stale rows when the provider fails) | `openbb_fmp_cached/utils/cache_schema.py` |
 | EOD snapshots (both backends) | `prune()` with a `RetentionPolicy(keep_sessions=N)` deletes non-LIVE rows outside the newest `N` distinct sessions per dataset and entity. LIVE rows are never pruned. The default policy keeps everything | `openbb_techtrade/snapshot/store.py`, `openbb_techtrade/snapshot/mysql_store.py` |
 | Scheduled snapshot pruning | Job `techtrade.prune_snapshots`, daily at 19:00 in the configured schedule timezone, default `keep_sessions=10` (allowed 0 to 1000), applied to every TechTrade dataset | `openbb_techtrade/jobs.py` |
 | Paper ledger, audit journal, story run store, order batches | No pruning in code. Retention is your decision | none |
@@ -392,15 +400,52 @@ The provider-cache paths above are under
 `openbb_platform/providers/fmp_cached/`, and the TechTrade paths under
 `openbb_platform/extensions/techtrade/`.
 
+### 7.1 Prune expired provider-cache rows
+
+Run with the project's Python, in a shell that has the backend's database
+settings (section 2.1):
+
+```bash
+python -m openbb_fmp_cached.utils.cache_prune                      # dry run: counts only
+python -m openbb_fmp_cached.utils.cache_prune --apply              # delete expired rows
+python -m openbb_fmp_cached.utils.cache_prune --apply --table balance_sheet --table cash_flow
+```
+
+- Dry run is the default. It prints a JSON report of row counts per table and
+  never prints row contents. The report's `target` field names the database as
+  `user@host:port/database` (never the password): check it before you add
+  `--apply`. Progress lines (`INFO`, counts only) go to stderr.
+- `--apply` deletes in batches (`--batch-size`, default 1000, at most 10000).
+  Each batch is a separate statement with parameterized values, so the command
+  is safe to run while the backend runs; a row refreshed during the run is kept.
+- Expiry is measured on the database clock (`CURRENT_TIMESTAMP`), the clock that
+  stamps `cached_at` on write.
+- It touches only the tables in the table above. An explicit allowlist
+  (`EXPIRABLE_CACHE_TABLES`) is checked before any SQL runs, and operator tables
+  are refused even if added to it: any table whose name (after an optional
+  `test_` prefix) starts with `pi_`, `_pi_`, `paper_` or `snapshot`, or
+  contains `audit`, plus `fmp_trading_state` and `schema_version`. Naming any
+  other table with `--table` exits with code 2 and changes nothing.
+- Exit codes: 0 success; 1 one or more tables failed (the others were still
+  pruned; the report lists each error by type and driver error code); 2 refused
+  table, bad argument, missing database configuration or an unreachable
+  database. Exit 2 prints a single `error:` line, never the password or the
+  driver's message text, and deletes nothing. The shared connection layer
+  still logs its own ERROR line on a failed query; that line can include
+  `user@host` but never the password.
+- Expired rows are never served, so pruning frees space but does not change
+  what the backend returns. To schedule it, run the command from your own
+  scheduler; the repository does not schedule it.
+
 Guidance:
 
-- Because the provider cache mostly never expires, it only grows. Size it with
-  metadata. MySQL:
+- Most provider-cache tables never expire, so the cache grows. Prune the
+  expiring tables with the command in 7.1; size the rest with metadata. MySQL:
   `SELECT table_name, ROUND((data_length + index_length) / 1048576, 1) AS size_mb FROM information_schema.tables WHERE table_schema = '<database>' ORDER BY size_mb DESC`.
   SQLite: `ls -l` on the file (include any `-wal` file).
-- To reclaim provider-cache space, drop or truncate individual public tables
-  after a backup, or recreate the database and let it refill. Do not truncate
-  operator tables to save space.
+- To reclaim more provider-cache space, drop or truncate individual public
+  non-expiring tables after a backup, or recreate the database and let it
+  refill. Do not truncate operator tables to save space.
 - Change snapshot history by changing the `techtrade.prune_snapshots`
   `keep_sessions` parameter in the OpenBB jobs configuration. Pruning removes
   history you may not be able to regenerate, so back up first.

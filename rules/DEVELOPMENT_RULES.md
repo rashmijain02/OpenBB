@@ -65,9 +65,11 @@ Always use `CREATE TABLE IF NOT EXISTS`.  Scripts must be runnable
 against both fresh and existing databases.
 
 ### Auto-Create Overhead
-Set `FMP_CACHE_AUTO_CREATE_DB=false` in environment to skip the 67-table
-creation check that runs on every `init_database()` call.  This is
-critical for scripts that run many iterations.
+
+`FMP_CACHE_AUTO_CREATE_DB` defaults to `false`: `init_database()` skips the
+67-table creation check unless the variable is set to `true`. Leave it unset
+(or `false`) in scripts that run many iterations; set `true` only for a
+one-off run that must create the database and tables.
 
 ### Target Database
 Portfolio data lives in `openbb_fmp_cache_test`.  The default

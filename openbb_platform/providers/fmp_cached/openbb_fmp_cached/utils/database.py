@@ -1,6 +1,8 @@
 """Simple synchronous MySQL database utilities for FMP cached provider."""
 
 # pylint: disable=logging-fstring-interpolation,wrong-import-position,wrong-import-order,import-outside-toplevel
+# init_database lazily imports cache_schema, which imports this module; the
+# cycle is deliberate and import-safe. pylint: disable=cyclic-import
 
 import json
 import logging
@@ -12,6 +14,22 @@ from typing import Any
 import pymysql.cursors
 
 logger = logging.getLogger(__name__)
+
+# The single definition of the auto-create setting (#1293). Both
+# ``init_database()`` and ``cache_schema.should_auto_create()`` read it via
+# ``auto_create_enabled()``. Creation stays off unless explicitly enabled.
+AUTO_CREATE_DB_ENV = "FMP_CACHE_AUTO_CREATE_DB"
+AUTO_CREATE_DB_DEFAULT = False
+
+
+def auto_create_enabled() -> bool:
+    """Return True only when FMP_CACHE_AUTO_CREATE_DB is set to ``true``."""
+    raw = os.getenv(AUTO_CREATE_DB_ENV)
+    if raw is None:
+        return AUTO_CREATE_DB_DEFAULT
+    return raw.strip().lower() == "true"
+
+
 _database_override: ContextVar[str | None] = ContextVar(
     "fmp_cached_database_override", default=None
 )
@@ -544,15 +562,15 @@ def init_database(auto_create: bool = None):
     Args:
         auto_create: If True, automatically create database and tables.
                     If False, skip creation and use existing database.
-                    If None (default), use FMP_CACHE_AUTO_CREATE_DB environment variable.
-                    Defaults to False if environment variable is not set.
+                    If None (default), use FMP_CACHE_AUTO_CREATE_DB via
+                    auto_create_enabled() (False when unset).
 
     Returns:
         True if database/tables were created or already exist, False otherwise.
     """
     # Determine whether to auto-create based on explicit flag or environment variable
     if auto_create is None:
-        auto_create = os.getenv("FMP_CACHE_AUTO_CREATE_DB", "false").lower() == "true"
+        auto_create = auto_create_enabled()
 
     if not auto_create:
         logger.info("Skipping database/table creation (FMP_CACHE_AUTO_CREATE_DB=false)")
