@@ -430,7 +430,9 @@ python -m openbb_fmp_cached.utils.cache_prune --apply --table balance_sheet --ta
   pruned; the report lists each error by type and driver error code); 2 refused
   table, bad argument, missing database configuration or an unreachable
   database. Exit 2 prints a single `error:` line, never the password or the
-  driver's message text, and deletes nothing.
+  driver's message text, and deletes nothing. The shared connection layer
+  still logs its own ERROR line on a failed query; that line can include
+  `user@host` but never the password.
 - Expired rows are never served, so pruning frees space but does not change
   what the backend returns. To schedule it, run the command from your own
   scheduler; the repository does not schedule it.
