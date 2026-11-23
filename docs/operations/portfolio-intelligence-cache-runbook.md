@@ -412,7 +412,9 @@ python -m openbb_fmp_cached.utils.cache_prune --apply --table balance_sheet --ta
 ```
 
 - Dry run is the default. It prints a JSON report of row counts per table and
-  never prints row contents.
+  never prints row contents. The report's `target` field names the database as
+  `user@host:port/database` (never the password): check it before you add
+  `--apply`. Progress lines (`INFO`, counts only) go to stderr.
 - `--apply` deletes in batches (`--batch-size`, default 1000, at most 10000).
   Each batch is a separate statement with parameterized values, so the command
   is safe to run while the backend runs; a row refreshed during the run is kept.
@@ -420,12 +422,15 @@ python -m openbb_fmp_cached.utils.cache_prune --apply --table balance_sheet --ta
   stamps `cached_at` on write.
 - It touches only the tables in the table above. An explicit allowlist
   (`EXPIRABLE_CACHE_TABLES`) is checked before any SQL runs, and operator tables
-  (`pi_*`, `_pi_*`, `snapshot_*`, `fmp_trading_state`, `schema_version` and any
-  audit table) are refused even if added to it. Naming any other table with
-  `--table` exits with code 2 and changes nothing.
+  are refused even if added to it: any table whose name (after an optional
+  `test_` prefix) starts with `pi_`, `_pi_`, `paper_` or `snapshot`, or
+  contains `audit`, plus `fmp_trading_state` and `schema_version`. Naming any
+  other table with `--table` exits with code 2 and changes nothing.
 - Exit codes: 0 success; 1 one or more tables failed (the others were still
-  pruned; the report lists each error); 2 refused table, bad argument or missing
-  database configuration.
+  pruned; the report lists each error by type and driver error code); 2 refused
+  table, bad argument, missing database configuration or an unreachable
+  database. Exit 2 prints a single `error:` line, never the password or the
+  driver's message text, and deletes nothing.
 - Expired rows are never served, so pruning frees space but does not change
   what the backend returns. To schedule it, run the command from your own
   scheduler; the repository does not schedule it.

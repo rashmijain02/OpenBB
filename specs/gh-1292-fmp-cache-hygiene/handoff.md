@@ -90,6 +90,36 @@ The full log is in `.dev-cycle/verify-gh-1292.log`.
   the workflow flags), pylint, ruff and markdownlint are all clean. See the log
   for pylint details.
 
+## Review follow-ups (uncommitted, on top of `b804f010a`)
+
+- **Behaviour change.** `cleanup_expired_cache()` used to be a no-op. It now
+  **deletes** expired rows by default; pass `dry_run=True` to only count them.
+  Its docstring says so. Callers that relied on the old no-op must change.
+- **Target in the report.** The CLI report has a `target` field,
+  `user@host:port/database` from the active connection params. The password is
+  never included.
+- **Clean exit 2.** A config error (`ValueError`) or any DB error raised by the
+  clock read or the prune exits 2 with one `error:` line and no traceback. DB
+  errors are shown as `cannot use database <target>: <ExceptionType> <code>`.
+  The driver's message text is never echoed.
+- **Per-table errors.** Errors in one table are reported and logged as
+  `<ExceptionType> <code>` only (`cache_schema.describe_db_error`).
+- **Logging.** The CLI configures logging at INFO to stderr. Log lines carry
+  counts and labels only, never row contents.
+- **Docs.** Runbook §7.1 now lists every refused name pattern the code guards:
+  `pi_`, `_pi_`, `paper_` and `snapshot` prefixes (also with a `test_`
+  prefix), names containing `audit`, `fmp_trading_state` and `schema_version`.
+  §7.1 also describes the target field and the exit-2 behaviour.
+  `rules/DEVELOPMENT_RULES.md` "Auto-Create Overhead" now says the default is
+  `false`.
+- **`examples.py` is untouched.** Its `await cleanup_expired_cache()` call was
+  already broken (it awaits a synchronous function). Under the new behaviour,
+  once that call is fixed it would **delete** rows unless it passes
+  `dry_run=True`.
+- **Evidence:** 6 new tests were red first. Green run: 51 passed. All 7 new
+  mutations were killed. The full suite failure set is identical to the
+  baseline. Details are in `.dev-cycle/verify-gh-1292.log`.
+
 ## Open questions for the owner
 
 - Pruning is manual. Should it be scheduled, for example as a job like

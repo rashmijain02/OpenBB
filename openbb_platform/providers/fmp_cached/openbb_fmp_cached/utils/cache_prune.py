@@ -8,17 +8,21 @@ Usage::
 
 Dry run is the default. Only tables in ``EXPIRABLE_CACHE_TABLES`` with an
 expiry rule are touched; see ``cache_schema.prune_expired_cache``. Output is a
-JSON report of counts only, never row contents.
+JSON report of counts only, never row contents, and names the target as
+``user@host:port/database`` (never the password). INFO progress lines go to
+stderr.
 
 Exit codes: 0 success, 1 one or more tables failed, 2 a refused table, a bad
-argument or missing database configuration (nothing was deleted).
+argument, missing database configuration or an unreachable database. Exit 2
+prints one ``error:`` line and nothing was deleted.
 """
 
 import argparse
 import json
+import logging
 import sys
 
-from openbb_fmp_cached.utils import cache_schema
+from openbb_fmp_cached.utils import cache_schema, database
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -47,18 +51,44 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _describe_target() -> str:
+    """Return ``user@host:port/database`` for the active connection settings."""
+    params = database.get_connection_pool().connection_params
+    return (
+        f"{params.get('user')}@{params.get('host')}:{params.get('port')}"
+        f"/{params.get('database')}"
+    )
+
+
+def _fail(message: str) -> int:
+    sys.stderr.write(f"error: {message}\n")
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the prune command and print its JSON report."""
     args = _parser().parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        stream=sys.stderr,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+    try:
+        target = _describe_target()
+    except ValueError as exc:  # missing or invalid configuration
+        return _fail(" ".join(str(exc).split()))
     try:
         report = cache_schema.prune_expired_cache(
             dry_run=not args.apply,
             batch_size=args.batch_size,
             tables=args.tables,
         )
-    except ValueError as exc:
-        sys.stderr.write(f"error: {exc}\n")
-        return 2
+    except ValueError as exc:  # refused table or bad batch size
+        return _fail(" ".join(str(exc).split()))
+    except Exception as exc:  # noqa: BLE001 - DB unreachable; never echo its text
+        detail = cache_schema.describe_db_error(exc)
+        return _fail(f"cannot use database {target}: {detail}; nothing was deleted")
+    report["target"] = target
     sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return 1 if report["errors"] else 0
 

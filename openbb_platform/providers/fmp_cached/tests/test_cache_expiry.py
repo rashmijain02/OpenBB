@@ -15,7 +15,24 @@ import sqlite3
 from datetime import datetime
 
 import pytest
-from openbb_fmp_cached.utils import cache_schema
+from openbb_fmp_cached.utils import cache_schema, database
+
+FAKE_PASSWORD = "synthetic-pw-7f3a"  # noqa: S105 - synthetic test value
+FAKE_TARGET = "cache_user@db.invalid:3307/openbb_fmp_cache_fake"
+
+
+class FakePool:
+    """Synthetic stand-in for ``database.ConnectionPool`` (params only)."""
+
+    connection_params = {
+        "host": "db.invalid",
+        "port": 3307,
+        "user": "cache_user",
+        "password": FAKE_PASSWORD,
+        "database": "openbb_fmp_cache_fake",
+        "charset": "utf8mb4",
+    }
+
 
 PROTECTED_TABLES = (
     "pi_eod_snapshot",
@@ -133,6 +150,9 @@ def seam(monkeypatch):
         script += [_id_table(table), _add(table, "OPERATOR", "-900 days")]
     db.setup("\n".join(script))
     monkeypatch.setattr(cache_schema, "execute_query", db)
+    # The CLI names its target from the pool's connection params; give it a
+    # synthetic config so nothing reads a real settings file.
+    monkeypatch.setattr(database, "get_connection_pool", lambda: FakePool())
     return db
 
 
@@ -451,3 +471,122 @@ def test_row_refreshed_between_select_and_delete_survives(seam, monkeypatch):
 
     assert seam.count("balance_sheet", "symbol = 'STALE'") == 1
     assert report["tables"]["balance_sheet"]["rows"] == 0
+
+
+# ---------------------------------------------------------------------------
+# CLI target naming, failure handling and logging (review follow-ups)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("argv", [[], ["--apply"]])
+def test_cli_report_names_target_without_password(seam, capsys, argv):
+    import json
+
+    from openbb_fmp_cached.utils import cache_prune
+
+    assert cache_prune.main(argv) == 0
+
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["target"] == FAKE_TARGET
+    assert FAKE_PASSWORD not in captured.out + captured.err
+
+
+def test_cli_connection_failure_exits_2_with_one_clean_line(seam, monkeypatch, capsys):
+    import pymysql
+
+    from openbb_fmp_cached.utils import cache_prune
+
+    def unreachable(query, params=()):
+        raise pymysql.err.OperationalError(
+            2003,
+            f"Can't connect to MySQL server on 'secret-host.internal' "
+            f"(user=other_user pw={FAKE_PASSWORD})",
+        )
+
+    monkeypatch.setattr(cache_schema, "execute_query", unreachable)
+
+    code = cache_prune.main(["--apply"])
+
+    err = capsys.readouterr().err
+    error_lines = [line for line in err.splitlines() if line.startswith("error:")]
+    assert code == 2
+    assert len(error_lines) == 1
+    assert FAKE_TARGET in error_lines[0]
+    assert "OperationalError" in error_lines[0]
+    for leaked in ("Traceback", FAKE_PASSWORD, "secret-host", "other_user"):
+        assert leaked not in err
+
+
+def test_cli_missing_config_exits_2_with_one_clean_line(seam, monkeypatch, capsys):
+    from openbb_fmp_cached.utils import cache_prune
+
+    def no_config():
+        raise ValueError("Missing MySQL credential(s): user, password.")
+
+    monkeypatch.setattr(database, "get_connection_pool", no_config)
+
+    code = cache_prune.main([])
+
+    err = capsys.readouterr().err
+    assert code == 2
+    assert [line for line in err.splitlines() if line.startswith("error:")] == [
+        "error: Missing MySQL credential(s): user, password."
+    ]
+    assert "Traceback" not in err
+    assert seam.statements == []
+
+
+def test_cli_configures_info_logging_to_stderr(seam, monkeypatch, capsys):
+    import sys
+
+    from openbb_fmp_cached.utils import cache_prune
+
+    calls = []
+    monkeypatch.setattr(
+        cache_prune.logging, "basicConfig", lambda **kw: calls.append(kw)
+    )
+
+    cache_prune.main([])
+    capsys.readouterr()
+
+    assert len(calls) == 1
+    assert calls[0]["level"] == logging.INFO
+    assert calls[0]["stream"] is sys.stderr
+
+
+def test_cli_logs_counts_not_row_contents(seam, caplog, capsys):
+    from openbb_fmp_cached.utils import cache_prune
+
+    with caplog.at_level(logging.INFO):
+        cache_prune.main(["--apply"])
+    capsys.readouterr()
+
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    assert "rows=" in text
+    for value in ("STALE", "FRESH", "k-stale", FAKE_PASSWORD):
+        assert value not in text
+
+
+def test_table_error_text_is_not_echoed(seam, monkeypatch, caplog, capsys):
+    """A mid-run DB error is reported by type and code, never by its text."""
+    import pymysql
+
+    from openbb_fmp_cached.utils import cache_prune
+
+    def flaky(query, params=()):
+        if "equity_quote" in query:
+            raise pymysql.err.OperationalError(
+                2013, f"Lost connection to 'secret-host.internal' pw={FAKE_PASSWORD}"
+            )
+        return seam(query, params)
+
+    monkeypatch.setattr(cache_schema, "execute_query", flaky)
+    with caplog.at_level(logging.INFO):
+        code = cache_prune.main(["--apply"])
+
+    captured = capsys.readouterr()
+    logs = "\n".join(r.getMessage() for r in caplog.records)
+    assert code == 1
+    assert "OperationalError 2013" in captured.out
+    for leaked in ("secret-host", FAKE_PASSWORD):
+        assert leaked not in captured.out + captured.err + logs

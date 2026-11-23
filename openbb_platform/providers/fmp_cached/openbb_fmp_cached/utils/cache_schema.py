@@ -6108,6 +6108,12 @@ def _resolve_rule_table(rule: CacheExpiryRule) -> str:
     return safe_identifier(name)
 
 
+def describe_db_error(exc: BaseException) -> str:
+    """Return ``"<ExceptionType> <code>"`` without the driver's message text."""
+    code = exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
+    return type(exc).__name__ + (f" {code}" if code is not None else "")
+
+
 def _database_now() -> datetime:
     """Read the database clock, the clock that stamps ``cached_at``."""
     rows = execute_query("SELECT CURRENT_TIMESTAMP AS db_now")
@@ -6234,8 +6240,12 @@ def prune_expired_cache(
         try:
             entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
         except Exception as exc:  # noqa: BLE001 - one table must not stop the rest
-            report["errors"][rule.label] = f"{type(exc).__name__}: {exc}"
-            logger.warning("fmp_cached prune: %s failed: %s", rule.label, exc)
+            # Type and driver error code only: driver messages can carry the
+            # host or user name, which must not reach logs or reports.
+            report["errors"][rule.label] = describe_db_error(exc)
+            logger.warning(
+                "fmp_cached prune: %s failed: %s", rule.label, describe_db_error(exc)
+            )
             continue
         report["tables"][rule.label] = entry
         report["total"] += entry["rows"]
@@ -6261,7 +6271,12 @@ def cleanup_expired_cache(
     batch_size: int = 1000,
     tables: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Prune expired cache rows; alias of :func:`prune_expired_cache`."""
+    """Prune expired cache rows; alias of :func:`prune_expired_cache`.
+
+    Behaviour change (#1292): before this release the function was a no-op
+    that returned a message. It now DELETES expired rows by default. Pass
+    ``dry_run=True`` to only count them.
+    """
     return prune_expired_cache(dry_run=dry_run, batch_size=batch_size, tables=tables)
 
 
