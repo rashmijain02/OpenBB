@@ -3,7 +3,9 @@ Complete Flattened Database Schema for FMP Cached Provider
 
 Database tables with actual columns mapped from OpenBB model fields.
 This enables proper relational queries and consistent DataFrame mapping.
-Simple database-backed response persistence without TTL/caching complexity.
+Simple database-backed response persistence. Tables whose readers apply a
+TTL are listed in ``CACHE_EXPIRY_RULES`` and pruned by ``prune_expired_cache``;
+every other table is non-expiring.
 """
 
 # pylint: disable=too-many-lines
@@ -11,8 +13,12 @@ Simple database-backed response persistence without TTL/caching complexity.
 import logging
 import os
 import threading
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
-from .database import execute_query, safe_identifier
+from .database import auto_create_enabled, execute_query, safe_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +54,11 @@ def get_table_name(base_name: str) -> str:
 
 
 def should_auto_create() -> bool:
-    """Check if automatic database/table creation is enabled."""
-    return os.getenv("FMP_CACHE_AUTO_CREATE_DB", "true").lower() == "true"
+    """Check if automatic database/table creation is enabled.
+
+    Same decision as ``init_database()``: see ``database.auto_create_enabled``.
+    """
+    return auto_create_enabled()
 
 
 def create_analyst_estimates_table():
@@ -5974,9 +5983,286 @@ create_all_tables = create_all_flattened_tables
 #   cached_at > now - 60s; MISS otherwise. No gap detection.
 
 
-def cleanup_expired_cache():
-    """Cleanup function - no longer needed as we don't use TTL/expiry."""
-    return {"message": "No cleanup needed - TTL/expiry removed from simplified schema"}
+# ---------------------------------------------------------------------------
+# Cache expiry and pruning (#1292)
+# ---------------------------------------------------------------------------
+# Only tables whose reader applies a freshness predicate on ``cached_at`` have
+# expiry semantics. A row older than that reader's TTL is never served again;
+# the reader refetches and rewrites it. Pruning such rows is therefore safe and
+# only reclaims space. Every other table in this database is non-expiring:
+# historical caches (for example ``equity_historical``), reference lists,
+# ``sp500_constituents`` (it serves stale rows as a fallback), and the operator
+# tables that share the database (EOD snapshots, paper ledger, trading state,
+# audit and schema metadata). Those are never touched here.
+#
+# Expiry is measured on the database clock (``SELECT CURRENT_TIMESTAMP``),
+# the same clock that stamps ``cached_at`` on write.
+
+_PRUNE_MAX_BATCH_SIZE = 10_000
+_DAY_SECONDS = 86_400
+
+
+@dataclass(frozen=True)
+class CacheExpiryRule:
+    """Expiry rule for one cache table (or one partition of ``ttl_cache``).
+
+    ``ttl_seconds`` must equal the TTL the table's reader applies, so a row the
+    rule treats as expired is a row no reader would serve.
+    """
+
+    table: str
+    ttl_seconds: int
+    key_columns: tuple[str, ...] = ("id",)
+    partition_column: str | None = None
+    partition_value: str | None = None
+    test_prefixed: bool = False
+    timestamp_column: str = "cached_at"
+
+    @property
+    def label(self) -> str:
+        """Report key: the table, plus the partition value when there is one."""
+        if self.partition_value is None:
+            return self.table
+        return f"{self.table}[{self.partition_value}]"
+
+
+# Explicit allowlist. A table must be named here, independently of the rules
+# below, before ``prune_expired_cache`` will issue any SQL against it.
+EXPIRABLE_CACHE_TABLES: frozenset[str] = frozenset(
+    {
+        "aftermarket_quote",
+        "ttl_cache",
+        "complementary_market_yields",
+        "balance_sheet",
+        "cash_flow",
+        "income_statement",
+        "key_metrics",
+        "financial_ratios",
+        "etf_holdings",
+        "equity_profile",
+        "equity_peers",
+        "institutional_ownership",
+        "equity_quote",
+    }
+)
+
+# Defence in depth: operator tables that share the database. Refused even if
+# a future edit adds them to the allowlist.
+_PROTECTED_TABLES: frozenset[str] = frozenset(
+    {"fmp_trading_state", "schema_version", "snapshot_job", "snapshot_job_error"}
+)
+_PROTECTED_PREFIXES: tuple[str, ...] = ("pi_", "_pi_", "paper_", "snapshot")
+
+# TTLs mirror the readers (contract-tested in tests/test_cache_expiry.py):
+# models/<name>.py *_TTL_* constants, models/exchange_market_hours.py and
+# complementary/free_yield_service.py DEFAULT_TTL_HOURS.
+CACHE_EXPIRY_RULES: tuple[CacheExpiryRule, ...] = (
+    CacheExpiryRule("aftermarket_quote", 60, key_columns=("symbol",)),
+    CacheExpiryRule(
+        "ttl_cache",
+        _DAY_SECONDS,
+        key_columns=("cache_name", "cache_key"),
+        partition_column="cache_name",
+        partition_value="ExchangeMarketHours",
+    ),
+    CacheExpiryRule("complementary_market_yields", _DAY_SECONDS, test_prefixed=True),
+    CacheExpiryRule("balance_sheet", _DAY_SECONDS),
+    CacheExpiryRule("cash_flow", _DAY_SECONDS),
+    CacheExpiryRule("income_statement", _DAY_SECONDS),
+    CacheExpiryRule("key_metrics", _DAY_SECONDS),
+    CacheExpiryRule("financial_ratios", _DAY_SECONDS),
+    CacheExpiryRule("etf_holdings", _DAY_SECONDS),
+    CacheExpiryRule("equity_profile", 7 * _DAY_SECONDS),
+    CacheExpiryRule("equity_peers", 7 * _DAY_SECONDS),
+    CacheExpiryRule("institutional_ownership", 7 * _DAY_SECONDS),
+    CacheExpiryRule("equity_quote", 300),
+)
+
+
+def _is_protected_table(name: str) -> bool:
+    base = name[len("test_") :] if name.startswith("test_") else name
+    return (
+        base in _PROTECTED_TABLES
+        or base.startswith(_PROTECTED_PREFIXES)
+        or "audit" in base
+    )
+
+
+def _require_expirable(table: str) -> None:
+    """Raise unless ``table`` is on the allowlist and is not an operator table."""
+    if table not in EXPIRABLE_CACHE_TABLES or _is_protected_table(table):
+        raise ValueError(
+            f"{table!r} is not an expiring cache table; prune refuses it. "
+            f"Allowed: {sorted(EXPIRABLE_CACHE_TABLES)}"
+        )
+
+
+def _resolve_rule_table(rule: CacheExpiryRule) -> str:
+    """Return the physical table name for ``rule`` after allowlist checks."""
+    _require_expirable(rule.table)
+    name = get_table_name(rule.table) if rule.test_prefixed else rule.table
+    for column in (*rule.key_columns, rule.timestamp_column):
+        safe_identifier(column)
+    if rule.partition_column is not None:
+        safe_identifier(rule.partition_column)
+    return safe_identifier(name)
+
+
+def _database_now() -> datetime:
+    """Read the database clock, the clock that stamps ``cached_at``."""
+    rows = execute_query("SELECT CURRENT_TIMESTAMP AS db_now")
+    value = rows[0]["db_now"]
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value))
+
+
+def _expired_predicate(
+    rule: CacheExpiryRule, cutoff: datetime
+) -> tuple[str, tuple[Any, ...]]:
+    clause = f"{rule.timestamp_column} < %s"
+    params: tuple[Any, ...] = (cutoff,)
+    if rule.partition_column is not None:
+        clause += f" AND {rule.partition_column} = %s"
+        params += (rule.partition_value,)
+    return clause, params
+
+
+def _prune_rule(
+    rule: CacheExpiryRule,
+    table: str,
+    cutoff: datetime,
+    dry_run: bool,
+    batch_size: int,
+) -> dict[str, int]:
+    where, where_params = _expired_predicate(rule, cutoff)
+    if dry_run:
+        rows = execute_query(
+            f"SELECT COUNT(*) AS expired FROM {table} WHERE {where}",  # noqa: S608
+            where_params,
+        )
+        return {"ttl_seconds": rule.ttl_seconds, "rows": int(rows[0]["expired"])}
+
+    keys = ", ".join(rule.key_columns)
+    select_sql = (
+        f"SELECT {keys} FROM {table} WHERE {where} "  # noqa: S608
+        f"ORDER BY {rule.timestamp_column} LIMIT %s"
+    )
+    match = " AND ".join(f"{column} = %s" for column in rule.key_columns)
+    deleted = batches = 0
+    while True:
+        batch = execute_query(select_sql, (*where_params, batch_size))
+        if not batch:
+            break
+        key_params = tuple(row[c] for row in batch for c in rule.key_columns)
+        key_clause = " OR ".join(f"({match})" for _ in batch)
+        # The expiry predicate is repeated so a row refreshed between the
+        # SELECT and the DELETE survives.
+        count = execute_query(
+            f"DELETE FROM {table} WHERE ({key_clause}) AND {where}",  # noqa: S608
+            (*key_params, *where_params),
+        )
+        batches += 1
+        deleted += int(count or 0)
+        if not count:
+            logger.warning(
+                "fmp_cached prune: %s selected %d expired rows but deleted 0; "
+                "stopping this table",
+                rule.label,
+                len(batch),
+            )
+            break
+        if len(batch) < batch_size:
+            break
+    return {"ttl_seconds": rule.ttl_seconds, "rows": deleted, "batches": batches}
+
+
+def prune_expired_cache(
+    *,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    tables: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    """Delete (or with ``dry_run`` count) expired rows in the expiring caches.
+
+    Only tables in :data:`EXPIRABLE_CACHE_TABLES` with a rule in
+    :data:`CACHE_EXPIRY_RULES` are touched, in batches of at most
+    ``batch_size`` rows, with every value passed as a query parameter.
+
+    Parameters
+    ----------
+    dry_run : bool
+        Count expired rows without deleting anything.
+    batch_size : int
+        Rows per DELETE, 1 to 10000.
+    tables : Iterable[str] | None
+        Restrict to these base table names. Any name outside the allowlist
+        raises ``ValueError`` before any SQL runs.
+
+    Returns
+    -------
+    dict
+        ``{"dry_run", "batch_size", "tables": {label: {"ttl_seconds", "rows",
+        ["batches"]}}, "errors": {label: message}, "total"}``. ``rows`` is the
+        number deleted, or the number that would be deleted on a dry run.
+    """
+    if not 1 <= batch_size <= _PRUNE_MAX_BATCH_SIZE:
+        raise ValueError(
+            f"batch_size must be between 1 and {_PRUNE_MAX_BATCH_SIZE}; "
+            f"got {batch_size}"
+        )
+    rules = CACHE_EXPIRY_RULES
+    if tables is not None:
+        wanted = list(tables)
+        for name in wanted:
+            _require_expirable(name)
+        rules = tuple(rule for rule in rules if rule.table in wanted)
+    resolved = [(rule, _resolve_rule_table(rule)) for rule in rules]
+
+    report: dict[str, Any] = {
+        "dry_run": dry_run,
+        "batch_size": batch_size,
+        "tables": {},
+        "errors": {},
+        "total": 0,
+    }
+    if not resolved:
+        return report
+    now = _database_now()
+    for rule, table in resolved:
+        cutoff = now - timedelta(seconds=rule.ttl_seconds)
+        try:
+            entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
+        except Exception as exc:  # noqa: BLE001 - one table must not stop the rest
+            report["errors"][rule.label] = f"{type(exc).__name__}: {exc}"
+            logger.warning("fmp_cached prune: %s failed: %s", rule.label, exc)
+            continue
+        report["tables"][rule.label] = entry
+        report["total"] += entry["rows"]
+        logger.info(
+            "fmp_cached prune: %s %s rows=%d ttl=%ds",
+            rule.label,
+            "expired" if dry_run else "deleted",
+            entry["rows"],
+            rule.ttl_seconds,
+        )
+    logger.info(
+        "fmp_cached prune complete: dry_run=%s total=%d errors=%d",
+        dry_run,
+        report["total"],
+        len(report["errors"]),
+    )
+    return report
+
+
+def cleanup_expired_cache(
+    *,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    tables: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    """Prune expired cache rows; alias of :func:`prune_expired_cache`."""
+    return prune_expired_cache(dry_run=dry_run, batch_size=batch_size, tables=tables)
 
 
 def get_table_names():

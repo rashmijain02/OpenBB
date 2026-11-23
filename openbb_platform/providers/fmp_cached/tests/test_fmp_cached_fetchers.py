@@ -266,18 +266,23 @@ class TestPerformance:
             assert key in stats
             assert isinstance(stats[key], (int, float))
 
-    @pytest.mark.asyncio
-    async def test_cleanup_operations(self):
-        """Test cache cleanup operations."""
-        try:
-            from openbb_fmp_cached.utils.cache_schema import cleanup_expired_cache
+    def test_cleanup_operations(self, monkeypatch):
+        """cleanup_expired_cache returns a count report (#1292).
 
-            result = cleanup_expired_cache()
-            # The simplified schema returns a diagnostic dict, not a
-            # deletion count (#784 — TTL/expiry removed from the schema).
-            assert isinstance(result, dict)
-        except Exception as e:
-            pytest.skip(f"Database not available: {e}")
+        Hermetic: the DB seam is stubbed so the test never reaches a real
+        database. Full behaviour is covered in test_cache_expiry.py.
+        """
+        from openbb_fmp_cached.utils import cache_schema
+
+        def fake_execute_query(query, params=()):
+            if "CURRENT_TIMESTAMP" in query:
+                return [{"db_now": "2026-01-02 00:00:00"}]
+            return [{"expired": 0}]
+
+        monkeypatch.setattr(cache_schema, "execute_query", fake_execute_query)
+        result = cache_schema.cleanup_expired_cache(dry_run=True)
+        assert result["total"] == 0
+        assert result["errors"] == {}
 
 
 class TestConfiguration:

@@ -15,7 +15,7 @@ Controls whether the database and tables are automatically created.
 **Usage:**
 
 ```bash
-# Enable automatic creation (default behavior)
+# Enable automatic creation (off by default)
 export FMP_CACHE_AUTO_CREATE_DB=true
 
 # Disable automatic creation (use existing database)
