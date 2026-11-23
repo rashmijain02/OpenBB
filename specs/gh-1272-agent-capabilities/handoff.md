@@ -61,7 +61,7 @@ function call, and advertises only what `/query` implements.
 | Local Viewer chat pane (`POST /query` with `messages` only) | Unchanged text-only path; it reads only `name` from `/agents.json`. |
 | `portfolio/launch.py` (6902) | Mounts the router without an inventory: text-only, `widget-dashboard-select` false (as before). |
 | `test_copilot.py`, `test_copilot_mount.py` | Pass unchanged. |
-| MCP `test_portfolio_intel_adapter.py` (endpoint and dependant identity) | Passes unchanged (middleware, not a new endpoint). |
+| MCP `test_portfolio_intel_adapter.py` (endpoint and dependent identity) | Passes unchanged (middleware, not a new endpoint). |
 | MCP capability inventories and CSV | Path-based. Head vs base export identical except the worktree `dirty` flag; no regeneration needed. |
 | Workspace widgets (`/pi/*` on the backend) | Still Plotly by default; only the MCP clone forces rows. |
 
