@@ -28,8 +28,8 @@ from openbb_portfolio_intel.widget_backend.main import (  # noqa: E402
     app as intelligence_app,
 )
 
-# Every Plotly chart widget endpoint the portfolio-read profile admits
-# (the 14 chart widgets minus the two #1271 TechTrade charts without a figure).
+# Every Plotly chart widget endpoint the portfolio-read profile admits: all
+# 14 chart widgets, including the two TechTrade charts made Plotly in #1271.
 EXPECTED_CHART_PATHS = {
     "/pi/attribution",
     "/pi/equity/charting",
@@ -43,8 +43,23 @@ EXPECTED_CHART_PATHS = {
     "/pi/risk/vol",
     "/pi/xray/country",
     "/pi/xray/sector",
+    "/tt/position/simulate",
+    "/tt/scan/segment-movers",
 }
 DEMO_PARAMS = {"account_id": "demo", "symbol": "AAPL"}
+
+
+@pytest.fixture(autouse=True)
+def _empty_snapshot_store(tmp_path, monkeypatch):
+    """TechTrade charts read an empty synthetic store, never a home database."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_portfolio_intel.widget_backend import widgets_endpoints
+    from openbb_techtrade.snapshot.store import SqliteSnapshotStore
+
+    store = SqliteSnapshotStore(tmp_path / "snapshots.db")
+    monkeypatch.setattr(widgets_endpoints, "_get_snapshot_store", lambda: store)
+    yield
+    store.close()
 
 
 @pytest.fixture(autouse=True)
@@ -161,3 +176,18 @@ async def test_middleware_replaces_raw_once_and_keeps_other_params():
     other = {"type": "http", "path": "/pi/news", "query_string": b"raw=false"}
     await middleware(other, None, None)
     assert seen["query"] == b"raw=false"
+
+
+@pytest.mark.parametrize("path", ["/tt/scan/segment-movers", "/tt/position/simulate"])
+def test_techtrade_chart_tools_are_forced_to_rows(path):
+    """#1271: the TechTrade Plotly charts are rows through MCP, raw=false or not."""
+    composed = _compose()
+    client = TestClient(composed)
+    params = {**_params(path, composed), "raw": "false"}
+    body = client.get(path, params=params).json()
+    assert isinstance(body, list), f"{path} returned a figure, not rows"
+    assert [row["data_state"] for row in body] == ["unavailable"]
+    assert isinstance(
+        TestClient(intelligence_app).get(path, params=_params(path, composed)).json(),
+        dict,
+    ), "the Workspace route keeps its Plotly figure"

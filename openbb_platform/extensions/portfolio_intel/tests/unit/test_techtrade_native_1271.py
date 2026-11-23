@@ -815,3 +815,19 @@ def test_approve_plan_withholds_the_account_id_field(
     )
     assert response.status_code == 200
     assert response.json()["account_id"] == account_display("paper")
+
+
+def test_agent_denial_reason_for_the_paper_ticket_is_truthful() -> None:
+    """The ticket stays agent-denied, but its stated reason must be true.
+
+    Since #1271 the ticket never places or commits an order, so a reason
+    that says it does is a false claim shown to users and agents.
+    """
+    from openbb_portfolio_intel.widget_backend.agent_policy import (
+        AGENT_DENIED_WIDGETS,
+    )
+
+    reason = AGENT_DENIED_WIDGETS["pi_paper_ticket"]
+    assert not _claims_commit(reason.replace("places no order", "")), reason
+    assert "places paper orders" not in reason
+    assert "no order" in reason

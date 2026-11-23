@@ -237,15 +237,11 @@ def test_chart_reads_return_rows_not_figures(agent_reads):
         assert agent_reads[widget_id]["shape"] == "rows", widget_id
 
 
-# #1271 (TechTrade contract repair) widgets whose bodies do not carry a state
-# yet; the headers do. Shrink-only: remove an entry once its body is fixed.
-_PROVENANCE_DEBT_1271 = {"tt_scan_table", "tt_segment_movers"}
-
-
 def test_agent_can_state_provenance_for_every_widget(agent_reads):
+    """Every readable widget body carries a data state (#1271 cleared the debt)."""
     states = {"live", "cached", "demo", "stale", "partial", "unavailable"}
     unknown = {k for k, v in agent_reads.items() if v["state"] not in states}
-    assert unknown == _PROVENANCE_DEBT_1271
+    assert not unknown
 
 
 def test_no_credential_reaches_widget_data_or_agent_context(agent_reads):
