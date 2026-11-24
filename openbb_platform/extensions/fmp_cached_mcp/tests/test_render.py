@@ -1,0 +1,165 @@
+"""Payload rendering parity: FMP REST body -> hosted ``content[0].text`` (#1299)."""
+
+from __future__ import annotations
+
+import gzip
+import json
+import math
+import re
+
+import pytest
+from openbb_fmp_cached_mcp.render import js_dumps, js_number, render_response
+
+from .conftest import HOSTED, SNAPSHOT, load_hosted
+
+SAMPLES = sorted((HOSTED / f"samples-{SNAPSHOT}").glob("*.json"))
+
+
+def _replayable(rec: dict) -> bool:
+    """Recorded body and hosted text that must map deterministically.
+
+    Live endpoints (quotes) moved between the hosted and REST calls; those
+    samples are skipped unless the body is empty (hosted not_found envelope).
+    """
+    if "rest_body_gz_hex" not in rec or rec.get("isError"):
+        return False
+    body = gzip.decompress(bytes.fromhex(rec["rest_body_gz_hex"]))
+    return bool(rec.get("json_equal")) or body.strip() == b"[]"
+
+
+REPLAY = [p for p in SAMPLES if _replayable(json.loads(p.read_text("utf-8")))]
+
+
+def test_replay_set_is_not_ceremonial():
+    # R3 loud empties: the fixture drain must leave a meaningful replay set.
+    assert len(SAMPLES) == 208
+    assert len(REPLAY) >= 175, len(REPLAY)
+    tools = {json.loads(p.read_text("utf-8"))["tool"] for p in REPLAY}
+    assert len(tools) == 24, sorted(tools)
+
+
+@pytest.mark.parametrize("path", REPLAY, ids=[p.stem for p in REPLAY])
+def test_rest_body_renders_to_hosted_text(path):
+    rec = json.loads(path.read_text("utf-8"))
+    body = gzip.decompress(bytes.fromhex(rec["rest_body_gz_hex"]))
+    result = render_response(
+        tool=rec["tool"],
+        arguments=rec["arguments"],
+        path=rec["rest_path"],
+        status=rec["rest_status"],
+        body=body,
+    )
+    assert result.is_error is False
+    # Documented divergence (DIVERGENCES.md D1): the hosted server writes the
+    # caller's FMP key into report links; we keep FMP's own placeholder.
+    assert _mask_keys(result.text) == _mask_keys(rec["hosted_text"])
+    if "apikey=" not in rec["hosted_text"]:
+        assert result.text == rec["hosted_text"]
+
+
+def _mask_keys(text: str) -> str:
+    return re.sub(r"apikey=[^&\"]+", "apikey=<key>", text)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (8e-05, "0.00008"),
+        (1e-05, "0.00001"),
+        (1e-06, "0.000001"),
+        (1.234e-06, "0.000001234"),
+        (1e-07, "1e-7"),
+        (1.5e-07, "1.5e-7"),
+        (123456789012345680000.0, "123456789012345680000"),
+        (1e21, "1e+21"),
+        (2.5e22, "2.5e+22"),
+        (-0.00012, "-0.00012"),
+        (0.1, "0.1"),
+        (100.0, "100"),
+        (-0.0, "0"),
+        (5072900376000, "5072900376000"),
+        (958871.0126499981, "958871.0126499981"),
+    ],
+)
+def test_js_number_matches_javascript(value, expected):
+    assert js_number(value) == expected
+
+
+def test_js_number_non_finite_is_null():
+    assert js_number(math.nan) == "null"
+    assert js_number(math.inf) == "null"
+
+
+def test_js_dumps_is_compact_and_keeps_order_and_unicode():
+    obj = {"b": 1, "a": [1.0, 8e-05, None, True], "t": "Q1–Q4 é"}
+    assert js_dumps(obj) == '{"b":1,"a":[1,0.00008,null,true],"t":"Q1–Q4 é"}'
+
+
+def test_empty_list_with_identifier_becomes_not_found_envelope():
+    result = render_response(
+        tool="senate",
+        arguments={"endpoint": "senate-trading-by-name", "name": "Pelosi", "limit": 2},
+        path="/senate-trades-by-name",
+        status=200,
+        body=b"[]",
+    )
+    expected = load_hosted(f"samples-{SNAPSHOT}/senate_senate-trading-by-name.json")
+    assert result.text == expected["hosted_text"]
+
+
+def test_empty_list_without_identifier_stays_empty():
+    cases = load_hosted(f"not-found-{SNAPSHOT}.json")
+    no_ident = [c for c in cases if c["text"] == "[]"]
+    assert no_ident, "fixture must contain plain-[] cases"
+    for case in no_ident:
+        result = render_response(
+            tool=case["tool"],
+            arguments=case["arguments"],
+            path="/x",
+            status=200,
+            body=b"[]",
+        )
+        assert result.text == "[]", case["arguments"]
+
+
+def test_not_found_cases_from_probe_fixture():
+    for case in load_hosted(f"not-found-{SNAPSHOT}.json"):
+        if not case["text"].startswith('{"status":"not_found"'):
+            continue
+        result = render_response(
+            tool=case["tool"],
+            arguments=case["arguments"],
+            path="/x",
+            status=200,
+            body=b"[]",
+        )
+        assert result.text == case["text"]
+
+
+@pytest.mark.parametrize("idx", range(4))
+def test_upstream_errors_render_like_hosted(idx):
+    case = load_hosted(f"rest-errors-{SNAPSHOT}.json")["cases"][idx]
+    result = render_response(
+        tool=case["tool"],
+        arguments=case["arguments"],
+        path=case["rest_path"],
+        status=case["rest_status"],
+        body=case["rest_body"].encode(),
+    )
+    assert result.is_error is True
+    assert result.text == case["hosted_text"]
+
+
+def test_binary_body_is_json_string_of_lossy_utf8_text():
+    body = b"PK\x03\x04\x14\x00\xff\xfe\x08\n"
+    result = render_response(
+        tool="statements",
+        arguments={"endpoint": "financial-reports-form-10-k-xlsx"},
+        path="/financial-reports-xlsx",
+        status=200,
+        body=body,
+    )
+    assert result.text == json.dumps(
+        body.decode("utf-8", "replace"), ensure_ascii=False
+    )
+    assert result.text.startswith(r'"PK\u0003\u0004\u0014\u0000')

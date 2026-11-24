@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "openbb-fmp-cached-mcp"
+version = "0.1.0"
+description = "MCP server with tool-for-tool parity to FMP's hosted MCP server, backed by the fmp_cached store"
+authors = ["Rashmi Jain"]
+license = "AGPL-3.0-only"
+readme = "README.md"
+packages = [{ include = "openbb_fmp_cached_mcp" }]
+include = ["openbb_fmp_cached_mcp/assets/*.json"]
+
+[tool.poetry.scripts]
+openbb-fmp-cached-mcp = "openbb_fmp_cached_mcp.__main__:main"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4"
+mcp = ">=1.30.0,<2"
+httpx = ">=0.27"
+starlette = ">=0.40"
+uvicorn = ">=0.30"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

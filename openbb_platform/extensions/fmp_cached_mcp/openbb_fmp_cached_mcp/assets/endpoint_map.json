@@ -1,0 +1,1481 @@
+{
+ "Fundraisers": {
+  "crowdfunding-by-cik": {
+   "path": "/crowdfunding-offerings",
+   "required": [
+    "cik"
+   ],
+   "retention": "immutable-doc"
+  },
+  "crowdfunding-search": {
+   "path": "/crowdfunding-offerings-search",
+   "required": [
+    "name"
+   ],
+   "retention": "revisable"
+  },
+  "equity-offering-by-cik": {
+   "path": "/fundraising",
+   "required": [
+    "cik"
+   ],
+   "retention": "immutable-doc"
+  },
+  "equity-offering-search": {
+   "path": "/fundraising-search",
+   "required": [
+    "name"
+   ],
+   "retention": "revisable"
+  },
+  "latest-crowdfunding": {
+   "path": "/crowdfunding-offerings-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "latest-equity-offering": {
+   "path": "/fundraising-latest",
+   "required": [],
+   "retention": "feed"
+  }
+ },
+ "analyst": {
+  "financial-estimates": {
+   "path": "/analyst-estimates",
+   "required": [
+    "symbol",
+    "period"
+   ],
+   "retention": "revisable"
+  },
+  "grades": {
+   "path": "/grades",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "grades-summary": {
+   "path": "/grades-consensus",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "historical-grades": {
+   "path": "/grades-historical",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "historical-ratings": {
+   "path": "/ratings-historical",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "price-target-consensus": {
+   "path": "/price-target-consensus",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "price-target-summary": {
+   "path": "/price-target-summary",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "ratings-snapshot": {
+   "path": "/ratings-snapshot",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "calendar": {
+  "dividends-calendar": {
+   "path": "/dividends-calendar",
+   "required": [],
+   "retention": "revisable"
+  },
+  "dividends-company": {
+   "path": "/dividends",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "earnings-calendar": {
+   "path": "/earnings-calendar",
+   "required": [],
+   "retention": "revisable"
+  },
+  "earnings-company": {
+   "path": "/earnings",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "ipos-calendar": {
+   "path": "/ipos-calendar",
+   "required": [],
+   "retention": "revisable"
+  },
+  "ipos-disclosure": {
+   "path": "/ipos-disclosure",
+   "required": [],
+   "retention": "immutable-doc"
+  },
+  "ipos-prospectus": {
+   "path": "/ipos-prospectus",
+   "required": [],
+   "retention": "immutable-doc"
+  },
+  "splits-calendar": {
+   "path": "/splits-calendar",
+   "required": [],
+   "retention": "revisable"
+  },
+  "splits-company": {
+   "path": "/splits",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  }
+ },
+ "chart": {
+  "historical-price-eod-dividend-adjusted": {
+   "path": "/historical-price-eod/dividend-adjusted",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "historical-price-eod-full": {
+   "path": "/historical-price-eod/full",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "historical-price-eod-light": {
+   "path": "/historical-price-eod/light",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "historical-price-eod-non-split-adjusted": {
+   "path": "/historical-price-eod/non-split-adjusted",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-1-hour": {
+   "path": "/historical-chart/1hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-1-min": {
+   "path": "/historical-chart/1min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-15-min": {
+   "path": "/historical-chart/15min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-30-min": {
+   "path": "/historical-chart/30min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-4-hour": {
+   "path": "/historical-chart/4hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "intraday-5-min": {
+   "path": "/historical-chart/5min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  }
+ },
+ "commitmentOfTraders": {
+  "COT-report": {
+   "path": "/commitment-of-traders-report",
+   "required": [],
+   "retention": "series"
+  },
+  "COT-report-analysis": {
+   "path": "/commitment-of-traders-analysis",
+   "required": [],
+   "retention": "series"
+  },
+  "COT-report-list": {
+   "path": "/commitment-of-traders-list",
+   "required": [],
+   "retention": "reference"
+  }
+ },
+ "commodity": {
+  "commodities-historical-price-eod-full": {
+   "path": "/historical-price-eod/full",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "commodities-historical-price-eod-light": {
+   "path": "/historical-price-eod/light",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "commodities-intraday-1-hour": {
+   "path": "/historical-chart/1hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "commodities-intraday-1-min": {
+   "path": "/historical-chart/1min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "commodities-intraday-5-min": {
+   "path": "/historical-chart/5min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "commodities-list": {
+   "path": "/commodities-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "commodities-quote": {
+   "path": "/quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "commodities-quote-short": {
+   "path": "/quote-short",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "company": {
+  "all-shares-float": {
+   "path": "/shares-float-all",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "batch-market-cap": {
+   "path": "/market-capitalization-batch",
+   "required": [
+    "symbols"
+   ],
+   "retention": "ephemeral"
+  },
+  "company-executives": {
+   "path": "/key-executives",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": true
+  },
+  "company-notes": {
+   "path": "/company-notes",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": true
+  },
+  "delisted-companies": {
+   "path": "/delisted-companies",
+   "required": [],
+   "retention": "reference"
+  },
+  "employee-count": {
+   "path": "/employee-count",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": true
+  },
+  "executive-compensation": {
+   "path": "/governance-executive-compensation",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "executive-compensation-benchmark": {
+   "path": "/executive-compensation-benchmark",
+   "required": [],
+   "retention": "revisable"
+  },
+  "historical-employee-count": {
+   "path": "/historical-employee-count",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": true
+  },
+  "historical-market-cap": {
+   "path": "/historical-market-capitalization",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "latest-mergers-acquisitions": {
+   "path": "/mergers-acquisitions-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "market-cap": {
+   "path": "/market-capitalization",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "peers": {
+   "path": "/stock-peers",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "profile-cik": {
+   "path": "/profile-cik",
+   "required": [
+    "cik"
+   ],
+   "retention": "revisable"
+  },
+  "profile-symbol": {
+   "path": "/profile",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "search-mergers-acquisitions": {
+   "path": "/mergers-acquisitions-search",
+   "required": [
+    "name"
+   ],
+   "retention": "immutable-doc"
+  },
+  "shares-float": {
+   "path": "/shares-float",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "crypto": {
+  "cryptocurrency-historical-price-eod-full": {
+   "path": "/historical-price-eod/full",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "cryptocurrency-historical-price-eod-light": {
+   "path": "/historical-price-eod/light",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "cryptocurrency-intraday-1-hour": {
+   "path": "/historical-chart/1hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "cryptocurrency-intraday-1-min": {
+   "path": "/historical-chart/1min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "cryptocurrency-intraday-5-min": {
+   "path": "/historical-chart/5min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "cryptocurrency-list": {
+   "path": "/cryptocurrency-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "cryptocurrency-quote": {
+   "path": "/quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "cryptocurrency-quote-short": {
+   "path": "/quote-short",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "directory": {
+  "ETFs-list": {
+   "path": "/etf-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "actively-trading-list": {
+   "path": "/actively-trading-list",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "available-countries": {
+   "path": "/available-countries",
+   "required": [],
+   "retention": "reference"
+  },
+  "available-exchanges": {
+   "path": "/available-exchanges",
+   "required": [],
+   "retention": "reference"
+  },
+  "available-industries": {
+   "path": "/available-industries",
+   "required": [],
+   "retention": "reference"
+  },
+  "available-sectors": {
+   "path": "/available-sectors",
+   "required": [],
+   "retention": "reference"
+  },
+  "cik-list": {
+   "path": "/cik-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "company-symbols-list": {
+   "path": "/stock-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "financial-symbols-list": {
+   "path": "/financial-statement-symbol-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "symbol-changes-list": {
+   "path": "/symbol-change",
+   "required": [],
+   "retention": "reference"
+  }
+ },
+ "discountedCashFlow": {
+  "custom-dcf-advanced": {
+   "path": "/custom-discounted-cash-flow",
+   "required": [
+    "symbol"
+   ],
+   "retention": "no-store"
+  },
+  "custom-dcf-levered": {
+   "path": "/custom-levered-discounted-cash-flow",
+   "required": [
+    "symbol"
+   ],
+   "retention": "no-store"
+  },
+  "dcf-advanced": {
+   "path": "/discounted-cash-flow",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "dcf-levered": {
+   "path": "/levered-discounted-cash-flow",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "economics": {
+  "economics-calendar": {
+   "path": "/economic-calendar",
+   "required": [],
+   "retention": "revisable"
+  },
+  "economics-indicators": {
+   "path": "/economic-indicators",
+   "required": [
+    "name"
+   ],
+   "retention": "series"
+  },
+  "market-risk-premium": {
+   "path": "/market-risk-premium",
+   "required": [],
+   "retention": "revisable"
+  },
+  "treasury-rates": {
+   "path": "/treasury-rates",
+   "required": [],
+   "retention": "series"
+  }
+ },
+ "etfAndMutualFunds": {
+  "country-weighting": {
+   "path": "/etf/country-weightings",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "information": {
+   "path": "/etf/info",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "sector-weighting": {
+   "path": "/etf/sector-weightings",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "forex": {
+  "forex-historical-price-eod-full": {
+   "path": "/historical-price-eod/full",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "forex-historical-price-eod-light": {
+   "path": "/historical-price-eod/light",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "forex-intraday-1-hour": {
+   "path": "/historical-chart/1hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "forex-intraday-1-min": {
+   "path": "/historical-chart/1min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "forex-intraday-5-min": {
+   "path": "/historical-chart/5min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "forex-list": {
+   "path": "/forex-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "forex-quote": {
+   "path": "/quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "forex-quote-short": {
+   "path": "/quote-short",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "indexes": {
+  "dow-jones": {
+   "path": "/dowjones-constituent",
+   "required": [],
+   "retention": "revisable"
+  },
+  "historical-dow-jones": {
+   "path": "/historical-dowjones-constituent",
+   "required": [],
+   "retention": "series"
+  },
+  "historical-nasdaq": {
+   "path": "/historical-nasdaq-constituent",
+   "required": [],
+   "retention": "series"
+  },
+  "historical-sp-500": {
+   "path": "/historical-sp500-constituent",
+   "required": [],
+   "retention": "series"
+  },
+  "index-historical-price-eod-full": {
+   "path": "/historical-price-eod/full",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "index-historical-price-eod-light": {
+   "path": "/historical-price-eod/light",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "index-intraday-1-hour": {
+   "path": "/historical-chart/1hour",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "index-intraday-1-min": {
+   "path": "/historical-chart/1min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "index-intraday-5-min": {
+   "path": "/historical-chart/5min",
+   "required": [
+    "symbol"
+   ],
+   "retention": "series"
+  },
+  "index-quote": {
+   "path": "/quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "index-quote-short": {
+   "path": "/quote-short",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "indexes-list": {
+   "path": "/index-list",
+   "required": [],
+   "retention": "reference"
+  },
+  "nasdaq": {
+   "path": "/nasdaq-constituent",
+   "required": [],
+   "retention": "revisable"
+  },
+  "sp-500": {
+   "path": "/sp500-constituent",
+   "required": [],
+   "retention": "revisable"
+  }
+ },
+ "insiderTrades": {
+  "acquisition-ownership": {
+   "path": "/acquisition-of-beneficial-ownership",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "all-transaction-types": {
+   "path": "/insider-trading-transaction-type",
+   "required": [],
+   "retention": "reference"
+  },
+  "insider-trade-statistics": {
+   "path": "/insider-trading/statistics",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "latest-insider-trade": {
+   "path": "/insider-trading/latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "search-insider-trades": {
+   "path": "/insider-trading/search",
+   "required": [],
+   "retention": "immutable-doc"
+  },
+  "search-reporting-name": {
+   "path": "/insider-trading/reporting-name",
+   "required": [
+    "name"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "marketHours": {
+  "all-exchange-market-hours": {
+   "path": "/all-exchange-market-hours",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "exchange-market-hours": {
+   "path": "/exchange-market-hours",
+   "required": [
+    "exchange"
+   ],
+   "retention": "ephemeral"
+  },
+  "holidays-by-exchange": {
+   "path": "/holidays-by-exchange",
+   "required": [
+    "exchange"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "marketPerformance": {
+  "biggest-gainers": {
+   "path": "/biggest-gainers",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "biggest-losers": {
+   "path": "/biggest-losers",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "historical-industry-pe": {
+   "path": "/historical-industry-pe",
+   "required": [
+    "industry"
+   ],
+   "retention": "series"
+  },
+  "historical-industry-performance": {
+   "path": "/historical-industry-performance",
+   "required": [
+    "industry"
+   ],
+   "retention": "series"
+  },
+  "historical-sector-pe": {
+   "path": "/historical-sector-pe",
+   "required": [
+    "sector"
+   ],
+   "retention": "series"
+  },
+  "historical-sector-performance": {
+   "path": "/historical-sector-performance",
+   "required": [
+    "sector"
+   ],
+   "retention": "series"
+  },
+  "industry-PE-snapshot": {
+   "path": "/industry-pe-snapshot",
+   "required": [
+    "date"
+   ],
+   "retention": "ephemeral"
+  },
+  "industry-performance-snapshot": {
+   "path": "/industry-performance-snapshot",
+   "required": [
+    "date"
+   ],
+   "retention": "ephemeral"
+  },
+  "most-active": {
+   "path": "/most-actives",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "sector-PE-snapshot": {
+   "path": "/sector-pe-snapshot",
+   "required": [
+    "date"
+   ],
+   "retention": "ephemeral"
+  },
+  "sector-performance-snapshot": {
+   "path": "/sector-performance-snapshot",
+   "required": [
+    "date"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "news": {
+  "crypto-news": {
+   "path": "/news/crypto-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "fmp-articles": {
+   "path": "/fmp-articles",
+   "required": [],
+   "retention": "feed"
+  },
+  "forex-news": {
+   "path": "/news/forex-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "general-news": {
+   "path": "/news/general-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "press-releases": {
+   "path": "/news/press-releases-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "search-crypto-news": {
+   "path": "/news/crypto",
+   "required": [
+    "symbols"
+   ],
+   "retention": "immutable-doc",
+   "defaults": {
+    "symbols": "BTCUSD"
+   },
+   "defaults_verified": false
+  },
+  "search-forex-news": {
+   "path": "/news/forex",
+   "required": [
+    "symbols"
+   ],
+   "retention": "immutable-doc",
+   "defaults": {
+    "symbols": "EURUSD"
+   },
+   "defaults_verified": false
+  },
+  "search-press-releases": {
+   "path": "/news/press-releases",
+   "required": [
+    "symbols"
+   ],
+   "retention": "immutable-doc",
+   "defaults": {
+    "symbols": "AAPL"
+   },
+   "defaults_verified": false
+  },
+  "search-stock-news": {
+   "path": "/news/stock",
+   "required": [
+    "symbols"
+   ],
+   "retention": "immutable-doc",
+   "defaults": {
+    "symbols": "AAPL"
+   },
+   "defaults_verified": false
+  },
+  "stock-news": {
+   "path": "/news/stock-latest",
+   "required": [],
+   "retention": "feed"
+  }
+ },
+ "quote": {
+  "aftermarket-quote": {
+   "path": "/aftermarket-quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "aftermarket-trade": {
+   "path": "/aftermarket-trade",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "batch-aftermarket-quote": {
+   "path": "/batch-aftermarket-quote",
+   "required": [
+    "symbols"
+   ],
+   "retention": "ephemeral"
+  },
+  "batch-aftermarket-trade": {
+   "path": "/batch-aftermarket-trade",
+   "required": [
+    "symbols"
+   ],
+   "retention": "ephemeral"
+  },
+  "batch-quote": {
+   "path": "/batch-quote",
+   "required": [
+    "symbols"
+   ],
+   "retention": "ephemeral"
+  },
+  "batch-quote-short": {
+   "path": "/batch-quote-short",
+   "required": [
+    "symbols"
+   ],
+   "retention": "ephemeral"
+  },
+  "quote": {
+   "path": "/quote",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "quote-change": {
+   "path": "/stock-price-change",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  },
+  "quote-short": {
+   "path": "/quote-short",
+   "required": [
+    "symbol"
+   ],
+   "retention": "ephemeral"
+  }
+ },
+ "search": {
+  "search-CIK": {
+   "path": "/search-cik",
+   "required": [
+    "cik"
+   ],
+   "retention": "revisable"
+  },
+  "search-ISIN": {
+   "path": "/search-isin",
+   "required": [
+    "isin"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "isin": "US0378331005"
+   },
+   "defaults_verified": false
+  },
+  "search-company-screener": {
+   "path": "/company-screener",
+   "required": [],
+   "retention": "ephemeral"
+  },
+  "search-cusip": {
+   "path": "/search-cusip",
+   "required": [
+    "cusip"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "cusip": "037833100"
+   },
+   "defaults_verified": true
+  },
+  "search-exchange-variants": {
+   "path": "/search-exchange-variants",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": false
+  },
+  "search-name": {
+   "path": "/search-name",
+   "required": [
+    "query"
+   ],
+   "retention": "revisable"
+  },
+  "search-symbol": {
+   "path": "/search-symbol",
+   "required": [
+    "query"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "secFilings": {
+  "8k-latest": {
+   "path": "/sec-filings-8k",
+   "required": [
+    "from_date",
+    "to_date"
+   ],
+   "retention": "feed",
+   "defaults": {
+    "from": "2024-01-01",
+    "to": "2024-03-01"
+   },
+   "defaults_verified": false
+  },
+  "all-industry-classification": {
+   "path": "/all-industry-classification",
+   "required": [],
+   "retention": "revisable"
+  },
+  "company-search-by-cik": {
+   "path": "/sec-filings-company-search/cik",
+   "required": [
+    "cik"
+   ],
+   "retention": "revisable"
+  },
+  "company-search-by-symbol": {
+   "path": "/sec-filings-company-search/symbol",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "financials-latest": {
+   "path": "/sec-filings-financials",
+   "required": [
+    "from_date",
+    "to_date"
+   ],
+   "retention": "feed",
+   "defaults": {
+    "from": "2024-01-01",
+    "to": "2024-03-01"
+   },
+   "defaults_verified": false
+  },
+  "industry-classification-list": {
+   "path": "/standard-industrial-classification-list",
+   "required": [],
+   "retention": "revisable"
+  },
+  "industry-classification-search": {
+   "path": "/industry-classification-search",
+   "required": [],
+   "retention": "revisable"
+  },
+  "search-by-cik": {
+   "path": "/sec-filings-search/cik",
+   "required": [
+    "cik",
+    "from_date",
+    "to_date"
+   ],
+   "retention": "immutable-doc"
+  },
+  "search-by-form-type": {
+   "path": "/sec-filings-search/form-type",
+   "required": [
+    "formType",
+    "from_date",
+    "to_date"
+   ],
+   "retention": "immutable-doc"
+  },
+  "search-by-name": {
+   "path": "/sec-filings-company-search/name",
+   "required": [
+    "company"
+   ],
+   "retention": "immutable-doc"
+  },
+  "search-by-symbol": {
+   "path": "/sec-filings-search/symbol",
+   "required": [
+    "symbol",
+    "from_date",
+    "to_date"
+   ],
+   "retention": "immutable-doc"
+  },
+  "sec-company-full-profile": {
+   "path": "/sec-profile",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable",
+   "defaults": {
+    "symbol": "AAPL"
+   },
+   "defaults_verified": true
+  }
+ },
+ "senate": {
+  "house-latest": {
+   "path": "/house-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "house-trading": {
+   "path": "/house-trades",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "house-trading-by-name": {
+   "path": "/house-trades-by-name",
+   "required": [
+    "name"
+   ],
+   "retention": "immutable-doc"
+  },
+  "senate-latest": {
+   "path": "/senate-latest",
+   "required": [],
+   "retention": "feed"
+  },
+  "senate-trading": {
+   "path": "/senate-trades",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "senate-trading-by-name": {
+   "path": "/senate-trades-by-name",
+   "required": [
+    "name"
+   ],
+   "retention": "immutable-doc"
+  }
+ },
+ "statements": {
+  "as-reported-balance-statements": {
+   "path": "/balance-sheet-statement-as-reported",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "as-reported-cashflow-statements": {
+   "path": "/cash-flow-statement-as-reported",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "as-reported-financial-statements": {
+   "path": "/financial-statement-full-as-reported",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "as-reported-income-statements": {
+   "path": "/income-statement-as-reported",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "balance-sheet-statement": {
+   "path": "/balance-sheet-statement",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "balance-sheet-statement-growth": {
+   "path": "/balance-sheet-statement-growth",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "cashflow-statement": {
+   "path": "/cash-flow-statement",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "cashflow-statement-growth": {
+   "path": "/cash-flow-statement-growth",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "enterprise-values": {
+   "path": "/enterprise-values",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "financial-reports-dates": {
+   "path": "/financial-reports-dates",
+   "required": [
+    "symbol"
+   ],
+   "retention": "immutable-doc"
+  },
+  "financial-reports-form-10-k-json": {
+   "path": "/financial-reports-json",
+   "required": [
+    "symbol",
+    "year",
+    "period"
+   ],
+   "retention": "immutable-doc"
+  },
+  "financial-reports-form-10-k-xlsx": {
+   "path": "/financial-reports-xlsx",
+   "required": [
+    "symbol",
+    "year",
+    "period"
+   ],
+   "retention": "immutable-doc"
+  },
+  "financial-scores": {
+   "path": "/financial-scores",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "financial-statement-growth": {
+   "path": "/financial-growth",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "income-statement": {
+   "path": "/income-statement",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "income-statement-growth": {
+   "path": "/income-statement-growth",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "key-metrics": {
+   "path": "/key-metrics",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "key-metrics-ttm": {
+   "path": "/key-metrics-ttm",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "metrics-ratios": {
+   "path": "/ratios",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "metrics-ratios-ttm": {
+   "path": "/ratios-ttm",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "owner-earnings": {
+   "path": "/owner-earnings",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "revenue-geographic-segments": {
+   "path": "/revenue-geographic-segmentation",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  },
+  "revenue-product-segmentation": {
+   "path": "/revenue-product-segmentation",
+   "required": [
+    "symbol"
+   ],
+   "retention": "revisable"
+  }
+ },
+ "technicalIndicators": {
+  "average-directional-index": {
+   "path": "/technical-indicators/adx",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "double-exponential-moving-average": {
+   "path": "/technical-indicators/dema",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "exponential-moving-average": {
+   "path": "/technical-indicators/ema",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "relative-strength-index": {
+   "path": "/technical-indicators/rsi",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "simple-moving-average": {
+   "path": "/technical-indicators/sma",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "standard-deviation": {
+   "path": "/technical-indicators/standarddeviation",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "triple-exponential-moving-average": {
+   "path": "/technical-indicators/tema",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "weighted-moving-average": {
+   "path": "/technical-indicators/wma",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  },
+  "williams": {
+   "path": "/technical-indicators/williams",
+   "required": [
+    "symbol",
+    "periodLength",
+    "timeframe"
+   ],
+   "retention": "series"
+  }
+ }
+}

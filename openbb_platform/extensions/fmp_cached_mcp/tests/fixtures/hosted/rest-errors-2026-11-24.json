@@ -1,0 +1,66 @@
+{
+ "cases": [
+  {
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "quote"
+   },
+   "rest_path": "/quote",
+   "rest_params": {},
+   "rest_status": 400,
+   "rest_content_type": "application/json",
+   "rest_body": "Query Error: Invalid or missing query parameter - symbol",
+   "hosted_isError": true,
+   "hosted_text": "Bad request for tool \"quote\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+  },
+  {
+   "tool": "secFilings",
+   "arguments": {
+    "endpoint": "industry-classification-search"
+   },
+   "rest_path": "/industry-classification-search",
+   "rest_params": {},
+   "rest_status": 400,
+   "rest_content_type": "application/json",
+   "rest_body": "Please enter at least one search value: cik, sicCode, or symbol.",
+   "hosted_isError": true,
+   "hosted_text": "Bad request for tool \"secFilings\" (endpoint /industry-classification-search): Please enter at least one search value: cik, sicCode, or symbol."
+  },
+  {
+   "tool": "calendar",
+   "arguments": {
+    "endpoint": "splits-calendar",
+    "from_date": "1970-01-01",
+    "to_date": "1970-01-02"
+   },
+   "rest_path": "/splits-calendar",
+   "rest_params": {
+    "from": "1970-01-01",
+    "to": "1970-01-02"
+   },
+   "rest_status": 402,
+   "rest_content_type": "application/json",
+   "rest_body": "Premium Query Parameter: 'Special Endpoint : This value set for 'from' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/",
+   "hosted_isError": true,
+   "hosted_text": "ACCESS DENIED: A parameter you passed to this tool (\"calendar\") requires a higher plan. The user is currently on the Premium plan. Please inform the user they need to upgrade their FMP subscription at https://financialmodelingprep.com/developer/docs/pricing to use this filter. Do not retry this tool with the same parameter value; the user may retry with values their plan allows."
+  },
+  {
+   "tool": "marketPerformance",
+   "arguments": {
+    "endpoint": "sector-PE-snapshot",
+    "date": "1970-01-01",
+    "exchange": "NASDAQ"
+   },
+   "rest_path": "/sector-pe-snapshot",
+   "rest_params": {
+    "date": "1970-01-01",
+    "exchange": "NASDAQ"
+   },
+   "rest_status": 402,
+   "rest_content_type": "application/json",
+   "rest_body": "Premium Query Parameter: 'Special Endpoint : This value set for 'date' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/",
+   "hosted_isError": true,
+   "hosted_text": "ACCESS DENIED: A parameter you passed to this tool (\"marketPerformance\") requires a higher plan. The user is currently on the Premium plan. Please inform the user they need to upgrade their FMP subscription at https://financialmodelingprep.com/developer/docs/pricing to use this filter. Do not retry this tool with the same parameter value; the user may retry with values their plan allows."
+  }
+ ]
+}

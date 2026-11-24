@@ -4,21 +4,21 @@ Every task starts red (failing test first, red output kept). Sub-issues: A #1299
 
 ## PR-A — contract + server core (US1, US2, US5) (#1299)
 
-- [ ] A1 Recorder `scripts/fmp_mcp_record.py`: `initialize` → `tools/list` (+ prompts/resources
+- [x] A1 Recorder `scripts/fmp_mcp_record.py`: `initialize` → `tools/list` (+ prompts/resources
       probes) → versioned fixture `openbb_platform/extensions/fmp_cached_mcp/tests/fixtures/hosted/inventory-2026-11-23.json`.
       Test: fixture contains no key (grep test) and 24 tools / 208 enums.
-- [ ] A2 `endpoint_map.json` (tool, endpoint, REST path, param renames, ttl_class, plan_limited key).
+- [x] A2 `endpoint_map.json` (tool, endpoint, REST path, param renames, ttl_class, plan_limited key).
       Test: every inventory enum has exactly one row; unknown rows fail.
-- [ ] A3 Package skeleton `openbb_fmp_cached_mcp` (low-level `mcp` server, stdio + streamable HTTP,
+- [x] A3 Package skeleton `openbb_fmp_cached_mcp` (low-level `mcp` server, stdio + streamable HTTP,
       session ids). Test: `tools/list` equals fixture (exact); prompts/resources return -32601.
-- [ ] A4 Argument validation with hosted zod-style error text. Tests: recorded error fixtures
+- [x] A4 Argument validation with hosted zod-style error text. Tests: recorded error fixtures
       (invalid enum, wrong type, unknown key, missing required param → FMP-side message).
-- [ ] A5 REST upstream (`/stable/<path>`, `from_date→from`, `to_date→to`, arrays → comma list),
+- [x] A5 REST upstream (`/stable/<path>`, `from_date→from`, `to_date→to`, arrays → comma list),
       compact serialisation. Test: stub upstream with recorded REST body → content equals recorded
       hosted text; mutation: pretty-print → fails.
-- [ ] A6 Key scrubbing in errors/logs; loopback default; token required off-loopback; concurrency
+- [x] A6 Key scrubbing in errors/logs; loopback default; token required off-loopback; concurrency
       and rate bounds; AST import guard (no portfolio/brokerage imports).
-- [ ] A7 Real-path check: stdio launch + 5 scripted calls via an MCP client; record output.
+- [x] A7 Real-path check: stdio launch + 5 scripted calls via an MCP client; record output.
 
 ## PR-B — cache + provenance (US3, US4) (#1300)
 
