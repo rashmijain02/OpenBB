@@ -165,7 +165,9 @@ def test_tt_segment_movers_widget_declared() -> None:
     w = _widgets().get("tt_segment_movers")
     assert w and w["type"] == "chart"
     assert w["endpoint"] == "tt/scan/segment-movers"
-    assert w["dataKey"] == "rows"
+    # #1271: a Plotly figure by default (raw=true rows); no dataKey wrapper.
+    assert w["raw"] is True
+    assert "dataKey" not in w
 
 
 def test_tt_scan_table_widget_declared() -> None:
@@ -173,7 +175,9 @@ def test_tt_scan_table_widget_declared() -> None:
     w = _widgets().get("tt_scan_table")
     assert w and w["type"] == "table"
     assert w["endpoint"] == "tt/scan/table"
-    assert w["dataKey"] == "rows"
+    # #1271: the endpoint returns the row array; columns are declared.
+    assert "dataKey" not in w
+    assert w["data"]["table"]["columnsDefs"]
 
 
 def test_tt_export_button_widget_declared() -> None:
@@ -189,19 +193,16 @@ def test_tt_export_button_widget_declared() -> None:
 
 
 def test_segment_movers_shape() -> None:
-    """Segment movers rows carry segment + change_pct + bucket."""
+    """Segment movers raw rows carry segment + change_pct + bucket (#1271)."""
     with patch(
         "openbb_portfolio_intel.widget_backend.widgets_endpoints._get_snapshot_store",
         return_value=_populated_store,
     ):
-        r = _client.get("/tt/scan/segment-movers")
+        r = _client.get("/tt/scan/segment-movers?raw=true")
+        figure = _client.get("/tt/scan/segment-movers").json()
     assert r.status_code == 200
-    body = r.json()
-    assert "rows" in body
-    assert "computed_at" in body
-    assert "as_of_session" in body
-    assert "is_stale" in body
-    rows = body["rows"]
+    assert figure["data"][0]["type"] == "bar"
+    rows = r.json()
     assert rows
     for row in rows:
         assert "segment" in row
@@ -218,10 +219,7 @@ def test_scan_table_shape() -> None:
     ):
         r = _client.get("/tt/scan/table")
     assert r.status_code == 200
-    body = r.json()
-    assert "rows" in body
-    assert "computed_at" in body
-    rows = body["rows"]
+    rows = r.json()  # #1271: the row array itself, no envelope
     assert rows
     for row in rows:
         assert "symbol" in row
@@ -237,8 +235,7 @@ def test_scan_table_accepts_segment_filter() -> None:
     ):
         r = _client.get("/tt/scan/table?segment=Information%20Technology")
     assert r.status_code == 200
-    body = r.json()
-    rows = body["rows"]
+    rows = r.json()
     assert rows
     for row in rows:
         assert row.get("segment") == "Information Technology"
@@ -251,10 +248,12 @@ def test_scan_table_distinguishes_fresh_segment_without_matches() -> None:
         return_value=_populated_store,
     ):
         response = _client.get("/tt/scan/table?segment=Health%20Care")
-    body = response.json()
-    assert body["computed_at"] is not None
-    assert "latest eod snapshot completed" in body["rows"][0]["note"].lower()
-    assert "run a scan first" not in body["rows"][0]["note"].lower()
+    rows = response.json()
+    # #1271: no rows is ``unavailable``, but as of the completed session.
+    assert rows[0]["data_state"] == "unavailable"
+    assert rows[0]["as_of_session"] is not None
+    assert "latest eod snapshot completed" in rows[0]["note"].lower()
+    assert "run a scan first" not in rows[0]["note"].lower()
 
 
 def test_scan_table_rejects_malformed_segment() -> None:
@@ -289,11 +288,13 @@ def test_segment_movers_empty_loud() -> None:
     ):
         r = _client.get("/tt/scan/segment-movers")
     assert r.status_code == 200
-    body = r.json()
-    assert body["computed_at"] is None
-    assert body["is_stale"] is True
+    figure = r.json()
+    # #1271: an unavailable figure (no traces) that says why.
+    assert figure["data"] == []
+    assert figure["layout"]["meta"]["state"] == "unavailable"
     assert any(
-        "no eod snapshot" in str(row.get("note", "")).lower() for row in body["rows"]
+        "no eod snapshot" in note["text"].lower()
+        for note in figure["layout"]["annotations"]
     )
 
 
@@ -305,12 +306,10 @@ def test_scan_table_empty_loud() -> None:
     ):
         r = _client.get("/tt/scan/table")
     assert r.status_code == 200
-    body = r.json()
-    assert body["computed_at"] is None
-    assert body["is_stale"] is True
-    assert any(
-        "no eod snapshot" in str(row.get("note", "")).lower() for row in body["rows"]
-    )
+    rows = r.json()
+    assert rows[0]["data_state"] == "unavailable"
+    assert rows[0]["freshness"] == "red"
+    assert any("no eod snapshot" in str(row.get("note", "")).lower() for row in rows)
 
 
 def test_export_empty_loud() -> None:
@@ -331,17 +330,26 @@ def test_export_empty_loud() -> None:
 
 
 def test_computed_at_and_as_of_session_present() -> None:
-    """All scan endpoints expose computed_at + as_of_session + is_stale."""
+    """Scan rows carry the snapshot session; the figure carries it as as-of.
+
+    #1271: the ``{"rows": ..., computed_at, is_stale}`` envelope is gone.
+    Freshness is the row ``freshness``/``snapshot_badge`` plus the
+    provenance state (``stale``/``partial``/``cached``) in rows, figure
+    ``layout.meta`` and the ``X-PI-Data-*`` headers.
+    """
     with patch(
         "openbb_portfolio_intel.widget_backend.widgets_endpoints._get_snapshot_store",
         return_value=_populated_store,
     ):
-        for path in ("/tt/scan/segment-movers", "/tt/scan/table"):
+        for path in ("/tt/scan/segment-movers?raw=true", "/tt/scan/table"):
             r = _client.get(path)
-            body = r.json()
-            assert body["computed_at"] is not None
-            assert body["as_of_session"] is not None
-            assert isinstance(body["is_stale"], bool)
+            for row in r.json():
+                assert row["as_of_session"] is not None
+                assert row["data_as_of"] == row["as_of_session"]
+                assert row["freshness"] in {"green", "amber", "red"}
+            assert r.headers["x-pi-data-as-of"] is not None
+        figure = _client.get("/tt/scan/segment-movers").json()
+        assert figure["layout"]["meta"]["asOf"] != "unknown"
 
 
 # ---------------------------------------------------------------------------

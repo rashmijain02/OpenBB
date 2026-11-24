@@ -21,7 +21,11 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step T1 — Read the segment movers + scan table",
         human_description="Open the Morning Scan tab, read both widgets.",
-        human_expected="6 segment rows (3 gainers, 3 losers) and 6 ticker rows.",
+        human_expected=(
+            "A bar chart of the strongest mover per segment (label: the symbol) "
+            "and a scan table led by a clickable Symbol column; with no EOD "
+            "snapshot, an unavailable chart and one unavailable note row."
+        ),
         endpoint="tt/scan/segment-movers",
     ),
     Step(
@@ -33,7 +37,7 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.INPUT,
         human_title="Step T1 — Filter the scan table by segment",
         human_description="Set segment=Information Technology on tt_scan_table.",
-        human_expected="Scan rows for the sector, or the honest no-snapshot state.",
+        human_expected="Scan rows for the sector, or one unavailable no-snapshot note row.",
         endpoint="tt/scan/table",
         params={"segment": "Information Technology"},
     ),
@@ -88,7 +92,10 @@ _STEPS: tuple[Step, ...] = (
         action=ActionKind.OBSERVE,
         human_title="Step T2 — Read the simulated P&L chart",
         human_description="Read tt_simulate_result.",
-        human_expected="15 daily P&L values ranging 0 to 118 with two drawdown wobbles.",
+        human_expected=(
+            "A line of marked P&L by simulation day for NVDA, labelled with the "
+            "snapshot state; with no EOD snapshot, an unavailable chart that says so."
+        ),
         endpoint="tt/position/simulate",
         params={"symbol": "NVDA"},
     ),

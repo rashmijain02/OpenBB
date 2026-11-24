@@ -119,12 +119,17 @@ def test_order_legs_cold_start_is_loud() -> None:
 
 
 def test_simulate_result_cold_start_is_loud() -> None:
+    """#1271: an unavailable Plotly figure; raw=true is one unavailable row."""
     r = _client.get("/tt/position/simulate?symbol=NVDA")
     assert r.status_code == 200
-    rows = r.json()
-    assert rows
-    assert "No EOD snapshot available" in rows[0]["note"]
-    assert rows[0]["freshness"] == "red"
+    figure = r.json()
+    assert figure["data"] == []
+    assert figure["layout"]["meta"]["state"] == "unavailable"
+    notes = " ".join(a["text"] for a in figure["layout"]["annotations"])
+    assert "no EOD snapshot available" in notes
+    rows = _client.get("/tt/position/simulate?symbol=NVDA&raw=true").json()
+    assert [row["data_state"] for row in rows] == ["unavailable"]
+    assert "no EOD snapshot available" in rows[0]["message"]
 
 
 # ---------------------------------------------------------------------------

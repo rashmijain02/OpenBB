@@ -76,10 +76,15 @@ def test_served_manifests_match_recorded_debt_exactly() -> None:
 
 
 def test_debt_baseline_entries_are_owned_by_open_repair_issues() -> None:
-    """Every tolerated violation names the repair issue that removes it."""
+    """Every tolerated violation names the repair issue that removes it.
+
+    #1271 cleared the last entries. The empty ledger stays as the
+    shrink-only guard: any new violation fails until it is fixed or
+    recorded here against a named repair issue.
+    """
     baseline = load_debt_baseline(DEBT)
-    assert baseline, "an empty baseline should be deleted, not kept"
     assert set(baseline.values()) <= TRACKERS
+    assert baseline == {}, "the #1264 program debt is fully repaid"
 
 
 def test_baseline_comparison_reports_regressions_and_resolutions() -> None:
@@ -94,11 +99,21 @@ def test_baseline_comparison_reports_regressions_and_resolutions() -> None:
 
 
 def test_validate_raises_with_every_issue() -> None:
-    """The strict entry point fails loudly with structured issues."""
+    """The strict entry point passes the served manifests and fails loudly.
+
+    Since #1271 the served manifests carry no debt, so strict validation
+    passes; two injected violations are both reported.
+    """
     widgets, apps = _manifests()
+    assert validate_workspace_manifests(widgets, apps, routes=_routes()) == []
+    widgets["tt_scan_table"]["dataKey"] = "rows"
+    widgets["tt_segment_movers"]["dataKey"] = "rows"
     with pytest.raises(ManifestValidationError) as excinfo:
         validate_workspace_manifests(widgets, apps, routes=_routes())
-    assert len(excinfo.value.issues) == len(_manifest_debt())
+    assert {(i.code, i.path) for i in excinfo.value.issues} == {
+        ("widget.unknown_key", "widgets.tt_scan_table.dataKey"),
+        ("widget.unknown_key", "widgets.tt_segment_movers.dataKey"),
+    }
 
 
 def test_minimal_valid_manifest_passes() -> None:

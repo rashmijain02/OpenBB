@@ -1,5 +1,5 @@
 {
-  "body": "## Paper Order \u2014 PREVIEW\n\n- **Account:** `demo`\n- **Side:** BUY\n- **Symbol:** `AAPL`\n- **Quantity:** 100\n\n> Preview only. Re-submit with `confirm=true` to commit.\n\n---\n\n**Data state:** Demo - preview stub; this action is not wired yet. Source: `stub`; as of unknown.",
+  "body": "## Paper Order \u2014 PREVIEW\n\n**Ticket state:** `preview`\n\n- **Account:** `demo`\n- **Side:** BUY\n- **Symbol:** `AAPL`\n- **Quantity:** 100\n\n> Preview only. No order placed. `confirm=true` confirms the preview; it does not submit an order.\n\n---\n\n**Data state:** Demo - preview stub; this action is not wired yet. Source: `stub`; as of unknown.",
   "endpoint": "pi/paper/ticket",
   "params": {
     "account_id": "demo",

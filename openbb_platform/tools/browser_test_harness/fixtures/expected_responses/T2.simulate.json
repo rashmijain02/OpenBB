@@ -1,19 +1,31 @@
 {
-  "body": [
-    {
-      "as_of_session": null,
-      "data_as_of": "unknown",
-      "data_source": "eod-snapshot",
-      "data_state": "unavailable",
-      "disclaimer": "EOD planning snapshot \u2014 not a live/intraday quote",
-      "earnings_annotation": null,
-      "exchange_calendar": "XNYS",
-      "freshness": "red",
-      "note": "No EOD snapshot available (simulation symbol=NVDA) \u2014 run the post-close snapshot job.",
-      "snapshot_badge": "No EOD snapshot available",
-      "survivorship": null
+  "body": {
+    "data": [],
+    "layout": {
+      "annotations": [
+        {
+          "showarrow": false,
+          "text": "Unavailable: no simulation fills, no EOD snapshot available; run the post-close snapshot job.",
+          "x": 0.5,
+          "xref": "paper",
+          "y": 0.5,
+          "yref": "paper"
+        }
+      ],
+      "meta": {
+        "asOf": "unknown",
+        "reason": "no EOD snapshot available; run the post-close snapshot job",
+        "source": "eod-snapshot",
+        "state": "unavailable"
+      },
+      "xaxis": {
+        "visible": false
+      },
+      "yaxis": {
+        "visible": false
+      }
     }
-  ],
+  },
   "endpoint": "tt/position/simulate",
   "params": {
     "symbol": "NVDA"

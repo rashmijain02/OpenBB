@@ -876,7 +876,7 @@ Widget-completeness coverage step (B8 #1733). Confirms the widget's default endp
 
 Widget-completeness coverage step (B8 #1733). Confirms the widget's default endpoint responds with the expected shape.
 
-**Expected:** Markdown ticket preview (confirm=false).
+**Expected:** Markdown ticket preview: state `preview`, no order placed (confirm=false).
 
 **Params:** `account_id=demo` · `symbol=AAPL` · `side=buy` · `quantity=100` · `confirm=false`
 

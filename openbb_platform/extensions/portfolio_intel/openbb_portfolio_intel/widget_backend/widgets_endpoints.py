@@ -42,6 +42,7 @@ from openbb_techtrade.snapshot.store import (
     SnapshotRow,
     SnapshotStore,
     SqliteSnapshotStore,
+    display_db_path,
     get_default_snapshot_store,
 )
 
@@ -56,6 +57,7 @@ from openbb_portfolio_intel.providers.registry import (
 from openbb_portfolio_intel.providers.retrofit import with_chain
 from openbb_portfolio_intel.widget_backend import (
     provenance as pv,
+    techtrade_charts,
     terminal_charts,
 )
 from openbb_portfolio_intel.widget_backend._app import app
@@ -661,7 +663,12 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
     quantity: str = "100",
     confirm: str = "false",
 ) -> str:
-    """Two-step paper order ticket. First call previews, second commits."""
+    """Paper order ticket: a preview only; it never places or records an order.
+
+    ``confirm=true`` confirms the preview (state ``not_submitted``) and says
+    that no order was placed (#1271). Paper orders are submitted only
+    through the gated ``POST /tt/execute/write-batch``.
+    """
     _require_auth(request)
     _validate_account(account_id)
     sym = symbol.strip().upper()
@@ -675,16 +682,21 @@ def paper_ticket(  # pylint: disable=too-many-arguments,too-many-positional-argu
         raise HTTPException(status_code=400, detail="quantity not int") from exc
     if qty <= 0:
         raise HTTPException(status_code=400, detail="quantity must be positive")
-    commit = confirm.lower() == "true"
-    verb = "COMMITTED" if commit else "PREVIEW"
+    # #1271: nothing is written here, so the ticket never claims a commit.
+    confirmed = confirm.lower() == "true"
+    state = "not_submitted" if confirmed else "preview"
+    title = "PREVIEW CONFIRMED" if confirmed else "PREVIEW"
     tail = (
-        "> Order committed to the paper ledger (stub — full wiring to "
-        "`paper.ledger.LedgerStore.append` pending)."
-        if commit
-        else "> Preview only. Re-submit with `confirm=true` to commit."
+        "> Preview confirmed. No order placed. Paper orders are submitted "
+        "only through `POST /tt/execute/write-batch` (requires "
+        "`PI_ALLOW_T5_EXECUTE=true`, `verdict=PASS` and `confirm=yes`)."
+        if confirmed
+        else "> Preview only. No order placed. `confirm=true` confirms the "
+        "preview; it does not submit an order."
     )
     return (
-        f"## Paper Order — {verb}\n\n"
+        f"## Paper Order — {title}\n\n"
+        f"**Ticket state:** `{state}`\n\n"
         f"- **Account:** {account_display(account_id)}\n"
         f"- **Side:** {side.upper()}\n"
         f"- **Symbol:** `{sym}`\n"
@@ -2733,6 +2745,22 @@ def _mark_snapshot(meta: dict, snapshots: list) -> None:
     pv.mark(record.state, record.reason, source=record.source, as_of=record.as_of)
 
 
+def _mark_no_rows(meta: dict, snapshots: list, what: str) -> None:
+    """Mark a snapshot read that produced no rows as ``unavailable`` (#1271).
+
+    Without a snapshot ``_mark_snapshot`` already says so. A completed run
+    with no rows is not data either, but it is not "no snapshot": the
+    reason says the run completed, and the snapshot session stays as-of.
+    """
+    if snapshots:
+        pv.mark(
+            DataState.UNAVAILABLE,
+            f"latest EOD snapshot completed with no {what}",
+            source=_SNAPSHOT_SOURCE,
+            as_of=meta.get("as_of_session"),
+        )
+
+
 def _snapshot_markdown_header(meta: dict) -> str:
     annotation = (
         f" · **{meta['earnings_annotation']}**"
@@ -2747,13 +2775,14 @@ def _snapshot_markdown_header(meta: dict) -> str:
 
 
 @app.get("/tt/scan/segment-movers")
-@widget("table")
+@plotly_chart(techtrade_charts.segment_movers_figure, demo=techtrade_charts.NO_DEMO)
 def tt_scan_segment_movers(
     request: Request,
-) -> dict:
+) -> list[dict[str, object]]:
     """Segment Movers — top gainers/losers by segment (#1692, #1941).
 
-    Summarizes the strongest persisted movers row in each segment.
+    Summarizes the strongest persisted movers row in each segment. Served as
+    a Plotly bar figure; ``raw=true`` returns the rows (#1271). Read-only.
     """
     _require_auth(request)
     source_rows, snapshots = _read_snapshot_rows("techtrade.movers")
@@ -2777,22 +2806,20 @@ def tt_scan_segment_movers(
             }
         )
     if not rows:
-        rows = (
-            _fresh_empty_rows("segment movers")
-            if snapshots
-            else _loud_empty_rows("segment movers")
-        )
-    rows = _decorate_rows(rows, meta)
-    return {"rows": rows, **meta}
+        _mark_no_rows(meta, snapshots, "segment movers")
+        return []
+    return _decorate_rows(rows, meta)
 
 
 @app.get("/tt/scan/table")
 @widget("table")
-def tt_scan_table(request: Request, segment: str = "") -> dict:
+def tt_scan_table(request: Request, segment: str = "") -> list[dict[str, object]]:
     """Scan Table — filtered ticker scan results (#1692, #1941).
 
     Reads the latest ``daily_scan`` snapshot from the store. When a
-    ``segment`` filter is provided only matching rows are returned.
+    ``segment`` filter is provided only matching rows are returned. Returns
+    the rows directly (#1271: no ``{"rows": ...}`` envelope); a missing or
+    empty snapshot is one ``unavailable`` note row. Read-only.
     """
     _require_auth(request)
     if segment:
@@ -2805,9 +2832,9 @@ def tt_scan_table(request: Request, segment: str = "") -> dict:
     _mark_snapshot(meta, snapshots)
     if not rows:
         context = f"scan table{f' segment={segment}' if segment else ''}"
+        _mark_no_rows(meta, snapshots, "scan rows")
         rows = _fresh_empty_rows(context) if snapshots else _loud_empty_rows(context)
-    rows = _decorate_rows(rows, meta)
-    return {"rows": rows, **meta}
+    return _decorate_rows(rows, meta)
 
 
 @app.get("/tt/scan/export")
@@ -3385,21 +3412,33 @@ def tt_position_order_legs(
 
 
 @app.get("/tt/position/simulate")
-@widget("table")
+@plotly_chart(techtrade_charts.simulate_figure, demo=techtrade_charts.NO_DEMO)
 def tt_position_simulate(
     request: Request, symbol: str = "AAPL"
 ) -> list[dict[str, object]]:
-    """Return Simulate Result rows (#1696) — simulated P&L trajectory (chart raw)."""
+    """Return the simulated P&L trajectory for a symbol's plan (#1696).
+
+    Served as a Plotly line of marked P&L by simulation day; ``raw=true``
+    returns the snapshot rows (#1271). Read-only: simulation fills are
+    persisted by the snapshot job, never placed from here.
+    """
     _require_auth(request)
     sym = _validate_symbol(symbol)
     rows, snapshots = _read_snapshot_rows("techtrade.simulate", symbol=sym)
     meta = _snapshot_meta(snapshots, symbol=sym)
     _mark_snapshot(meta, snapshots)
     if not rows:
-        rows = (
-            _fresh_empty_rows(f"simulation symbol={sym}")
-            if snapshots
-            else _loud_empty_rows(f"simulation symbol={sym}")
+        _mark_no_rows(meta, snapshots, "simulation fills")
+        return []
+    excluded = [row for row in rows if row.get("excluded")]
+    if excluded:
+        # A halted/delisted symbol has no fills: say so (#1271 review). The
+        # exclusion rows stay in ``raw=true``.
+        pv.mark(
+            DataState.UNAVAILABLE,
+            str(excluded[0].get("note") or "symbol excluded from EOD snapshot"),
+            source=_SNAPSHOT_SOURCE,
+            as_of=meta.get("as_of_session"),
         )
     return _decorate_rows(rows, meta)
 
@@ -4112,7 +4151,9 @@ async def tt_execute_approve_plan(
         "batch_sha": batch.sha256(),
         "verdict": "PASS",
         "broker_id": broker_id,
-        "account_id": account_id,
+        # #1271 review: the id field is redacted; the confirmation phrase
+        # below must still name the account the gateway binds it to.
+        "account_id": account_display(account_id),
         "principal_id": principal_id,
         "confirmation": (
             f"SUBMIT {configured_mode.value.upper()} {broker_id} {account_id} "
@@ -4141,7 +4182,8 @@ def tt_execute_write_batch(  # pylint: disable=too-many-return-statements
 
     Returns a dict with:
       - ``batch_sha`` — 8-char short SHA
-      - ``csv_path`` / ``xlsx_path`` — absolute paths of the written files
+      - ``csv_path`` / ``xlsx_path`` — the written files, ``~``-relative or by
+        file name (never the absolute operator path, #1271)
       - ``order_ids`` — list of PENDING orders now in the paper engine
       - ``next_step`` — a human-legible next-action hint
 
@@ -4353,12 +4395,14 @@ def tt_execute_write_batch(  # pylint: disable=too-many-return-statements
 
     return {
         "batch_sha": batch.sha_short(),
-        "csv_path": str(art.csv_path),
-        "xlsx_path": str(art.xlsx_path),
+        # #1271 review: name the written files home-relative or by file name;
+        # the files stay where the sink wrote them.
+        "csv_path": display_db_path(Path(art.csv_path).resolve()),
+        "xlsx_path": display_db_path(Path(art.xlsx_path).resolve()),
         "submission_id": str(receipt.submission_id),
         "mode": receipt.mode.value,
         "broker_id": receipt.broker_id,
-        "account_id": receipt.account_id,
+        "account_id": account_display(str(receipt.account_id)),
         "principal_id": receipt.principal_id,
         "status": receipt.status.value,
         "order_uuids": [str(order.order_uuid) for order in receipt.orders],
@@ -4541,7 +4585,8 @@ def tt_execute_paper_status(request: Request) -> dict:
         filled = len(engine.get_orders(status=OrderStatus.FILLED))
         return {
             "account": {
-                "account_id": acct.account_id,
+                # #1271: the same redaction as the Markdown variant (#1269).
+                "account_id": account_display(str(acct.account_id)),
                 "cash": str(acct.cash),
                 "realized_pl": str(acct.realized_pl),
                 "starting_cash": str(acct.starting_cash),

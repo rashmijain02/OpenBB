@@ -2364,7 +2364,7 @@ class SqliteSnapshotStore:
                 "snapshot store: SQLite refused WAL at %s (journal_mode=%s); "
                 "concurrent readers may see 'database is locked' under a "
                 "long write",
-                self._db_path,
+                display_db_path(self._db_path),
                 mode,
             )
 
@@ -3753,6 +3753,21 @@ class SqliteSnapshotStore:
 # convention) rather than being silently treated as "sqlite".
 
 
+def display_db_path(path: Path) -> str:
+    """Return how a log line may name a database file (#1271 redaction).
+
+    A path under the home directory is shown ``~``-relative
+    (``~/.portfolio_intel/snapshot.db``); any other path is shown by its
+    file name only. Neither form carries the operator's home directory or
+    user name, yet both still tell an operator which file was opened.
+    """
+    try:
+        relative = path.relative_to(Path.home().expanduser().resolve())
+    except (RuntimeError, ValueError):
+        return path.name
+    return f"~/{relative.as_posix()}"
+
+
 def _exception_label(exc: BaseException) -> str:
     """Name an exception's *type* for a log line, without its message.
 
@@ -3822,7 +3837,9 @@ def get_default_snapshot_store(
     resolved SQLite path is computed once, up front, and immediately
     normalized with ``expanduser().resolve()`` so the fallback WARNING
     and the eventual ``SqliteSnapshotStore`` construction agree
-    on the same absolute path. Without the ``expanduser()`` half, a
+    on the same absolute path. The WARNING shows that path through
+    :func:`display_db_path` (``~``-relative or the file name), never the
+    home directory itself (#1271). Without the ``expanduser()`` half, a
     literal ``~`` in ``$PI_SNAPSHOT_DB``/``db_path`` would not expand to
     the caller's home directory: ``Path.resolve()`` alone treats ``~``
     as an ordinary path segment and would create it as a literal
@@ -3862,7 +3879,7 @@ def get_default_snapshot_store(
                 "get_default_snapshot_store: MySQL backend unavailable (%s); "
                 "falling back to SQLite at %s",
                 _exception_label(exc),
-                resolved,
+                display_db_path(resolved),
             )
             logger.debug(
                 "get_default_snapshot_store: MySQL backend construction failed (%s)",

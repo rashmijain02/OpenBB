@@ -153,12 +153,19 @@ def test_paper_ticket_preview_labeled_correctly() -> None:
 
 
 def test_paper_ticket_commit_labeled_correctly() -> None:
-    """Second call (confirm=true) returns a COMMITTED markdown card."""
+    """Second call (confirm=true) confirms the preview; it places no order.
+
+    #1271 lead decision: the ticket writes nothing, so it must not say
+    COMMITTED (a success-shaped message for an action that did not happen).
+    """
     resp = _client.get(
         "/pi/paper/ticket?account_id=demo&symbol=AAPL&side=buy&quantity=100&confirm=true"
     )
     assert resp.status_code == 200
-    assert "COMMITTED" in resp.json()
+    body = resp.json()
+    assert "COMMITTED" not in body
+    assert "**Ticket state:** `not_submitted`" in body
+    assert "No order placed" in body
 
 
 @pytest.mark.parametrize(

@@ -388,10 +388,12 @@ def test_aggregate_movers_marks_incomplete_sector_coverage(tmp_path: Path) -> No
         "openbb_portfolio_intel.widget_backend.widgets_endpoints._get_snapshot_store",
         return_value=store,
     ):
-        body = _client.get("/tt/scan/segment-movers").json()
-    assert body["is_partial"] is True
-    assert body["freshness"] == "red"
-    assert len(body["missing_segments"]) == 10
+        figure = _client.get("/tt/scan/segment-movers").json()
+        rows = _client.get("/tt/scan/segment-movers?raw=true").json()
+    # #1271: partial coverage is the figure/row state and the badge text.
+    assert figure["layout"]["meta"]["state"] == "partial"
+    assert all(row["freshness"] == "red" for row in rows)
+    assert all("(1/11)" in row["snapshot_badge"] for row in rows)
     store.close()
 
 

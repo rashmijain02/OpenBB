@@ -9,8 +9,8 @@ is denied unless it is on ``AGENT_READ_ALLOWLIST``, so a newly added action
 widget is never readable by accident.
 
 ``AGENT_DENIED_WIDGETS`` gives the reasons for the two known action widgets.
-They submit or queue work (a paper order with ``confirm=true``, a backtest
-job); paper and execution actions stay separately authorized in the widget
+They are actions (an order ticket with a ``confirm`` parameter, which since
+#1271 only confirms a preview; a backtest job); paper and execution actions stay separately authorized in the widget
 itself and are never driven by the model. The MCP exposure policy denies the
 same two endpoints (rule ``deny-success-shaped-intelligence-stubs``); a unit
 test keeps the two lists equal.
@@ -33,7 +33,8 @@ MANIFEST = Path(__file__).resolve().parent / "widgets.json"
 
 AGENT_DENIED_WIDGETS: dict[str, str] = {
     "pi_paper_ticket": (
-        "it places paper orders (confirm=true commits to the paper ledger)"
+        "it is an order-ticket action (a confirm parameter); it places no order "
+        "itself, and order actions are never driven by the model"
     ),
     "pi_backtest_button": "it queues a backtest job",
 }

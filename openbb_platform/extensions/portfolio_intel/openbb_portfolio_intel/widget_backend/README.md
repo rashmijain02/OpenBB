@@ -135,6 +135,34 @@ a valid state. Harness fixtures normalize only those observation times
 Responses never echo a non-demo account identifier, credential or home path (redaction test:
 `tests/unit/test_demo_mode_redaction_1269.py`).
 
+## TechTrade Desk (#1271)
+
+Six tabs, twelve placements, all read-only views of persisted EOD snapshots (state `cached`,
+`stale`, `partial` or `unavailable`, source `eod-snapshot`, as-of the snapshot session).
+
+| Widget | Native contract |
+|---|---|
+| `tt_segment_movers` | Plotly bar of each segment's strongest mover (`change_pct`, label = symbol); `raw=true` returns `{segment, symbol, change_pct, bucket}` rows (`techtrade_charts.py` via `plotly_chart`) |
+| `tt_simulate_result` | Plotly line of marked P&L by simulation day; `raw=true` returns the `techtrade.simulate` rows |
+| `tt_scan_table` | Row array (no `{"rows": ...}` envelope, no `dataKey`) with `columnsDefs`; the Symbol column is `cellOnClick` / `groupBy` `symbol`, and a hidden (`show: false`) `ticker` param `symbol` lets the click drive Group 1 (pinned `useCellOnClickHandler` only updates a ticker group from the clicking widget's own ticker param). The endpoint ignores `symbol` |
+| order legs, validation, tuning, audit | Row arrays with provenance columns (no `columnsDefs`: their rows are engine-defined) |
+| signal, plan, export, engine status, Execute Bridge, paper status | Markdown with a closing data-state line |
+
+No snapshot, or a completed run with no rows, is `unavailable` with a reason that says which:
+a trace-free figure with an annotation, or one note row. A footnote on each figure repeats the
+snapshot disclaimer (planning snapshot, not a live quote) and any survivorship or earnings
+warning.
+
+**Execution boundary.** Every TechTrade widget endpoint (and `pi_paper_ticket`) is a GET route
+that never reaches an order seam (paper/live broker adapters, paper engines, batch sink) or
+writes a file, whatever `verdict`/`confirm` it is sent. The Execute Bridge only reports
+readiness. Orders exist only behind `POST /tt/execute/write-batch` with
+`PI_ALLOW_T5_EXECUTE=true` + `verdict=PASS` + explicit `confirm`, and `POST
+/tt/execute/cancel` with its order-bound confirmation phrase
+(`tests/unit/test_techtrade_native_1271.py` proves each denied path and a positive control).
+`/tt/execute/paper-status` (JSON and Markdown) shows the paper account through
+`account_display()`, and the snapshot store logs its SQLite fallback `~`-relative or by file name.
+
 ## CORS
 
 Exact origins only: `https://pro.openbb.co` and the self-hosted Workspace `http://127.0.0.1:1420` by default. This backend is a Workspace data source, not a public API. For another Workspace origin set `PI_WIDGET_BACKEND_ALLOWED_ORIGINS` (comma-separated); a wildcard, `null` or an origin with a path stops startup. See [Operator setup](#operator-setup).
@@ -220,7 +248,7 @@ selected widgets do leave this machine. Do not select widgets whose data you do 
 - **Denied.** Safe by default: any widget that looks like an action (a `confirm` parameter, an
   execute / paper / backtest / order endpoint or category, a non-GET method) is denied unless it
   is on `agent_policy.AGENT_READ_ALLOWLIST` (the read-only paper blotter, performance and KPIs,
-  execute bridge, paper status and TechTrade order legs). `pi_paper_ticket` (places paper orders) and
+  execute bridge, paper status and TechTrade order legs). `pi_paper_ticket` (order-ticket action; places no order since #1271) and
   `pi_backtest_button` (queues a job) are refused and never requested; widgets outside the
   inventory are refused too. Paper and
   execution actions stay separately authorized in the widget itself. The MCP exposure policy

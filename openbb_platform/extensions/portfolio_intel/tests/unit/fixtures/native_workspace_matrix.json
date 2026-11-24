@@ -2825,17 +2825,41 @@
       "endpoint": "tt/scan/table",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "segment",
           "type": "text",
           "default": "",
           "show": null
+        },
+        {
+          "name": "symbol",
+          "type": "ticker",
+          "default": "AAPL",
+          "show": false
         }
       ],
       "chart": null,
-      "tableFields": [],
+      "tableFields": [
+        "symbol",
+        "segment",
+        "direction",
+        "action",
+        "conviction",
+        "score",
+        "rank_in_segment",
+        "entry_price",
+        "stop_price",
+        "target_price",
+        "risk_reward",
+        "position_size",
+        "as_of",
+        "snapshot_badge",
+        "data_state",
+        "data_source",
+        "data_as_of"
+      ],
       "placements": [
         {
           "appId": "custom-techtrade-desk",
@@ -2860,10 +2884,10 @@
       "endpoint": "tt/scan/segment-movers",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [],
       "chart": {
-        "plotly": false,
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,
@@ -2927,7 +2951,7 @@
       "endpoint": "tt/position/simulate",
       "endpointRegistered": true,
       "source": "portfolio-intel",
-      "baselineState": "contract-repair",
+      "baselineState": "native-ready",
       "parameters": [
         {
           "name": "symbol",
@@ -2937,7 +2961,7 @@
         }
       ],
       "chart": {
-        "plotly": false,
+        "plotly": true,
         "raw": true,
         "type": null,
         "labelColumn": null,

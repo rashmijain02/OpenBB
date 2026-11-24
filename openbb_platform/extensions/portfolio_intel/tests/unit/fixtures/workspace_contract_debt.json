@@ -1,31 +1,5 @@
 {
   "description": "Known Workspace-schema violations in the served manifests (#1266). Shrink-only: tests fail on any new issue and on any entry that no longer occurs. Remove entries when the owning repair issue fixes them.",
   "schemaSource": "third_party/workspace/terminalpro (widget-schema.json, apps-schema.json)",
-  "issues": [
-    {
-      "code": "widget.unknown_key",
-      "path": "widgets.tt_segment_movers.dataKey",
-      "tracking": "#1271"
-    },
-    {
-      "code": "widget.unknown_key",
-      "path": "widgets.tt_scan_table.dataKey",
-      "tracking": "#1271"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.tt_segment_movers",
-      "tracking": "#1271"
-    },
-    {
-      "code": "response.shape.table",
-      "path": "responses.tt_scan_table",
-      "tracking": "#1271"
-    },
-    {
-      "code": "response.shape.chart",
-      "path": "responses.tt_simulate_result",
-      "tracking": "#1271"
-    }
-  ]
+  "issues": []
 }

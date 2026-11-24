@@ -34,6 +34,7 @@ from openbb_portfolio_intel.providers.retrofit import _TIER_CALLS
 from openbb_portfolio_intel.widget_backend import widgets_endpoints
 from openbb_portfolio_intel.widget_backend.contracts import collect_response_issues
 from openbb_portfolio_intel.widget_backend.main import app
+from openbb_techtrade.snapshot import store as snapshot_store
 
 _UNIT = Path(__file__).resolve().parent
 _BACKEND = _UNIT.parents[1] / "openbb_portfolio_intel" / "widget_backend"
@@ -41,8 +42,6 @@ _WIDGETS: dict[str, Any] = json.loads(
     (_BACKEND / "widgets.json").read_text(encoding="utf-8")
 )
 _CLIENT = TestClient(app, raise_server_exceptions=False)
-#: #1271 shape debt: no valid body shape yet, so no body state to check.
-_SHAPE_DEBT = {"tt_segment_movers", "tt_scan_table", "tt_simulate_result"}
 
 
 @pytest.fixture(autouse=True)
@@ -184,8 +183,6 @@ def test_every_widget_keeps_a_valid_state_in_every_demo_mode(
     monkeypatch.setenv("PI_DEMO_MODE", mode)
     failures = {}
     for widget_id, widget in _WIDGETS.items():
-        if widget_id in _SHAPE_DEBT:
-            continue
         response = _call(widget_id)
         issues = collect_response_issues(
             widget_id, widget, response.status_code, response.text
@@ -203,11 +200,14 @@ _ACCOUNT = "ACCT-SENTINEL-4417"
 _CREDENTIAL = "CRED-SENTINEL-9a8b7c"
 _HOME_MARK = "OPERATOR-SENTINEL-HOME"
 _CLIENT_LOGGERS = ("httpx", "httpcore")
-#: Known exception, raised with the lead (#1269): TechTrade's snapshot store
-#: logs the absolute SQLite fallback path once per store lookup, and its own
-#: tests (``test_snapshot_store.py``) require that absolute path. It is
-#: checked separately below so any *other* path leak still fails.
+#: TechTrade's snapshot store logs its SQLite fallback path once per store
+#: lookup. Since #1271 it is ``~``-relative (or the file name), so the store
+#: logger is checked like every other logger.
 _STORE_LOGGER = "openbb_techtrade.snapshot.store"
+
+
+def _mysql_unavailable() -> None:
+    raise ConnectionError("synthetic: MySQL snapshot backend unavailable")
 
 
 @pytest.mark.parametrize("mode", ["off", "fallback"])
@@ -223,8 +223,12 @@ def test_no_response_header_or_log_echoes_identifiers_secrets_or_paths(
         monkeypatch.setenv(name, _CREDENTIAL)
     monkeypatch.setenv("PI_DEMO_MODE", mode)
     monkeypatch.setenv("PI_ALLOW_CROSS_USER_BASKET", "false")
-    # Force a fresh snapshot-store lookup so its fallback path is logged now.
+    # Force a fresh snapshot-store lookup so its fallback path is logged now,
+    # through the MySQL-unavailable branch (no MySQL connection is attempted).
     monkeypatch.setattr(widgets_endpoints, "_SNAPSHOT_STORE_CACHE", None)
+    monkeypatch.setenv("PI_SNAPSHOT_ENGINE", "mysql")
+    monkeypatch.delenv("PI_SNAPSHOT_DB", raising=False)
+    monkeypatch.setattr(snapshot_store, "_make_mysql_store", _mysql_unavailable)
     seen: list[str] = []
     with caplog.at_level(logging.DEBUG):
         for widget_id in _WIDGETS:
@@ -234,14 +238,14 @@ def test_no_response_header_or_log_echoes_identifiers_secrets_or_paths(
         # The test client's own request log (httpx/httpcore) echoes the URL
         # the test sent; every other logger is backend or dependency code.
         backend = [r for r in caplog.records if not r.name.startswith(_CLIENT_LOGGERS)]
-        seen.extend(r.getMessage() for r in backend if r.name != _STORE_LOGGER)
+        seen.extend(r.getMessage() for r in backend)
         store_lines = [r.getMessage() for r in backend if r.name == _STORE_LOGGER]
     text = "\n".join(seen)
     for sentinel in (_ACCOUNT, _CREDENTIAL, _HOME_MARK, str(home)):
         assert sentinel not in text, f"leaked {sentinel!r}"
     assert backend, "the scan must observe the backend's logs"
-    for line in store_lines:  # the documented exception carries no secrets
-        assert _ACCOUNT not in line and _CREDENTIAL not in line
+    # The store fallback line was emitted and names the file home-relative.
+    assert any("~/.portfolio_intel/snapshot.db" in line for line in store_lines)
 
 
 # ---------------------------------------------------------------------------

@@ -642,7 +642,7 @@ _COVERAGE_STEPS: tuple[Step, ...] = (
         "notebooks/portfolio/05-whatif-attribution-and-paper.ipynb",
         Persona.PM,
         "Coverage — pi_paper_ticket (preview)",
-        "Markdown ticket preview (confirm=false).",
+        "Markdown ticket preview: state `preview`, no order placed (confirm=false).",
     ),
     _coverage(
         "CX.paper-blotter",
