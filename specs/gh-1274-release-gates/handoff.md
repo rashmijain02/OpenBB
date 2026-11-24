@@ -124,3 +124,22 @@ The `/code-review` and `/security-review` gates were not run in Part 1.
 
 - Part 2: real-browser Workspace acceptance (plan Step 10) and the Step 12 review gate.
 - The heavy local_ci runners need one real run each when the host has memory to spare.
+
+### Part 1 follow-up: local_ci fidelity fixes
+
+- Harness jobs (`standalone-harness[*]`, `fixture-drift-check`) and
+  `verify-workspace-contract` replay the workflow's own `run:` steps in
+  `python:<setup-python version>` when docker is up. The tree is mounted read-only
+  and copied to `/work`. The container starts with `--network none`, joins `bridge`
+  only for the leading install steps, has 4 GB of memory, and is always removed.
+  Without docker, a host harness failure caused only by the readiness timeout is
+  reported as NOT-REPRODUCIBLE.
+- `third_party/workspace` is populated at the pinned commit with
+  `git clone --shared --no-checkout` from the main checkout's `.git/modules`.
+  No network is used and the main checkout is not written. The previous FAIL was
+  MAX_PATH in the poetry venv path. The host fallback now uses a short temp venv root.
+- `compare-portfolio-inventories` translates the workflow's environment loop
+  command by command, so `fmp_trading[agent]` installs after `pi_install.py`.
+  The old runner pulled it into the first editable install.
+- Six new tests (39 total). Rerun on #1295: harness x3, code-linting, workspace
+  contract and inventory compare all PASS, exit 0.

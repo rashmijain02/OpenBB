@@ -436,3 +436,190 @@ def test_hermetic_env_scrubs_credentials(
     assert not {"FMP_API_KEY", "DB_PASSWORD", "HTTPS_PROXY", "OPENBB_TOKEN"} & set(env)
     assert env["HOME"] == str(tmp_path)
     assert env["USERPROFILE"] == str(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Fidelity: Linux container jobs, inventory install order, submodule
+# ---------------------------------------------------------------------------
+
+HARNESS_JOB = """
+on:
+  pull_request:
+    branches: [portfolio]
+env:
+  TOP: "1"
+jobs:
+  standalone:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        story: [portfolio, techtrade]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install widget_backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e openbb_platform/core
+      - name: Run unit tests
+        working-directory: openbb_platform/tools/browser_test_harness
+        env:
+          PI_PAPER_DB: "${{ runner.temp }}/pi-paper-unit.db"
+        run: pytest tests/ -v --tb=short
+      - name: Run ${{ matrix.story }} story (standalone mode)
+        env:
+          PI_WIDGET_BACKEND_TOKEN: ""
+        run: python -m harness.run --story ${{ matrix.story }}
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+"""
+
+
+def _harness_selected(tmp_path: Path) -> list:
+    (tmp_path / "harness.yml").write_text(
+        textwrap.dedent(HARNESS_JOB), encoding="utf-8"
+    )
+    return local_ci.select_jobs(
+        local_ci.load_workflows(tmp_path), base_branch="portfolio", changed=["x"]
+    )
+
+
+def test_container_plan_mirrors_workflow_steps(tmp_path: Path) -> None:
+    """Image from setup-python; run steps verbatim; network only while installing."""
+    sel = _harness_selected(tmp_path)[1]
+    image, steps = local_ci.container_plan(sel)
+    assert image == "python:3.12"
+    assert [s.name for s in steps] == [
+        "Install widget_backend dependencies",
+        "Run unit tests",
+        "Run techtrade story (standalone mode)",
+    ]
+    assert [s.network for s in steps] == [True, False, False]
+    assert "pip install -e openbb_platform/core" in steps[0].script
+    assert steps[1].workdir == "openbb_platform/tools/browser_test_harness"
+    assert steps[1].env["PI_PAPER_DB"] == "/tmp/pi-paper-unit.db"  # noqa: S108
+    assert steps[1].env["TOP"] == "1"
+    assert steps[2].script.strip().endswith("--story techtrade")
+    assert steps[2].env["PI_WIDGET_BACKEND_TOKEN"] == ""
+
+
+def test_container_plan_rejects_unknown_expressions(tmp_path: Path) -> None:
+    """A ``${{ secrets.X }}`` the container cannot reproduce is refused."""
+    text = HARNESS_JOB.replace("pytest tests/", "pytest ${{ secrets.TOKEN }}")
+    (tmp_path / "harness.yml").write_text(textwrap.dedent(text), encoding="utf-8")
+    sel = local_ci.select_jobs(
+        local_ci.load_workflows(tmp_path), base_branch="portfolio", changed=["x"]
+    )[0]
+    with pytest.raises(local_ci.LocalCiError, match="secrets"):
+        local_ci.container_plan(sel)
+
+
+def test_docker_run_args_are_read_only_and_networkless_by_default() -> None:
+    """The tree is mounted read-only; memory is capped; nothing else is mounted rw."""
+    args = local_ci.docker_run_args("c1", "python:3.12", Path("T"), Path("P"))
+    joined = " ".join(args)
+    assert f"{Path('T')}:/src:ro" in joined
+    assert "--memory" in args
+    assert args[args.index("--network") + 1] == "none"
+    assert args[-3:] == ["python:3.12", "sleep", "infinity"]
+
+
+def test_host_readiness_timeout_is_not_reproducible() -> None:
+    """On the Windows host a readiness-only failure is NOT-REPRODUCIBLE."""
+    ready = local_ci.Result(
+        "k", local_ci.FAIL, "Backend did not become ready in 10.0s (last error: x)"
+    )
+    assert local_ci.host_harness_verdict(ready).status == local_ci.NOT_REPRODUCIBLE
+    other = local_ci.Result("k", local_ci.FAIL, "AssertionError: shape")
+    assert local_ci.host_harness_verdict(other).status == local_ci.FAIL
+
+
+METADATA_STEP = """\
+set -euo pipefail
+for source in base head; do
+  environment="$RUNNER_TEMP/$source-venv"
+  python -m venv "$environment"
+  "$environment/bin/python" -m pip install --upgrade pip
+  "$environment/bin/python" -m pip install \
+    -e "$GITHUB_WORKSPACE/$source/openbb_platform/core" \
+    -e "$GITHUB_WORKSPACE/$source/openbb_platform/extensions/agents"
+  "$environment/bin/python" \
+    "$GITHUB_WORKSPACE/$source/scripts/pi_install.py"
+  "$environment/bin/python" -m pip install \
+    -e "$GITHUB_WORKSPACE/$source/openbb_platform/extensions/fmp_trading[agent]"
+  "$environment/bin/python" -c \
+    "import openbb; openbb.build()"
+done
+"""
+
+
+def test_metadata_env_commands_keep_workflow_order() -> None:
+    """fmp_trading[agent] installs only after pi_install, exactly as scripted."""
+    tree, venv = Path("TREE"), Path("VENV")
+    py = local_ci.venv_tool(venv, "python")
+    cmds = local_ci.metadata_env_commands(METADATA_STEP, tree, venv, "HOSTPY")
+    assert cmds == [
+        ["HOSTPY", "-m", "venv", str(venv)],
+        [py, "-m", "pip", "install", "--upgrade", "pip"],
+        [
+            py,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            str(tree / "openbb_platform/core"),
+            "-e",
+            str(tree / "openbb_platform/extensions/agents"),
+        ],
+        [py, str(tree / "scripts/pi_install.py")],
+        [
+            py,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            str(tree / "openbb_platform/extensions/fmp_trading") + "[agent]",
+        ],
+        [py, "-c", "import openbb; openbb.build()"],
+    ]
+
+
+def test_populate_submodule_from_local_objects(tmp_path: Path) -> None:
+    """The pinned submodule commit is checked out from local objects only."""
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    _git(sub, "init", "-q", "-b", "main")
+    _write(sub, "pinned.txt", "v1\n")
+    _git(sub, "add", "-A")
+    _git(sub, "commit", "-q", "-m", "v1")
+    pinned = _git(sub, "rev-parse", "HEAD")
+    _write(sub, "pinned.txt", "v2\n")
+    _git(sub, "commit", "-q", "-am", "v2")
+    main = tmp_path / "main"
+    main.mkdir()
+    _git(main, "init", "-q", "-b", "main")
+    _git(
+        main,
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        "-q",
+        str(sub),
+        "third_party/ws",
+    )
+    _git(main, "-C", "third_party/ws", "checkout", "-q", pinned)
+    _git(main, "add", "-A")
+    _git(main, "commit", "-q", "-m", "pin")
+    commit = _git(main, "rev-parse", "HEAD")
+    modules = main / ".git" / "modules" / "third_party" / "ws"
+    before = _git(main, "--git-dir", str(modules), "worktree", "list")
+    tree = tmp_path / "tree"
+    (tree / "third_party" / "ws").mkdir(parents=True)
+    local_ci.populate_submodule(main, commit, "third_party/ws", tree)
+    assert (tree / "third_party/ws/pinned.txt").read_text(encoding="utf-8") == "v1\n"
+    assert _git(main, "--git-dir", str(modules), "worktree", "list") == before

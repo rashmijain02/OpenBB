@@ -38,6 +38,7 @@ import itertools
 import json
 import os
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -1138,6 +1139,178 @@ def _replay_http(ctx: Context, sel: Selected, venv: Path, pwsh: str) -> Result:
         log.close()
 
 
+_EXPR = re.compile(r"\$\{\{\s*([^}]*?)\s*}}")
+_INSTALL_STEP = re.compile(r"(?i)\b(install|set ?up)\b")
+DOCKER_MEMORY = "4g"
+
+
+@dataclass
+class ContainerStep:
+    """One workflow ``run:`` step replayed inside a Linux container."""
+
+    name: str
+    script: str
+    workdir: str
+    env: dict[str, str]
+    network: bool
+
+
+def substitute_expressions(text: str, matrix: dict[str, str]) -> str:
+    """Replace ``${{ matrix.X }}`` and ``${{ runner.temp }}``; refuse the rest."""
+
+    def repl(match: re.Match[str]) -> str:
+        expr = match.group(1)
+        if expr == "runner.temp":
+            return "/tmp"  # noqa: S108 - container-local temp dir
+        if expr.startswith("matrix.") and expr[7:] in matrix:
+            return matrix[expr[7:]]
+        raise LocalCiError(f"cannot reproduce expression ${{{{ {expr} }}}} locally")
+
+    return _EXPR.sub(repl, text)
+
+
+def container_plan(sel: Selected) -> tuple[str, list[ContainerStep]]:
+    """Return the image and ``run:`` steps of a job, in workflow order.
+
+    The image is ``python:<setup-python version>``. A step gets network only
+    while it installs (its name says install / set up) and only before the
+    first step that does not, so tests and stories run offline.
+    """
+    job = sel.workflow.jobs[sel.job_id]
+    image, steps, online = "", [], True
+    base_env = {**sel.workflow.env, **(job.get("env") or {})}
+    for step in job.get("steps") or []:
+        uses = str(step.get("uses", ""))
+        if uses.startswith("actions/setup-python"):
+            version = substitute_expressions(
+                str((step.get("with") or {}).get("python-version", "")), sel.matrix
+            )
+            image = f"python:{version}"
+        if "run" not in step:
+            continue
+        name = substitute_expressions(str(step.get("name", "run")), sel.matrix)
+        online = online and bool(_INSTALL_STEP.search(name))
+        env = {
+            str(k): substitute_expressions(str(v), sel.matrix)
+            for k, v in {**base_env, **(step.get("env") or {})}.items()
+        }
+        steps.append(
+            ContainerStep(
+                name=name,
+                script=substitute_expressions(str(step["run"]), sel.matrix),
+                workdir=str(step.get("working-directory", "")),
+                env=env,
+                network=online,
+            )
+        )
+    if not image:
+        raise LocalCiError(f"{sel.key}: no actions/setup-python step to pick an image")
+    return image, steps
+
+
+def docker_run_args(name: str, image: str, tree: Path, pip_cache: Path) -> list[str]:
+    """Return ``docker run`` args: read-only tree, no network, capped memory."""
+    return [
+        "run",
+        "-d",
+        "--rm",
+        "--name",
+        name,
+        "--network",
+        "none",
+        "--memory",
+        DOCKER_MEMORY,
+        "-v",
+        f"{tree}:/src:ro",
+        "-v",
+        f"{pip_cache}:/root/.cache/pip",
+        "-w",
+        "/work",
+        image,
+        "sleep",
+        "infinity",
+    ]
+
+
+def docker_available() -> str | None:
+    """Return the docker CLI path when its daemon answers, else None."""
+    docker = shutil.which("docker")
+    if docker and run_cmd([docker, "info"], cwd=Path.cwd(), timeout=60)[0] == 0:
+        return docker
+    return None
+
+
+def _container_exec(docker: str, name: str, step: ContainerStep) -> list[str]:
+    workdir = "/work/" + step.workdir if step.workdir else "/work"
+    env_args = [arg for k, v in step.env.items() for arg in ("-e", f"{k}={v}")]
+    shell = ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", step.script]
+    return [docker, "exec", "-w", workdir, *env_args, name, *shell]
+
+
+def _set_network(docker: str, name: str, *, online: bool, cwd: Path) -> None:
+    """Move the container between ``none`` (loopback only) and ``bridge``."""
+    if online:
+        run_cmd([docker, "network", "disconnect", "none", name], cwd=cwd)
+        code, out = run_cmd([docker, "network", "connect", "bridge", name], cwd=cwd)
+    else:
+        code, out = run_cmd([docker, "network", "disconnect", "bridge", name], cwd=cwd)
+    if code != 0:
+        raise LocalCiError(
+            f"docker network {'connect' if online else 'disconnect'}: {out}"
+        )
+
+
+def run_in_container(
+    ctx: Context, sel: Selected, docker: str, *, prepare: str = ""
+) -> Result:
+    """Replay the job's ``run:`` steps in ``python:<ver>`` (bash -eo pipefail).
+
+    The checkout is mounted read-only and copied to ``/work`` inside the
+    container. The container starts with no network; it joins the default
+    bridge only for the leading install steps. It is always removed.
+    """
+    image, steps = container_plan(sel)
+    seed = f"{sel.key}{time.time()}".encode()
+    name = "local-ci-" + hashlib.sha256(seed).hexdigest()[:10]
+    pip_cache = ctx.cache / "pip-linux"
+    pip_cache.mkdir(parents=True, exist_ok=True)
+    log = ctx.work / "logs" / (re.sub(r"[^\w.-]+", "_", sel.key) + ".log")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    if run_cmd([docker, "pull", "-q", image], cwd=ctx.work, timeout=900)[0] != 0:
+        return Result(sel.key, NOT_REPRODUCIBLE, f"cannot pull {image}")
+    run_args = docker_run_args(name, image, ctx.tree, pip_cache)
+    code, out = run_cmd([docker, *run_args], cwd=ctx.work)
+    if code != 0:
+        return Result(sel.key, NOT_REPRODUCIBLE, "docker run failed: " + _tail(out, 3))
+    connected = False
+    setup = "cp -a /src/. /work/" + (f" && {prepare}" if prepare else "")
+    copy = ContainerStep("copy tree", setup, "", {}, False)
+    try:
+        with log.open("a", encoding="utf-8") as handle:
+            for step in [copy, *steps]:
+                if step.network != connected:
+                    _set_network(docker, name, online=step.network, cwd=ctx.work)
+                    connected = step.network
+                code, out = run_cmd(_container_exec(docker, name, step), cwd=ctx.work)
+                handle.write(
+                    f"## {step.name} (exit {code}, net={step.network})\n{out}\n"
+                )
+                if code != 0:
+                    detail = f"step '{step.name}' exit {code} ({image})\n{_tail(out)}"
+                    return Result(sel.key, FAIL, detail)
+        return Result(sel.key, PASS, f"{len(steps)} steps in {image}; log {log.name}")
+    finally:
+        run_cmd([docker, "rm", "-f", name], cwd=ctx.work, timeout=120)
+
+
+def host_harness_verdict(result: Result) -> Result:
+    """Turn a host-only backend readiness timeout into NOT-REPRODUCIBLE."""
+    if result.status == FAIL and "did not become ready" in result.detail:
+        reason = "backend readiness timeout on this host (CI runs Linux); start docker"
+        return Result(result.key, NOT_REPRODUCIBLE, f"{reason}\n{result.detail}")
+    return result
+
+
 def _harness_venv(ctx: Context) -> Path | str:
     if "harness" in ctx.venvs:
         return ctx.venvs["harness"]
@@ -1154,7 +1327,7 @@ def _harness_venv(ctx: Context) -> Path | str:
         "openbb_platform/tools/browser_test_harness/[test]",
     ]
     steps = [
-        Step("venv", [python, "-m", "venv", str(venv)], ctx.tree),
+        Step("venv", [python, "-m", "venv", str(venv)], ctx.cache),
         Step("pip upgrade", [py, "-m", "pip", "install", "--upgrade", "pip"], ctx.tree),
     ]
     steps += [
@@ -1179,28 +1352,26 @@ def _harness_env(ctx: Context, name: str, **extra: str) -> dict[str, str]:
     )
 
 
-def _standalone_harness(ctx: Context, sel: Selected) -> Result:
+def _harness_job(ctx: Context, sel: Selected) -> Result:
+    """Harness jobs run in the Linux CI image when docker is available."""
+    docker = docker_available()
+    if docker:
+        return run_in_container(ctx, sel, docker)
     venv = _harness_venv(ctx)
     if isinstance(venv, str):
         return Result(sel.key, NOT_REPRODUCIBLE, venv)
-    story = sel.matrix.get("story", "portfolio")
     py = venv_tool(venv, "python")
     harness = ctx.tree / "openbb_platform/tools/browser_test_harness"
-    run = [
-        py,
-        "-m",
-        "openbb_browser_test_harness.run",
-        "--story",
-        story,
-        "--mode",
-        "standalone",
-        "--out",
-        f".dev-cycle/browser-harness-report-{story}",
-    ]
-    return run_steps(
-        ctx,
-        sel.key,
-        [
+    if sel.job_id == "fixture-drift-check":
+        argv = [py, "-m", "pytest", "tests/test_fixtures_are_current.py"]
+        env = _harness_env(ctx, "fixtures", BROWSER_HARNESS_LIVE="1")
+        steps = [Step("fixture drift", [*argv, "-v", "--tb=short"], harness, env)]
+    else:
+        story = sel.matrix.get("story", "portfolio")
+        out = f".dev-cycle/browser-harness-report-{story}"
+        run = [py, "-m", "openbb_browser_test_harness.run", "--story", story]
+        run += ["--mode", "standalone", "--out", out]
+        steps = [
             Step(
                 "unit tests",
                 [py, "-m", "pytest", "tests/", "-v", "--tb=short"],
@@ -1208,25 +1379,8 @@ def _standalone_harness(ctx: Context, sel: Selected) -> Result:
                 _harness_env(ctx, "unit"),
             ),
             Step(f"{story} story", run, ctx.tree, _harness_env(ctx, "story")),
-        ],
-    )
-
-
-def _fixture_drift(ctx: Context, sel: Selected) -> Result:
-    venv = _harness_venv(ctx)
-    if isinstance(venv, str):
-        return Result(sel.key, NOT_REPRODUCIBLE, venv)
-    harness = ctx.tree / "openbb_platform/tools/browser_test_harness"
-    argv = [
-        venv_tool(venv, "python"),
-        "-m",
-        "pytest",
-        "tests/test_fixtures_are_current.py",
-        "-v",
-        "--tb=short",
-    ]
-    env = _harness_env(ctx, "fixtures", BROWSER_HARNESS_LIVE="1")
-    return run_steps(ctx, sel.key, [Step("fixture drift", argv, harness, env)])
+        ]
+    return host_harness_verdict(run_steps(ctx, sel.key, steps))
 
 
 def _step_run(sel: Selected, step_name: str) -> str:
@@ -1270,66 +1424,56 @@ def _collectable_test(path: Path, rel: str) -> bool:
     return path.suffix == ".py" and is_test_name and in_tests
 
 
+def metadata_env_commands(
+    run_text: str, tree: Path, venv: Path, host_python: str
+) -> list[list[str]]:
+    """Translate the 'Create isolated metadata environments' loop body to argv.
+
+    Order and flags are the workflow's own: each command line (backslash
+    continuations joined) becomes one argv, with ``python`` -> the host
+    interpreter, ``$environment/bin/python`` -> the venv interpreter and
+    ``$GITHUB_WORKSPACE/$source/...`` -> the checkout.
+    """
+    commands = []
+    for raw in run_text.replace("\\\n", " ").splitlines():
+        line = raw.strip()
+        if not line or line.startswith(("set ", "for ", "done", "environment=", "#")):
+            continue
+        argv = []
+        for index, word in enumerate(shlex.split(line)):
+            if word == "$environment/bin/python":
+                argv.append(venv_tool(venv, "python"))
+            elif word == "$environment":
+                argv.append(str(venv))
+            elif word.startswith("$GITHUB_WORKSPACE/$source/"):
+                argv.append(str(tree / word.removeprefix("$GITHUB_WORKSPACE/$source/")))
+            elif index == 0 and word == "python":
+                argv.append(host_python)
+            elif "$" in word:
+                raise LocalCiError(f"cannot translate workflow token {word!r}")
+            else:
+                argv.append(word)
+        commands.append(argv)
+    return commands
+
+
 def _compare_inventories(ctx: Context, sel: Selected) -> Result:
     if ctx.base_branch != "portfolio":
         return Result(sel.key, FAIL, f"expected base portfolio, got {ctx.base_branch}")
     python = uv_python("3.12")
     if python is None:
         return Result(sel.key, NOT_REPRODUCIBLE, "Python 3.12 not found")
-    editable = re.findall(
-        r'-e "\$GITHUB_WORKSPACE/\$source/([^"]+)"',
-        _step_run(sel, "Create isolated metadata environments"),
-    )
+    script = _step_run(sel, "Create isolated metadata environments")
     with checkout(ctx.repo, ctx.base, ctx.work / "base") as base_tree:
-        trees = {"base": base_tree, "head": ctx.tree}
-        for source, tree in trees.items():
+        for source, tree in (("base", base_tree), ("head", ctx.tree)):
             venv = ctx.work / f"{source}-venv"
-            py = venv_tool(venv, "python")
-            installs = [arg for path in editable for arg in ("-e", str(tree / path))]
             steps = [
-                Step(f"{source} venv", [python, "-m", "venv", str(venv)], tree),
                 Step(
-                    f"{source} pip",
-                    [py, "-m", "pip", "install", "--upgrade", "pip"],
-                    tree,
-                ),
-                Step(
-                    f"{source} editable", [py, "-m", "pip", "install", *installs], tree
-                ),
-                Step(
-                    f"{source} pi_install",
-                    [py, str(tree / "scripts/pi_install.py")],
-                    tree,
-                ),
-                Step(
-                    f"{source} fmp_trading",
-                    [
-                        py,
-                        "-m",
-                        "pip",
-                        "install",
-                        "-e",
-                        str(tree / "openbb_platform/extensions/fmp_trading")
-                        + "[agent]",
-                    ],
-                    tree,
-                ),
-                Step(
-                    f"{source} test deps",
-                    [
-                        py,
-                        "-m",
-                        "pip",
-                        "install",
-                        "pytest",
-                        "pytest-asyncio",
-                        "pytest-mock",
-                    ],
-                    tree,
-                ),
-                Step(
-                    f"{source} build", [py, "-c", "import openbb; openbb.build()"], tree
-                ),
+                    f"{source} {' '.join(Path(a).name for a in argv[1:4])}",
+                    argv,
+                    ctx.work,
+                )
+                for argv in metadata_env_commands(script, tree, venv, python)
             ]
             result = run_steps(ctx, sel.key, steps)
             if result.status != PASS:
@@ -1343,133 +1487,100 @@ def _compare_inventories(ctx: Context, sel: Selected) -> Result:
         for profile in ("portfolio-read", "portfolio-ops"):
             base_out = ctx.work / "base-inventories" / profile
             head_out = ctx.work / "head-inventories" / profile
+            audit = "scripts/audit_mcp_capabilities.py"
             steps.append(
                 Step(
                     f"base {profile}",
-                    [
-                        base_py,
-                        str(base_tree / "scripts/audit_mcp_capabilities.py"),
-                        "--profile",
-                        profile,
-                        "--output-dir",
-                        str(base_out),
-                        "--metadata-only",
-                    ],
+                    [base_py, str(base_tree / audit), "--profile", profile]
+                    + ["--output-dir", str(base_out), "--metadata-only"],
                     base_tree,
                 )
             )
             steps.append(
                 Step(
                     f"head {profile}",
-                    [
-                        head_py,
-                        str(ctx.tree / "scripts/audit_mcp_capabilities.py"),
-                        "--profile",
-                        profile,
-                        "--output-dir",
-                        str(head_out),
-                        "--metadata-only",
-                        "--comparison-sha",
-                        ctx.base,
-                        "--base-ref",
-                        ctx.base_branch,
-                        "--require-lineage",
-                        "--comparison-inventory",
-                        str(base_out / "inventory.json"),
-                        "--comparison-repository",
-                        str(base_tree),
-                        "--tests-verified",
-                    ],
+                    [head_py, str(ctx.tree / audit), "--profile", profile]
+                    + ["--output-dir", str(head_out), "--metadata-only"]
+                    + ["--comparison-sha", ctx.base, "--base-ref", ctx.base_branch]
+                    + ["--require-lineage"]
+                    + ["--comparison-inventory", str(base_out / "inventory.json")]
+                    + ["--comparison-repository", str(base_tree), "--tests-verified"],
                     ctx.tree,
                 )
             )
         return run_steps(ctx, sel.key, steps)
 
 
+def populate_submodule(repo: Path, commit: str, sub: str, tree: Path) -> Path:
+    """Check ``sub`` out at the commit ``commit`` pins, from local objects only.
+
+    Clones the main checkout's ``.git/modules/<sub>`` with ``--shared`` (no
+    network, nothing written to the main checkout) into ``tree/<sub>``.
+    """
+    entry = git(repo, "ls-tree", commit, sub).split()
+    if len(entry) < 3 or entry[1] != "commit":
+        raise LocalCiError(f"{sub} is not a submodule at {commit[:10]}")
+    common = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+    modules = common / "modules" / sub
+    if not modules.is_dir():
+        raise LocalCiError(f"{sub} is not initialized in the main checkout")
+    target = tree / sub
+    shutil.rmtree(target, ignore_errors=True)
+    git(
+        repo, "clone", "--quiet", "--shared", "--no-checkout", str(modules), str(target)
+    )
+    git(target, "checkout", "--quiet", "--detach", entry[2])
+    return target
+
+
 def _workspace_contract(ctx: Context, sel: Selected) -> Result:
     sub = "third_party/workspace"
-    entry = git(ctx.repo, "ls-tree", ctx.head, sub).split()
-    common = Path(
-        git(ctx.repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
-    )
-    modules = common / "modules" / sub
-    python = uv_python("3.13")
-    if len(entry) < 3 or not modules.is_dir() or python is None:
-        return Result(
-            sel.key,
-            NOT_REPRODUCIBLE,
-            "needs the initialized workspace submodule and Python 3.13",
-        )
-    target = ctx.tree / sub
-    shutil.rmtree(target, ignore_errors=True)
-    code, out = run_cmd(
-        [
-            "git",
-            f"--git-dir={modules}",
-            "-c",
-            "core.autocrlf=false",
-            "worktree",
-            "add",
-            "--detach",
-            str(target),
-            entry[2],
-        ],
-        cwd=ctx.repo,
-    )  # noqa: S607
-    if code != 0:
-        return Result(
-            sel.key, NOT_REPRODUCIBLE, "submodule commit unavailable: " + _tail(out, 3)
-        )
     try:
-        backend = target / "backend-api" / "backend"
-        venv = ctx.work / "poetry-venv"
-        env = ctx.env(POETRY_VIRTUALENVS_PATH=str(ctx.cache / "poetry-venvs"))
-        poetry = venv_tool(venv, "poetry")
-        tests = [
-            "tests/test_workspace_mcp_surface_parity.py",
-            "tests/test_workspace_mcp_bridge.py",
-            "tests/test_workspace_mcp_resources.py",
-        ]
-        return run_steps(
-            ctx,
-            sel.key,
-            [
-                Step("venv", [python, "-m", "venv", str(venv)], backend, env),
-                Step(
-                    "poetry",
-                    [venv_tool(venv, "python"), "-m", "pip", "install", "poetry"],
-                    backend,
-                    env,
-                ),
-                Step(
-                    "poetry install",
-                    [poetry, "install", "--with", "dev", "--no-root"],
-                    backend,
-                    env,
-                ),
-                Step(
-                    "parity tests",
-                    [poetry, "run", "python", "-m", "pytest", *tests, "-q"],
-                    backend,
-                    env,
-                ),
-            ],
-        )
-    finally:
-        run_cmd(
-            [
-                "git",
-                f"--git-dir={modules}",
-                "worktree",
-                "remove",
-                "--force",
-                str(target),
-            ],
-            cwd=ctx.repo,
-        )  # noqa: S607
-        run_cmd(
-            ["git", f"--git-dir={modules}", "worktree", "prune"], cwd=ctx.repo
-        )  # noqa: S607
+        populate_submodule(ctx.repo, ctx.head, sub, ctx.tree)
+    except LocalCiError as exc:
+        return Result(sel.key, NOT_REPRODUCIBLE, str(exc))
+    docker = docker_available()
+    if docker:
+        return run_in_container(ctx, sel, docker)
+    python = uv_python("3.13")
+    if python is None:
+        return Result(sel.key, NOT_REPRODUCIBLE, "Python 3.13 not found")
+    backend = ctx.tree / sub / "backend-api" / "backend"
+    venv = ctx.work / "poetry-venv"
+    # Short root: poetry venv paths plus deep package files exceed MAX_PATH.
+    short = Path(tempfile.gettempdir()) / "lci-pv"
+    env = ctx.env(POETRY_VIRTUALENVS_PATH=str(short))
+    poetry = venv_tool(venv, "poetry")
+    tests = [
+        "tests/test_workspace_mcp_surface_parity.py",
+        "tests/test_workspace_mcp_bridge.py",
+        "tests/test_workspace_mcp_resources.py",
+    ]
+    return run_steps(
+        ctx,
+        sel.key,
+        [
+            Step("venv", [python, "-m", "venv", str(venv)], ctx.work, env),
+            Step(
+                "poetry",
+                [venv_tool(venv, "python"), "-m", "pip", "install", "poetry"],
+                backend,
+                env,
+            ),
+            Step(
+                "poetry install",
+                [poetry, "install", "--with", "dev", "--no-root"],
+                backend,
+                env,
+            ),
+            Step(
+                "parity tests",
+                [poetry, "run", "python", "-m", "pytest", *tests, "-q"],
+                backend,
+                env,
+            ),
+        ],
+    )
 
 
 RUNNERS: dict[tuple[str, str], Callable[[Context, Selected], Result]] = {
@@ -1490,8 +1601,8 @@ RUNNERS: dict[tuple[str, str], Callable[[Context, Selected], Result]] = {
     ("dual-mcp-lock", "lock-check"): _lock_check,
     ("portfolio-mcp-coverage", "reject-unsupported-interpreter"): _reject_314,
     ("portfolio-mcp-coverage", "replay-portfolio-profile"): _replay_profile,
-    ("browser-test-harness", "standalone-harness"): _standalone_harness,
-    ("browser-test-harness", "fixture-drift-check"): _fixture_drift,
+    ("browser-test-harness", "standalone-harness"): _harness_job,
+    ("browser-test-harness", "fixture-drift-check"): _harness_job,
 }
 
 
