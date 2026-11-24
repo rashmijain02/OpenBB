@@ -5596,13 +5596,13 @@ def create_fmp_trading_state_table():
 FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
     "fmp_mcp_document": (
         "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
-        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json MEDIUMTEXT NOT NULL, "
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
         "fetched_at DATETIME NOT NULL, refresh_after DATETIME NULL"
     ),
     "fmp_mcp_ephemeral": (
         "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
-        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json MEDIUMTEXT NOT NULL, "
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
         "fetched_at DATETIME NOT NULL, expires_at DATETIME NOT NULL"
     ),

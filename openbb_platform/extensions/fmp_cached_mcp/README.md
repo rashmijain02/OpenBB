@@ -46,6 +46,15 @@ persistent tables are not in its allowlist.
 unreachable; `--store mysql` refuses to start without it; `--store sqlite:PATH` uses a local file;
 `--store none` stores nothing. `FMP_CACHED_MCP_STORE` sets the default.
 
+### What the store keeps
+
+Only public FMP market data plus the request that fetched it (path and query, e.g. which
+symbol was asked about). Nothing identifies the caller: no token, address or session. Rows are
+shared by every client of the server, and persistent rows are not deleted automatically. Check
+that permanent storage fits your FMP subscription terms before running a shared instance.
+Bodies over 32 MB are served but not stored; empty answers expire after a day; expired
+ephemeral rows are pruned hourly.
+
 ## Re-recording the parity fixtures
 
 ```bash

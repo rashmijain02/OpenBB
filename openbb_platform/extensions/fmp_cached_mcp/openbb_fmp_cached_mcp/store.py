@@ -44,6 +44,25 @@ class StoreUnavailable(RuntimeError):
     """The database cannot be reached; callers fall back to live mode."""
 
 
+class StoreDataError(RuntimeError):
+    """The database rejected one statement (bad value, too long); not an outage."""
+
+
+#: MySQL client/server error codes that mean "cannot reach the server".
+_UNREACHABLE_CODES = {1040, 1045, 1049, 2002, 2003, 2005, 2006, 2013, 2055}
+
+
+def classify_db_error(exc: BaseException) -> RuntimeError:
+    """Map a driver error to ``StoreUnavailable`` (outage) or ``StoreDataError``."""
+    code = exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
+    name = type(exc).__name__
+    if code in _UNREACHABLE_CODES or name in ("InterfaceError", "ConnectionError"):
+        return StoreUnavailable(f"{name} {code}" if code else name)
+    if name == "OperationalError" and code is None:
+        return StoreUnavailable(name)
+    return StoreDataError(f"{name} {code}" if code else name)
+
+
 class Database(Protocol):
     """Minimal DB-API seam. SQL uses ``%s`` placeholders."""
 
@@ -54,6 +73,9 @@ class Database(Protocol):
 
     def execute(self, sql: str, params: tuple = ()) -> int:
         """Run a statement and return the affected row count."""
+
+    def executemany(self, sql: str, rows: list[tuple]) -> int:
+        """Run one statement for many parameter rows (one round trip / commit)."""
 
 
 class SqliteDatabase:
@@ -79,6 +101,13 @@ class SqliteDatabase:
             self._conn.commit()
             return cur.rowcount
 
+    def executemany(self, sql: str, rows: list[tuple]) -> int:
+        """Run one statement for many parameter rows in one transaction."""
+        with self._lock:
+            cur = self._conn.executemany(sql.replace("%s", "?"), rows)
+            self._conn.commit()
+            return cur.rowcount
+
 
 class MySqlDatabase:
     """MySQL backend over the ``fmp_cached`` provider's connection pool."""
@@ -96,26 +125,33 @@ class MySqlDatabase:
         try:
             return list(self._db.execute_query(sql, params) or [])
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
-            raise StoreUnavailable(type(exc).__name__) from None
+            raise classify_db_error(exc) from None
 
     def execute(self, sql: str, params: tuple = ()) -> int:
         """Run a statement and return the affected row count."""
         try:
             return int(self._db.execute_query(sql, params) or 0)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
-            raise StoreUnavailable(type(exc).__name__) from None
+            raise classify_db_error(exc) from None
+
+    def executemany(self, sql: str, rows: list[tuple]) -> int:
+        """Run one statement for many parameter rows."""
+        try:
+            return int(self._db.execute_many(sql, rows) or 0)
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
+            raise classify_db_error(exc) from None
 
 
 _DDL = {
     DOCUMENT_TABLE: (
         "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
-        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json {text} NOT NULL, "
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body {blob} NOT NULL, "
         "fetched_at {ts} NOT NULL, refresh_after {ts} NULL"
     ),
     EPHEMERAL_TABLE: (
         "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
-        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json {text} NOT NULL, "
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body {blob} NOT NULL, "
         "fetched_at {ts} NOT NULL, expires_at {ts} NOT NULL"
     ),
@@ -187,20 +223,34 @@ class Store:
                 f"CREATE TABLE IF NOT EXISTS {table} ({cols.format(**types)})"
             )
 
-    def _upsert(self, table: str, row: dict[str, Any], keys: Iterable[str]) -> None:
-        cols = list(row)
+    def _upsert_sql(self, table: str, cols: list[str], keys: Iterable[str]) -> str:
         marks = ", ".join(["%s"] * len(cols))
         update = [c for c in cols if c not in set(keys)]
         if self.db.dialect == "mysql":
-            tail = "ON DUPLICATE KEY UPDATE " + ", ".join(
-                f"{c}=VALUES({c})" for c in update
+            # Row-alias form (MySQL 8.0.19+); VALUES() is deprecated since 8.0.20.
+            tail = "AS new ON DUPLICATE KEY UPDATE " + ", ".join(
+                f"{c}=new.{c}" for c in update
             )
         else:
             tail = f"ON CONFLICT ({', '.join(keys)}) DO UPDATE SET " + ", ".join(
                 f"{c}=excluded.{c}" for c in update
             )
-        sql = f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({marks}) {tail}"  # noqa: S608
+        return f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({marks}) {tail}"  # noqa: S608
+
+    def _upsert(self, table: str, row: dict[str, Any], keys: Iterable[str]) -> None:
+        sql = self._upsert_sql(table, list(row), keys)
         self.db.execute(sql, tuple(row.values()))
+
+    def _upsert_many(
+        self, table: str, rows: list[dict[str, Any]], keys: Iterable[str]
+    ) -> None:
+        if not rows:
+            return
+        cols = list(rows[0])
+        self.db.executemany(
+            self._upsert_sql(table, cols, keys),
+            [tuple(r[c] for c in cols) for r in rows],
+        )
 
     # -- documents and ephemeral answers --------------------------------------
 
@@ -272,20 +322,38 @@ class Store:
     def put_series_rows(
         self, family: str, skey: str, rows: list[dict[str, Any]]
     ) -> None:
-        """Upsert raw rows keyed by their ``date`` value."""
+        """Upsert raw rows keyed by their ``date`` value (one batched statement)."""
         now = _fmt(self.now())
-        for row in rows:
-            self._upsert(
-                SERIES_ROW_TABLE,
+        self._upsert_many(
+            SERIES_ROW_TABLE,
+            [
                 {
                     "family": family,
                     "series_key": skey,
                     "ts": str(row["date"]),
                     "row_json": json.dumps(row, ensure_ascii=False),
                     "fetched_at": now,
-                },
-                ("family", "series_key", "ts"),
-            )
+                }
+                for row in rows
+            ],
+            ("family", "series_key", "ts"),
+        )
+
+    def replace_series_range(
+        self,
+        family: str,
+        skey: str,
+        start: dt.date,
+        end: dt.date,
+        rows: list[dict[str, Any]],
+    ) -> None:
+        """Make FMP's answer for ``[start, end]`` the stored rows for that range."""
+        self.db.execute(
+            f"DELETE FROM {SERIES_ROW_TABLE} "  # noqa: S608
+            "WHERE family = %s AND series_key = %s AND ts >= %s AND ts < %s",
+            (family, skey, start.isoformat(), (end + dt.timedelta(days=1)).isoformat()),
+        )
+        self.put_series_rows(family, skey, rows)
 
     def coverage(
         self, family: str, skey: str, kind: str
@@ -360,20 +428,18 @@ class Store:
     def put_feed_items(self, family: str, rows: list[dict[str, Any]]) -> None:
         """Keep every feed item (news article, filing, trade) for good."""
         now = _fmt(self.now())
+        items = {}
         for row in rows:
             ident = row.get("url") or row.get("link") or row.get("finalLink")
             raw = json.dumps(row, ensure_ascii=False, sort_keys=True)
             item_id = hashlib.sha256(str(ident or raw).encode()).hexdigest()
-            self._upsert(
-                FEED_ITEM_TABLE,
-                {
-                    "family": family,
-                    "item_id": item_id,
-                    "row_json": raw,
-                    "fetched_at": now,
-                },
-                ("family", "item_id"),
-            )
+            items[item_id] = {
+                "family": family,
+                "item_id": item_id,
+                "row_json": raw,
+                "fetched_at": now,
+            }
+        self._upsert_many(FEED_ITEM_TABLE, list(items.values()), ("family", "item_id"))
 
     # -- maintenance ----------------------------------------------------------
 

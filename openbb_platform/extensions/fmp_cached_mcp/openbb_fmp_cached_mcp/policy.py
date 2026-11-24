@@ -108,6 +108,10 @@ def resolve_policy(  # noqa: PLR0911
     if retention == "no-store":
         return Policy("no-store", None, retention)
     if retention == "series" and _has_range_params(tool):
+        if "limit" in args or "page" in args:
+            # FMP pages the range: a page is not the whole range, so it cannot
+            # mark coverage. Keep it as a revisable document instead.
+            return Policy("document", REVISABLE_REFRESH_S, retention)
         if "from_date" in args and "to_date" in args:
             return Policy("series", series_tail_ttl(path, args), retention)
         # Open-ended request (FMP picks the window): treat as a short-lived answer.

@@ -61,6 +61,10 @@ class FakeFmp:
         self.docs: dict[str, UpstreamResponse] = {}
         self.price_shift = 0.0
         self.secret = ""
+        self.clock = None  # when set, "today" follows the test clock
+        self.provisional_from: dt.date | None = None  # rows >= get +0.5 (open bars)
+        self.omit: set[str] = set()
+        self.gate: asyncio.Event | None = None
 
     async def fetch(self, path, params):
         self.calls.append((path, dict(params)))
@@ -69,11 +73,19 @@ class FakeFmp:
             raise ConnectionError("down")
         if path in self.docs:
             return self.docs[path]
+        if self.gate is not None:
+            await self.gate.wait()
         if path.startswith("/historical-price-eod"):
+            today = self.clock().date() if self.clock else TODAY
             start = dt.date.fromisoformat(params.get("from", "2026-01-01"))
-            end = dt.date.fromisoformat(params.get("to", TODAY.isoformat()))
-            end = min(end, TODAY)
+            end = dt.date.fromisoformat(params.get("to", today.isoformat()))
+            end = min(end, today)
             rows = _daily_rows(start, end, params["symbol"], 100.0 + self.price_shift)
+            rows = [r for r in rows if r["date"] not in self.omit]
+            if self.provisional_from is not None:
+                for r in rows:
+                    if r["date"] >= self.provisional_from.isoformat():
+                        r["price"] += 0.5
             return UpstreamResponse(200, json.dumps(rows, indent=2).encode())
         return UpstreamResponse(
             200, json.dumps([{"path": path, "n": len(self.calls)}]).encode()
@@ -209,9 +221,11 @@ def test_ephemeral_expires_and_only_ephemeral_rows_are_prunable(env):
     _get(svc, "quote", {"endpoint": "quote", "symbol": "AAPL"})
     assert len(fmp.calls) == 3
     clock.advance(days=30)
-    _get(svc, "quote", {"endpoint": "quote", "symbol": "MSFT"})  # still fresh
     report = store.prune_ephemeral()
     assert report[EPHEMERAL_TABLE] == 1
+    svc._last_prune = clock()  # pylint: disable=protected-access
+    _get(svc, "quote", {"endpoint": "quote", "symbol": "MSFT"})  # still fresh
+    assert store.prune_ephemeral()[EPHEMERAL_TABLE] == 0
     assert store.count(EPHEMERAL_TABLE) == 1, "unexpired rows survive"
     assert store.count("fmp_mcp_document") == 1
 
@@ -473,3 +487,213 @@ def test_empty_answer_is_never_stored_as_immutable(env):
     clock.advance(hours=13)
     _get(svc, "senate", args)
     assert len(fmp.calls) == 2
+
+
+# --- PR-B review findings (code + security) --------------------------------------
+
+
+def test_negative_cache_keys_fit_the_char64_column(env):
+    svc, fmp, store, _ = env
+    fmp.docs["/quote"] = UpstreamResponse(400, b"Query Error")
+    _get(svc, "quote", {"endpoint": "quote"})
+    keys = [r["cache_key"] for r in store.dump(EPHEMERAL_TABLE)]
+    assert keys and all(len(k) == 64 for k in keys)
+
+
+def test_revised_open_bars_do_not_look_like_a_rebased_history(env):
+    """Bars stored while their session was open differ later; that is not a split."""
+    svc, fmp, _, clock = env
+    fmp.clock = clock
+    fmp.provisional_from = dt.date(2026, 11, 23)  # Nov 23-24 still open on Nov 24
+    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
+    clock.advance(days=1, hours=2)
+    fmp.provisional_from = dt.date(2026, 11, 24)  # Nov 23 is now final, value changed
+    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
+    assert len(fmp.calls) == 2, "no full re-fetch for a revised open bar"
+    rows = {r["date"]: r["price"] for r in json.loads(out.response.body)}
+    assert rows["2026-11-23"] == 100.0 + 23, "the revised bar is replaced"
+
+
+def test_rebasing_is_detected_one_day_later_in_the_merge_branch(env):
+    svc, fmp, _, clock = env
+    fmp.clock = clock
+    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
+    clock.advance(days=1, hours=2)
+    fmp.price_shift = -50.0
+    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
+    tail_call = fmp.calls[1][1]
+    assert tail_call["from"] <= "2026-11-18", "overlap must reach stored final rows"
+    assert json.loads(out.response.body)[-1]["price"] == 51.0
+
+
+def test_rows_fmp_no_longer_returns_are_removed_on_refetch(env):
+    svc, fmp, _, clock = env
+    fmp.clock = clock
+    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
+    clock.advance(hours=2)
+    fmp.omit = {"2026-11-24"}
+    out = _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
+    assert "2026-11-24" not in {r["date"] for r in json.loads(out.response.body)}
+
+
+def test_paged_series_endpoints_use_the_document_path():
+    args = {
+        "endpoint": "historical-grades",
+        "symbol": "AAPL",
+        "limit": 5,
+        "from_date": "2026-01-01",
+        "to_date": "2026-11-01",
+    }
+    pol = resolve_policy("analyst", args, today=TODAY)
+    assert pol.mode == "document"
+
+
+def test_cancelled_owner_does_not_cancel_waiters(env):
+    svc, fmp, _, _ = env
+    args = {"endpoint": "income-statement", "symbol": "IBM"}
+
+    async def scenario():
+        fmp.gate = asyncio.Event()
+        owner = asyncio.create_task(svc.fetch_tool("statements", args))
+        await asyncio.sleep(0)
+        waiter = asyncio.create_task(svc.fetch_tool("statements", args))
+        await asyncio.sleep(0)
+        owner.cancel()
+        await asyncio.sleep(0)
+        fmp.gate.set()
+        return await asyncio.wait_for(waiter, 5)
+
+    result = asyncio.run(scenario())
+    assert result.response.status == 200
+
+
+def test_write_failure_returns_the_fetched_answer_without_refetch(caplog):
+    from openbb_fmp_cached_mcp.store import StoreDataError  # pylint: disable=C0415
+
+    class BadWrites(SqliteDatabase):
+        def execute(self, sql, params=()):
+            if sql.lstrip().upper().startswith("INSERT"):
+                raise StoreDataError("DataError")
+            return super().execute(sql, params)
+
+    clock = Clock()
+    store = Store(BadWrites(":memory:"), now=clock)
+    store.create_tables()
+    fmp = FakeFmp()
+    svc = StoreBackedUpstream(fmp, store, now=clock)
+    out = _get(svc, "statements", {"endpoint": "income-statement", "symbol": "AAPL"})
+    assert out.response.status == 200 and len(fmp.calls) == 1
+    _get(svc, "statements", {"endpoint": "income-statement", "symbol": "MSFT"})
+    assert len(fmp.calls) == 2
+    assert not any("store unavailable" in r.getMessage() for r in caplog.records)
+
+
+def test_mysql_upsert_uses_the_row_alias_form():
+    seen = []
+
+    class FakeMySql:
+        dialect = "mysql"
+
+        def execute(self, sql, params=()):
+            seen.append(sql)
+            return 1
+
+        def executemany(self, sql, rows):
+            seen.append(sql)
+            return len(rows)
+
+        def query(self, sql, params=()):
+            return []
+
+    store = Store(FakeMySql())
+    store.put_series_rows("/x", "k" * 64, [{"date": "2026-11-02", "v": 1}])
+    sql = next(q for q in seen if q.lstrip().upper().startswith("INSERT"))
+    assert " AS new ON DUPLICATE KEY UPDATE " in sql and "VALUES(" not in sql
+
+
+def test_empty_answers_are_ephemeral_not_persistent(env):
+    svc, fmp, store, _ = env
+    fmp.docs["/senate-trades-by-name"] = UpstreamResponse(200, b"[]")
+    _get(svc, "senate", {"endpoint": "senate-trading-by-name", "name": "Zz"})
+    assert store.count("fmp_mcp_document") == 0
+    assert store.count(EPHEMERAL_TABLE) == 1
+
+
+def test_oversized_bodies_are_served_but_not_stored(env, monkeypatch):
+    from openbb_fmp_cached_mcp import service  # pylint: disable=C0415
+
+    svc, _, store, _ = env
+    monkeypatch.setattr(service, "MAX_STORED_BODY_BYTES", 10)
+    out = _get(svc, "statements", {"endpoint": "income-statement", "symbol": "AAPL"})
+    assert out.response.status == 200
+    assert store.count("fmp_mcp_document") == 0
+
+
+def test_expired_ephemeral_rows_are_pruned_opportunistically(env):
+    svc, _, store, clock = env
+    _get(svc, "quote", {"endpoint": "quote", "symbol": "AAPL"})
+    clock.advance(hours=2)
+    _get(svc, "quote", {"endpoint": "quote", "symbol": "MSFT"})
+    assert store.count(EPHEMERAL_TABLE) == 1, "the expired AAPL quote row was pruned"
+
+
+def test_far_future_range_does_not_crash(env):
+    svc, _, _, _ = env
+    out = _get(svc, "chart", _range("2026-11-02", "9999-12-31"))
+    assert out.response.status == 200
+
+
+def test_overlong_row_dates_fall_back_to_the_document_path(env):
+    svc, fmp, store, _ = env
+    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(
+        200, json.dumps([{"date": "2026-11-02" + "x" * 40}]).encode()
+    )
+    _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
+    assert store.count("fmp_mcp_series_row") == 0
+
+
+def test_mysql_errors_are_classified():
+    from openbb_fmp_cached_mcp.store import (  # pylint: disable=C0415
+        StoreDataError,
+        classify_db_error,
+    )
+
+    class OperationalError(Exception):
+        pass
+
+    class DataError(Exception):
+        pass
+
+    assert isinstance(classify_db_error(OperationalError(2003, "x")), StoreUnavailable)
+    assert isinstance(classify_db_error(DataError(1406, "too long")), StoreDataError)
+    assert isinstance(
+        classify_db_error(OperationalError(1366, "bad value")), StoreDataError
+    )
+
+
+def test_paged_series_with_range_params_use_the_document_path():
+    args = {
+        "endpoint": "historical-market-cap",
+        "symbol": "AAPL",
+        "limit": 5,
+        "from_date": "2026-01-01",
+        "to_date": "2026-11-01",
+    }
+    assert resolve_policy("company", args, today=TODAY).mode == "document"
+
+
+def test_a_rejected_read_goes_live_without_marking_the_store_down():
+    from openbb_fmp_cached_mcp.store import StoreDataError  # pylint: disable=C0415
+
+    class BadReads(SqliteDatabase):
+        def query(self, sql, params=()):
+            raise StoreDataError("DataError")
+
+    clock = Clock()
+    store = Store(BadReads(":memory:"), now=clock)
+    store.create_tables()
+    fmp = FakeFmp()
+    svc = StoreBackedUpstream(fmp, store, now=clock)
+    out = _get(svc, "statements", {"endpoint": "income-statement", "symbol": "AAPL"})
+    assert out.state == "live"
+    assert svc._store_down_until is None  # pylint: disable=protected-access
