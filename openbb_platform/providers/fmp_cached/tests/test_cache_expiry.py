@@ -142,6 +142,14 @@ def seam(monkeypatch):
         _id_table("equity_quote"),
         _add("equity_quote", "FRESH", "-2 minutes"),
         _add("equity_quote", "STALE", "-10 minutes"),
+        # fmp_cached MCP (#1300): per-row expiry in expires_at.
+        "CREATE TABLE fmp_mcp_ephemeral (cache_key TEXT PRIMARY KEY, "
+        "expires_at TIMESTAMP NOT NULL);",
+        "INSERT INTO fmp_mcp_ephemeral VALUES ('k-live', datetime('now', '+1 hours'));",
+        "INSERT INTO fmp_mcp_ephemeral VALUES ('k-expired', datetime('now', '-1 minutes'));",
+        # Persistent MCP table: never pruned whatever its age.
+        "CREATE TABLE fmp_mcp_document (cache_key TEXT PRIMARY KEY, fetched_at TIMESTAMP);",
+        "INSERT INTO fmp_mcp_document VALUES ('k-ancient', datetime('now', '-900 days'));",
         # Non-expiring cache: historical bars are never TTL-evicted.
         _id_table("equity_historical"),
         _add("equity_historical", "ANCIENT", "-900 days"),
@@ -160,7 +168,7 @@ def test_cleanup_deletes_only_expired_rows(seam):
     report = cache_schema.cleanup_expired_cache()
 
     for rule in cache_schema.CACHE_EXPIRY_RULES:
-        if rule.table != "ttl_cache":
+        if rule.table not in ("ttl_cache", "fmp_mcp_ephemeral"):
             assert seam.count(rule.table, "symbol = 'STALE'") == 0, rule.table
             assert seam.count(rule.table, "symbol = 'FRESH'") == 1, rule.table
     for table in (
@@ -175,6 +183,9 @@ def test_cleanup_deletes_only_expired_rows(seam):
     assert seam.count("ttl_cache", "cache_key = 'k-fresh'") == 1
     assert seam.count("ttl_cache", "cache_key = 'k-stale'") == 0
     assert seam.count("ttl_cache", "cache_name = 'UnregisteredCache'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-live'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-expired'") == 0
+    assert seam.count("fmp_mcp_document") == 1
     assert report["dry_run"] is False
     assert report["total"] == len(cache_schema.CACHE_EXPIRY_RULES)
     assert report["errors"] == {}
@@ -187,7 +198,7 @@ def test_non_expiring_and_operator_tables_are_never_touched(seam):
     for table in PROTECTED_TABLES:
         assert seam.count(table) == 1, table
     touched = " ".join(sql for sql, _ in seam.statements)
-    for table in (*PROTECTED_TABLES, "equity_historical"):
+    for table in (*PROTECTED_TABLES, "equity_historical", "fmp_mcp_document"):
         assert not re.search(rf"\b{table}\b", touched), table
 
 
@@ -368,6 +379,8 @@ def _reader_ttls() -> dict[str, int]:
         "institutional_ownership": institutional_ownership.INSTITUTIONAL_OWNERSHIP_TTL_DAYS
         * day,
         "equity_quote": equity_quote.QUOTE_TTL_SECONDS,
+        # fmp_cached MCP (#1300): expiry is per row in expires_at.
+        "fmp_mcp_ephemeral": 0,
     }
 
 

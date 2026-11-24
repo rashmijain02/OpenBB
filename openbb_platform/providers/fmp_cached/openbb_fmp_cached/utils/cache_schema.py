@@ -5587,8 +5587,60 @@ def create_fmp_trading_state_table():
     return execute_query(query)
 
 
+# ---------------------------------------------------------------------------
+# fmp_cached MCP server store (#1300). Column definitions are shared with
+# openbb_fmp_cached_mcp.store (its tests assert they match). All five keep raw
+# FMP JSON; only fmp_mcp_ephemeral is prunable (see EXPIRABLE_CACHE_TABLES).
+# ---------------------------------------------------------------------------
+
+FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
+    "fmp_mcp_document": (
+        "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
+        "fetched_at DATETIME NOT NULL, refresh_after DATETIME NULL"
+    ),
+    "fmp_mcp_ephemeral": (
+        "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json TEXT NOT NULL, "
+        "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
+        "fetched_at DATETIME NOT NULL, expires_at DATETIME NOT NULL"
+    ),
+    "fmp_mcp_series_row": (
+        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, ts VARCHAR(32) NOT NULL, "
+        "row_json MEDIUMTEXT NOT NULL, fetched_at DATETIME NOT NULL, "
+        "PRIMARY KEY (family, series_key, ts)"
+    ),
+    "fmp_mcp_series_coverage": (
+        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, kind VARCHAR(8) NOT NULL, "
+        "range_from VARCHAR(10) NOT NULL, range_to VARCHAR(10) NOT NULL, "
+        "fetched_at DATETIME NOT NULL, PRIMARY KEY (family, series_key, kind, range_from)"
+    ),
+    "fmp_mcp_feed_item": (
+        "family VARCHAR(128) NOT NULL, item_id CHAR(64) NOT NULL, row_json MEDIUMTEXT NOT NULL, "
+        "fetched_at DATETIME NOT NULL, PRIMARY KEY (family, item_id)"
+    ),
+}
+
+
+def _fmp_mcp_table_creator(base_name: str):
+    def create():
+        table = get_table_name(base_name)
+        return execute_query(
+            f"CREATE TABLE IF NOT EXISTS {table} ({FMP_MCP_TABLE_COLUMNS[base_name]}) "
+            "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        )
+
+    create.__name__ = f"create_{base_name}_table"
+    create.__doc__ = f"Create {base_name} (fmp_cached MCP store, #1300)."
+    return create
+
+
 # Complete table configuration for all 67 entities
 FLATTENED_TABLES = {
+    **{
+        name: {"schema": _fmp_mcp_table_creator(name)} for name in FMP_MCP_TABLE_COLUMNS
+    },
     "aftermarket_quote": {"schema": create_aftermarket_quote_table},
     "analyst_estimates": {"schema": create_analyst_estimates_table},
     "available_indices": {"schema": create_available_indices_table},
@@ -6043,6 +6095,10 @@ EXPIRABLE_CACHE_TABLES: frozenset[str] = frozenset(
         "equity_peers",
         "institutional_ownership",
         "equity_quote",
+        # fmp_cached MCP server (#1300): the only prunable MCP table. Its
+        # persistent tables (fmp_mcp_document, fmp_mcp_series_row,
+        # fmp_mcp_series_coverage, fmp_mcp_feed_item) are never listed here.
+        "fmp_mcp_ephemeral",
     }
 )
 
@@ -6076,6 +6132,14 @@ CACHE_EXPIRY_RULES: tuple[CacheExpiryRule, ...] = (
     CacheExpiryRule("equity_peers", 7 * _DAY_SECONDS),
     CacheExpiryRule("institutional_ownership", 7 * _DAY_SECONDS),
     CacheExpiryRule("equity_quote", 300),
+    # Each fmp_mcp_ephemeral row carries its own expiry; its reader serves a
+    # row only while now < expires_at, so the rule's TTL is 0 on that column.
+    CacheExpiryRule(
+        "fmp_mcp_ephemeral",
+        0,
+        key_columns=("cache_key",),
+        timestamp_column="expires_at",
+    ),
 )
 
 

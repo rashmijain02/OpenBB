@@ -67,11 +67,18 @@ def _result(rendered: Rendered, meta: dict[str, Any] | None) -> types.CallToolRe
     )
 
 
-def _provenance(state: str, source: str, reason: str | None = None) -> dict[str, Any]:
+def _provenance(
+    state: str,
+    source: str,
+    reason: str | None = None,
+    as_of: dt.datetime | None = None,
+) -> dict[str, Any]:
+    """``_meta`` provenance in the #1269 DataState vocabulary."""
+    when = as_of or dt.datetime.now(dt.timezone.utc)
     prov: dict[str, Any] = {
         "state": state,
         "source": source,
-        "asOf": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "asOf": when.astimezone(dt.timezone.utc).isoformat(timespec="seconds"),
     }
     if reason:
         prov["reason"] = reason
@@ -96,8 +103,15 @@ async def call_tool(
     params = to_rest_params(args, PARAM_RENAMES)
     if upstream is None:
         return _result(Rendered("fmp_cached: no upstream configured", True), None)
+    fetch_tool = getattr(upstream, "fetch_tool", None)
     try:
-        resp = await upstream.fetch(spec["path"], params)
+        if fetch_tool is not None:  # persistent store in front of FMP (#1300)
+            result = await fetch_tool(name, args)
+            resp, state, source = result.response, result.state, result.source
+            reason, as_of = result.reason, result.as_of
+        else:
+            resp = await upstream.fetch(spec["path"], params)
+            state, source, reason, as_of = "live", "fmp", None, None
     except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
         # Never echo exception text: it can carry URLs or credentials.
         logger.warning("upstream %s failed: %s", spec["path"], type(exc).__name__)
@@ -112,8 +126,9 @@ async def call_tool(
         tool=name, arguments=args, path=spec["path"], status=resp.status, body=resp.body
     )
     rendered = Rendered(scrub(rendered.text), rendered.is_error)
-    state = "unavailable" if rendered.is_error else "live"
-    return _result(rendered, _provenance(state, "fmp"))
+    if rendered.is_error:
+        state = "unavailable"
+    return _result(rendered, _provenance(state, source, reason, as_of))
 
 
 def build_server(upstream: Upstream | None) -> Server:

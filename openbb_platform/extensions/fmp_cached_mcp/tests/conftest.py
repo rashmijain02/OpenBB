@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+# Import the fmp_cached provider from this checkout, not whichever checkout the
+# shared venv's editable install points at (its prune allowlist is under test).
+_PROVIDER = Path(__file__).resolve().parents[3] / "providers" / "fmp_cached"
+if _PROVIDER.is_dir() and str(_PROVIDER) not in sys.path:
+    sys.path.insert(0, str(_PROVIDER))
 
 HOSTED = Path(__file__).parent / "fixtures" / "hosted"
 SNAPSHOT = "2026-11-24"

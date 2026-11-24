@@ -2,8 +2,8 @@
 
 An MCP server with tool-for-tool parity to FMP's hosted MCP server
 (`https://financialmodelingprep.com/mcp`): the same 24 tools, 208 `endpoint` values, argument
-schemas, error texts and payloads. Data comes from FMP REST today; the persistent `fmp_cached`
-store goes in front of it in #1300. Spec: `specs/gh-1298-fmp-cached-mcp-parity/`.
+schemas, error texts and payloads. Data comes from the persistent `fmp_cached` store first and
+from FMP REST only for what the store does not hold yet. Spec: `specs/gh-1298-fmp-cached-mcp-parity/`.
 Deliberate differences: [DIVERGENCES.md](DIVERGENCES.md).
 
 ## Run
@@ -22,6 +22,29 @@ scrubbed from every result and log line.
 
 Binding anything other than loopback requires `FMP_CACHED_MCP_TOKEN` (at least 32 characters);
 when it is set, every HTTP request must send `Authorization: Bearer <token>`.
+
+## Persistent store
+
+`fmp_cached` MySQL is a persistent store, not a TTL cache. Every endpoint has a retention class
+(`specs/gh-1298-fmp-cached-mcp-parity/retention-classes.json`, rules in `policy.py`):
+
+| Mode | Kept | FMP is called |
+|---|---|---|
+| series (prices, indicators, rates) | rows forever (`fmp_mcp_series_row`) | for missing date ranges and the open tail (last 2 days); a re-based history (split, adjustment) is detected on the overlap and re-fetched |
+| document, immutable (as-reported, filings, past trades) | forever (`fmp_mcp_document`) | once |
+| document, revisable / reference (statements, profiles, lists) | forever, last good copy | after the refresh interval (1 day) |
+| feed (news, latest filings) | items forever (`fmp_mcp_feed_item`); listing 10 min | when the listing expires |
+| ephemeral (quotes, snapshots, screener) | `fmp_mcp_ephemeral` with `expires_at` | after 15 s to 15 min |
+| no-store (custom DCF) | nothing | always |
+
+A call about a past date is immutable whatever its class; an empty answer is never immutable.
+On an FMP failure the stored copy is served with `_meta.openbb/provenance.state = "stale"`.
+Only `fmp_mcp_ephemeral` is prunable (`python -m openbb_fmp_cached.utils.cache_prune`); the
+persistent tables are not in its allowlist.
+
+`--store auto` (default) uses the `fmp_cached` MySQL database and serves live-only if it is
+unreachable; `--store mysql` refuses to start without it; `--store sqlite:PATH` uses a local file;
+`--store none` stores nothing. `FMP_CACHED_MCP_STORE` sets the default.
 
 ## Re-recording the parity fixtures
 

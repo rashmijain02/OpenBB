@@ -1,4 +1,12 @@
-"""Command line: ``python -m openbb_fmp_cached_mcp [--transport stdio|http]`` (#1299)."""
+"""Command line: ``python -m openbb_fmp_cached_mcp [--transport stdio|http] [--store ...]``.
+
+``--store`` selects the persistent store (#1300):
+
+``auto`` (default)  the ``fmp_cached`` MySQL database; live-only if unreachable
+``mysql``           the ``fmp_cached`` MySQL database; refuse to start if unreachable
+``sqlite:PATH``     a local SQLite file (development, or hosts without MySQL)
+``none``            live-only, nothing stored
+"""
 
 from __future__ import annotations
 
@@ -16,10 +24,54 @@ from openbb_fmp_cached_mcp.app import (
     check_bind,
 )
 from openbb_fmp_cached_mcp.server import build_server
-from openbb_fmp_cached_mcp.upstream import FmpRestUpstream, load_fmp_key
+from openbb_fmp_cached_mcp.service import StoreBackedUpstream
+from openbb_fmp_cached_mcp.store import (
+    MySqlDatabase,
+    SqliteDatabase,
+    Store,
+    StoreUnavailable,
+)
+from openbb_fmp_cached_mcp.upstream import FmpRestUpstream, Upstream, load_fmp_key
+
+logger = logging.getLogger("openbb_fmp_cached_mcp")
 
 
-async def _run_stdio(upstream: FmpRestUpstream) -> None:
+class StoreSetupError(RuntimeError):
+    """``--store mysql`` was requested but the database is unreachable."""
+
+
+def open_store(spec: str) -> Store | None:
+    """Return a ready store for ``spec`` or ``None`` for live-only mode."""
+    if spec == "none":
+        return None
+    if spec.startswith("sqlite:"):
+        store = Store(SqliteDatabase(spec[len("sqlite:") :]))
+        store.create_tables()
+        return store
+    try:
+        store = Store(MySqlDatabase())
+        store.create_tables()
+        return store
+    except (StoreUnavailable, ImportError) as exc:
+        if spec == "mysql":
+            raise StoreSetupError(
+                f"fmp_cached MySQL store unavailable ({type(exc).__name__})"
+            ) from None
+        logger.warning(
+            "fmp_cached MySQL store unavailable (%s); serving live from FMP",
+            type(exc).__name__,
+        )
+        return None
+
+
+def build_upstream(key: str, store_spec: str) -> tuple[Upstream, FmpRestUpstream]:
+    """FMP REST client, with the persistent store in front unless disabled."""
+    rest = FmpRestUpstream(key)
+    store = open_store(store_spec)
+    return (StoreBackedUpstream(rest, store) if store is not None else rest), rest
+
+
+async def _run_stdio(upstream: Upstream, rest: FmpRestUpstream) -> None:
     from mcp.server.stdio import stdio_server  # pylint: disable=import-outside-toplevel
 
     server = build_server(upstream)
@@ -27,7 +79,7 @@ async def _run_stdio(upstream: FmpRestUpstream) -> None:
         async with stdio_server() as (read, write):
             await server.run(read, write, server.create_initialization_options())
     finally:
-        await upstream.aclose()
+        await rest.aclose()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,7 +88,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transport", choices=["stdio", "http"], default="stdio")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--store", default=os.environ.get("FMP_CACHED_MCP_STORE", "auto")
+    )
     args = parser.parse_args(argv)
+    if not (
+        args.store in ("auto", "mysql", "none") or args.store.startswith("sqlite:")
+    ):
+        parser.error("--store must be auto, mysql, none or sqlite:PATH")
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     # httpx logs request URLs at INFO; keep tool arguments out of the log.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -47,10 +106,14 @@ def main(argv: list[str] | None = None) -> int:
             "error: FMP key not configured (FMP_API_KEY or user_settings.json)\n"
         )
         return 2
-    upstream = FmpRestUpstream(key)
+    try:
+        upstream, rest = build_upstream(key, args.store)
+    except StoreSetupError as exc:
+        sys.stderr.write(f"error: {exc}\n")
+        return 2
 
     if args.transport == "stdio":
-        asyncio.run(_run_stdio(upstream))
+        asyncio.run(_run_stdio(upstream, rest))
         return 0
 
     token = os.environ.get("FMP_CACHED_MCP_TOKEN", "")
@@ -62,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     import uvicorn  # pylint: disable=import-outside-toplevel
 
     if not token:
-        logging.getLogger(__name__).info(
+        logger.info(
             "serving on loopback without a bearer token; set FMP_CACHED_MCP_TOKEN "
             "to require one"
         )

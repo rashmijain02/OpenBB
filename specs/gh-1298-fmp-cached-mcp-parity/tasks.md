@@ -22,33 +22,33 @@ Every task starts red (failing test first, red output kept). Sub-issues: A #1299
 
 ## PR-B — cache + provenance (US3, US4) (#1300)
 
-- [ ] B1 Add the schemas in `cache_schema.py`: `fmp_raw_series`, `fmp_raw_document`,
+- [x] B1 Add the schemas in `cache_schema.py`: `fmp_raw_series`, `fmp_raw_document`,
       `fmp_raw_feed_item`, `fmp_raw_feed_listing`, `fmp_mcp_ephemeral`. Add a canonical request
       key. Add `retention_classes.json` (owner-approved), with a completeness test: every
       endpoint has a class.
-- [ ] B2 Series path: gap detection per asset calendar (24 h for crypto and forex; equity
+- [x] B2 Series path: gap detection per asset calendar (24 h for crypto and forex; equity
       holidays), fetching only the missing parts, open-tail refresh until final, rebuilding rows
       in FMP order. Tests:
       - a second call for a closed range makes zero upstream calls;
       - a gap-only fetch requests exactly the gap;
       - the tail row is re-fetched while open and not after it is final.
-- [ ] B2b Document, reference and feed paths:
+- [x] B2b Document, reference and feed paths:
       - immutable rows are fetched once;
       - revisable and reference rows refresh after their interval;
       - feed items are upserted by id, and only the listing has a TTL;
       - the past-date rule promotes ephemeral calls to immutable.
-- [ ] B3 Stale-while-error on every persistent class, a 10-minute negative cache for 4xx, single
+- [x] B3 Stale-while-error on every persistent class, a 10-minute negative cache for 4xx, single
       flight, live-only mode when MySQL is down, and a `require_store` option.
-- [ ] B4 `_meta["openbb/provenance"]` with `DataState` subset test; content unchanged test.
-- [ ] B5 Add `fmp_mcp_ephemeral` to the `cache_prune` allowlist. Add a test that the persistent
+- [x] B4 `_meta["openbb/provenance"]` with `DataState` subset test; content unchanged test.
+- [x] B5 Add `fmp_mcp_ephemeral` to the `cache_prune` allowlist. Add a test that the persistent
       tables are not in it, with a mutation check (adding `fmp_raw_series` must fail), and keep
       the operator-table guard test.
-- [ ] B6 Warm-start from the 8 raw typed tables (statements ×3, key-metrics, ratios, profile, peers,
+- [ ] B6 (deferred: MySQL unavailable on the dev host 2026-11-24; the store fills on first use) Warm-start from the 8 raw typed tables (statements ×3, key-metrics, ratios, profile, peers,
       market hours) — only when the typed row set satisfies the requested `period`/`limit`.
-- [ ] B7 `plan_limited` path→model alias map; `plan_limited` markers on live tests.
-- [ ] B8 Record shape fixtures for all non-plan-limited endpoints (public symbols; long arrays
+- [x] B7 `plan_limited` path→model alias map; `plan_limited` markers on live tests.
+- [x] B8 Record shape fixtures for all non-plan-limited endpoints (public symbols; long arrays
       trimmed with recorded length); replay test over all.
-- [ ] B9 Real-path: run the scripted calls twice; second run 100% `cached`, zero upstream calls.
+- [x] B9 Real-path: run the scripted calls twice; second run 100% `cached`, zero upstream calls.
 
 ## PR-C — switch-over + gaps (US6) (#1301)
 

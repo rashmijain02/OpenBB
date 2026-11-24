@@ -53,3 +53,21 @@ def load_endpoint_map() -> dict[str, dict[str, dict[str, Any]]]:
 def endpoint_spec(tool: str, endpoint: str) -> dict[str, Any]:
     """Return the map entry for ``tool``/``endpoint`` (``KeyError`` if unknown)."""
     return load_endpoint_map()[tool][endpoint]
+
+
+#: Hosted endpoints whose data the ``fmp_cached`` provider knows under an
+#: OpenBB model name in ``openbb_fmp_cached.utils.plan_limited`` (CLAUDE.md
+#: FMP-tier rule). Live tests for these carry the ``plan_limited`` marker when
+#: the registry lists them.
+PLAN_LIMITED_ALIASES: dict[str, str] = {
+    "marketPerformance/most-active": "EquityActive",
+    "crypto/cryptocurrency-list": "CryptoSearch",
+    "indexes/sp-500": "IndexConstituents",
+    "indexes/nasdaq": "IndexConstituents",
+    "indexes/dow-jones": "IndexConstituents",
+}
+
+
+def plan_limited_model(tool: str, endpoint: str) -> str | None:
+    """OpenBB model name to look up in the ``plan_limited`` registry, if any."""
+    return PLAN_LIMITED_ALIASES.get(f"{tool}/{endpoint}")
