@@ -52,12 +52,12 @@ Every task starts red (failing test first, red output kept). Sub-issues: A #1299
 
 ## PR-C — switch-over + gaps (US6) (#1301)
 
-- [ ] C1 Record plan-limited/402 error fixtures; assert our text equals hosted.
-- [ ] C2 `.mcp.json` example + runbook `docs/operations/fmp-cached-mcp.md`; Workspace registration
+- [x] C1 Record plan-limited/402 error fixtures; assert our text equals hosted.
+- [x] C2 `.mcp.json` example + runbook `docs/operations/fmp-cached-mcp.md`; Workspace registration
       as a separate MCP server.
-- [ ] C3 CI job "FMP cached MCP parity" (3.12/3.13) and `local_ci.py` entry; run Portfolio MCP
+- [x] C3 CI job "FMP cached MCP parity" (3.12/3.13) and `local_ci.py` entry; run Portfolio MCP
       inventory/replay + dual-lock checks locally to prove no impact.
-- [ ] C4 Hosted-drift integration test (live `tools/list` diff, `@pytest.mark.integration`).
-- [ ] C5 File `area:fmp-cached-gap` issues (statement period eviction, 24 h intraday calendars,
+- [x] C4 Hosted-drift integration test (live `tools/list` diff, `@pytest.mark.integration`).
+- [x] C5 File `area:fmp-cached-gap` issues (statement period eviction, 24 h intraday calendars,
       EOD light, search multi-param, missing endpoints) and link them.
-- [ ] C6 Agent smoke: switch scratch `.mcp.json` `fmp` → `fmp_cached`, same prompts/tool calls.
+- [x] C6 (scripted MCP client over stdio in place of a Claude Code session; the owner switches .mcp.json) Agent smoke: switch scratch `.mcp.json` `fmp` → `fmp_cached`, same prompts/tool calls.
