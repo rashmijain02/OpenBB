@@ -38,6 +38,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+    # httpx logs request URLs at INFO; keep tool arguments out of the log.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     key = load_fmp_key()
     if not key:
@@ -59,7 +61,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     import uvicorn  # pylint: disable=import-outside-toplevel
 
-    uvicorn.run(build_http_app(upstream, token=token), host=args.host, port=args.port)
+    if not token:
+        logging.getLogger(__name__).info(
+            "serving on loopback without a bearer token; set FMP_CACHED_MCP_TOKEN "
+            "to require one"
+        )
+    app = build_http_app(upstream, token=token, host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port)
     return 0
 
 

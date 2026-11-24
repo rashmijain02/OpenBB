@@ -163,3 +163,87 @@ def test_binary_body_is_json_string_of_lossy_utf8_text():
         body.decode("utf-8", "replace"), ensure_ascii=False
     )
     assert result.text.startswith(r'"PK\u0003\u0004\u0014\u0000')
+
+
+# --- Review findings (PR-A code review): JavaScript JSON edge cases ------------
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (12345678901234567890, "12345678901234567000"),
+        (9007199254740993, "9007199254740992"),
+        (123456789012345678901234, "1.2345678901234569e+23"),  # node-verified
+        (9007199254740991, "9007199254740991"),
+        (-12345678901234567890, "-12345678901234567000"),
+    ],
+)
+def test_big_integers_print_as_javascript_doubles(value, expected):
+    assert js_number(value) == expected
+
+
+def test_integer_like_keys_come_first_in_ascending_order():
+    obj = {"b": 1, "2024": 2, "a": 3, "10": 4, "01": 5, "4294967295": 6}
+    # JS: array-index keys (0..2**32-2) first, ascending; then insertion order.
+    assert js_dumps(obj) == '{"10":4,"2024":2,"b":1,"a":3,"01":5,"4294967295":6}'
+
+
+def test_lone_surrogates_are_escaped_like_well_formed_stringify():
+    assert js_dumps("a\ud800b") == '"a\ud800b"'
+    assert js_dumps("\U0001f600") == '"\U0001f600"'
+
+
+def test_nan_and_infinity_literals_are_not_json():
+    result = render_response(
+        tool="quote",
+        arguments={"endpoint": "quote"},
+        path="/quote",
+        status=200,
+        body=b'[{"x": NaN}]',
+    )
+    assert result.text == '"[{\\"x\\": NaN}]"'
+
+
+def test_js_dumps_matches_node_on_edge_corpus_and_fixtures(tmp_path):
+    """Differential check against real ``JSON.stringify(JSON.parse(x))``."""
+    import random  # pylint: disable=import-outside-toplevel
+    import shutil  # pylint: disable=import-outside-toplevel
+    import subprocess  # pylint: disable=import-outside-toplevel
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node not installed")
+    rng = random.Random(1298)
+    corpus = [
+        [rng.uniform(-1e-9, 1e-9) for _ in range(200)],
+        [rng.uniform(-1e25, 1e25) for _ in range(200)],
+        [rng.randint(-(2**70), 2**70) for _ in range(200)],
+        [10.0**e for e in range(-30, 30)],
+        {"b": 1, "2024": 2, "a": [1.5, {"9": 0, "x": None}], "01": 3},
+        'control  tab	 quote" slash\  ',
+    ]
+    bodies = [json.dumps(c) for c in corpus]
+    for path in SAMPLES[:60]:
+        rec = json.loads(path.read_text("utf-8"))
+        if "rest_body_gz_hex" in rec:
+            bodies.append(
+                gzip.decompress(bytes.fromhex(rec["rest_body_gz_hex"])).decode()
+            )
+    src = tmp_path / "bodies.json"
+    src.write_text(json.dumps(bodies), encoding="utf-8")
+    script = (
+        "const b=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));"
+        "process.stdout.write(JSON.stringify(b.map(x=>{try{return JSON.stringify(JSON.parse(x))}"
+        "catch(e){return null}})))"
+    )
+    out = subprocess.run(
+        [node, "-e", script, str(src)],
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+    ).stdout
+    expected = json.loads(out)
+    for body, want in zip(bodies, expected):
+        if want is None:
+            continue
+        assert js_dumps(json.loads(body)) == want

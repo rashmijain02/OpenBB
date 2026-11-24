@@ -142,11 +142,13 @@ class Hosted:
 
 
 def rest(path: str, params: dict) -> tuple[int, bytes, str]:
-    query = urllib.parse.urlencode({**params, "apikey": KEY})
-    url = f"{REST_BASE}/{path.lstrip('/')}?{query}"
+    """GET ``/stable<path>`` with the key in the ``apikey`` header, not the URL."""
+    query = urllib.parse.urlencode(params)
+    url = f"{REST_BASE}/{path.lstrip('/')}" + (f"?{query}" if query else "")
+    req = urllib.request.Request(url, headers={"apikey": KEY})  # noqa: S310
     time.sleep(PAUSE_S)
     try:
-        with urllib.request.urlopen(url, timeout=120) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
             return resp.status, resp.read(), resp.headers.get("Content-Type", "")
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read(), exc.headers.get("Content-Type", "")

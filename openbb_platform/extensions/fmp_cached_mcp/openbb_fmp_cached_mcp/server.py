@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-import re
 from typing import Any
 
 from mcp import types
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 SERVER_NAME = "fmp_cached MCP Server"
 PROVENANCE_KEY = "openbb/provenance"
-_APIKEY_RE = re.compile(r"(?i)(apikey=)[^&\s\"'\\]+")
 
 
 class Scrubber:

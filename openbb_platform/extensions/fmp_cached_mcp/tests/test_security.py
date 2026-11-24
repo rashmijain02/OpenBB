@@ -15,7 +15,9 @@ from starlette.testclient import TestClient
 PKG = Path(__file__).resolve().parents[1] / "openbb_fmp_cached_mcp"
 
 
-@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1", "127.0.0.2"])
+@pytest.mark.parametrize(
+    "host", ["127.0.0.1", "localhost", "::1", "[::1]", "127.0.0.2"]
+)
 def test_loopback_hosts(host):
     assert is_loopback(host)
 
@@ -56,6 +58,7 @@ INIT = {
         "clientInfo": {"name": "t", "version": "0"},
     },
 }
+BASE = "http://127.0.0.1:8011"
 HEADERS = {
     "Accept": "application/json, text/event-stream",
     "Content-Type": "application/json",
@@ -73,7 +76,7 @@ def _post(client, body, session=None, token=None):
 
 def test_http_requires_bearer_token_when_configured():
     token = "t" * 32
-    with TestClient(build_http_app(_Up(), token=token)) as client:
+    with TestClient(build_http_app(_Up(), token=token), base_url=BASE) as client:
         assert _post(client, INIT).status_code == 401
         assert _post(client, INIT, token="x" * 32).status_code == 401
         ok = _post(client, INIT, token=token)
@@ -81,7 +84,7 @@ def test_http_requires_bearer_token_when_configured():
 
 
 def test_http_round_trip_omits_iserror_on_success_like_hosted():
-    with TestClient(build_http_app(_Up(), token="")) as client:
+    with TestClient(build_http_app(_Up(), token=""), base_url=BASE) as client:
         init = _post(client, INIT)
         sid = init.headers["mcp-session-id"]
         _post(
@@ -164,3 +167,57 @@ def test_upstream_failure_log_does_not_contain_key(caplog):
         )
     assert caplog.records, "the failure must be logged"
     assert all(secret not in r.getMessage() for r in caplog.records)
+
+
+# --- Review findings (PR-A security review) -------------------------------------
+
+
+@pytest.mark.parametrize("host", ["my-laptop.local", "rebind.example"])
+def test_dns_names_other_than_localhost_count_as_non_loopback(host):
+    assert not is_loopback(host)
+
+
+def test_http_rejects_foreign_host_header_on_loopback():
+    """DNS rebinding: a page on evil.example resolving to 127.0.0.1."""
+    with TestClient(build_http_app(_Up(), token="", port=8011)) as client:
+        headers = dict(HEADERS, Host="evil.example:8011")
+        resp = client.post("/mcp", content=json.dumps(INIT), headers=headers)
+        assert resp.status_code in (403, 421)
+        ok = client.post(
+            "/mcp",
+            content=json.dumps(INIT),
+            headers=dict(HEADERS, Host="127.0.0.1:8011"),
+        )
+        assert ok.status_code == 200
+
+
+def test_http_rejects_foreign_origin_on_loopback():
+    with TestClient(build_http_app(_Up(), token="", port=8011)) as client:
+        headers = dict(HEADERS, Host="127.0.0.1:8011", Origin="https://evil.example")
+        resp = client.post("/mcp", content=json.dumps(INIT), headers=headers)
+        assert resp.status_code == 403
+
+
+def test_bearer_auth_rejects_non_http_scopes():
+    import asyncio  # pylint: disable=import-outside-toplevel
+
+    from openbb_fmp_cached_mcp.app import BearerAuth  # pylint: disable=C0415
+
+    reached = []
+
+    async def inner(scope, receive, send):
+        reached.append(scope["type"])
+
+    sent = []
+
+    async def send(msg):
+        sent.append(msg)
+
+    async def receive():
+        return {"type": "websocket.connect"}
+
+    asyncio.run(
+        BearerAuth(inner, "t" * 32)({"type": "websocket", "headers": []}, receive, send)
+    )
+    assert reached == []
+    assert sent and sent[0]["type"] == "websocket.close"

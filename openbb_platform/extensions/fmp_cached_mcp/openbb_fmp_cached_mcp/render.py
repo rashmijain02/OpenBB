@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -24,6 +25,27 @@ from typing import Any
 NOT_FOUND_IDENTIFIERS = ("symbol", "cik", "name")
 
 PRICING_URL = "https://financialmodelingprep.com/developer/docs/pricing"
+MAX_SAFE_INTEGER = 2**53 - 1
+_ARRAY_INDEX = re.compile(r"^(0|[1-9][0-9]*)$")
+_MAX_ARRAY_INDEX = 2**32 - 2
+
+
+def _reject_constant(name: str) -> Any:
+    """``JSON.parse`` rejects ``NaN`` / ``Infinity``; so do we."""
+    raise ValueError(f"non-JSON literal {name}")
+
+
+def _is_array_index(key: str) -> bool:
+    return bool(_ARRAY_INDEX.match(key)) and int(key) <= _MAX_ARRAY_INDEX
+
+
+def _js_key_order(obj: dict) -> list[tuple[str, Any]]:
+    """JS property order: array-index keys ascending, then insertion order."""
+    items = [(str(k), v) for k, v in obj.items()]
+    index = sorted(
+        (kv for kv in items if _is_array_index(kv[0])), key=lambda kv: int(kv[0])
+    )
+    return index + [kv for kv in items if not _is_array_index(kv[0])]
 
 
 @dataclass(frozen=True)
@@ -39,7 +61,9 @@ def js_number(value: float | int) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, int):
-        return str(value)
+        if abs(value) <= MAX_SAFE_INTEGER:
+            return str(value)
+        value = float(value)  # JSON.parse reads every number as a double
     if not math.isfinite(value):
         return "null"  # JSON.stringify(NaN) === "null"
     if value == 0:
@@ -82,7 +106,7 @@ def js_dumps(obj: Any) -> str:
     if isinstance(obj, dict):
         return (
             "{"
-            + ",".join(f"{_js_string(str(k))}:{js_dumps(v)}" for k, v in obj.items())
+            + ",".join(f"{_js_string(k)}:{js_dumps(v)}" for k, v in _js_key_order(obj))
             + "}"
         )
     if isinstance(obj, (list, tuple)):
@@ -157,7 +181,7 @@ def render_response(
     """Turn one FMP REST response into the hosted tool-result text."""
     if status == 200:
         try:
-            parsed = json.loads(body.decode("utf-8"))
+            parsed = json.loads(body.decode("utf-8"), parse_constant=_reject_constant)
         except (UnicodeDecodeError, ValueError):
             return Rendered(_js_string(body.decode("utf-8", "replace")), False)
         if parsed == []:
