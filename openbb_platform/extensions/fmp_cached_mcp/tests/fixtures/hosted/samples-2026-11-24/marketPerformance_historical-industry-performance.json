@@ -1,0 +1,27 @@
+{
+ "tool": "marketPerformance",
+ "arguments": {
+  "endpoint": "historical-industry-performance",
+  "industry": "Consumer Electronics",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bb0f9e7f975979b96a54d04a623f2e026eabdae58c1930dee59434aaa93c8a38",
+ "hosted_text_len": 448,
+ "rest_path": "/historical-industry-performance",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "8ec6170c252b294fa2da722ce4eac22d9bb54d36399697435df946574c2c3738",
+ "rest_body_len": 569,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ab590b10a8330144577bf2264d690f74c62d24d6cd742e9583a8886566823442d2da5ffde68712c4ef2b8d3b93c0ef71411f20e2184d6656fe98650e4a8128004398d7fa471f5d0f5fe35d2a275dd70b79eec6eb6ea7deb9aaa9b7bf6595d4b7799beecf3e3363fcca47c585f5e6c31e304999652a192084682d4187a9ff8bf0c9815658071a1c36528718c5c92d1ebc970064a985480e2da80d168f4924db6e2349ca15628c22c06b3d40821a671a2f317e09c96b639020000",
+ "hosted_text": "[{\"date\":\"2026-11-20\",\"industry\":\"Consumer Electronics\",\"exchange\":\"NASDAQ\",\"averageChange\":-2.855626521951582},{\"date\":\"2026-11-19\",\"industry\":\"Consumer Electronics\",\"exchange\":\"NASDAQ\",\"averageChange\":-1.048484725272525},{\"date\":\"2026-11-18\",\"industry\":\"Consumer Electronics\",\"exchange\":\"NASDAQ\",\"averageChange\":0.16493416089198298},{\"date\":\"2026-11-17\",\"industry\":\"Consumer Electronics\",\"exchange\":\"NASDAQ\",\"averageChange\":-0.28624272927394445}]"
+}

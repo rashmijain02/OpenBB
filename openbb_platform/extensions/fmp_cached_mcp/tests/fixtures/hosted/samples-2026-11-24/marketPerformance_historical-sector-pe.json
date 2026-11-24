@@ -1,0 +1,27 @@
+{
+ "tool": "marketPerformance",
+ "arguments": {
+  "endpoint": "historical-sector-pe",
+  "sector": "Technology",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1ae093c46f9af1f9c3259db99cbe60aef8a1299433fddd210b04c8fa9a6f7ad8",
+ "hosted_text_len": 352,
+ "rest_path": "/historical-sector-pe",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "05fa7ae34336f46ca86e6dc2b9d7fe3ae91e5b55a547d0f3d7516d16f07ad61f",
+ "rest_body_len": 473,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aadcd310bc2301086e1bdbf22646e4372c9e5eedc0ace82e8260ea5863a482bda4111ffbbadd251ba74b8e55e3e9e43a6d46b38a5f4a9ea935e290d1662e15c0156e7bf724f75dfddc6b64ff5b9ed2e5df39c5a7ad4e7aa6dbecb4db95b97dba95cc79f47e32012317a714e88e210dff97fd5c9122a190c56189c9580917056e5255431c0812d08786bad8739949640d904718c1c1941c80b8e6a76fc00776b80a8d9010000",
+ "hosted_text": "[{\"date\":\"2026-11-20\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"pe\":35.126778539119776},{\"date\":\"2026-11-19\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"pe\":37.540982109456756},{\"date\":\"2026-11-18\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"pe\":39.28480292300032},{\"date\":\"2026-11-17\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"pe\":38.491858685297395}]"
+}

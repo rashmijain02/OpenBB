@@ -1,0 +1,22 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "sp-500"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "74939ca0cbdfc8653acfd3fba3b3b4c4bea8be5535f85505329a9ec4bc075ff5",
+ "hosted_text_len": 103832,
+ "rest_path": "/sp500-constituent",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "92ef3fdc3e6768aa1afcf8e4423fcc93c54a6050cf0ec6100af650be0229f8d6",
+ "rest_body_len": 130998,
+ "json_equal": true,
+ "compact_equal": true
+}

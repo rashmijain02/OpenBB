@@ -1,0 +1,25 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-quote-short",
+  "symbol": "EURUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "213c97950f350c8ba1a9c8637e27ff33f0f2acf7e389e46e74aacd48a3129b27",
+ "hosted_text_len": 71,
+ "rest_path": "/quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "551cf7ae45832fa3b97a19f149ddf85721b949edeb8caef1bb203c10713d47ca",
+ "rest_body_len": 102,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b0525d7d0a0d06017251d8878415166722a50d850cfc0d2c8dc082a9a9c9198970e1236d033303032b0b030854a94e5e794e682244c8d4d0c2c8162b55cb1000a47c45366000000",
+ "hosted_text": "[{\"symbol\":\"EURUSD\",\"price\":1.09272,\"change\":0.0020885,\"volume\":53409}]"
+}

@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "grades-summary",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5537777d1b0635c9a07bd40830e0278bed5e8f304b01c9b20c84962d24867c49",
+ "hosted_text_len": 94,
+ "rest_path": "/grades-consensus",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a8258d2d85a3c6a2deb50e66a64cc8f1ff840835d6d0f3696ee7917903bf7472",
+ "rest_body_len": 143,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251da86849517e5eba53692550c2102a9604e6991b40b919f9392940beb1114c4b6a0ec8184b1413822182303dc9f979c5a979c5a5c520fb40a603856bb962014b51b07b8f000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"strongBuy\":1,\"buy\":70,\"hold\":32,\"sell\":9,\"strongSell\":0,\"consensus\":\"Buy\"}]"
+}

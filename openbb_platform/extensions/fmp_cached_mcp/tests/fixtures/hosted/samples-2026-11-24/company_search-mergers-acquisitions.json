@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "search-mergers-acquisitions",
+  "name": "Apple",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "b25f4e43ea55f559fdffe90108a68f6654dc11089c4fcd764900b8443348c219",
+ "hosted_text_len": 981,
+ "rest_path": "/mergers-acquisitions-search",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6a855fe675d52207bef62fd4072bfe3a747d5523e8b6467a6137ff1adba5a2dd",
+ "rest_body_len": 1162,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020acd94514f83301485dffd150dcf63ed2d1dacbc115d74c698c5f9628c592a6bb6462884765b88f1bf5b98231a872646134949807b38f7f21de0fe04a167b723e4993a7f2c322f46de6c727ee70df657d3222f85aeaf452edb92d252946526d144cb6a55a3a94e879d563d351ad26c9446040e052baa95b47279fad1cc9de61bad526155a10d9ad7c6cadc0c3e7876b77ee73defc6bf3c9d77c54a6823d2c6ff4cd8b62925147c708b1e44224d65e91c3e2b10e1f188c5b493664ab763acad2d4d8cf16eb71b1a990e57c5162755ba565b69b05cae448597c20adc4e8a9b99c73c020214dc210f2816148072ba303e1bae6dee39fb97c1b12c92d9d5a4278ba4cde1a230a5b22253b6463793e9eda02712603076fdbf8b4459751cbdde64591ff2f7b563c421f4c9c8a7ac9ff84181208a691833f653e26f8fd93007188f9a1512c222c271fbdeae1d2ebb30ccb58310c27f053f89923f601ff884fb40be60ffa640c0e380c724fc45f681fb5a0919edd9575259ed7e20be610bc20983a0c37ff2f00a6bcc76778a040000",
+ "hosted_text": "[{\"symbol\":\"PEGY\",\"companyName\":\"Pineapple Energy Inc.\",\"cik\":\"0000022701\",\"targetedCompanyName\":\"Communications Systems, Inc.\",\"targetedCik\":\"0000022701\",\"targetedSymbol\":\"JCS\",\"transactionDate\":\"2021-11-12\",\"acceptedDate\":\"2021-11-12 09:54:22\",\"link\":\"https://www.sec.gov/Archives/edgar/data/22701/000089710121000932/a211292_s-4.htm\"},{\"symbol\":\"APLE\",\"companyName\":\"Apple Hospitality REIT, Inc.\",\"cik\":\"0001418121\",\"targetedCompanyName\":\"Citi\",\"targetedCik\":null,\"targetedSymbol\":null,\"transactionDate\":\"2016-05-24\",\"acceptedDate\":\"2016-05-24 17:26:44\",\"link\":\"https://www.sec.gov/Archives/edgar/data/1418121/000118518516004709/applehospt_s4-051616.htm\"},{\"symbol\":\"APLE\",\"companyName\":\"Apple Hospitality REIT, Inc.\",\"cik\":\"0001418121\",\"targetedCompanyName\":\"A7A\",\"targetedCik\":null,\"targetedSymbol\":null,\"transactionDate\":\"2013-09-10\",\"acceptedDate\":\"2013-09-10 19:39:06\",\"link\":\"https://www.sec.gov/Archives/edgar/data/1418121/000118518513002005/applereitnine-s4_090413.htm\"}]"
+}

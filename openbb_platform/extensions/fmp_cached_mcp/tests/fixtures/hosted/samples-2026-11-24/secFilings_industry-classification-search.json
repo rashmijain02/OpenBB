@@ -1,0 +1,19 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "industry-classification-search",
+  "limit": 2
+ },
+ "isError": true,
+ "result_keys": [
+  "content",
+  "isError"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bbae9d60a479b5d5b0b7c1eaed10e4080ae0dfb7e643d62b9371b8495a7a10c9",
+ "hosted_text_len": 142,
+ "rest_path": "/industry-classification-search",
+ "hosted_text": "Bad request for tool \"secFilings\" (endpoint /industry-classification-search): Please enter at least one search value: cik, sicCode, or symbol."
+}

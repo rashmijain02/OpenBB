@@ -1,0 +1,25 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "symbol-changes-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5b314523c1653e5d6d07130d25e02ff5a309cbd54f444cfc3d2064f2e0011f7b",
+ "hosted_text_len": 231,
+ "rest_path": "/symbol-change",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "579fadea41d9109bf44b87a30e3ca8500adf5f326bfa6f86a79b362c93c8fe61",
+ "rest_body_len": 292,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dcecd0a82401486e1bd577198b5461ab46867222558818652d1621c8792e647c6c9b0e8de3345dab86a7156cff9e03d1900aff600508e35450b40ced4995bb66d393364f642242fb168b698770f7e4d152b60c5648619ac25cb0b71a9201064029062a5b0d0c3b4c5b8e19964dfe1c6f5827410411f3ff193284c510b6ff38f20b7a6e229617fa50a97f4ae0b52997d8e27399702622dc96d34290a0fcbd1223739eeba20e3fc013fdee27424010000",
+ "hosted_text": "[{\"date\":\"2026-11-23\",\"companyName\":\"Everli Global Holdings Inc.  Warrant\",\"oldSymbol\":\"MACIW\",\"newSymbol\":\"EVRLW\"},{\"date\":\"2026-11-23\",\"companyName\":\"Avenzo Therapeutics, Inc. Common Stock\",\"oldSymbol\":\"RLYB\",\"newSymbol\":\"AVZO\"}]"
+}

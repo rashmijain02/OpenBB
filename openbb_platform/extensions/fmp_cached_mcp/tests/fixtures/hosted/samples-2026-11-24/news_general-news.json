@@ -1,0 +1,25 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "general-news",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c2b7c5bc0f11138c666fb762bf1a26dbe5ab277272561bf0f5fc2d6d86b1614d",
+ "hosted_text_len": 1171,
+ "rest_path": "/news/general-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "bc04b71b3bc972df48d5537e337fc2553c28b7b6d03c7b908397af26a4e75a63",
+ "rest_body_len": 1280,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ab5924b6fdb301084eff9150ba347af5e501ff0b545811e7a4952f450f4b09656126b8a14480a8a50f4bf7729296e9a1839342860c3d08af47c333bdfae007eca1760e7e7fe68f5ee0066d47abfce86f1a895efb8fe4081e5d5aec88a3798e75894909587bc3c64d9eed15917cf7d2677e2005f2954ddfd81a0825efee4b66338aab6651fe4d706ae3aa89934280386c9e91942e7986196070f1539a7d80341c74d98e15599cb35ad953530385531046aef45544fed22d28530f8439a2e039f34ca90a914e9ded6ac956907c74352d93e353cf934748c1b126e48189150195c917041c2050937248c71e47951263f863381576b54fd12c11413883ae714f82ec4d71f1d9be8db8d6d4f27767043c6360ac4d4edc8bea619a815c51a828581feb6dd58075f929be41cdf27e37baef7e78cb65c3a0a30c91d99ea411e19868e5c4fd02a32016cd378d9d2329705cb84ef06e528440df9109c785e10937bfcd1e987e94ed3943c329afa60ddfcaf89122e06b0cc71338b8b17941d635dbf6da828deed84e5d7fe45d5cd5e1fb2f26275af790cecfc93d6beefa4427b49ba560431b6b804c79575355c8fde4ba2609594b81fac0b3e96394aeee13806a9774fa6966b2c9d653a49015fd8d82ae248984283428342832b0dba95068506379a98fa736575abe94b45fd5fbe2f34e901457a1cbd32ec7dca865d3b3ff1fb8cd765d3ab324665dc94f14f05d2a54257df7f03f014ffe000050000",
+ "hosted_text": "[{\"symbol\":null,\"publishedDate\":\"2026-11-24 04:14:00\",\"publisher\":\"Market Watch\",\"title\":\"The biggest biotech deal in nearly three years carries a hefty $41 billion price tag\",\"image\":\"https://images.financialmodelingprep.com/news/the-biggest-biotech-deal-in-nearly-three-years-carries-20261124.jpg\",\"site\":\"marketwatch.com\",\"text\":\"French drugmaker Sanofi on Tuesday agreed to pay $41 billion for U.S. biotech Insmed, a hefty price that will help the pharma giant offset the patent expiration on a key drug.\",\"url\":\"https://www.marketwatch.com/story/the-biggest-biotech-deal-in-nearly-three-years-carries-a-hefty-41-billion-price-tag-dd7fa228\"},{\"symbol\":null,\"publishedDate\":\"2026-11-24 04:05:04\",\"publisher\":\"Reuters\",\"title\":\"China, India set for record Russian oil imports in 2026, but demand seen peaking\",\"image\":\"https://images.financialmodelingprep.com/news/china-india-set-for-record-russian-oil-imports-in-20261124.jpg\",\"site\":\"reuters.com\",\"text\":\"China, India set for record Russian oil imports in 2026, but demand seen peaking\",\"url\":\"https://www.reuters.com/business/energy/china-india-set-record-russian-oil-imports-2026-demand-seen-peaking-2026-11-24/\"}]"
+}

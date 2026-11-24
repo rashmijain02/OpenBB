@@ -1,0 +1,23 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "ipos-prospectus",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "9e12a321afea2e2e37601a1bc3a7ec40e703858429f17113deb20aa6831fe7f7",
+ "hosted_text_len": 109065,
+ "rest_path": "/ipos-prospectus",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3ccffe316dd4003cb025af3271027635653684090965d2f79dce2490a533c51a",
+ "rest_body_len": 130738,
+ "json_equal": true,
+ "compact_equal": true
+}

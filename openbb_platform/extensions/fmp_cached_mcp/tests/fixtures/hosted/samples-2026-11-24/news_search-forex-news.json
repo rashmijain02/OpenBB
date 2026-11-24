@@ -1,0 +1,28 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "search-forex-news",
+  "symbols": [
+   "EURUSD"
+  ],
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "0860649afec67fa21eb00fa309d331df1bb2c687e6adac7e1d05a6628b3a37b5",
+ "hosted_text_len": 1262,
+ "rest_path": "/news/forex",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a10ad3d2aa8ee6a59f7b484ded313e8bbe137c024d7b09f3ae2ef3746f573507",
+ "rest_body_len": 1373,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aad94cd6edb300cc7ef7d0aa2e7f843699265b9056df685ae299a64976107d9a66dadb2644872dd6018b077d81bee4946297151146b31603b2471288afc93fcd19f4f00bed107e0d4ee9b4ccbd3059cae7637bbcdc5e9e8606fbb4c0a5b6371c11dfae3713a9e458c45e309a4678b69ba98cc9efa1aefb73619de0f274e3889c7e00945875f3f7e8e273163b10f3778898657c1ab76aeb58b2409061b974271950b2e1b5da014aa6a0db671ae9b44616f13ec4c670b12c45810e7bfe871127f6dab21b41507f5daabf2571f94e1bd0bc23aa3a1e18a1216e0e811d181e3a6a21f16a7af5f4da1af8544e811ac135282d4fa96b49073cf4d011673ad8a47575e4d53585a72231f6e29b6b9a5835acbc2dfca50ea1e0c5a611d15877483a5b329b81aa130ba059ba3e24678517bb01d790905cb4cdf0557c6a6d068e3b5185495ab831b2f4bccdd90aad4064a6e28a2a14499ee48de66777dbdbed9c2cd6af37eb35d5e9dafe072f56975c9bce2f93c1d6404e37828e3983018cfbc71360ec6f13c1dfad819f978727ddfc70fbd4e32a9ab0455e2279330e627161d461648f2085094efa37fc6913d8be33277422b78433d7b9eca8fc497a1c0720fbb760459e760dd393f68b8d20e2e8f137fab75f17f986d1e12465d1b51be481ff2454abbe848585451be17a9e6a1b8d2d7f647b68fe5d5280b50c84d203a4d811ab2edd0167c1fc396c043bf04c2129cbe4cdbb5ad368ef62123b41488a635845f83ca01b158499d7139c066c92ac251a925a1ed03f84a819b00ded59d2804a7304540dca0eb8c025dc207547417de75fcb027e7abf5c8af5a5e434d7f33a379818a44087587d611d34239a4c509228cb0b782f8e6d6a2b3f10b343ee95142dbea8ca0966b63138779ad44ce65446f00b9a7a54c6633369f4fa301d5bf9f5412583ef9f21bd9b7bc375d050000",
+ "hosted_text": "[{\"symbol\":\"EURUSD\",\"publishedDate\":\"2026-11-24 03:50:46\",\"publisher\":\"Orbex\",\"title\":\"EUR/USD –24.11.2026\",\"image\":\"https://images.financialmodelingprep.com/news/eurusd-24112026-20261124.jpg\",\"site\":\"orbex.com\",\"text\":\"Euro managed to meet target 1.0975 while we still looking toward second target 1.0750 As long as market holding below resistance 1.1065 the drop scenario may sustain Above 1.1115 more strength may affect market for farther rebound SUPPORT RESISTANCE LEVEL1 1.0880 1.1065 LEVEL2 1.0750 1.1115 LEVEL3 1.0620 1.1280\",\"url\":\"https://www.orbex.com/blog/en/2026/11/eur-usd-24-11-2026\"},{\"symbol\":\"EURUSD\",\"publishedDate\":\"2026-11-24 03:10:46\",\"publisher\":\"Action Forex\",\"title\":\"EUR/USD Moderately Up, but Outlook Not Looking Good\",\"image\":\"https://images.financialmodelingprep.com/news/eurusd-moderately-up-but-outlook-not-looking-good-20261124.jpg\",\"site\":\"actionforex.com\",\"text\":\"EUR/USD held near 1.0900 on Tuesday. The euro is being supported by an improvement in global market sentiment following news around Nvidia and the return of Jensen Huang as CEO, which has broadened investor interest in riskier assets.\",\"url\":\"https://www.actionforex.com/contributors/technical-analysis/661885-eur-usd-moderately-up-but-outlook-not-looking-good/\"}]"
+}

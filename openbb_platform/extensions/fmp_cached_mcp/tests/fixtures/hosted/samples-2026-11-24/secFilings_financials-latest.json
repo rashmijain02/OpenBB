@@ -1,0 +1,27 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "financials-latest",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "393c6ae3d96ca2164b1919011355b4afc97c25df1e842d0f4c58bb879c8e8efe",
+ "hosted_text_len": 705,
+ "rest_path": "/sec-filings-financials",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c530f1ee06a0d232bf4c503391e2e0b9b759013542d711ab21624ad9f25e4f5e",
+ "rest_body_len": 814,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020abd514d4bc43014bcefaf083d6f9b97b4696d6fc545046541f0262231cdb6c17ed9c6ad8bf8df4db35bbae07a2b4292c3cc2333f3e66985d097b90839fda17a6d4a27414e7a7dbb75d64754a8b711020012469445642276aa5475bee15a8e3c051aba84b8d44700893dd3201742b65a66bf46015192303f61f39f4d573d1e5a3b46c07d98f082f737aae6b550bcec0da9bb0f79a28c096bb0d0baed138c8761f07a29bcbcd9e3b41385dacb1ecb2ce71dceb8e6f894028f8182d8278cd21098cfe2f00c728dc323e8aa3a939f5ea1ab3977cdcbfbe554c7cc26ebbbd53012dfeb4b956cd3bbcd854a228862122f5c89cf1216fd6725c714763924003f2466390133ef19642bb1e05295fcad2a7714e00ac280bd10988b593dff00e1e4f3792e030000",
+ "hosted_text": "[{\"symbol\":\"ACHN\",\"cik\":\"0001672571\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 21:53:51\",\"formType\":\"10-Q\",\"hasFinancials\":true,\"link\":\"https://www.sec.gov/Archives/edgar/data/1672571/000149315226053596/0001493152-26-053596-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1672571/000149315226053596/form10-q.htm\"},{\"symbol\":\"NAKD\",\"cik\":\"0001707919\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 21:35:57\",\"formType\":\"10-Q\",\"hasFinancials\":true,\"link\":\"https://www.sec.gov/Archives/edgar/data/1707919/000114036126045126/0001140361-26-045126-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1707919/000114036126045126/ef20080645_10q.htm\"}]"
+}

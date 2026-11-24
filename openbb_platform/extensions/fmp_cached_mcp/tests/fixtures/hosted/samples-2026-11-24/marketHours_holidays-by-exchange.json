@@ -1,0 +1,25 @@
+{
+ "tool": "marketHours",
+ "arguments": {
+  "endpoint": "holidays-by-exchange",
+  "exchange": "NASDAQ"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1f3776c369a71253cba5ebf82d66f83e6cc7462a0bf8cfc0aeeaf88aefb9f938",
+ "hosted_text_len": 1529,
+ "rest_path": "/holidays-by-exchange",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "7b3105cd9b2f97c033cc0a926f2994980fc502fa49f4248c83864f32ff7eb6b1",
+ "rest_body_len": 2046,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ad593df4fc23010c7dff92b2e7bf1859a753010de10c48880319218637c38e9c9aa5b67da4e25c6ffdd668ae8328d1a1366d2bedcf7aef7b91f3daf013cba0be0d1c33c42b520af0bdeb47732e81d7bf51745a0cdad811fb498df617e7ba5284c72658c97a986012e578234fd3835249c687546af5614d747b7a466328f52591caf85dcff9de284a7facfe9dacc6f14e90e94209756909a5325205b8c778a90a34c91255236da385ec882b08837a124d512e34af4af5932e4fd341530d45254802f60bc55e43b451349b5b0a9da32b02bb58daa40ca4b367182da4a05e3cc46a4e1d041d761a4b72b3179ee4e91774af77046a85d5f378e18321e94fc9e7ea4a5b1095686b0f939e11eea780979aa12d28f40df22f578a3ebfbebb786ce73f9f6e015c6867e590867c14eb190998bbc310b79e7f6f69fd5d2feb2963fdf9cdac53305f47c3ffe070000",
+ "hosted_text": "[{\"exchange\":\"NASDAQ\",\"date\":\"2026-09-07\",\"name\":\"Labor Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-07-03\",\"name\":\"Independence Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-06-19\",\"name\":\"Juneteenth\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-05-25\",\"name\":\"Memorial Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-04-03\",\"name\":\"Good Friday\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-02-16\",\"name\":\"Washington's Birthday\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-01-19\",\"name\":\"Martin Luther King, Jr. Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2026-01-01\",\"name\":\"New Year's Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2025-12-25\",\"name\":\"Christmas Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null},{\"exchange\":\"NASDAQ\",\"date\":\"2025-12-24\",\"name\":\"Christmas Early Close\",\"isClosed\":null,\"adjOpenTime\":null,\"adjCloseTime\":\"13:00\",\"isFullyClosed\":false},{\"exchange\":\"NASDAQ\",\"date\":\"2025-11-28\",\"name\":\"Thanksgiving Early Close\",\"isClosed\":null,\"adjOpenTime\":null,\"adjCloseTime\":\"13:00\",\"isFullyClosed\":false},{\"exchange\":\"NASDAQ\",\"date\":\"2025-11-27\",\"name\":\"Thanksgiving Day\",\"isClosed\":true,\"adjOpenTime\":null,\"adjCloseTime\":null}]"
+}

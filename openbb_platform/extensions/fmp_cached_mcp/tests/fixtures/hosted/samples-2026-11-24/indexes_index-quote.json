@@ -1,0 +1,27 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "index-quote",
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "eebaf97cdf49348f67b29573689aacd1b1557858c8f252145293d8aa11343722",
+ "hosted_text_len": 327,
+ "rest_path": "/quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "f1918cfaf2799c911ccb8c47a0dda9e88fb688f606f86229c6ab4ce229c684ac",
+ "rest_body_len": 436,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a5d90c14ac4301086effb14a1074f1292492669bd491515440a7b114421d6d02db64d69bbd522bebb4db759570fb97cdf6466fe79da10f2353f42a27eaa5f5d155d90e8e5669ba5d1f90137a6b61e6ecf32828c05dc7665eeb906a129d72bcd77a6296c66bbdc3683297c81a41ae218fe14cc5880a23a5ee9e8aafd32458244859231b69a3733ddbb0f3f872350a57ef16d59ec96f909d280276bbac0632929c28938f451822b9af095d7a67bb7436adad9b0d364976381ccb751801450897f12d862858c298614f6f3982eba7bb8ba7e0cb772ad6d96554153c98f9dec58ba7d9f56aef75f54c21915c96a87b2b6fd606abf18d7094acd388ad97d6f9e7f00d5f7c2d0b4010000",
+ "hosted_text": "[{\"symbol\":\"^GSPC\",\"name\":\"S&P 500\",\"price\":7237.17,\"changePercentage\":4.72882,\"change\":326.78,\"volume\":4245654000,\"dayLow\":7152.66,\"dayHigh\":7295.6,\"yearHigh\":7844.52,\"yearLow\":6316.91,\"marketCap\":0,\"priceAvg50\":7625.2563,\"priceAvg200\":7348.58,\"exchange\":\"INDEX\",\"open\":7227.41,\"previousClose\":6910.39,\"timestamp\":1795470153}]"
+}

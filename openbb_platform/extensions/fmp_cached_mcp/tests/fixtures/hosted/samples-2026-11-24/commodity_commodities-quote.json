@@ -1,0 +1,25 @@
+{
+ "tool": "commodity",
+ "arguments": {
+  "endpoint": "commodities-quote",
+  "symbol": "GCUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "02f3af025a12749a792efdce601d6104d11e1f9bab6aae6bae534eb3b3467422",
+ "hosted_text_len": 326,
+ "rest_path": "/quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "58df5f6bb0e34e4dc8d1f62832b40efce2ddfdaf8fb21b458f055b8a3ed57da0",
+ "rest_body_len": 435,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a5d90cd4e84301446f7f3140d6b6d5aa005dc1926fe244ec6445d4c8c8bcadc30c442490b2831bebba55398d14537e734f7fbee7d5d21f46d1f428119eb7725832b14dce62f4febe0e2881b5183834aeed14ddff51accec5a5d15938c384d71e66171104d098fa00b683a514efe92e0342324f9f363e2518899878392bd4be2691c530ff7627c509f2e81701c9fe85d551e1c4e389ec78e20b4e78c871ca767dc4f61245c7ad6427f40978bd68aa697f27ca7eba164c4f29864760efba742e29c0dc78c7b075fcb5641bedd6cb6ebfbe7dd7c27d542e3da46a7255a0d43a57a934b658e376474915d5583e9443d75a349c6188d284dadfb59bdfd02f3f07b34b3010000",
+ "hosted_text": "[{\"symbol\":\"GCUSD\",\"name\":\"Gold Futures\",\"price\":3618.9,\"changePercentage\":-0.89007,\"change\":-32.5,\"volume\":68441,\"dayLow\":3606.4,\"dayHigh\":3676.7,\"yearHigh\":5626.8,\"yearLow\":3502.9,\"marketCap\":null,\"priceAvg50\":4096.85,\"priceAvg200\":4367.56,\"exchange\":\"COMMODITY\",\"open\":3636.4,\"previousClose\":3651.4,\"timestamp\":1795513118}]"
+}

@@ -1,0 +1,26 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-CIK",
+  "cik": 320193,
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "9bd25431ff88543dcbab485139a130af3752f640278f2a9f2767c6e1eebfa5d5",
+ "hosted_text_len": 289,
+ "rest_path": "/search-cik",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "f7080854cf2f4b111497468d1c7366164425017f5ed9285f43067c30f7d19c25",
+ "rest_body_len": 374,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d8868727e6e41625ea55f626e2a58aaa0202755c1332f590fae20331b24610004c646068696c63089d48ae48cc4bcf454b7d29c1c98763fc76017c74005f79cfca4c41c85e0d49cd4e41274f50875702b4a8b8a52f3922b4132a1c12e4a40d15a1d5c0ed70bf1a78ddb43f28bf2f34af215824bf293b3155c61aec5e2fa90e0086c4e777684389d2b160090ddc12676010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"companyName\":\"Apple Inc.\",\"cik\":\"0000320193\",\"exchangeFullName\":\"NASDAQ Global Select\",\"exchange\":\"NASDAQ\",\"currency\":\"USD\"},{\"symbol\":\"AAPL.TO\",\"companyName\":\"Apple Inc.\",\"cik\":\"0000320193\",\"exchangeFullName\":\"Toronto Stock Exchange\",\"exchange\":\"TSX\",\"currency\":\"CAD\"}]"
+}

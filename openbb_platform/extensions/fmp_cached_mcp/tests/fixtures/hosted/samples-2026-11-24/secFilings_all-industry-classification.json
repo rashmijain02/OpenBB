@@ -1,0 +1,25 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "all-industry-classification",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "850a1a0425e7d85d0db9fd8ef6a336286fcf5c847139a3afb6ea938d098b05f5",
+ "hosted_text_len": 484,
+ "rest_path": "/all-industry-classification",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "90eb97055dec0fe43b21c51d7cd2bc3767091c9ce0adc1bdd2e90c85274c7047",
+ "rest_body_len": 581,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7d905f4fc23014c5dff914377b992613ba8d8de2dba5545828ad769584101e842d71118661f0408cdfdd0edd8b824dfa27e7f69ed3fe162d800f3b019ceab45ded36ce3d38e4c98fdbc2f1bef5f2659bd7ea00e504d403e094eb842130a51fa133e49de6e2ba783b77d7a34768449b4255acd92e3b9bc424f01bb928b36375d89f4c71d89c8b124da2240a6b3db5212cb1c73a356d3a56c7aa28f3aac22cdbdbadee59b897dea5341a0e8c4bc3b5eb81cbc6a8853256930c021a4491bb6c4cdf5f77652e8fdb55beaf0d7ba41bd2987669ecd8faa7770910fe6683a344d830309c8da5126a94f0d48344b2f65f383ee913da0b2ec00969105f85237050ff4ae939a0653437f6afc246a4463f4f6df6ff90a290f8901a3ee33205a6399fc040cc86359b14a5b1d4046abb22f42312f957e9dc7409bd85b01bdd51fa43a8b5fc026fea4dbc45020000",
+ "hosted_text": "[{\"symbol\":\"0Q16.L\",\"name\":\"BANK OF AMERICA CORP /DE/\",\"cik\":\"0000070858\",\"sicCode\":\"6021\",\"industryTitle\":\"NATIONAL COMMERCIAL BANKS\",\"businessAddress\":\"['BANK OF AMERICA CORPORATE CENTER', 'CHARLOTTE NC 28255']\",\"phoneNumber\":\"7043868486\"},{\"symbol\":\"A\",\"name\":\"AGILENT TECHNOLOGIES, INC.\",\"cik\":\"0001090872\",\"sicCode\":\"3826\",\"industryTitle\":\"LABORATORY ANALYTICAL INSTRUMENTS\",\"businessAddress\":\"['5301 STEVENS CREEK BLVD', 'SANTA CLARA CA 95051']\",\"phoneNumber\":\"(408) 345-8886\"}]"
+}

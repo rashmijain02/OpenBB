@@ -1,0 +1,28 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "historical-market-cap",
+  "symbol": "AAPL",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bd749769fa7aade044b95fadf35cfba981967afeef787855452c932b925e31af",
+ "hosted_text_len": 129,
+ "rest_path": "/historical-market-capitalization",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "45ab97ba444ffeeb2c4f79012394de3058c0d01fc2bef797809a4bc1890683bb",
+ "rest_body_len": 178,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c80026939b58949d5ae29c58009436b1b434343433b5b4b4343230004ad7ea906aaea12536734d0d2c2c0c4ccdcd2d4d2d4dc1e672c50200c0e01e5ab2000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-20\",\"marketCap\":4991165999200},{\"symbol\":\"AAPL\",\"date\":\"2026-11-19\",\"marketCap\":5088057795950}]"
+}

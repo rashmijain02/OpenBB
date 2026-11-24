@@ -1,0 +1,25 @@
+{
+ "tool": "commodity",
+ "arguments": {
+  "endpoint": "commodities-intraday-1-min",
+  "symbol": "GCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "870ac662d87dd4291b913e7db8434d21f64e26bb108ba520771ddd4d49dadc74",
+ "hosted_text_len": 100884,
+ "rest_path": "/historical-chart/1min",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ae90dba473c681f7cc5441950a54d77d13586af63d7785d5edb3cd1dcd63114c",
+ "rest_body_len": 143725,
+ "json_equal": true,
+ "compact_equal": true
+}

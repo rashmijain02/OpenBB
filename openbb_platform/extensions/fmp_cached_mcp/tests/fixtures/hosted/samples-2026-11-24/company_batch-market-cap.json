@@ -1,0 +1,29 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "batch-market-cap",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e8ebd36d417b88ef7eeafaaeb88cdbefeb947bf7ee1546a11bb5f93d9396b30f",
+ "hosted_text_len": 129,
+ "rest_path": "/market-capitalization-batch",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a91187bf290d984026fa5d9f2d56b4dc3f6226763c0624a3aea0a1439867ec7e",
+ "rest_body_len": 178,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c81826939b58949d5ae29c58009436353037b23430303637333030004ad7ea6033d737d82d8434738dcd4ccd8d2d2d4ccd4da1e672c5020031a13109b2000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-23\",\"marketCap\":5072900376000},{\"symbol\":\"MSFT\",\"date\":\"2026-11-23\",\"marketCap\":3657398575000}]"
+}

@@ -1,0 +1,28 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "search-by-form-type",
+  "formType": "8-K",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e0ac2b4234df7d2a205c7533f32ec3d7a145e9831412718e7b937a8f0f223098",
+ "hosted_text_len": 673,
+ "rest_path": "/sec-filings-search/form-type",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "fdc1668bceccd2e4d2298e7df11d8bf2960a43293179c2e6c9f22bfd0c3f3cff",
+ "rest_body_len": 770,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aad91cd4ec3301084ef7d0a2be7bade5db7499c5b05374042941b42c8242689f2ab246a5a21de9dc425a512e516c9becc8e3cb39f5f168c7d0e9731a73d16ef55ee04ccb9d93e3e39cb931aa6d9280100a294beaba6c1479aa7657cab3b33ce09c8e5889c240308ec998c3a0c4ddd99e88f151841809b00bdf39b55533c1f6b6bf3f9dd240f41b644d275751b08d1f7fdaa35e12aaef662db8449ba37ad3051ac1b11e94e8b9fa6c29686b5bb51e4a2044fc285c4c71656e4691999c32ae98adfdd4a9ddfcf971aeabae1e3de8804073fb35943d4d7f21afe87ddee0a7d5f11299a99fe60453937fd5353cb81502a18f726f2e5fa42b2f4ad3817fdff538d0689a4d0e37ef656e8b4adcaf3072c5ebf0163f60f5b02030000",
+ "hosted_text": "[{\"symbol\":\"CAPR\",\"cik\":\"0001133869\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 20:15:17\",\"formType\":\"8-K\",\"link\":\"https://www.sec.gov/Archives/edgar/data/1133869/000110465926130730/0001104659-26-130730-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1133869/000110465926130730/capr-20261120x8k.htm\"},{\"symbol\":\"MSS\",\"cik\":\"0001892292\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 20:00:13\",\"formType\":\"8-K\",\"link\":\"https://www.sec.gov/Archives/edgar/data/1892292/000121390026122834/0001213900-26-122834-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1892292/000121390026122834/ea0312917-8k_maison.htm\"}]"
+}

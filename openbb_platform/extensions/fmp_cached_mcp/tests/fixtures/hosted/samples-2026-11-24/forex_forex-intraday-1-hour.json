@@ -1,0 +1,27 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-intraday-1-hour",
+  "symbol": "EURUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5207b35f6d4533363a0feca9ce25ce414eee54c30cc6f1998dd72f418aa459aa",
+ "hosted_text_len": 1776,
+ "rest_path": "/historical-chart/1hour",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "b93525420a5e2bbda3881f7d509000f7fb4970357035817d00293401da0a5a02",
+ "rest_body_len": 2491,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8d95cd4ec4300c84ef3c45d5f32eb293d871f6551007042b1669a148fc1d10ef4e816ddac54e65a9bd58397c99194fae2ebaee73fcbbaebfbb79ddf7bbae0f10788bb80dd021ef00c6afdffc1d199ef74fe311bc84c2c4a7e171f89866984eb3c3c3fd611aca74f0f638bceca7692ea7e9fb707c7bfc19478a348ebe36eb48d444ca801a29448d94a15848f546158913b10329b55512d148910ca4180ca4f9461529a3880329b6550a4523258bc8f44dd946518a0328348104749232064d24b64651b9564a7010619b2868d7728df19288c92012a0ff4892d8e31ab491aa200ba49c3552c9c942aa37aa4818011c4c509a4c25e97dab6bbd444a26928a368ed1761807b2629c564950ad1b02d4c55a229514b44a183d2ae5261389669a6767f1cea673418729a00369a5bb8da2a46c142593956fd2d651428f732bdd6de49bd8085336578e41a93436aac7b895ee66e3858bd67322562da1eaa5b1421c4d09edea96a481c84a5232df3766ad917892b4d2dda4933477cdb203ac6827d5dcc0d1c1d36eee6c48940d1c3179546d9378de7f58a96d3078c878ffe7963a0b91962811fc4a7471fd0d5b878952bb090000",
+ "hosted_text": "[{\"date\":\"2026-11-20 16:00:00\",\"open\":1.09656,\"low\":1.09614,\"high\":1.09686,\"close\":1.09679,\"volume\":3535},{\"date\":\"2026-11-20 15:00:00\",\"open\":1.09701,\"low\":1.09623,\"high\":1.09709,\"close\":1.09656,\"volume\":6456},{\"date\":\"2026-11-20 14:00:00\",\"open\":1.09688,\"low\":1.09635,\"high\":1.09732,\"close\":1.09701,\"volume\":7188},{\"date\":\"2026-11-20 13:00:00\",\"open\":1.09729,\"low\":1.0964,\"high\":1.09736,\"close\":1.0969,\"volume\":5389},{\"date\":\"2026-11-20 12:00:00\",\"open\":1.09806,\"low\":1.09712,\"high\":1.09832,\"close\":1.0973,\"volume\":6992},{\"date\":\"2026-11-20 11:00:00\",\"open\":1.09828,\"low\":1.09786,\"high\":1.09865,\"close\":1.09805,\"volume\":8468},{\"date\":\"2026-11-20 10:00:00\",\"open\":1.09812,\"low\":1.09777,\"high\":1.09974,\"close\":1.09828,\"volume\":13008},{\"date\":\"2026-11-20 09:00:00\",\"open\":1.09941,\"low\":1.0979,\"high\":1.09944,\"close\":1.0981,\"volume\":11882},{\"date\":\"2026-11-20 08:00:00\",\"open\":1.09822,\"low\":1.09815,\"high\":1.10001,\"close\":1.09942,\"volume\":13138},{\"date\":\"2026-11-20 07:00:00\",\"open\":1.09582,\"low\":1.09582,\"high\":1.09837,\"close\":1.09822,\"volume\":8421},{\"date\":\"2026-11-20 06:00:00\",\"open\":1.09601,\"low\":1.09573,\"high\":1.09655,\"close\":1.09581,\"volume\":5412},{\"date\":\"2026-11-20 05:00:00\",\"open\":1.09712,\"low\":1.09569,\"high\":1.09765,\"close\":1.09602,\"volume\":7328},{\"date\":\"2026-11-20 04:00:00\",\"open\":1.09666,\"low\":1.09633,\"high\":1.0978,\"close\":1.09713,\"volume\":7869},{\"date\":\"2026-11-20 03:00:00\",\"open\":1.0984,\"low\":1.09652,\"high\":1.09849,\"close\":1.09666,\"volume\":7381},{\"date\":\"2026-11-20 02:00:00\",\"open\":1.09851,\"low\":1.09828,\"high\":1.099,\"close\":1.0984,\"volume\":6063},{\"date\":\"2026-11-20 01:00:00\",\"open\":1.09784,\"low\":1.0978,\"high\":1.0989,\"close\":1.0985,\"volume\":5856},{\"date\":\"2026-11-20 00:00:00\",\"open\":1.09804,\"low\":1.09755,\"high\":1.09815,\"close\":1.09784,\"volume\":4503}]"
+}

@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "as-reported-balance-statements",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "6dd3b03c4d708eec9310178870272c51b8040e357b0403a012ceb2bcf9b00612",
+ "hosted_text_len": 2753,
+ "rest_path": "/balance-sheet-statement-as-reported",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "1673b8edb91e94c3db7e64c74f91f2cef8297e3978114ec813f942d175484039",
+ "rest_body_len": 3352,
+ "json_equal": true,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020ab5554d6f133110bdf32ba29e5be4ef0f6e08c4890312e250210eaed76d2c36ebc5f61652d4ffce78db92ec47da4d0b919aa8f67be3f19bf1bcafaf56abdff0b75a9da4ede622d4276f56276fdf7efa78727ab77ae99335f5b93311760822e27ebd75d187aaa03f9c3f60a36b43ccae7ad7c5e81abb2dbb5f3ebf7fd8ae4c7665a9443943fa8c88bd1d033b7789c0ffd6a4b569aaf2e37e74fedad4aec9c9646b62dcfae60a16ba128a0a8a38ea3fa70fdc8d89df5d3617b54bce76d167ef92ed13cafd0d18962386b13674103f3aebe02c60362eef288caa09a5094d8ea6723bcade19542b2d4604df5cc366885b080d10cc38c32348c86b174d4a2eefc5c24aa9317082915471b94006c87ac75288603a22b531405df3b6ad4d93a10045fc7603f8bbac39418a4d2e06c02b0fe7f469b95fb6ee2a28d15508d54f5fd7e632c3adaced365d0df5afcc065ac4df98ec4333c807ba42aac3920cb052612c66551986a448e879f54a5d1114411de885d66c8b767b721102d79f49aff6e6c2d7a336130293b152b6ef199b7ffabcb65dca61b3236f77542da898303780b5ded4ad81fa94926b3d2e781d9a2b907a53b98bbde6d51a8da3cd268c85d6983f127220ac50d0094f883120704629399cc7008b41e97bed66c1a5b09a30ce67540a0de86abf27dfdcb7a1a92a5f5aad48e761c19ad66753a61c464c4d6e1ce1c9f8c65530ee1a60a7bdc6addca5b7be4f90de6b3fec9b07602f0424d346b7764df2d70e8e8562d721257847e1329b5f10e54c303296a44f7e1d6a182ca9bcbd5c4628c604697a580f78a7b3bcd9fede13a93531c4944bcafd3c85ce82a91bcb5c45af0b09cf4a5b20c974791da2bf71c5013862133d260c9f52d7a361f451a8b07e141dba9cca00821a0c293de316be6f4f8f752efe4f9c8bf7ce255fec5c5c537694736125053dceb9a896f238e7a258a1c79d8b4bac161917e38a3f655c4ceae38d0bee448e342ea6d544ed43dea2a8247281b7c0b39c98e15f6f81f29289c11ff416a1954047780b55f299de8266a7e6d05ba4967a91b76042395a662e5c50bcd45ca4a2e42873619833bdd45cb05693373132170522a9a7e6d97842494989583c021f472f702f4db950cf31af33cc88602f772f0e8360897b492ae933cc6bf601fd67f3da79cbab6f7f00a650b87e180d0000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"fiscalYear\":2026,\"period\":\"FY\",\"reportedCurrency\":\"USD\",\"date\":\"2026-09-26\",\"data\":{\"cashandcashequivalentsatcarryingvalue\":36305000000,\"marketablesecuritiescurrent\":20417000000,\"accountsreceivablenetcurrent\":43817000000,\"nontradereceivablescurrent\":39896000000,\"inventorynet\":14541000000,\"otherassetscurrent\":18881000000,\"assetscurrent\":173857000000,\"marketablesecuritiesnoncurrent\":80213000000,\"propertyplantandequipmentnet\":52084000000,\"intangibleassetexcludinggoodwillafteraccumulatedamortizationnoncurrent\":20278000000,\"otherassetsnoncurrent\":78116000000,\"assetsnoncurrent\":230691000000,\"assets\":404548000000,\"accountspayablecurrent\":82252000000,\"otherliabilitiescurrent\":66124000000,\"contractwithcustomerliabilitycurrent\":9636000000,\"commercialpaper\":1997000000,\"longtermdebtcurrent\":9906000000,\"liabilitiescurrent\":169915000000,\"longtermdebtnoncurrent\":68208000000,\"otherliabilitiesnoncurrent\":54332000000,\"liabilitiesnoncurrent\":122540000000,\"liabilities\":292455000000,\"commonstocksincludingadditionalpaidincapital\":104815000000,\"retainedearningsaccumulateddeficit\":13700000000,\"accumulatedothercomprehensiveincomelossnetoftax\":-6422000000,\"stockholdersequity\":112093000000,\"liabilitiesandstockholdersequity\":404548000000,\"commonstockparorstatedvaluepershare\":0.00001,\"commonstocksharesauthorized\":50400000000,\"commonstocksharesissued\":14532259000,\"commonstocksharesoutstanding\":14532259000}},{\"symbol\":\"AAPL\",\"fiscalYear\":2025,\"period\":\"FY\",\"reportedCurrency\":\"USD\",\"date\":\"2025-09-27\",\"data\":{\"cashandcashequivalentsatcarryingvalue\":35934000000,\"marketablesecuritiescurrent\":18763000000,\"accountsreceivablenetcurrent\":39777000000,\"nontradereceivablescurrent\":33180000000,\"inventorynet\":5718000000,\"otherassetscurrent\":14585000000,\"assetscurrent\":147957000000,\"marketablesecuritiesnoncurrent\":77723000000,\"propertyplantandequipmentnet\":49834000000,\"otherassetsnoncurrent\":83727000000,\"assetsnoncurrent\":211284000000,\"assets\":359241000000,\"accountspayablecurrent\":69860000000,\"otherliabilitiescurrent\":66387000000,\"contractwithcustomerliabilitycurrent\":9055000000,\"commercialpaper\":7979000000,\"longtermdebtcurrent\":12350000000,\"liabilitiescurrent\":165631000000,\"longtermdebtnoncurrent\":78328000000,\"otherliabilitiesnoncurrent\":41549000000,\"liabilitiesnoncurrent\":119877000000,\"liabilities\":285508000000,\"commonstocksharesoutstanding\":14773260000,\"commonstocksharesissued\":14773260000,\"commonstocksincludingadditionalpaidincapital\":93568000000,\"retainedearningsaccumulateddeficit\":-14264000000,\"accumulatedothercomprehensiveincomelossnetoftax\":-5571000000,\"stockholdersequity\":73733000000,\"liabilitiesandstockholdersequity\":359241000000,\"commonstockparorstatedvaluepershare\":0.00001,\"commonstocksharesauthorized\":50400000000}}]"
+}

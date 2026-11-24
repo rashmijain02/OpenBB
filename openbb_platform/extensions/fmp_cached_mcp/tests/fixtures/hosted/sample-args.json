@@ -1,0 +1,845 @@
+{
+ "Fundraisers/crowdfunding-by-cik": {
+  "cik": 1916078,
+  "limit": 2
+ },
+ "Fundraisers/crowdfunding-search": {
+  "name": "enterprise",
+  "limit": 2
+ },
+ "Fundraisers/equity-offering-by-cik": {
+  "cik": 1916078,
+  "limit": 2
+ },
+ "Fundraisers/equity-offering-search": {
+  "name": "Apple",
+  "limit": 2
+ },
+ "Fundraisers/latest-crowdfunding": {
+  "limit": 2
+ },
+ "Fundraisers/latest-equity-offering": {
+  "limit": 2
+ },
+ "analyst/financial-estimates": {
+  "symbol": "AAPL",
+  "period": "annual",
+  "limit": 2
+ },
+ "analyst/grades": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/grades-summary": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/historical-grades": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/historical-ratings": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/price-target-consensus": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/price-target-summary": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "analyst/ratings-snapshot": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "calendar/dividends-calendar": {
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "calendar/dividends-company": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "calendar/earnings-calendar": {
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "calendar/earnings-company": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "calendar/ipos-calendar": {
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "calendar/ipos-disclosure": {
+  "limit": 2
+ },
+ "calendar/ipos-prospectus": {
+  "limit": 2
+ },
+ "calendar/splits-calendar": {
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "calendar/splits-company": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "chart/historical-price-eod-dividend-adjusted": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "chart/historical-price-eod-full": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "chart/historical-price-eod-light": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "chart/historical-price-eod-non-split-adjusted": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-1-hour": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-1-min": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-15-min": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-30-min": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-4-hour": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "chart/intraday-5-min": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "commitmentOfTraders/COT-report": {
+  "from_date": "2026-10-01",
+  "to_date": "2026-11-20",
+  "symbol": "KC"
+ },
+ "commitmentOfTraders/COT-report-analysis": {
+  "from_date": "2026-10-01",
+  "to_date": "2026-11-20",
+  "symbol": "KC"
+ },
+ "commitmentOfTraders/COT-report-list": {},
+ "commodity/commodities-historical-price-eod-full": {
+  "symbol": "GCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "commodity/commodities-historical-price-eod-light": {
+  "symbol": "GCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "commodity/commodities-intraday-1-hour": {
+  "symbol": "GCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "commodity/commodities-intraday-1-min": {
+  "symbol": "GCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "commodity/commodities-intraday-5-min": {
+  "symbol": "GCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "commodity/commodities-list": {},
+ "commodity/commodities-quote": {
+  "symbol": "GCUSD"
+ },
+ "commodity/commodities-quote-short": {
+  "symbol": "GCUSD"
+ },
+ "company/all-shares-float": {
+  "limit": 2
+ },
+ "company/batch-market-cap": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "company/company-executives": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/company-notes": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/delisted-companies": {
+  "limit": 2
+ },
+ "company/employee-count": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/executive-compensation": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/executive-compensation-benchmark": {
+  "limit": 2
+ },
+ "company/historical-employee-count": {
+  "symbol": "AAPL",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "company/historical-market-cap": {
+  "symbol": "AAPL",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "company/latest-mergers-acquisitions": {
+  "limit": 2
+ },
+ "company/market-cap": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/peers": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/profile-cik": {
+  "cik": 320193,
+  "limit": 2
+ },
+ "company/profile-symbol": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "company/search-mergers-acquisitions": {
+  "name": "Apple",
+  "limit": 2
+ },
+ "company/shares-float": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "crypto/cryptocurrency-historical-price-eod-full": {
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "crypto/cryptocurrency-historical-price-eod-light": {
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "crypto/cryptocurrency-intraday-1-hour": {
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "crypto/cryptocurrency-intraday-1-min": {
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "crypto/cryptocurrency-intraday-5-min": {
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "crypto/cryptocurrency-list": {},
+ "crypto/cryptocurrency-quote": {
+  "symbol": "BTCUSD"
+ },
+ "crypto/cryptocurrency-quote-short": {
+  "symbol": "BTCUSD"
+ },
+ "directory/ETFs-list": {
+  "limit": 2
+ },
+ "directory/actively-trading-list": {
+  "limit": 2
+ },
+ "directory/available-countries": {
+  "limit": 2
+ },
+ "directory/available-exchanges": {
+  "limit": 2
+ },
+ "directory/available-industries": {
+  "limit": 2
+ },
+ "directory/available-sectors": {
+  "limit": 2
+ },
+ "directory/cik-list": {
+  "limit": 2
+ },
+ "directory/company-symbols-list": {
+  "limit": 2
+ },
+ "directory/financial-symbols-list": {
+  "limit": 2
+ },
+ "directory/symbol-changes-list": {
+  "limit": 2
+ },
+ "discountedCashFlow/custom-dcf-advanced": {
+  "symbol": "AAPL"
+ },
+ "discountedCashFlow/custom-dcf-levered": {
+  "symbol": "AAPL"
+ },
+ "discountedCashFlow/dcf-advanced": {
+  "symbol": "AAPL"
+ },
+ "discountedCashFlow/dcf-levered": {
+  "symbol": "AAPL"
+ },
+ "economics/economics-calendar": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "economics/economics-indicators": {
+  "name": "GDP"
+ },
+ "economics/market-risk-premium": {},
+ "economics/treasury-rates": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "etfAndMutualFunds/country-weighting": {
+  "symbol": "SPY"
+ },
+ "etfAndMutualFunds/information": {
+  "symbol": "SPY"
+ },
+ "etfAndMutualFunds/sector-weighting": {
+  "symbol": "SPY"
+ },
+ "forex/forex-historical-price-eod-full": {
+  "symbol": "EURUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "forex/forex-historical-price-eod-light": {
+  "symbol": "EURUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "forex/forex-intraday-1-hour": {
+  "symbol": "EURUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "forex/forex-intraday-1-min": {
+  "symbol": "EURUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "forex/forex-intraday-5-min": {
+  "symbol": "EURUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "forex/forex-list": {},
+ "forex/forex-quote": {
+  "symbol": "EURUSD"
+ },
+ "forex/forex-quote-short": {
+  "symbol": "EURUSD"
+ },
+ "indexes/dow-jones": {},
+ "indexes/historical-dow-jones": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/historical-nasdaq": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/historical-sp-500": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-historical-price-eod-full": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-historical-price-eod-light": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-intraday-1-hour": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-intraday-1-min": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-intraday-5-min": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-quote": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/index-quote-short": {
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/indexes-list": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "indexes/nasdaq": {},
+ "indexes/sp-500": {},
+ "insiderTrades/acquisition-ownership": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "insiderTrades/all-transaction-types": {
+  "limit": 2
+ },
+ "insiderTrades/insider-trade-statistics": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "insiderTrades/latest-insider-trade": {
+  "limit": 2
+ },
+ "insiderTrades/search-insider-trades": {
+  "limit": 2
+ },
+ "insiderTrades/search-reporting-name": {
+  "name": "Cook",
+  "limit": 2
+ },
+ "marketHours/all-exchange-market-hours": {},
+ "marketHours/exchange-market-hours": {
+  "exchange": "NASDAQ"
+ },
+ "marketHours/holidays-by-exchange": {
+  "exchange": "NASDAQ"
+ },
+ "marketPerformance/biggest-gainers": {},
+ "marketPerformance/biggest-losers": {},
+ "marketPerformance/historical-industry-pe": {
+  "industry": "Consumer Electronics",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "marketPerformance/historical-industry-performance": {
+  "industry": "Consumer Electronics",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "marketPerformance/historical-sector-pe": {
+  "sector": "Technology",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "marketPerformance/historical-sector-performance": {
+  "sector": "Technology",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "marketPerformance/industry-PE-snapshot": {
+  "date": "2026-11-20"
+ },
+ "marketPerformance/industry-performance-snapshot": {
+  "date": "2026-11-20"
+ },
+ "marketPerformance/most-active": {},
+ "marketPerformance/sector-PE-snapshot": {
+  "date": "2026-11-20"
+ },
+ "marketPerformance/sector-performance-snapshot": {
+  "date": "2026-11-20"
+ },
+ "news/crypto-news": {
+  "limit": 2
+ },
+ "news/fmp-articles": {
+  "limit": 2
+ },
+ "news/forex-news": {
+  "limit": 2
+ },
+ "news/general-news": {
+  "limit": 2
+ },
+ "news/press-releases": {
+  "limit": 2
+ },
+ "news/search-crypto-news": {
+  "symbols": [
+   "BTCUSD"
+  ],
+  "limit": 2
+ },
+ "news/search-forex-news": {
+  "symbols": [
+   "EURUSD"
+  ],
+  "limit": 2
+ },
+ "news/search-press-releases": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "news/search-stock-news": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "news/stock-news": {
+  "limit": 2
+ },
+ "quote/aftermarket-quote": {
+  "symbol": "AAPL"
+ },
+ "quote/aftermarket-trade": {
+  "symbol": "AAPL"
+ },
+ "quote/batch-aftermarket-quote": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "quote/batch-aftermarket-trade": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "quote/batch-quote": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "quote/batch-quote-short": {
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "quote/quote": {
+  "symbol": "AAPL"
+ },
+ "quote/quote-change": {
+  "symbol": "AAPL"
+ },
+ "quote/quote-short": {
+  "symbol": "AAPL"
+ },
+ "search/search-CIK": {
+  "cik": 320193,
+  "limit": 2
+ },
+ "search/search-ISIN": {
+  "isin": "US0378331005",
+  "limit": 2
+ },
+ "search/search-company-screener": {
+  "limit": 2
+ },
+ "search/search-cusip": {
+  "cusip": "037833100",
+  "limit": 2
+ },
+ "search/search-exchange-variants": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "search/search-name": {
+  "query": "Apple",
+  "limit": 2
+ },
+ "search/search-symbol": {
+  "query": "Apple",
+  "limit": 2
+ },
+ "secFilings/8k-latest": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "secFilings/all-industry-classification": {
+  "limit": 2
+ },
+ "secFilings/company-search-by-cik": {
+  "cik": 320193,
+  "limit": 2
+ },
+ "secFilings/company-search-by-symbol": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "secFilings/financials-latest": {
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "secFilings/industry-classification-list": {
+  "limit": 2
+ },
+ "secFilings/industry-classification-search": {
+  "limit": 2
+ },
+ "secFilings/search-by-cik": {
+  "cik": 320193,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "secFilings/search-by-form-type": {
+  "formType": "8-K",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "secFilings/search-by-name": {
+  "company": "Apple",
+  "limit": 2
+ },
+ "secFilings/search-by-symbol": {
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "secFilings/sec-company-full-profile": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "senate/house-latest": {
+  "limit": 2
+ },
+ "senate/house-trading": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "senate/house-trading-by-name": {
+  "name": "Pelosi",
+  "limit": 2
+ },
+ "senate/senate-latest": {
+  "limit": 2
+ },
+ "senate/senate-trading": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "senate/senate-trading-by-name": {
+  "name": "Pelosi",
+  "limit": 2
+ },
+ "statements/as-reported-balance-statements": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/as-reported-cashflow-statements": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/as-reported-financial-statements": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/as-reported-income-statements": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/balance-sheet-statement": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/balance-sheet-statement-growth": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/cashflow-statement": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/cashflow-statement-growth": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/enterprise-values": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/financial-reports-dates": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/financial-reports-form-10-k-json": {
+  "symbol": "AAPL",
+  "year": 2024,
+  "period": "FY"
+ },
+ "statements/financial-reports-form-10-k-xlsx": {
+  "symbol": "AAPL",
+  "year": 2024,
+  "period": "FY"
+ },
+ "statements/financial-scores": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/financial-statement-growth": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/income-statement": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/income-statement-growth": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/key-metrics": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/key-metrics-ttm": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/metrics-ratios": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/metrics-ratios-ttm": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/owner-earnings": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/revenue-geographic-segments": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "statements/revenue-product-segmentation": {
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "technicalIndicators/average-directional-index": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/double-exponential-moving-average": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/exponential-moving-average": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/relative-strength-index": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/simple-moving-average": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/standard-deviation": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/triple-exponential-moving-average": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/weighted-moving-average": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "technicalIndicators/williams": {
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ }
+}

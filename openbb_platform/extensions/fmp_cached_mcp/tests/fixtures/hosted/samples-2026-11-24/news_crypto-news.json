@@ -1,0 +1,25 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "crypto-news",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c8f2aa4aa179bececd619078ff0d68974336850338071eb3589b6fdca9710d03",
+ "hosted_text_len": 1223,
+ "rest_path": "/news/crypto-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c372ca39cd54bff0a48de039a24af931d6b30d51c23070642c9a2d561b59f9ea",
+ "rest_body_len": 1332,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa5935b6fd3401085dffb2b46911020659dc62988e605a90d120101554dd54a888789bda9b7dd9b7676e35a88ffceae1da7941409d4074bf65ee69cf9e6f8db01c08ff8008ca8552b234773185d9d9f5d148bd1b85fb7612505d5bc5aa0e7693b3fcc5fb3e994e5477078349fbd99e7c77f9e75e9dca911daa28d1fdb5d2fbcec2a5cd62d2c09a20e1406ce8c0d121d080d1fd0a27e0b9f7903510de19c6f384a82a52758182534ea92c3970d77f1a2448d4369a1f0ba2b5d7b6f693e99740b94adbb2b02a5321597425f5bc76d561a35d1bca14953b74c10bb73969161b637c2846637c9088b6758157db0d4f2749a1f65565f0f92247a1ce5d0662abb6b95dff92d4a28d1fae038c1f455367b0666ddb7f99ca074adf506c81a0fde6115fdc1c6c8a0f8184cf0b1e6da389556fb6e417374b2058a58f4dac82a8385a0d2241eb569e05c582b39a0aea0385942cda5e515ac82901588889097865af25c6583cfe0e4efd41ef432991dcfa6c7ffccc8f5b362518855c3ac58f216ef75b38a923fc78f05ae78bf3cf98fc4e5f3fcf0d1c45d7c3515b67b712b6ab14258ea002f92d24b38354a052d7c0b27890d7581eb4e391114bcbbb3d2b8c8f4b216116751b7de502de06320540885c796a0885bda3f317f943423cbc0d21b2b075fac9b19757069f0c5f8d6176b92affb50ded8bd5086cc3f40b18de31e899d2228ae56dc11d4b8e12031e8320e0052e41a584953dec2200f3194f7b4c6e0eb74a18dbef278da37c6dda690a7e524729fba719fcc9d07c9b1daa35b2381e30a858ef2d44106a3e12abea77fff13b67f0befb6e7a741a5ad1d76dbd9619486cd7a1f5d800fbeff02ba1bb73834050000",
+ "hosted_text": "[{\"symbol\":\"XRPUSD\",\"publishedDate\":\"2026-11-24 04:38:29\",\"publisher\":\"Coinpaper\",\"title\":\"Why Is XRP So Popular in Japan? New Data Reveals Its Dominance Over Solana\",\"image\":\"https://images.financialmodelingprep.com/news/why-is-xrp-so-popular-in-japan-new-data-20261124.png\",\"site\":\"coinpaper.com\",\"text\":\"XRP captures 15.3% of Japan's crypto spot trading volume, outperforming Solana nearly sevenfold. Discover how Ripple and SBI helped build its ecosystem.\",\"url\":\"https://coinpaper.com/39319/why-is-xrp-so-popular-in-japan-new-data-reveals-its-dominance-over-solana\"},{\"symbol\":\"SHIBUSD\",\"publishedDate\":\"2026-11-24 04:32:20\",\"publisher\":\"UToday\",\"title\":\"Shiba Inu (SHIB) Community Builds New Shibarium Explorer While Shytoshi Kusama Stays Silent\",\"image\":\"https://images.financialmodelingprep.com/news/shiba-inu-shib-community-builds-new-shibarium-explorer-while-20261124.jpg\",\"site\":\"u.today\",\"text\":\"Shiba Inu (SHIB) community members have launched a new block explorer for Shibarium, the layer-2 network of the SHIB ecosystem, and Shiba Inu lead Shytoshi Kusama has remained silent on X since May.\",\"url\":\"https://u.today/shiba-inu-shib-community-builds-new-shibarium-explorer-while-shytoshi-kusama-stays-silent\"}]"
+}

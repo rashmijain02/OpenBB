@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "historical-price-eod-light",
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "61dbcbe4c4dda0759f01f6848f2a308295abb022fb74662f35c1057d92027ca4",
+ "hosted_text_len": 285,
+ "rest_path": "/historical-price-eod/light",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "efced7fa2af7e2153bc81361bbd7e23661cee6eb3f1ddeb485ab52baa9dbccf5",
+ "rest_body_len": 406,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dcfbb0ec2300c85e1bd4f11656e23db899398ad3b033b62e03620b56ac54d4288772711b034131dbcfc1e3e9d75a5d4339d52faf2e87743a7174ab7ed6aa9eb4f3d6cafc7dc08c837880dc1ef339e4ffbfcb28e0cfb6fbc0fddadcf35821762c729bfea7f119412114338451c486200e621b140988ce32992f68108c57948281134522cb1c141601b32526dde152d2f1096010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-20\",\"price\":342.56,\"volume\":80692545},{\"symbol\":\"AAPL\",\"date\":\"2026-11-19\",\"price\":349.21,\"volume\":40906900},{\"symbol\":\"AAPL\",\"date\":\"2026-11-18\",\"price\":352.45,\"volume\":34209928},{\"symbol\":\"AAPL\",\"date\":\"2026-11-17\",\"price\":351.91,\"volume\":37407537}]"
+}

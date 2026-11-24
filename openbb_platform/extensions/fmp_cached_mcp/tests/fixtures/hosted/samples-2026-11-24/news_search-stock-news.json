@@ -1,0 +1,29 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "search-stock-news",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "7e1ff579fabeff666050855d84f67fc56d29d5f8c0527c03d03bf12abe86414c",
+ "hosted_text_len": 1494,
+ "rest_path": "/news/stock",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "b089c20369562860a5aace19c2b1e00393d2b65f5b4232af2da5cdd66105157f",
+ "rest_body_len": 1611,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa5544d6fd34010bdf32b46bd70c9c6b113a8c82db47c04410b4a054288c3663db197ae77cdee3aa94148fc10f873fc1266d60d94520e8014cbf6ce78e6cd9bf7f2e616c047ba000e42dfac9d3998c3c1b3d5c3b383d170da766ba3438de5b18cc8c16252dc15792e8a194cf27971673e995ccff59cb7423cd7b68285696bb9cf883a9a5465614c683dc79f7b6c347a782a7d8570e49a56da1e1e79b78b353cec6c092fa6c04d2966a3d7eb2e3a1f604181638c5e2a7eddd7d78dac52fd3ac636ccb32c1d84f1465b699596a671251a6adb7a6cc7ca3599c55dc8e41e8d680734c2301aa10634a24a68c486d088f75391285057d0a4933c2f66e3776db5c712f44058188890cc03b7fcc1055e448e1f77898758235dda97f0be933ea21fc10951ee2548556bdc62091e95f37c0b9d89610cab5ad233c8724bc351bcfc59e9b206c800673b6db4bb1d60ebb442688d8c1be71bd8518c2b56567fa08fe94dc25aaaf3b5b3089401c49c8d5a5d7e97dea8e991715db9217e104274ea1cbc0bf448505ad3df006104a5d75bb4b0ee415be55106ee76597bb104dae166438f92365a62c337eeaefa35fa808a0ac69ed1edd018bea3ad87718334343d5e504ed4ce8ef7c476de5c95c075fe3382a595c16c76ef309fe653f1dfdb27c8a2fca94542f169f4efbe9a427e389fd0afb8d157c52c3b8457841956d123c6dfacb58a241678a00351092bd907f8f6f9cb2aadeab956c993cb00f769d3df3e7f8513b783b35a46dec432a59e3878ea6c45e23925219c79592225fea7c302831298408940a044128f6807444207c1da13d6ed4424387b474d6f7254313bdcf1d2e24d767a823690da1e779206d521499a6573f27279bc5c900d8e1e9c8e92d858a48384f1a23504bb2481920902013214c2105856f01a239d5dc05a57cc92950dc92eb21ac959258b5e6f36e849d05cce6b8ed6d4b947e9874ec951b2711df14e4556b5f3917a6d91f381e9001e1a2ad992935c674a502472fa3fac693dbdeb3c39356a52273761218271ee3cfc49f2bf10940d8d68a88c49cdf23c2ba67fbf10a9f9cc3a61923804cd24228b234b82bff5f63b026648cd4b060000",
+ "hosted_text": "[{\"symbol\":\"MSFT\",\"publishedDate\":\"2026-11-24 01:25:00\",\"publisher\":\"Seeking Alpha\",\"title\":\"Allspring Premier Large Company Growth Fund Q3 2026 Contributors And Detractors\",\"image\":\"https://images.financialmodelingprep.com/news/allspring-premier-large-company-growth-fund-q3-2026-contributors-20261124.jpg\",\"site\":\"seekingalpha.com\",\"text\":\"During the third quarter, Natera achieved record results. Shares advanced during the quarter as Twilio's voice platform was recognized as a backbone for agentic voice agents. Cloudflare stock rose sharply during the quarter, driven by increased agentic AI traffic and demand for cybersecurity as well as enhanced sales execution.\",\"url\":\"https://seekingalpha.com/article/4971313-allspring-premier-large-company-growth-fund-q3-2026-contributors-and-detractors\"},{\"symbol\":\"MSFT\",\"publishedDate\":\"2026-11-23 17:07:02\",\"publisher\":\"24/7 Wall Street\",\"title\":\"Steve Eisman Says “Stock Picking Is Back” Now That AI Is “No Longer One Trade”\",\"image\":\"https://images.financialmodelingprep.com/news/steve-eisman-says-stock-picking-is-back-now-that-20261123.jpg\",\"site\":\"247wallst.com\",\"text\":\"Jensen Huang is back as NVIDIA's CEO, and the stock exploded in a single session. Yet six big AI names tell wildly different stories this year, and one famous Big Short investor says that gap should change how your retirement fund looks.\",\"url\":\"https://247wallst.com/investing/2026/11/23/steve-eisman-says-stock-picking-is-back-now-that-ai-is-no-longer-one-trade/\"}]"
+}

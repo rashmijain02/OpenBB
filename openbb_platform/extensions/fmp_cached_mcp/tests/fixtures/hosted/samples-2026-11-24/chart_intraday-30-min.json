@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "intraday-30-min",
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "784349f3e000076780e9048266ddb2d64bf79df94fe7cd6df9bb39a7d03e7d9d",
+ "hosted_text_len": 1338,
+ "rest_path": "/historical-chart/30min",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0f62e17ffe7ef7a61012b5a4f788f62aa69f7e97f8659d9518b830e5be5ec0cf",
+ "rest_body_len": 1885,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8dd5db6a1b311006e0fb3cc5e2eb6498b3467e95908bd29a26e0d4859c2e42dfbd8aeb6441a3a502fb6658d84fff2f696faf96e5bdfd9765f7e3dbf361b75f768cec3744378c0bd95e708fb8bbfef7c8e9f7e1577b445480eb65763cbd9d4708e697d1fdc3cffbf34c213e67df8fa7a7c379c8502eb3d7d3f1e5f163481c1128d4c67faeff27c2a148c13b5033f61e038ae41110e941c2a25565c2a39b092177a0b670ca22e5246a6b4911b1a13bf994689c507b15f511654ec9f9a4b602b5fd2628b2118e42eddb5260eb350e4513a72dc392a82816c629d1381c074a20ab19443668ab466a4b28bcf20488372232b092440390e4edd39483ced8ddeb14689c5001e93c06922a2b6034a8cc29571662d52640b49150c9fbd9a04a1645169535b7b53392302e53a2714401d877e6ebe6f81205541d88349f79572953b7226e641410fd2d54d6cbe5536498380194036a5bd0b44e71860119a65316eb87e44b43803600d5b48758958a4d9c32ace37c8c214a1279bfab4d4172637570ee89c82cfcfce1b8bafb0b41a33c535d070000",
+ "hosted_text": "[{\"date\":\"2026-11-20 15:30:00\",\"open\":343.29,\"low\":340.56,\"high\":344.86,\"close\":342.7,\"volume\":12888031},{\"date\":\"2026-11-20 15:00:00\",\"open\":344.6,\"low\":343.2,\"high\":345.18,\"close\":343.33,\"volume\":3234943},{\"date\":\"2026-11-20 14:30:00\",\"open\":343.02,\"low\":342.71,\"high\":345.42,\"close\":344.67,\"volume\":2506616},{\"date\":\"2026-11-20 14:00:00\",\"open\":345.41,\"low\":343,\"high\":345.7,\"close\":343,\"volume\":1804804},{\"date\":\"2026-11-20 13:30:00\",\"open\":344.96,\"low\":344.25,\"high\":346.74,\"close\":345.45,\"volume\":1740720},{\"date\":\"2026-11-20 13:00:00\",\"open\":346.1,\"low\":344.59,\"high\":346.15,\"close\":344.98,\"volume\":2318692},{\"date\":\"2026-11-20 12:30:00\",\"open\":345.57,\"low\":344.9,\"high\":346.32,\"close\":346.13,\"volume\":1826669},{\"date\":\"2026-11-20 12:00:00\",\"open\":347.3,\"low\":345.35,\"high\":347.51,\"close\":345.61,\"volume\":1783595},{\"date\":\"2026-11-20 11:30:00\",\"open\":347.41,\"low\":345.93,\"high\":347.81,\"close\":347.32,\"volume\":2138527},{\"date\":\"2026-11-20 11:00:00\",\"open\":348.07,\"low\":346.98,\"high\":348.94,\"close\":347.47,\"volume\":2643731},{\"date\":\"2026-11-20 10:30:00\",\"open\":348.82,\"low\":347.67,\"high\":350,\"close\":348.12,\"volume\":2344549},{\"date\":\"2026-11-20 10:00:00\",\"open\":350.1,\"low\":348.29,\"high\":351.05,\"close\":348.91,\"volume\":2441752},{\"date\":\"2026-11-20 09:30:00\",\"open\":352.87,\"low\":348.65,\"high\":354.34,\"close\":349.98,\"volume\":11155863}]"
+}

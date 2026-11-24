@@ -1,0 +1,27 @@
+{
+ "tool": "commitmentOfTraders",
+ "arguments": {
+  "endpoint": "COT-report-analysis",
+  "from_date": "2026-10-01",
+  "to_date": "2026-11-20",
+  "symbol": "KC"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "60bdcc9329284568a669795292127385e833856f3916234ab319e1ed6af5813f",
+ "hosted_text_len": 3272,
+ "rest_path": "/commitment-of-traders-analysis",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "79d09ba22c9fce26bed807b52a11a00dc0c155ddf0fcfcf861998122d4f242f2",
+ "rest_body_len": 3987,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020acd965d6fda301486effb2bac5c755263f923b6712f178184bab6d30257552f5c6a205a4826274c9da6fdf7194a8429cd47152a2201173e2f3ec6e7e17df37001c05ffb06c0cbffac9eb2c4bb06de4de85dbdae3dab426f560822dcc7d8c7022074bd7d959254adb692309bcfb5069737e197b294eb5991994d31ba1f4da27259bfcc962a5dbc7eeb7e341a0e41087c300e8760349d4c7f0c233085112ce5b3b5313a2dbe65e9e256999fba88e262ad8a384bed068c43c10f85d13233c5b132a090043be5eaa8ea7d5d27499c2fcba6bf8cfe1d67ebbca22bdbef552aabda06fb0396d2dbc6f6a92ebe67f9ae2811436f76b8dbd6e39d40c88128ef607bb3e3f4508029a4f8f0b7db8b8a57f663d37c9cce8c56799c2ec09b73d876dae42a99d88b7db6d2b94a726d4bffae3ec80dea1b37ce041bb87106d8991b710c43555b728cd807b971b0789f1b8c25e3b5e0f8d4fe6bda81a395f9047010ed1b38a2b5e190d3190e4790b704874a483b82e37251410e6781ac2787d88b62e74307d903f40c1d7788f5e8b833ec8c0e8588b5448743c93aa2e380f13e3a04614aead1c1020ece4a4edfd2ca9d610339ce083ba7d5000adc32ad3024b21b392e1715a64319ad8fabc09e989eef3907f9b87771e5ccb021ae9c119e20ae58ebb4eaea380e15556145306d701c0e193ea7e520debfb0626db3ea64862321a22d0d074129ba46d51e8b2ac309647d541104b138a9e15c3cfe07f3cb2c0f930f0000",
+ "hosted_text": "[{\"symbol\":\"KC\",\"date\":\"2026-11-17 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":56.76,\"currentShortMarketSituation\":43.24,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":55.24,\"previousShortMarketSituation\":44.76,\"previousMarketSituation\":\"Bullish\",\"netPostion\":9050,\"previousNetPosition\":7987,\"changeInNetPosition\":13.31,\"marketSentiment\":\"Increasing Bullish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-11-10 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":55.24,\"currentShortMarketSituation\":44.76,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":57.76,\"previousShortMarketSituation\":42.24,\"previousMarketSituation\":\"Bullish\",\"netPostion\":7987,\"previousNetPosition\":11956,\"changeInNetPosition\":-33.2,\"marketSentiment\":\"Increasing Bearish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-11-03 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":57.76,\"currentShortMarketSituation\":42.24,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":60.66,\"previousShortMarketSituation\":39.34,\"previousMarketSituation\":\"Bullish\",\"netPostion\":11956,\"previousNetPosition\":16549,\"changeInNetPosition\":-27.75,\"marketSentiment\":\"Increasing Bearish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-10-27 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":60.66,\"currentShortMarketSituation\":39.34,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":63.05,\"previousShortMarketSituation\":36.95,\"previousMarketSituation\":\"Bullish\",\"netPostion\":16549,\"previousNetPosition\":20132,\"changeInNetPosition\":-17.8,\"marketSentiment\":\"Increasing Bearish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-10-20 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":63.05,\"currentShortMarketSituation\":36.95,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":58.71,\"previousShortMarketSituation\":41.29,\"previousMarketSituation\":\"Bullish\",\"netPostion\":20132,\"previousNetPosition\":13536,\"changeInNetPosition\":48.73,\"marketSentiment\":\"Increasing Bullish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-10-13 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":58.71,\"currentShortMarketSituation\":41.29,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":60.5,\"previousShortMarketSituation\":39.5,\"previousMarketSituation\":\"Bullish\",\"netPostion\":13536,\"previousNetPosition\":16213,\"changeInNetPosition\":-16.51,\"marketSentiment\":\"Increasing Bearish\",\"reversalTrend\":false},{\"symbol\":\"KC\",\"date\":\"2026-10-06 00:00:00\",\"name\":\"Coffee (KC)\",\"sector\":\"SOFTS\",\"exchange\":\"COFFEE C - ICE FUTURES U.S.\",\"currentLongMarketSituation\":60.5,\"currentShortMarketSituation\":39.5,\"marketSituation\":\"Bullish\",\"previousLongMarketSituation\":59.03,\"previousShortMarketSituation\":40.97,\"previousMarketSituation\":\"Bullish\",\"netPostion\":16213,\"previousNetPosition\":13492,\"changeInNetPosition\":20.17,\"marketSentiment\":\"Increasing Bullish\",\"reversalTrend\":false}]"
+}

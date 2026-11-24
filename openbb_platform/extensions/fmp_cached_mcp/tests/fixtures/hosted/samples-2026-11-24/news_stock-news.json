@@ -1,0 +1,25 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "stock-news",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5e4f557db2f50007eb4e18de908850152793ec870a3547dd9cfdbaca05fc931a",
+ "hosted_text_len": 1486,
+ "rest_path": "/news/stock-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c5a38bcbf91362f626e883606787c0c80df80c779122797e8e6a22dc6a8bcd72",
+ "rest_body_len": 1597,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa594db6edb461086eff31403a1455a404b9992e238bab3eb1a69011b4d1504088a5c2cc911b9d69eba07394451a08fd1e7eb9364666919819b2008722180e2cececcffcf37fce309c05ff40398c5d1344ecf3630bb7973793e9b4f6f7d6eb48a03769732211f2e4f96a7a2aec5720d27ebcdbaded4cf1ec7068ebb5296d275c7b3a4922ef75f62c0a71106770726b7035cab7690a8e1228730828a903d380b033d3559733eb839a84e4988c9b57b68301d732a23fb927348c9c7cd62515ec46aa7acb4ad92dab80eb5b2bd0fe8abd69985c5bbb8a006310a6a407003c24c0d88861b102a8aec85b3821a10acb5ae97ebead6f7c7a2514d3eec267d9cf64123be4f7cf47a40d0d8a3ed2449faef9f7f2f540fdbc185f41452901d8647aa074962112d0b9770a7aca5a6496f40b90765e1c61dd03418e6749686e28d76b6173149db71688332b053640ec85e2a1bd3d1b51f6eceb797e7af36c053fd1122225f203773c3d713d9045e8e6eb7e3ea57417572044a5baa7010fe99d1a65210bc23f98ae23ac75912098dd220dfbc762477ac8e5ee4a03f9ecc476e7d85fff700085ba4880280208d8b1915f97bfe8decaece36abe527d9dd22ee59dfb9f683fc1fc193b11bf8156da499bdcc92427f897021dbfd1cae471aea08c4402403e9f53605b28e127f1bb5f71edc96a262e0a26c5643458519c9aa51a452537c01dc388993aced53f4de7313d03047440acb29dcf5c46322785b47cdb4ccc166524ffb1c90a1a363c3b0303ff15e37109bcc7304657c20920b3653afd061f4d417644b4c387dc08e32f559cbe4682f88e97dace07734eec0f328c544875e869403b1d7a225f05d2c05b3ef64e2b0abb7a4ff0c7efe6d0bc9c177f569755a8356bb14c18c70903acb02311f2e57cbaa5ecfb9373d96cdf0d4e47b9a49423dc2eaec7bca1b5587b00bce70b2b3ead94955b689643f880c78409b691372d2ceed2707b2f7b4f4d34d236f1d5997096283213e046845ffa8be6d752ebbfc7a7bfdd3bcf8b973a145767b47f52d3dd2a780bdcb963e2153b74d8eca628c9fdbbbc7c35e9073aad5b858bf785eafd6cfc5576175545bd6efc9bb0ff3f313e83d060000",
+ "hosted_text": "[{\"symbol\":\"NVDA\",\"publishedDate\":\"2026-11-24 04:41:15\",\"publisher\":\"Finbold\",\"title\":\"Here's how much Michael Burry is up on his bullish Nvidia stock bet\",\"image\":\"https://images.financialmodelingprep.com/news/heres-how-much-michael-burry-is-up-on-his-20261124.jpg\",\"site\":\"finbold.com\",\"text\":\"The legendary ‘Big Short' trader Michael Burry has been on a winning streak in November, with his long-standing bearish bet against Nvidia (NASDAQ: NVDA) seeing a substantial payoff on Friday and his subsequent long position doing the same on Monday.\",\"url\":\"https://finbold.com/heres-how-much-michael-burry-is-up-on-his-bullish-nvidia-stock-bet/\"},{\"symbol\":\"NVDA\",\"publishedDate\":\"2026-11-24 04:38:32\",\"publisher\":\"Seeking Alpha\",\"title\":\"Nvidia: Jensen Huang Is Back, My Buy Thesis Is Stronger\",\"image\":\"https://images.financialmodelingprep.com/news/nvidia-jensen-huang-is-back-my-buy-thesis-is-20261124.jpg\",\"site\":\"seekingalpha.com\",\"text\":\"Nvidia remains a Buy with greater conviction: Huang's reinstatement and stronger earnings improve the thesis despite unresolved regulatory risks. Removing Huang-departure scenarios and updating FY2028 EPS to $16.61 lifts my valuation to $232.14, implying approximately 38% upside from $168.50. NVDA's stronger revenue outlook and support from major customers and suppliers, including TSMC, reinforce confidence in the underlying business.\",\"url\":\"https://seekingalpha.com/article/4971347-nvidia-jensen-huang-is-back-my-buy-thesis-is-stronger\"}]"
+}

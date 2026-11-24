@@ -1,0 +1,26 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-name",
+  "query": "Apple",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d84edf3b08e18491e52b857239ac6d8fa563e9495a7eb68eedf6d8f66e43fec5",
+ "hosted_text_len": 232,
+ "rest_path": "/search-name",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "1f6507456ff0f342aed570bcdd1e8f80c3614ffb44739c036384561e521c0684",
+ "rest_body_len": 306,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b0525c700673d1757251d88785e626e2a58b4a0202755c1332f590f26935c5a54949a975c0992750d0d8209a756246724e6a5a7ba95e6e4f84135bba49696142767a42a381dde56549c8aae14a424c23524c85109285eab83cb516e5475935b51625e765a6951894270497e72b6822bcc31581ce7161c01761a572c005d396d3032010000",
+ "hosted_text": "[{\"symbol\":\"APC.DE\",\"name\":\"Apple Inc.\",\"currency\":\"EUR\",\"exchangeFullName\":\"Deutsche Börse\",\"exchange\":\"XETRA\"},{\"symbol\":\"APC.F\",\"name\":\"Apple Inc.\",\"currency\":\"EUR\",\"exchangeFullName\":\"Frankfurt Stock Exchange\",\"exchange\":\"FSX\"}]"
+}

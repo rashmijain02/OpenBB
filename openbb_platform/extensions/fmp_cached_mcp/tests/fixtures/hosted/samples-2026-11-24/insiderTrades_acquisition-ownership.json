@@ -1,0 +1,26 @@
+{
+ "tool": "insiderTrades",
+ "arguments": {
+  "endpoint": "acquisition-ownership",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "b67ef3484191d950df495e14fc3664fd169b71d670a06c80aad8969466cd3c86",
+ "hosted_text_len": 1035,
+ "rest_path": "/acquisition-of-beneficial-ownership",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "530a02e1d7294cd393a21d4d60e554cfd834cdb31c10f979894c383adf6217dd",
+ "rest_body_len": 1228,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ab5925f6bdb3014c5dffb298c9f9b58961237ee5b96946ed0e1b03f653046b8b36f6c315912921cd72dfbee9313ec75231d636b0502a1733857baf7f7f92c081efc0e8230e7dfc2cb20247e314ae29485e747c176f557257a6db9dcdc0cb73b2eb82cd7e0b05728a1c984cc26341d74c873d40e8ba71d7963b93e9464170bc662420645428dd9ee1d6a659c2fb2416395ec9db720cb064c11ac40730722780b124aac51ba31953b7e8fd2565c67662320f749992941f27b70fc18b341296d27f6fe12c65f2a81b7ea504eb5687a5b3c9b331a33321f3d15182c7e7391c7096b6eb5b2fe097bfc1943d2344e16e99cfd9a73ca3b8641ad1ae95ea1c41dcf3908d165adc4e2749e4693fb1664bb95006b7bcfc574b61854d7e9d3dd7cb31c2c8d39ccb7724edbcb286adb766a319f966a1f2d4d5ef917da088b124c548083e8c847e449a17e6a719cd2c49f6396467756bc5fbdbe5a7fbcb9dac6ec7afb89d0481b5e83e9b685caa777b5087dc9efe7cfca1d9bd0e4cfdc3d76fc03771f2a0c46f6ae8d6af40be046fe0f33f23c7491a7a1222f47544c684ad29e28723c1e884a18f96ba2cebefc0048858c4dcc040000",
+ "hosted_text": "[{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"filingDate\":\"2026-04-29\",\"acceptedDate\":\"2026-04-29\",\"cusip\":\"037833100\",\"nameOfReportingPerson\":\"Vanguard Capital Management\",\"citizenshipOrPlaceOfOrganization\":\"Pennsylvania\",\"soleVotingPower\":\"145321305\",\"sharedVotingPower\":\"0\",\"soleDispositivePower\":\"1099168953\",\"sharedDispositivePower\":\"0\",\"amountBeneficiallyOwned\":\"1099168953\",\"percentOfClass\":\"7.48\",\"typeOfReportingPerson\":\"IA\",\"url\":\"https://www.sec.gov/Archives/edgar/data/320193/000210011926000139/xslSCHEDULE_13G_X02/primary_doc.xml\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"filingDate\":\"2026-03-26\",\"acceptedDate\":\"2026-03-26\",\"cusip\":\"037833100\",\"nameOfReportingPerson\":\"The Vanguard Group\",\"citizenshipOrPlaceOfOrganization\":\"Pennsylvania\",\"soleVotingPower\":\"0\",\"sharedVotingPower\":\"0\",\"soleDispositivePower\":\"0\",\"sharedDispositivePower\":\"0\",\"amountBeneficiallyOwned\":\"0\",\"percentOfClass\":\"0\",\"typeOfReportingPerson\":\"IA\",\"url\":\"https://www.sec.gov/Archives/edgar/data/102909/000010290926000630/xslSCHEDULE_13G_X02/primary_doc.xml\"}]"
+}

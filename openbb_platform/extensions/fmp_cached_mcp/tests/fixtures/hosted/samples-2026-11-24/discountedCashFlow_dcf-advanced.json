@@ -1,0 +1,25 @@
+{
+ "tool": "discountedCashFlow",
+ "arguments": {
+  "endpoint": "dcf-advanced",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "90fc4a93f76ed55739f03c244b2160d6ca49205ac729d983c5c2f0b9642c1c85",
+ "hosted_text_len": 85,
+ "rest_path": "/discounted-cash-flow",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ef3c033fe162af1337ad4db3eb4cb8d3ba77b4fd1a3660f28b1f546f75c93d06",
+ "rest_body_len": 116,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c8042e939c06943034b5d433b6b43436323335333631025250e9e092fce46c8580a2cc64907e63134b3d030ba04c2d572c00ac62dd5f74000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-24\",\"dcf\":159.39932656342265,\"Stock Price\":349.08}]"
+}

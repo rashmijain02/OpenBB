@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "historical-price-eod-dividend-adjusted",
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "f87ffe785b52bc2e53936378bfb71ab85bbb7e8b037f28e1d76f288da637af47",
+ "hosted_text_len": 497,
+ "rest_path": "/historical-price-eod/dividend-adjusted",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6447cb3c273497e631b54536820f6059678010bcabf4f3760e465c9e3be3d58f",
+ "rest_body_len": 690,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd23b0bc23010c0f1dd4f113ad770b95c1ee7262e0e82eee2a0587c50ad501f88f8dd4d1509d838e890e59f0cbf5c32ed08710b4b88acbeee165599f544d6ef4f4659feaacbf9b1681a02daae525d84f7ce7cb91d1f8a7dd8d406a577310f37abf53393d414f3a8ba3495401a1beba0aceae2d931f673559e764df560190d9990eff9af56c5692bab84d548f46dab95e4525696a83ead041cb400ff597dcaaa2453c21a54d8b286c3496bb830994f6b983630a3ffcfeabefc019d9cabb6edb9b2b449ab8a8f13ad8ec019ed1a6b67f6009fcdd310b2020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-20\",\"adjOpen\":352.87,\"adjHigh\":354.34,\"adjLow\":340.56,\"adjClose\":342.56,\"volume\":80692545},{\"symbol\":\"AAPL\",\"date\":\"2026-11-19\",\"adjOpen\":352.91,\"adjHigh\":355.28,\"adjLow\":346.47,\"adjClose\":349.21,\"volume\":40906900},{\"symbol\":\"AAPL\",\"date\":\"2026-11-18\",\"adjOpen\":351.94,\"adjHigh\":356.42,\"adjLow\":351.47,\"adjClose\":352.45,\"volume\":34209928},{\"symbol\":\"AAPL\",\"date\":\"2026-11-17\",\"adjOpen\":352.83,\"adjHigh\":355.36,\"adjLow\":349.67,\"adjClose\":351.91,\"volume\":37407537}]"
+}

@@ -1,0 +1,26 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "company-search-by-cik",
+  "cik": 320193,
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e39d7fbcb5473ca9b0ad8a0da256fac18e226b9258d76ffe1cd3bfd2be095c3d",
+ "hosted_text_len": 204,
+ "rest_path": "/sec-filings-company-search/cik",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a8f06f92fb462713125ebefb64554e21f4e692e8bdc4d957b65ec5b18a7a29ca",
+ "rest_body_len": 253,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a358e4b0bc2301084effe8a2527852a89ad8f7a0b2187624d434d11110fd6160cf6218d3d14f1bfdb56b2b02ccc3733ec6502f0e9170099ae4ceb02ed00512a43e4fcd5ea56e6a32665c821106c61c95d3f0780fb719798f8ae0546df599d8d2977b52156d655d69a77d329fd2e46c843ce541c8980018b0e32513c3e5a73da1a5de5c6d02c6bfa33d823c1e1ff85a4f11e4ef4ec004b248f5520226014fc15269e2d783dea2a176d99e6cd109e7a783b03df5fcf092618f59eefe4fa03c0797290fd000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"name\":\"APPLE INC.\",\"cik\":\"0000320193\",\"sicCode\":\"3571\",\"industryTitle\":\"ELECTRONIC COMPUTERS\",\"businessAddress\":\"ONE APPLE PARK WAY, CUPERTINO CA 95014\",\"phoneNumber\":\"(408) 996-1010\"}]"
+}

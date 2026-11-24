@@ -1,0 +1,27 @@
+{
+ "tool": "commodity",
+ "arguments": {
+  "endpoint": "commodities-historical-price-eod-light",
+  "symbol": "GCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c094af0cb390c8f9f02099ab7def6c7662b5498e5c5261ee466bbe022b8a76bf",
+ "hosted_text_len": 281,
+ "rest_path": "/historical-price-eod/light",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "992c057f70ae21e76acfa40f33e87709e6d33735ba75384db8bf25ddf0ab42f3",
+ "rest_body_len": 402,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052577e7d06017251d88704a62492a48d0c8c0c84cd7d050d7c80026535094990c9232363534d533810a96e5e794e682458d4ccd8c8d8082b53a24db61688961879985a99e29ba1d4606c6e606e4da61816187b989a19e25861d262646a6c664da618e61878599899e11ba1d866606c69696203bb862012dc1cb9d92010000",
+ "hosted_text": "[{\"symbol\":\"GCUSD\",\"date\":\"2026-11-20\",\"price\":3515.4,\"volume\":325632},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-19\",\"price\":3685.5,\"volume\":203702},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-18\",\"price\":3741.9,\"volume\":244253},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-17\",\"price\":3864.2,\"volume\":160399}]"
+}

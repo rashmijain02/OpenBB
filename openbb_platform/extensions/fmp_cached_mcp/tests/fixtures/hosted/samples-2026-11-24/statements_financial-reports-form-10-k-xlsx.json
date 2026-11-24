@@ -1,0 +1,25 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "financial-reports-form-10-k-xlsx",
+  "symbol": "AAPL",
+  "year": 2024,
+  "period": "FY"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "0014003629f8ccd869fc49ad5bf97ce8e0d48e7cb53ba89a0ce7b797d0137e4b",
+ "hosted_text_len": 175873,
+ "rest_path": "/financial-reports-xlsx",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "8166027e8f3096e2deffb681de0616dd07382d717110acdb13cfb5cee8d90758",
+ "rest_body_len": 107340,
+ "json_equal": null,
+ "compact_equal": null
+}

@@ -1,0 +1,25 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "aftermarket-quote",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "54fb4ede15bccbbdb6d8d398b716e8d9d7b6076ae2b5a38f938f8893e76abe05",
+ "hosted_text_len": 119,
+ "rest_path": "/aftermarket-quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "7f903be9e7eb213445e38d8f13f505413f806e5ba4aa7593479d0da70a98d61a",
+ "rest_body_len": 168,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d886852664a7066552a50d81021125094990c12323635d433860a27166743151a214490159a9943c5cbf2734a7341a2e6e6a6661650c192ccdcd4e292c4dc02904de696a6a686c616269606060640e95aae580096834e88a8000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"bidSize\":1,\"bidPrice\":351.3,\"askSize\":2,\"askPrice\":351.67,\"volume\":77568,\"timestamp\":1795513849000}]"
+}

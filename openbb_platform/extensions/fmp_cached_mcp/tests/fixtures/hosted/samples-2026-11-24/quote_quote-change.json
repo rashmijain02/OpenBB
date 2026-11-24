@@ -1,0 +1,25 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "quote-change",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "44fd24e3f5e523e3ec2f9a01c28f5febe28c5fdca9e14512cbdb9db0c19fd543",
+ "hosted_text_len": 184,
+ "rest_path": "/stock-price-change",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "68ed0460f7203d53cc41ca9e06124ba4a8a0972293253bc97cf0c7123d252af1",
+ "rest_body_len": 263,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a3dce310b02310c86e1fd7e45e9ac21699236e776e0a8e02ae2a0387a38e8e021fe775bafbd21cbc3c74b4e9d739f7ccef9e7345e1f77bf717e180e3bbf9a95b659087a640e95b4d09a004d436cb37d3604360b1c8256e5a214408cd1aac5bf3120c7d48ad3eb963118080a734b1e8b455092be19173386a4baecb4189182465a7e249c550c7a1195cae3e55da2892c2960344ad9bfddf907723a281a07010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"1D\":1.90332,\"5D\":-1.08526,\"1M\":0.38823225,\"3M\":12.48308,\"6M\":13.03672,\"ytd\":28.40433,\"1Y\":26.51493,\"3Y\":83.75533,\"5Y\":115.56132,\"10Y\":1148.94454,\"max\":271875.06817}]"
+}

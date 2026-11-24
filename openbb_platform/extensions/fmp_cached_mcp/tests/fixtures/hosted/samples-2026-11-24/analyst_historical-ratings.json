@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "historical-ratings",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "0b1d375e349ce8ea4c9cee34d3ce51c66c397fb521c798b120fc6db25b648fd6",
+ "hosted_text_len": 427,
+ "rest_path": "/ratings-historical",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "e06aa7788d8c1e318079959d1f2852a85609b8aeeea8a9db926bbb5a4033b63d",
+ "rest_body_len": 560,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c818265394589299970e9273d28689e597a51625e6e40427e717817419c30cc92c4ece2fcd2b494d714e2cce70cbc92f475751945a525a94e79fe75a589a59520993354593752c2e4e2d2946974d494d2a09c947d56904952b28ca4c4e054a2616e5011d5b8c43da293f3f1b26650894a9d52139580c4642b070c502008013128f30020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-23\",\"rating\":\"B+\",\"overallScore\":3,\"discountedCashFlowScore\":3,\"returnOnEquityScore\":5,\"returnOnAssetsScore\":5,\"debtToEquityScore\":2,\"priceToEarningsScore\":2,\"priceToBookScore\":1},{\"symbol\":\"AAPL\",\"date\":\"2026-11-20\",\"rating\":\"B+\",\"overallScore\":3,\"discountedCashFlowScore\":3,\"returnOnEquityScore\":5,\"returnOnAssetsScore\":5,\"debtToEquityScore\":2,\"priceToEarningsScore\":2,\"priceToBookScore\":1}]"
+}

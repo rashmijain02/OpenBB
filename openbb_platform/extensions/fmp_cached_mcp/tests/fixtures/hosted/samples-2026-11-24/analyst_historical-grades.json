@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "historical-grades",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "a498628e7fff5ccc74c309064275a34410bbec96715ce0623b407a0f259b7867",
+ "hosted_text_len": 331,
+ "rest_path": "/grades-historical",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ea2d6f2f02d98042bf9995a7cb471725646f327858434391500437167b10749a",
+ "rest_body_len": 428,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c010269398979853595c1294589299975e1c5c52949f97ee545a09546c86550544cec800aba4477e4e0a50d6d004bbe1a939208719e3b119a604a8a25687344f1950ec29434bda7b8a2b1600cfe13c11ac010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-01\",\"analystRatingsStrongBuy\":6,\"analystRatingsBuy\":20,\"analystRatingsHold\":14,\"analystRatingsSell\":3,\"analystRatingsStrongSell\":3},{\"symbol\":\"AAPL\",\"date\":\"2026-10-01\",\"analystRatingsStrongBuy\":6,\"analystRatingsBuy\":19,\"analystRatingsHold\":14,\"analystRatingsSell\":3,\"analystRatingsStrongSell\":3}]"
+}

@@ -1,0 +1,1494 @@
+{
+ "Fundraisers/crowdfunding-by-cik": {
+  "path": "/crowdfunding-offerings",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"Fundraisers\" (endpoint /crowdfunding-offerings): Query Error: Invalid or missing query parameter - cik"
+ },
+ "Fundraisers/crowdfunding-search": {
+  "path": "/crowdfunding-offerings-search",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"Fundraisers\" (endpoint /crowdfunding-offerings-search): Query Error: Invalid or missing query parameter - name"
+ },
+ "Fundraisers/equity-offering-by-cik": {
+  "path": "/fundraising",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"Fundraisers\" (endpoint /fundraising): Query Error: Invalid or missing query parameter - cik"
+ },
+ "Fundraisers/equity-offering-search": {
+  "path": "/fundraising-search",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"Fundraisers\" (endpoint /fundraising-search): Query Error: Invalid or missing query parameter - name"
+ },
+ "Fundraisers/latest-crowdfunding": {
+  "path": "/crowdfunding-offerings-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "crowdfunding-offerings-latest",
+    "status": 200
+   }
+  ]
+ },
+ "Fundraisers/latest-equity-offering": {
+  "path": "/fundraising-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "fundraising-latest",
+    "status": 200
+   }
+  ]
+ },
+ "analyst/financial-estimates": {
+  "path": "/analyst-estimates",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /analyst-estimates): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/grades": {
+  "path": "/grades",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /grades): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/grades-summary": {
+  "path": "/grades-consensus",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /grades-consensus): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/historical-grades": {
+  "path": "/grades-historical",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /grades-historical): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/historical-ratings": {
+  "path": "/ratings-historical",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /ratings-historical): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/price-target-consensus": {
+  "path": "/price-target-consensus",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /price-target-consensus): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/price-target-summary": {
+  "path": "/price-target-summary",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /price-target-summary): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "analyst/ratings-snapshot": {
+  "path": "/ratings-snapshot",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"analyst\" (endpoint /ratings-snapshot): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "calendar/dividends-calendar": {
+  "path": "/dividends-calendar",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "dividends-calendar",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/dividends-company": {
+  "path": "/dividends",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"calendar\" (endpoint /dividends): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "calendar/earnings-calendar": {
+  "path": "/earnings-calendar",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "earnings-calendar",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/earnings-company": {
+  "path": "/earnings",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"calendar\" (endpoint /earnings): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "calendar/ipos-calendar": {
+  "path": "/ipos-calendar",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "ipos-calendar",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/ipos-disclosure": {
+  "path": "/ipos-disclosure",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "ipos-disclosure",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/ipos-prospectus": {
+  "path": "/ipos-prospectus",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "ipos-prospectus",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/splits-calendar": {
+  "path": "/splits-calendar",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "splits-calendar",
+    "status": 200
+   }
+  ]
+ },
+ "calendar/splits-company": {
+  "path": "/splits",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"calendar\" (endpoint /splits): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/historical-price-eod-dividend-adjusted": {
+  "path": "/historical-price-eod/dividend-adjusted",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-price-eod/dividend-adjusted): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/historical-price-eod-full": {
+  "path": "/historical-price-eod/full",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-price-eod/full): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/historical-price-eod-light": {
+  "path": "/historical-price-eod/light",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-price-eod/light): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/historical-price-eod-non-split-adjusted": {
+  "path": "/historical-price-eod/non-split-adjusted",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-price-eod/non-split-adjusted): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-1-hour": {
+  "path": "/historical-chart/1hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/1hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-1-min": {
+  "path": "/historical-chart/1min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/1min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-15-min": {
+  "path": "/historical-chart/15min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/15min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-30-min": {
+  "path": "/historical-chart/30min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/30min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-4-hour": {
+  "path": "/historical-chart/4hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/4hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "chart/intraday-5-min": {
+  "path": "/historical-chart/5min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"chart\" (endpoint /historical-chart/5min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commitmentOfTraders/COT-report": {
+  "path": "/commitment-of-traders-report",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "commitment-of-traders-report",
+    "status": 200
+   }
+  ]
+ },
+ "commitmentOfTraders/COT-report-analysis": {
+  "path": "/commitment-of-traders-analysis",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "commitment-of-traders-analysis",
+    "status": 200
+   }
+  ]
+ },
+ "commitmentOfTraders/COT-report-list": {
+  "path": "/commitment-of-traders-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "commitment-of-traders-list",
+    "status": 200
+   }
+  ]
+ },
+ "commodity/commodities-historical-price-eod-full": {
+  "path": "/historical-price-eod/full",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /historical-price-eod/full): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-historical-price-eod-light": {
+  "path": "/historical-price-eod/light",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /historical-price-eod/light): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-intraday-1-hour": {
+  "path": "/historical-chart/1hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /historical-chart/1hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-intraday-1-min": {
+  "path": "/historical-chart/1min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /historical-chart/1min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-intraday-5-min": {
+  "path": "/historical-chart/5min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /historical-chart/5min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-list": {
+  "path": "/commodities-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "commodities-list",
+    "status": 200
+   }
+  ]
+ },
+ "commodity/commodities-quote": {
+  "path": "/quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "commodity/commodities-quote-short": {
+  "path": "/quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"commodity\" (endpoint /quote-short): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/all-shares-float": {
+  "path": "/shares-float-all",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "shares-float-all",
+    "status": 200
+   }
+  ]
+ },
+ "company/batch-market-cap": {
+  "path": "/market-capitalization-batch",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /market-capitalization-batch): Query Error: Invalid or missing query parameter - symbols"
+ },
+ "company/company-executives": {
+  "path": "/key-executives",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "key-executives",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "company/company-notes": {
+  "path": "/company-notes",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "company-notes",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "company/delisted-companies": {
+  "path": "/delisted-companies",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "delisted-companies",
+    "status": 200
+   }
+  ]
+ },
+ "company/employee-count": {
+  "path": "/employee-count",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "employee-count",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "company/executive-compensation": {
+  "path": "/governance-executive-compensation",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /governance-executive-compensation): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/executive-compensation-benchmark": {
+  "path": "/executive-compensation-benchmark",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "executive-compensation-benchmark",
+    "status": 200
+   }
+  ]
+ },
+ "company/historical-employee-count": {
+  "path": "/historical-employee-count",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "historical-employee-count",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "company/historical-market-cap": {
+  "path": "/historical-market-capitalization",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /historical-market-capitalization): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/latest-mergers-acquisitions": {
+  "path": "/mergers-acquisitions-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "mergers-acquisitions-latest",
+    "status": 200
+   }
+  ]
+ },
+ "company/market-cap": {
+  "path": "/market-capitalization",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /market-capitalization): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/peers": {
+  "path": "/stock-peers",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /stock-peers): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/profile-cik": {
+  "path": "/profile-cik",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /profile-cik): Query Error: Invalid or missing query parameter - cik"
+ },
+ "company/profile-symbol": {
+  "path": "/profile",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /profile): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "company/search-mergers-acquisitions": {
+  "path": "/mergers-acquisitions-search",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /mergers-acquisitions-search): Query Error: Invalid or missing query parameter - name"
+ },
+ "company/shares-float": {
+  "path": "/shares-float",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"company\" (endpoint /shares-float): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-historical-price-eod-full": {
+  "path": "/historical-price-eod/full",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /historical-price-eod/full): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-historical-price-eod-light": {
+  "path": "/historical-price-eod/light",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /historical-price-eod/light): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-intraday-1-hour": {
+  "path": "/historical-chart/1hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /historical-chart/1hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-intraday-1-min": {
+  "path": "/historical-chart/1min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /historical-chart/1min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-intraday-5-min": {
+  "path": "/historical-chart/5min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /historical-chart/5min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-list": {
+  "path": "/cryptocurrency-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "cryptocurrency-list",
+    "status": 200
+   }
+  ]
+ },
+ "crypto/cryptocurrency-quote": {
+  "path": "/quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "crypto/cryptocurrency-quote-short": {
+  "path": "/quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"crypto\" (endpoint /quote-short): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "directory/ETFs-list": {
+  "path": "/etf-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "etf-list",
+    "status": 200
+   }
+  ]
+ },
+ "directory/actively-trading-list": {
+  "path": "/actively-trading-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "actively-trading-list",
+    "status": 200
+   }
+  ]
+ },
+ "directory/available-countries": {
+  "path": "/available-countries",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "available-countries",
+    "status": 200
+   }
+  ]
+ },
+ "directory/available-exchanges": {
+  "path": "/available-exchanges",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "available-exchanges",
+    "status": 200
+   }
+  ]
+ },
+ "directory/available-industries": {
+  "path": "/available-industries",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "available-industries",
+    "status": 200
+   }
+  ]
+ },
+ "directory/available-sectors": {
+  "path": "/available-sectors",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "available-sectors",
+    "status": 200
+   }
+  ]
+ },
+ "directory/cik-list": {
+  "path": "/cik-list",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "cik-list",
+    "status": 200
+   }
+  ]
+ },
+ "directory/company-symbols-list": {
+  "path": "/stock-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "stock-list",
+    "status": 200
+   }
+  ]
+ },
+ "directory/financial-symbols-list": {
+  "path": "/financial-statement-symbol-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "financial-statement-symbol-list",
+    "status": 200
+   }
+  ]
+ },
+ "directory/symbol-changes-list": {
+  "path": "/symbol-change",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "symbol-change",
+    "status": 200
+   }
+  ]
+ },
+ "discountedCashFlow/custom-dcf-advanced": {
+  "path": "/custom-discounted-cash-flow",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"discountedCashFlow\" (endpoint /custom-discounted-cash-flow): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "discountedCashFlow/custom-dcf-levered": {
+  "path": "/custom-levered-discounted-cash-flow",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"discountedCashFlow\" (endpoint /custom-levered-discounted-cash-flow): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "discountedCashFlow/dcf-advanced": {
+  "path": "/discounted-cash-flow",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"discountedCashFlow\" (endpoint /discounted-cash-flow): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "discountedCashFlow/dcf-levered": {
+  "path": "/levered-discounted-cash-flow",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"discountedCashFlow\" (endpoint /levered-discounted-cash-flow): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "economics/economics-calendar": {
+  "path": "/economic-calendar",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "economic-calendar",
+    "status": 200
+   }
+  ]
+ },
+ "economics/economics-indicators": {
+  "path": "/economic-indicators",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"economics\" (endpoint /economic-indicators): Query Error: Invalid or missing query parameter - name"
+ },
+ "economics/market-risk-premium": {
+  "path": "/market-risk-premium",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "market-risk-premium",
+    "status": 200
+   }
+  ]
+ },
+ "economics/treasury-rates": {
+  "path": "/treasury-rates",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "treasury-rates",
+    "status": 200
+   }
+  ]
+ },
+ "etfAndMutualFunds/country-weighting": {
+  "path": "/etf/country-weightings",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"etfAndMutualFunds\" (endpoint /etf/country-weightings): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "etfAndMutualFunds/information": {
+  "path": "/etf/info",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"etfAndMutualFunds\" (endpoint /etf/info): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "etfAndMutualFunds/sector-weighting": {
+  "path": "/etf/sector-weightings",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"etfAndMutualFunds\" (endpoint /etf/sector-weightings): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-historical-price-eod-full": {
+  "path": "/historical-price-eod/full",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /historical-price-eod/full): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-historical-price-eod-light": {
+  "path": "/historical-price-eod/light",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /historical-price-eod/light): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-intraday-1-hour": {
+  "path": "/historical-chart/1hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /historical-chart/1hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-intraday-1-min": {
+  "path": "/historical-chart/1min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /historical-chart/1min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-intraday-5-min": {
+  "path": "/historical-chart/5min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /historical-chart/5min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-list": {
+  "path": "/forex-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "forex-list",
+    "status": 200
+   }
+  ]
+ },
+ "forex/forex-quote": {
+  "path": "/quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "forex/forex-quote-short": {
+  "path": "/quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"forex\" (endpoint /quote-short): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/dow-jones": {
+  "path": "/dowjones-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "dowjones-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/historical-dow-jones": {
+  "path": "/historical-dowjones-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "historical-dowjones-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/historical-nasdaq": {
+  "path": "/historical-nasdaq-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "historical-nasdaq-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/historical-sp-500": {
+  "path": "/historical-sp500-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "historical-sp500-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/index-historical-price-eod-full": {
+  "path": "/historical-price-eod/full",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /historical-price-eod/full): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-historical-price-eod-light": {
+  "path": "/historical-price-eod/light",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /historical-price-eod/light): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-intraday-1-hour": {
+  "path": "/historical-chart/1hour",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /historical-chart/1hour): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-intraday-1-min": {
+  "path": "/historical-chart/1min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /historical-chart/1min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-intraday-5-min": {
+  "path": "/historical-chart/5min",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /historical-chart/5min): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-quote": {
+  "path": "/quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/index-quote-short": {
+  "path": "/quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"indexes\" (endpoint /quote-short): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "indexes/indexes-list": {
+  "path": "/index-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "index-list",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/nasdaq": {
+  "path": "/nasdaq-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "nasdaq-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "indexes/sp-500": {
+  "path": "/sp500-constituent",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "sp500-constituent",
+    "status": 200
+   }
+  ]
+ },
+ "insiderTrades/acquisition-ownership": {
+  "path": "/acquisition-of-beneficial-ownership",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"insiderTrades\" (endpoint /acquisition-of-beneficial-ownership): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "insiderTrades/all-transaction-types": {
+  "path": "/insider-trading-transaction-type",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "insider-trading-transaction-type",
+    "status": 200
+   }
+  ]
+ },
+ "insiderTrades/insider-trade-statistics": {
+  "path": "/insider-trading/statistics",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"insiderTrades\" (endpoint /insider-trading/statistics): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "insiderTrades/latest-insider-trade": {
+  "path": "/insider-trading/latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "insider-trading/latest",
+    "status": 200
+   }
+  ]
+ },
+ "insiderTrades/search-insider-trades": {
+  "path": "/insider-trading/search",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "insider-trading/search",
+    "status": 200
+   }
+  ]
+ },
+ "insiderTrades/search-reporting-name": {
+  "path": "/insider-trading/reporting-name",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"insiderTrades\" (endpoint /insider-trading/reporting-name): Query Error: Invalid or missing query parameter - name"
+ },
+ "marketHours/all-exchange-market-hours": {
+  "path": "/all-exchange-market-hours",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "all-exchange-market-hours",
+    "status": 200
+   }
+  ]
+ },
+ "marketHours/exchange-market-hours": {
+  "path": "/exchange-market-hours",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketHours\" (endpoint /exchange-market-hours): Query Error: Invalid or missing query parameter - exchange"
+ },
+ "marketHours/holidays-by-exchange": {
+  "path": "/holidays-by-exchange",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketHours\" (endpoint /holidays-by-exchange): Query Error: Invalid or missing query parameter - exchange"
+ },
+ "marketPerformance/biggest-gainers": {
+  "path": "/biggest-gainers",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "biggest-gainers",
+    "status": 200
+   }
+  ]
+ },
+ "marketPerformance/biggest-losers": {
+  "path": "/biggest-losers",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "biggest-losers",
+    "status": 200
+   }
+  ]
+ },
+ "marketPerformance/historical-industry-pe": {
+  "path": "/historical-industry-pe",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /historical-industry-pe): Query Error: Invalid or missing query parameter - industry"
+ },
+ "marketPerformance/historical-industry-performance": {
+  "path": "/historical-industry-performance",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /historical-industry-performance): Query Error: Invalid or missing query parameter - industry"
+ },
+ "marketPerformance/historical-sector-pe": {
+  "path": "/historical-sector-pe",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /historical-sector-pe): Query Error: Invalid or missing query parameter - sector"
+ },
+ "marketPerformance/historical-sector-performance": {
+  "path": "/historical-sector-performance",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /historical-sector-performance): Query Error: Invalid or missing query parameter - sector"
+ },
+ "marketPerformance/industry-PE-snapshot": {
+  "path": "/industry-pe-snapshot",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /industry-pe-snapshot): Query Error: Invalid or missing query parameter - date"
+ },
+ "marketPerformance/industry-performance-snapshot": {
+  "path": "/industry-performance-snapshot",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /industry-performance-snapshot): Query Error: Invalid or missing query parameter - date"
+ },
+ "marketPerformance/most-active": {
+  "path": "/most-actives",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "most-actives",
+    "status": 200
+   }
+  ]
+ },
+ "marketPerformance/sector-PE-snapshot": {
+  "path": "/sector-pe-snapshot",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /sector-pe-snapshot): Query Error: Invalid or missing query parameter - date"
+ },
+ "marketPerformance/sector-performance-snapshot": {
+  "path": "/sector-performance-snapshot",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"marketPerformance\" (endpoint /sector-performance-snapshot): Query Error: Invalid or missing query parameter - date"
+ },
+ "news/crypto-news": {
+  "path": "/news/crypto-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/crypto-latest",
+    "status": 200
+   }
+  ]
+ },
+ "news/fmp-articles": {
+  "path": "/fmp-articles",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "fmp-articles",
+    "status": 200
+   }
+  ]
+ },
+ "news/forex-news": {
+  "path": "/news/forex-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/forex-latest",
+    "status": 200
+   }
+  ]
+ },
+ "news/general-news": {
+  "path": "/news/general-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/general-latest",
+    "status": 200
+   }
+  ]
+ },
+ "news/press-releases": {
+  "path": "/news/press-releases-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/press-releases-latest",
+    "status": 200
+   }
+  ]
+ },
+ "news/search-crypto-news": {
+  "path": "/news/crypto",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/crypto",
+    "params": {
+     "symbols": "BTCUSD"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbols": "BTCUSD"
+  }
+ },
+ "news/search-forex-news": {
+  "path": "/news/forex",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/forex",
+    "params": {
+     "symbols": "EURUSD"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbols": "EURUSD"
+  }
+ },
+ "news/search-press-releases": {
+  "path": "/news/press-releases",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/press-releases",
+    "params": {
+     "symbols": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbols": "AAPL"
+  }
+ },
+ "news/search-stock-news": {
+  "path": "/news/stock",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/stock",
+    "params": {
+     "symbols": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbols": "AAPL"
+  }
+ },
+ "news/stock-news": {
+  "path": "/news/stock-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "news/stock-latest",
+    "status": 200
+   }
+  ]
+ },
+ "quote/aftermarket-quote": {
+  "path": "/aftermarket-quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /aftermarket-quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "quote/aftermarket-trade": {
+  "path": "/aftermarket-trade",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /aftermarket-trade): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "quote/batch-aftermarket-quote": {
+  "path": "/batch-aftermarket-quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /batch-aftermarket-quote): Query Error: Invalid or missing query parameter - symbols"
+ },
+ "quote/batch-aftermarket-trade": {
+  "path": "/batch-aftermarket-trade",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /batch-aftermarket-trade): Query Error: Invalid or missing query parameter - symbols"
+ },
+ "quote/batch-quote": {
+  "path": "/batch-quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /batch-quote): Query Error: Invalid or missing query parameter - symbols"
+ },
+ "quote/batch-quote-short": {
+  "path": "/batch-quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /batch-quote-short): Query Error: Invalid or missing query parameter - symbols"
+ },
+ "quote/quote": {
+  "path": "/quote",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "quote/quote-change": {
+  "path": "/stock-price-change",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /stock-price-change): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "quote/quote-short": {
+  "path": "/quote-short",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"quote\" (endpoint /quote-short): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "search/search-CIK": {
+  "path": "/search-cik",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"search\" (endpoint /search-cik): Query Error: Invalid or missing query parameter - cik"
+ },
+ "search/search-ISIN": {
+  "path": "/search-isin",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "search-isin",
+    "params": {
+     "isin": "US0378331005"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "isin": "US0378331005"
+  }
+ },
+ "search/search-company-screener": {
+  "path": "/company-screener",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "company-screener",
+    "status": 200
+   }
+  ]
+ },
+ "search/search-cusip": {
+  "path": "/search-cusip",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "search-cusip",
+    "params": {
+     "cusip": "037833100"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "cusip": "037833100"
+  }
+ },
+ "search/search-exchange-variants": {
+  "path": "/search-exchange-variants",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "search-exchange-variants",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "search/search-name": {
+  "path": "/search-name",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"search\" (endpoint /search-name): Query Error: Invalid or missing query parameter - query"
+ },
+ "search/search-symbol": {
+  "path": "/search-symbol",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"search\" (endpoint /search-symbol): Query Error: Invalid or missing query parameter - query"
+ },
+ "secFilings/8k-latest": {
+  "path": "/sec-filings-8k",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "sec-filings-8k",
+    "params": {
+     "from": "2024-01-01",
+     "to": "2024-03-01"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "from": "2024-01-01",
+   "to": "2024-03-01"
+  }
+ },
+ "secFilings/all-industry-classification": {
+  "path": "/all-industry-classification",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "all-industry-classification",
+    "status": 200
+   }
+  ]
+ },
+ "secFilings/company-search-by-cik": {
+  "path": "/sec-filings-company-search/cik",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-company-search/cik): Query Error: Invalid or missing query parameter - cik"
+ },
+ "secFilings/company-search-by-symbol": {
+  "path": "/sec-filings-company-search/symbol",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-company-search/symbol): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "secFilings/financials-latest": {
+  "path": "/sec-filings-financials",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "sec-filings-financials",
+    "params": {
+     "from": "2024-01-01",
+     "to": "2024-03-01"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "from": "2024-01-01",
+   "to": "2024-03-01"
+  }
+ },
+ "secFilings/industry-classification-list": {
+  "path": "/standard-industrial-classification-list",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "standard-industrial-classification-list",
+    "status": 200
+   }
+  ]
+ },
+ "secFilings/industry-classification-search": {
+  "path": "/industry-classification-search",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /industry-classification-search): Please enter at least one search value: cik, sicCode, or symbol."
+ },
+ "secFilings/search-by-cik": {
+  "path": "/sec-filings-search/cik",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-search/cik): Query Error: Invalid or missing query parameter - cik"
+ },
+ "secFilings/search-by-form-type": {
+  "path": "/sec-filings-search/form-type",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-search/form-type): Query Error: Invalid or missing query parameter - formType"
+ },
+ "secFilings/search-by-name": {
+  "path": "/sec-filings-company-search/name",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-company-search/name): Query Error: Invalid or missing query parameter - company"
+ },
+ "secFilings/search-by-symbol": {
+  "path": "/sec-filings-search/symbol",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"secFilings\" (endpoint /sec-filings-search/symbol): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "secFilings/sec-company-full-profile": {
+  "path": "/sec-profile",
+  "how": "rest-json-equal",
+  "tried": [
+   {
+    "path": "sec-profile",
+    "params": {
+     "symbol": "AAPL"
+    },
+    "status": 200
+   }
+  ],
+  "hosted_filled_defaults": true,
+  "defaults": {
+   "symbol": "AAPL"
+  }
+ },
+ "senate/house-latest": {
+  "path": "/house-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "house-latest",
+    "status": 200
+   }
+  ]
+ },
+ "senate/house-trading": {
+  "path": "/house-trades",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"senate\" (endpoint /house-trades): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "senate/house-trading-by-name": {
+  "path": "/house-trades-by-name",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"senate\" (endpoint /house-trades-by-name): Query Error: Invalid or missing query parameter - name"
+ },
+ "senate/senate-latest": {
+  "path": "/senate-latest",
+  "how": "rest-shape-match",
+  "tried": [
+   {
+    "path": "senate-latest",
+    "status": 200
+   }
+  ]
+ },
+ "senate/senate-trading": {
+  "path": "/senate-trades",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"senate\" (endpoint /senate-trades): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "senate/senate-trading-by-name": {
+  "path": "/senate-trades-by-name",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"senate\" (endpoint /senate-trades-by-name): Query Error: Invalid or missing query parameter - name"
+ },
+ "statements/as-reported-balance-statements": {
+  "path": "/balance-sheet-statement-as-reported",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /balance-sheet-statement-as-reported): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/as-reported-cashflow-statements": {
+  "path": "/cash-flow-statement-as-reported",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /cash-flow-statement-as-reported): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/as-reported-financial-statements": {
+  "path": "/financial-statement-full-as-reported",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-statement-full-as-reported): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/as-reported-income-statements": {
+  "path": "/income-statement-as-reported",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /income-statement-as-reported): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/balance-sheet-statement": {
+  "path": "/balance-sheet-statement",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /balance-sheet-statement): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/balance-sheet-statement-growth": {
+  "path": "/balance-sheet-statement-growth",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /balance-sheet-statement-growth): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/cashflow-statement": {
+  "path": "/cash-flow-statement",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /cash-flow-statement): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/cashflow-statement-growth": {
+  "path": "/cash-flow-statement-growth",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /cash-flow-statement-growth): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/enterprise-values": {
+  "path": "/enterprise-values",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /enterprise-values): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/financial-reports-dates": {
+  "path": "/financial-reports-dates",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-reports-dates): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/financial-reports-form-10-k-json": {
+  "path": "/financial-reports-json",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-reports-json): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/financial-reports-form-10-k-xlsx": {
+  "path": "/financial-reports-xlsx",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-reports-xlsx): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/financial-scores": {
+  "path": "/financial-scores",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-scores): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/financial-statement-growth": {
+  "path": "/financial-growth",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /financial-growth): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/income-statement": {
+  "path": "/income-statement",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /income-statement): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/income-statement-growth": {
+  "path": "/income-statement-growth",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /income-statement-growth): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/key-metrics": {
+  "path": "/key-metrics",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /key-metrics): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/key-metrics-ttm": {
+  "path": "/key-metrics-ttm",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /key-metrics-ttm): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/metrics-ratios": {
+  "path": "/ratios",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /ratios): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/metrics-ratios-ttm": {
+  "path": "/ratios-ttm",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /ratios-ttm): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/owner-earnings": {
+  "path": "/owner-earnings",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /owner-earnings): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/revenue-geographic-segments": {
+  "path": "/revenue-geographic-segmentation",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /revenue-geographic-segmentation): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "statements/revenue-product-segmentation": {
+  "path": "/revenue-product-segmentation",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"statements\" (endpoint /revenue-product-segmentation): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/average-directional-index": {
+  "path": "/technical-indicators/adx",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/adx): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/double-exponential-moving-average": {
+  "path": "/technical-indicators/dema",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/dema): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/exponential-moving-average": {
+  "path": "/technical-indicators/ema",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/ema): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/relative-strength-index": {
+  "path": "/technical-indicators/rsi",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/rsi): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/simple-moving-average": {
+  "path": "/technical-indicators/sma",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/sma): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/standard-deviation": {
+  "path": "/technical-indicators/standarddeviation",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/standarddeviation): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/triple-exponential-moving-average": {
+  "path": "/technical-indicators/tema",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/tema): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/weighted-moving-average": {
+  "path": "/technical-indicators/wma",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/wma): Query Error: Invalid or missing query parameter - symbol"
+ },
+ "technicalIndicators/williams": {
+  "path": "/technical-indicators/williams",
+  "how": "hosted-error",
+  "missing_required_error": "Bad request for tool \"technicalIndicators\" (endpoint /technical-indicators/williams): Query Error: Invalid or missing query parameter - symbol"
+ }
+}

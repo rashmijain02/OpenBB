@@ -1,0 +1,26 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "earnings-company",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "ed4b1ead09619daee616bbf502bcc01eb95e7cde8db52bec21bf6a8d2641b089",
+ "hosted_text_len": 319,
+ "rest_path": "/earnings",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "78827fb37d3d1785d92692fb5aa1ceb306a3a515b9ec21ec1ebc53e086590395",
+ "rest_body_len": 416,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a958fb10ac2301086779f22646ecae5bc36d4ad839b838b9338549b41486b31a920e2bb9bb4111daae8c12dff773fdcb79d3176f3cb18b7d7667f327cc17859ae573c19d3ba723a6408a804a0007a12ddd9f2e0fa2a54dade9857bcb4eed8f85eed09a6054572d617ddf67aaa14d17b516639a85c419878652aeb365d1d0fc24bb990522070cfefc91f2a430f704a0553c8a655645a141f54a42452e3aff04549ce09087f51a24169b67b00b489c881a0010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2027-02-04\",\"epsActual\":null,\"epsEstimated\":2.94,\"revenueActual\":null,\"revenueEstimated\":156076700000,\"lastUpdated\":\"2026-11-20\"},{\"symbol\":\"AAPL\",\"date\":\"2026-11-02\",\"epsActual\":2.05,\"epsEstimated\":1.99,\"revenueActual\":114477000000,\"revenueEstimated\":113404200000,\"lastUpdated\":\"2026-11-24\"}]"
+}

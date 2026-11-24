@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "historical-price-eod-full",
+  "symbol": "AAPL",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d30463c5b931b91a67b36f93083e2e2a7ba5b0aaf2493b430bfb99d7e07e69b5",
+ "hosted_text_len": 663,
+ "rest_path": "/historical-price-eod/full",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3eb63283b131ff966dbca8b5b86187f2264b8f732bd5f4472fb8438f1cd3b1ee",
+ "rest_body_len": 928,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9d923d6fc2301086777e4594999ceece5f311b7b07f6aa434a235229c4a8d0a2aaea7faf131247d83094c1cb73b6a5e7def77991653ffe64597efcdebfba365f65f97abd79ca9717fa569dea9e31b22e880ac669e20e75e7274231946664cdfbae1998042147d6ba738f2482d223dab6ee580f9067f8e5dacf7d4f4bd4969554d3e5a6ea763d2f0841d015ddd41fdbba3bf54306cbd34fe7ea30fc6e4095ac3cfc5dfed793ec0d4f4bb1a7022e234f0dd2249e1698624f89d69b22269e02cc3d4b025491a542b0da3c685926960456c6965e89af2dfdb5d4d26f28a4162c7dc6686dd852b0f475b89725024919761d3c05a079ccd2dceaac48b3143acad2824e2d69eec16c69241a254c9225ceb54cc24460ed5fc59e7e8bf2d2dac5cb1fd05a3f51a0030000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-20\",\"open\":352.87,\"high\":354.34,\"low\":340.56,\"close\":342.56,\"volume\":80692545,\"change\":-10.31,\"changePercent\":-2.92,\"vwap\":347.5825},{\"symbol\":\"AAPL\",\"date\":\"2026-11-19\",\"open\":352.91,\"high\":355.28,\"low\":346.47,\"close\":349.21,\"volume\":40906900,\"change\":-3.7,\"changePercent\":-1.05,\"vwap\":350.9675},{\"symbol\":\"AAPL\",\"date\":\"2026-11-18\",\"open\":351.94,\"high\":356.42,\"low\":351.47,\"close\":352.45,\"volume\":34209928,\"change\":0.51,\"changePercent\":0.14491,\"vwap\":353.07},{\"symbol\":\"AAPL\",\"date\":\"2026-11-17\",\"open\":352.83,\"high\":355.36,\"low\":349.67,\"close\":351.91,\"volume\":37407537,\"change\":-0.92,\"changePercent\":-0.26075,\"vwap\":352.4425}]"
+}

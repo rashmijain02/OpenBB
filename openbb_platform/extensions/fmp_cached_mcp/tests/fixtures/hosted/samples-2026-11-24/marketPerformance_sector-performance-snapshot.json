@@ -1,0 +1,25 @@
+{
+ "tool": "marketPerformance",
+ "arguments": {
+  "endpoint": "sector-performance-snapshot",
+  "date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "4b42dc95840c5c0a003caccb6b16efb392dc75c1e6816334c739c1b9985c4472",
+ "hosted_text_len": 1135,
+ "rest_path": "/sector-performance-snapshot",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "04ce18468ea06131052a885d38d18a746c504f6e75915eee530627a950c4f237",
+ "rest_body_len": 1466,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa594414b03311484effe8ad0b35df25e92973c6fb5ade84141ab27f110d2d806b659d8dd1645fcefa695fe0063604f330b1f9399bc5e08f1553e21266b3fc6c99598a0449a024c514e2e7f952186b1eb8fdab51f5210f7c5d927df0e6743fc085b9f37a7df1f66abc5ecf1acf843ecfd26cecff2141a2696e02449002087a618bf2fff8631ef76bb7d4ec18fa9cb6215fb430ab18646355a4bc74e5a45962d19aaa2c9c37e177b31ff0c6d816aab40485a26ab152bd4aa9cff802ce27bcc433ac4bf93c8465ac7c8e42c2badb4035741b2ccb1df7cd6d50319a54654a51c8c5539dca4ec732805fd4f35b051a67483409101ed5c4d0cb7d1b7e336f83e5645e19453120da055c80e2a00eef27a3f8cb55bc5721944a865990723daaa753c950cc472188fd69a5db02245209d630bc0a42b109e63d8e6aeedaa1a691aa5f5710dda38cd0835002f636ad3982a7b6899810d9757c158063c15f1e2ed0782ba52fbba050000",
+ "hosted_text": "[{\"date\":\"2026-11-20\",\"sector\":\"Basic Materials\",\"exchange\":\"NASDAQ\",\"averageChange\":-1.9690180601116825},{\"date\":\"2026-11-20\",\"sector\":\"Communication Services\",\"exchange\":\"NASDAQ\",\"averageChange\":-3.4408980736797656},{\"date\":\"2026-11-20\",\"sector\":\"Consumer Cyclical\",\"exchange\":\"NASDAQ\",\"averageChange\":-3.6079674393243333},{\"date\":\"2026-11-20\",\"sector\":\"Consumer Defensive\",\"exchange\":\"NASDAQ\",\"averageChange\":0.07892968793434818},{\"date\":\"2026-11-20\",\"sector\":\"Energy\",\"exchange\":\"NASDAQ\",\"averageChange\":-1.9292042231689233},{\"date\":\"2026-11-20\",\"sector\":\"Financial Services\",\"exchange\":\"NASDAQ\",\"averageChange\":-2.354086136514888},{\"date\":\"2026-11-20\",\"sector\":\"Healthcare\",\"exchange\":\"NASDAQ\",\"averageChange\":-1.838302512732981},{\"date\":\"2026-11-20\",\"sector\":\"Industrials\",\"exchange\":\"NASDAQ\",\"averageChange\":-2.9266240073922756},{\"date\":\"2026-11-20\",\"sector\":\"Real Estate\",\"exchange\":\"NASDAQ\",\"averageChange\":-3.9363610889711964},{\"date\":\"2026-11-20\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"averageChange\":-5.344687945849214},{\"date\":\"2026-11-20\",\"sector\":\"Utilities\",\"exchange\":\"NASDAQ\",\"averageChange\":-2.7991959433579128}]"
+}
