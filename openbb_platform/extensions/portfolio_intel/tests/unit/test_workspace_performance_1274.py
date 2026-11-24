@@ -7,7 +7,7 @@ refused). Provider tiers are replaced at the one dispatch seam
 (``providers.retrofit._dispatch``) by a counting fake that simulates a full
 outage, and the provider-health reachability probe by a counting fake, so
 the provider ledger counts exactly the tier calls a Workspace app page
-causes. Real gaps are strict ``xfail`` with the backend change they need.
+causes. The #1274 identical-refresh gap is fixed by the #1275 result cache.
 """
 
 from __future__ import annotations
@@ -80,6 +80,9 @@ def _fanout(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         "fanout",
         tmp_path_factory.mktemp("fanout"),
         PERF_REFRESHES=str(REFRESHES),
+        # Pin the cache TTLs so the run never straddles an expiry.
+        PI_PROVIDER_CACHE_TTL_S="600",
+        PI_PROVIDER_CACHE_NEGATIVE_TTL_S="600",
     )
 
 
@@ -176,16 +179,6 @@ def test_provider_health_probes_once_per_ttl(fanout: dict[str, Any]) -> None:
     assert fanout["health_probes"] == fanout["distinct_health_tiers"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "gap: the backend has no response or negative cache in front of the "
-        "provider chain, so an identical refresh (or app-wide group change "
-        "back to the same value) re-walks every tier. Plan Step 11.4 target "
-        "'no duplicate provider request'. Needs a short-TTL result + failure "
-        "cache in providers.retrofit.route_through_chain; schedule after #1295."
-    ),
-)
 def test_identical_refresh_makes_no_new_provider_calls(fanout: dict[str, Any]) -> None:
     """A second identical load inside the TTL is served without provider calls."""
     repeat = [e for e in fanout["events"] if e["refresh"] > 0]
@@ -235,24 +228,3 @@ def test_outage_is_explicit_unavailable_not_500(
         assert row["state"] in BODY_STATES, label
         if row["attempted"] and not row["explicit_demo"]:
             assert row["state"] == "unavailable", label
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "gap: an explicit demo selection (account_id=demo, the manifest default "
-        "for 14 book widgets) still walks the provider chain before the labelled "
-        "synthetic book is served, so every default app load spends provider "
-        "calls on data it then discards. Needs route_through_chain / with_chain "
-        "to short-circuit to the stub when provenance.explicit_demo(params) is "
-        "true; schedule after #1295."
-    ),
-)
-def test_explicit_demo_selection_makes_no_provider_calls(
-    outage: dict[str, Any],
-) -> None:
-    """The labelled demo book never costs a provider call."""
-    wasted = sorted(
-        key for key, row in outage.items() if row["explicit_demo"] and row["attempted"]
-    )
-    assert not wasted, wasted

@@ -29,14 +29,23 @@ and treats as a transition. Family authors register real calls with
 
 from __future__ import annotations
 
+import copy
 import functools
+import json
 import logging
+import os
+import threading
+import time
+from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any
 
 from openbb_portfolio_intel.providers.chain import (
     ChainedFetcher,
     ChainedFetcherAllTiersFailed,
+    Trigger,
+    _classify_exception,
+    _is_empty,
 )
 from openbb_portfolio_intel.providers.registry import TIER_REGISTRY, track_key
 from openbb_portfolio_intel.widget_backend.provenance import demo_mode
@@ -70,6 +79,8 @@ def register_tier_call(family: str, tier: str, call: TierCall) -> None:
             endpoint's kwargs; returns the tier's response or raises.
     """
     _TIER_CALLS[(family, tier)] = call
+    # A new implementation must never be shadowed by an older cached answer.
+    clear_provider_cache()
 
 
 def _dispatch(tier: str, family: str, **kwargs: Any) -> Any:
@@ -86,6 +97,133 @@ def _dispatch(tier: str, family: str, **kwargs: Any) -> Any:
             "through to next tier per chain semantics)"
         )
     return call(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Short-TTL tier result cache (#1275, plan Step 11.4)
+# ---------------------------------------------------------------------------
+#
+# Workspace refreshes every widget of a tab, and app-wide parameter groups
+# re-request widgets with unchanged parameters. Without a cache each refresh
+# re-walks every provider tier. Each (route, family, tier, normalized kwargs)
+# answer is kept for a short TTL; a failed or empty tier answer is kept for a
+# shorter negative TTL so a dead tier is not re-dialled on every refresh.
+# Authentication and permission failures (401/403, "API key") are never
+# cached: a fixed credential must take effect on the next request.
+#
+# The cache sits above ``_dispatch`` and below the chain, so a hit still
+# reports the tier that produced the value and provenance (#1269) keeps the
+# real source and state. It is per process and guarded by a lock; values are
+# deep-copied in and out so callers cannot mutate a cached answer.
+
+_CACHE_TTL_ENV = "PI_PROVIDER_CACHE_TTL_S"
+_CACHE_NEGATIVE_TTL_ENV = "PI_PROVIDER_CACHE_NEGATIVE_TTL_S"
+_CACHE_MAX_ENV = "PI_PROVIDER_CACHE_MAX_ENTRIES"
+_DEFAULT_TTL_S = 60.0
+_DEFAULT_NEGATIVE_TTL_S = 15.0
+_DEFAULT_MAX_ENTRIES = 512
+
+_cache_clock: Callable[[], float] = time.monotonic
+_CACHE_LOCK = threading.Lock()
+#: key -> (expires_at, ok, value-or-exception)
+_CACHE: OrderedDict[tuple[str, ...], tuple[float, bool, Any]] = OrderedDict()
+
+
+def _env_number(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        logger.warning("%s=%r is not a number; using %s", name, raw, default)
+        return default
+
+
+def provider_cache_ttl() -> float:
+    """Return the result TTL in seconds (``PI_PROVIDER_CACHE_TTL_S``; 0 = off)."""
+    return _env_number(_CACHE_TTL_ENV, _DEFAULT_TTL_S)
+
+
+def provider_cache_negative_ttl() -> float:
+    """Return the failure/empty TTL in seconds, never longer than the result TTL."""
+    negative = _env_number(_CACHE_NEGATIVE_TTL_ENV, _DEFAULT_NEGATIVE_TTL_S)
+    return min(negative, provider_cache_ttl())
+
+
+def _cache_max_entries() -> int:
+    return max(1, int(_env_number(_CACHE_MAX_ENV, _DEFAULT_MAX_ENTRIES)))
+
+
+def provider_cache_size() -> int:
+    """Return the number of cached tier answers (diagnostics and tests)."""
+    with _CACHE_LOCK:
+        return len(_CACHE)
+
+
+def clear_provider_cache() -> None:
+    """Drop every cached tier answer."""
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
+
+def _is_auth_failure(exc: BaseException) -> bool:
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    if status in (401, 403):
+        return True
+    if not isinstance(exc, Exception):
+        return False
+    return _classify_exception(exc) is Trigger.AUTH or "403" in str(exc)
+
+
+def _cache_key(endpoint: str, family: str, tier: str, kwargs: dict) -> tuple[str, ...]:
+    params = json.dumps(kwargs, sort_keys=True, default=str, separators=(",", ":"))
+    return (endpoint, family, tier, params)
+
+
+def _store(key: tuple[str, ...], ok: bool, value: Any, ttl: float) -> None:
+    if ttl <= 0:
+        return
+    with _CACHE_LOCK:
+        _CACHE[key] = (_cache_clock() + ttl, ok, value)
+        _CACHE.move_to_end(key)
+        while len(_CACHE) > _cache_max_entries():
+            _CACHE.popitem(last=False)
+
+
+def _lookup(key: tuple[str, ...]) -> tuple[bool, bool, Any]:
+    """Return ``(hit, ok, value)``; expired entries are dropped."""
+    with _CACHE_LOCK:
+        entry = _CACHE.get(key)
+        if entry is None:
+            return False, False, None
+        expires_at, ok, value = entry
+        if _cache_clock() >= expires_at:
+            del _CACHE[key]
+            return False, False, None
+        _CACHE.move_to_end(key)
+        return True, ok, value
+
+
+def _cached_dispatch(endpoint: str, family: str, tier: str, **kwargs: Any) -> Any:
+    """Dispatch one tier call through the short-TTL result cache."""
+    if provider_cache_ttl() <= 0:
+        return _dispatch(tier, family, **kwargs)
+    key = _cache_key(endpoint, family, tier, kwargs)
+    hit, ok, value = _lookup(key)
+    if hit:
+        if not ok:
+            raise value
+        return copy.deepcopy(value)
+    try:
+        result = _dispatch(tier, family, **kwargs)
+    except Exception as exc:
+        if not _is_auth_failure(exc):
+            _store(key, False, exc, provider_cache_negative_ttl())
+        raise
+    ttl = provider_cache_negative_ttl() if _is_empty(result) else provider_cache_ttl()
+    _store(key, True, copy.deepcopy(result), ttl)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +287,7 @@ def route_through_chain(
         endpoint=family,
         track=track,
         tiers=tiers,
-        call_tier=lambda tier, **kw: _dispatch(tier, family, **kw),
+        call_tier=lambda tier, **kw: _cached_dispatch(endpoint, family, tier, **kw),
     )
     try:
         result, outcome = chain.fetch(**kwargs)

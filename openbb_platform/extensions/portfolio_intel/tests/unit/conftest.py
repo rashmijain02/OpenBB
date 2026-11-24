@@ -46,3 +46,14 @@ def paper_store_backend(request, monkeypatch, tmp_path):
                     ),
                 )
     return request.param
+
+
+@pytest.fixture(autouse=True)
+def _fresh_provider_cache():
+    """Each test starts with an empty provider result cache (#1275)."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_portfolio_intel.providers.retrofit import clear_provider_cache
+
+    clear_provider_cache()
+    yield
+    clear_provider_cache()

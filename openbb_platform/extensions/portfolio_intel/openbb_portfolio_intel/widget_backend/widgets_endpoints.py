@@ -28,6 +28,7 @@ import threading
 import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import HTTPException, Query, Request
 from openbb_core.api.dependency.jobs import get_job_service
@@ -3767,62 +3768,87 @@ def tt_execute_paper_status_markdown(request: Request) -> str:
             "and P&L here."
         )
 
-    engine = get_default_engine(
-        db_path=db_path,
-        allow_fallback=False,
-        initialize=False,
-    )
     try:
-        if not engine.is_initialized():
-            return (
-                "## Paper Trading Engine\n\n"
-                "**No batches submitted yet.**\n\n"
-                "Submit a batch via the Execute Bridge widget "
-                "(`POST /tt/execute/write-batch`) to see cash, positions, "
-                "and P&L here."
-            )
-        acct = engine.get_account()
-        positions = engine.get_positions()
-        pending = engine.get_orders(status=OrderStatus.PENDING)
-        filled = engine.get_orders(status=OrderStatus.FILLED)
-
-        # Build the markdown body.
-        lines: list[str] = [
-            "## Paper Trading Engine",
-            "",
-            f"**Account** {account_display(str(acct.account_id))}",
-            "",
-            "| Field | Value |",
-            "| --- | --- |",
-            f"| Starting cash | ${acct.starting_cash} |",
-            f"| Cash | ${acct.cash} |",
-            f"| Realized P&L | ${acct.realized_pl} |",
-            "",
-            f"**Positions** ({len(positions)})",
-            "",
-        ]
-        if positions:
-            lines.append("| Symbol | Qty | Avg cost | Realized P&L |")
-            lines.append("| --- | ---: | ---: | ---: |")
-            for p in positions:
-                lines.append(
-                    f"| {p.symbol} | {p.quantity} | ${p.avg_cost} | ${p.realized_pl} |"
-                )
-        else:
-            lines.append("*No open positions.*")
-        lines.extend(
-            [
-                "",
-                f"**Orders**: {len(pending)} PENDING, {len(filled)} FILLED",
-                "",
-                "> Read-only view. Use the Execute Bridge widget to write "
-                "new batches; record fills via the widget action or a "
-                "Fidelity Activity CSV bulk import (P5).",
-            ]
+        engine = get_default_engine(
+            db_path=db_path,
+            allow_fallback=False,
+            initialize=False,
         )
-        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - any driver/connect failure
+        return _paper_engine_unreachable(exc)
+    try:
+        return _render_paper_status(engine, OrderStatus)
+    except Exception as exc:  # noqa: BLE001 - a read on a dropped connection
+        return _paper_engine_unreachable(exc)
     finally:
-        engine.close()
+        try:
+            engine.close()
+        except Exception:  # noqa: BLE001 - closing a broken engine  # nosec B110
+            logger.debug("paper-status: engine close failed")
+
+
+_PAPER_UNREACHABLE = (
+    "the paper engine is unreachable (check PI_PAPER_ENGINE and its database)"
+)
+
+
+def _paper_engine_unreachable(exc: BaseException) -> str:
+    """Mark the response ``unavailable`` (#1269); never echo the driver text."""
+    logger.warning("paper-status: paper engine unreachable (%s)", type(exc).__name__)
+    pv.mark_unavailable(_PAPER_UNREACHABLE)
+    return f"## Paper Trading Engine\n\n**Unavailable:** {_PAPER_UNREACHABLE}."
+
+
+def _render_paper_status(engine: Any, order_status: Any) -> str:
+    """Return the paper-status markdown for a reachable engine."""
+    if not engine.is_initialized():
+        return (
+            "## Paper Trading Engine\n\n"
+            "**No batches submitted yet.**\n\n"
+            "Submit a batch via the Execute Bridge widget "
+            "(`POST /tt/execute/write-batch`) to see cash, positions, "
+            "and P&L here."
+        )
+    acct = engine.get_account()
+    positions = engine.get_positions()
+    pending = engine.get_orders(status=order_status.PENDING)
+    filled = engine.get_orders(status=order_status.FILLED)
+
+    # Build the markdown body.
+    lines: list[str] = [
+        "## Paper Trading Engine",
+        "",
+        f"**Account** {account_display(str(acct.account_id))}",
+        "",
+        "| Field | Value |",
+        "| --- | --- |",
+        f"| Starting cash | ${acct.starting_cash} |",
+        f"| Cash | ${acct.cash} |",
+        f"| Realized P&L | ${acct.realized_pl} |",
+        "",
+        f"**Positions** ({len(positions)})",
+        "",
+    ]
+    if positions:
+        lines.append("| Symbol | Qty | Avg cost | Realized P&L |")
+        lines.append("| --- | ---: | ---: | ---: |")
+        for p in positions:
+            lines.append(
+                f"| {p.symbol} | {p.quantity} | ${p.avg_cost} | ${p.realized_pl} |"
+            )
+    else:
+        lines.append("*No open positions.*")
+    lines.extend(
+        [
+            "",
+            f"**Orders**: {len(pending)} PENDING, {len(filled)} FILLED",
+            "",
+            "> Read-only view. Use the Execute Bridge widget to write "
+            "new batches; record fills via the widget action or a "
+            "Fidelity Activity CSV bulk import (P5).",
+        ]
+    )
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

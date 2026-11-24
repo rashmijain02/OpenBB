@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import socket
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,38 @@ def _stub_tiers_only() -> Iterator[None]:
     finally:
         _TIER_CALLS.clear()
         _TIER_CALLS.update(saved)
+
+
+_REAL_CONNECT = socket.socket.connect
+_DB_PORTS = frozenset({3306, 33060})
+
+
+def _local_only_connect(sock: socket.socket, address: Any) -> Any:
+    """Allow only the event loop's loopback socketpair; refuse DBs and the network."""
+    host, port = (address[0], address[1]) if isinstance(address, tuple) else ("", 0)
+    if host not in ("127.0.0.1", "::1", "localhost") or port in _DB_PORTS:
+        raise ConnectionRefusedError("network blocked in hermetic test")
+    return _REAL_CONNECT(sock, address)
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_runtime(monkeypatch, tmp_path: Path) -> None:
+    """Fresh-install stores on temp paths; no MySQL, provider host or home data.
+
+    The paper engine is SQLite with no database file yet, the snapshot store is
+    a temp SQLite file, HOME/USERPROFILE are temp, and every socket connect
+    except the test client's loopback socketpair is refused (#1275).
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    for name in ("HOME", "USERPROFILE"):
+        monkeypatch.setenv(name, str(home))
+    monkeypatch.setenv("PI_PAPER_ENGINE", "sqlite")
+    monkeypatch.setenv("PI_PAPER_DB", str(tmp_path / "paper.db"))
+    monkeypatch.setenv("PI_SNAPSHOT_ENGINE", "sqlite")
+    monkeypatch.setenv("PI_SNAPSHOT_DB", str(tmp_path / "snapshots.db"))
+    monkeypatch.setattr(widgets_endpoints, "_SNAPSHOT_STORE_CACHE", None)
+    monkeypatch.setattr(socket.socket, "connect", _local_only_connect)
 
 
 def _defaults(widget: dict[str, Any], **overrides: str) -> dict[str, str]:

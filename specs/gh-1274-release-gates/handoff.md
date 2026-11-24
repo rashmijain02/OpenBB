@@ -143,3 +143,47 @@ The `/code-review` and `/security-review` gates were not run in Part 1.
   The old runner pulled it into the first editable install.
 - Six new tests (39 total). Rerun on #1295: harness x3, code-linting, workspace
   contract and inventory compare all PASS, exit 0.
+
+## Part 2 (on 39ef2930b, after #1295)
+
+### 1. The two #1274 gaps are fixed (no xfail left)
+
+- `providers/retrofit.py`: a short-TTL tier result cache sits between the chain
+  and `_dispatch`. The key is the route, family, tier and normalized kwargs (sorted
+  JSON). Results are kept for `PI_PROVIDER_CACHE_TTL_S` (default 60 s; 0 turns the
+  cache off). Failures and empty answers are kept for
+  `PI_PROVIDER_CACHE_NEGATIVE_TTL_S` (default 15 s, never longer than the TTL).
+  401/403, `status_code` 401/403 and "API key" failures are never cached. The cache
+  is an LRU capped at `PI_PROVIDER_CACHE_MAX_ENTRIES` (default 512), guarded by a
+  lock, with values deep-copied in and out. `register_tier_call` clears it. A hit
+  still records the tier that produced the value, so #1269 provenance reports the
+  real source and state (`fmp_cached` stays `cached`).
+- Explicit demo (`account_id=demo` / `basket_id=demo`): **I did not add a
+  short-circuit.** I implemented one red-first, but the full suite showed it
+  breaks the #1269 contract
+  `test_provenance_contracts_1269::test_unnormalised_weights_are_partial_in_figure_raw_and_header`.
+  That test sends the demo book through a live tier and expects provider
+  analytics labelled `partial` from `fmp_cached`. The demo book means synthetic
+  holdings, not synthetic market data. My #1274 "wasted calls" reading came from
+  the outage probe, where every tier fails. The result cache now bounds those
+  calls to one per TTL. The new test is
+  `test_explicit_demo_book_keeps_provider_analytics_and_is_cache_bounded`; the
+  outage xfail was removed.
+- `tests/unit/conftest.py` clears the cache around every test.
+
+### 2. Paper status is hermetic and explicit
+
+- `test_demo_mode_redaction_1269.py` now has an autouse hermetic fixture: SQLite
+  paper engine on a temp DB, temp HOME/USERPROFILE, SQLite snapshot store on
+  temp, and every socket connect refused except the test client's loopback
+  socketpair (MySQL ports included).
+- `tt_execute_paper_status`: when the paper engine cannot be built or read, it
+  answers 200 `unavailable` with a fixed reason. It logs the exception type only.
+
+### 3. fmp_cached retention: withdrawn
+
+Withdrawn at the owner's direction: fmp_cached storage and retention belong to
+the fmp-cached-mcp program (#1298 to #1301), which another session owns. Every
+change under `openbb_platform/providers/fmp_cached/`, the runbook section 7 and
+7.1 edits, the operator-setup note and the gh-1292 handoff wording were reverted
+to HEAD with `git checkout HEAD --`. Those files show no diff.
