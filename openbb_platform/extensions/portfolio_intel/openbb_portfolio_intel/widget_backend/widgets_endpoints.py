@@ -1232,6 +1232,44 @@ def _latest_issuer_fiscal_period_and_release_date(
         return None
 
 
+#: Demo-only rating and revenue rows (#1274): sample values, no provider call.
+_ANALYST_DEMO_ROWS: tuple[dict[str, str | float], ...] = (
+    {
+        "metric": "Rating: Strong Buy / Buy",
+        "value": "12 / 14",
+        "note": "sample n=32 firms",
+    },
+    {
+        "metric": "Rating: Hold / Sell / Strong Sell",
+        "value": "5 / 1 / 0",
+        "note": "sample",
+    },
+    {
+        "metric": "Historical rev estimate (last Q)",
+        "value": "not read",
+        "note": "demo mode reads no estimate history",
+    },
+)
+
+
+def _eps_surprise_rows() -> list[dict[str, str | float]]:
+    """Return the sample EPS-surprise rows (computed from sample values)."""
+    rows: list[dict[str, str | float]] = []
+    for quarter, actual, estimate in (
+        ("Q3 2025", 1.55, 1.50),
+        ("Q2 2025", 1.52, 1.49),
+    ):
+        surprise_pct = (actual - estimate) / abs(estimate) * 100
+        rows.append(
+            {
+                "metric": f"{quarter} EPS Surprise",
+                "value": f"{surprise_pct:+.1f}%",
+                "note": f"actual {actual:.2f} vs est {estimate:.2f}",
+            }
+        )
+    return rows
+
+
 @app.get("/pi/equity/analyst-forecasts")
 @widget("table", demo=_SYMBOL_DEMO)
 @relabel("metric", FORECAST_ROW_LABELS, FORECAST_ROW_PATTERNS)
@@ -1258,6 +1296,17 @@ def equity_analyst_forecasts(
         {"metric": "Target range", "value": "215..280", "note": ""},
         {"metric": "Upside vs current", "value": "7.4%", "note": ""},
     ]
+
+    if pv.demo_mode() == "only":
+        # PI_DEMO_MODE=only (#1274): the labelled demo makes no provider,
+        # fmp_cached or MySQL call. The live sections below dialled MySQL and
+        # FMP directly and could hold the request open for the whole
+        # provider timeout, so Workspace spun on this widget.
+        ratings, revenue = _ANALYST_DEMO_ROWS[:2], _ANALYST_DEMO_ROWS[2:]
+        rows.extend(dict(row) for row in ratings)
+        rows.extend(_eps_surprise_rows())
+        rows.extend(dict(row) for row in revenue)
+        return rows
 
     # Rating distribution — live via #997
     # pylint: disable=import-outside-toplevel,broad-exception-caught,redefined-outer-name,reimported
@@ -1310,18 +1359,7 @@ def equity_analyst_forecasts(
             ]
         )
 
-    for quarter, actual, estimate in (
-        ("Q3 2025", 1.55, 1.50),
-        ("Q2 2025", 1.52, 1.49),
-    ):
-        surprise_pct = (actual - estimate) / abs(estimate) * 100
-        rows.append(
-            {
-                "metric": f"{quarter} EPS Surprise",
-                "value": f"{surprise_pct:+.1f}%",
-                "note": f"actual {actual:.2f} vs est {estimate:.2f}",
-            }
-        )
+    rows.extend(_eps_surprise_rows())
 
     # Revenue surprise (5C) — live via #998 opportunistic history
     # (#1025 / #1026). Only rendered when a historical snapshot exists;
@@ -2437,9 +2475,35 @@ _SNAPSHOT_STORE_LOCK = threading.Lock()
 _SQLITE_FALLBACK_RETRY_SECONDS = 30.0
 
 
+#: Snapshot reason in ``PI_DEMO_MODE=only`` (#1274).
+_SNAPSHOT_DEMO_ONLY = (
+    "PI_DEMO_MODE=only: the operator EOD snapshot store is not read and "
+    "TechTrade has no sample snapshots"
+)
+
+
+class _NoSnapshotStore:
+    """Read-only empty store served in ``PI_DEMO_MODE=only`` (#1274).
+
+    Demo-only runs (onboarding, tests, browser acceptance) must never open the
+    operator's MySQL or ``~/.portfolio_intel/snapshot.db`` store; every
+    snapshot widget then answers its explicit ``unavailable`` state.
+    """
+
+    def get_live(self, _dataset: str, _key: str) -> None:
+        """Return no live snapshot."""
+        return None
+
+    def get_live_many(self, _dataset: str, _keys: list[str]) -> dict:
+        """Return no live snapshots."""
+        return {}
+
+
 def _get_snapshot_store() -> SnapshotStore:
     """Cache the canonical store, but retry a fallback backend periodically."""
     global _SNAPSHOT_STORE_CACHE  # noqa: PLW0603  # pylint: disable=global-statement
+    if pv.demo_mode() == "only":
+        return _NoSnapshotStore()  # type: ignore[return-value]
     now = time.monotonic()
     with _SNAPSHOT_STORE_LOCK:
         cached = _SNAPSHOT_STORE_CACHE
@@ -2728,7 +2792,11 @@ def _snapshot_provenance(meta: dict, has_snapshots: bool) -> Provenance:
         return Provenance(
             DataState.UNAVAILABLE,
             _SNAPSHOT_SOURCE,
-            "no EOD snapshot available; run the post-close snapshot job",
+            (
+                _SNAPSHOT_DEMO_ONLY
+                if pv.demo_mode() == "only"
+                else "no EOD snapshot available; run the post-close snapshot job"
+            ),
         )
     badge = str(meta.get("badge") or "EOD snapshot")
     if meta.get("is_partial"):
@@ -2947,6 +3015,10 @@ _EXC_NOTE_MAP: dict[str, str] = {
 # 60s TTL per spec §3 T12.1.
 _PROVIDER_HEALTH_CACHE: dict[str, dict[str, object]] = {}
 _PROVIDER_HEALTH_TTL_S: float = 60.0
+#: Provider-health reason in ``PI_DEMO_MODE=only`` (#1274).
+_HEALTH_NOT_PROBED = (
+    "PI_DEMO_MODE=only: providers are not probed, so no reachability is shown"
+)
 
 
 def _cached_health(track: str) -> list | None:
@@ -3047,6 +3119,22 @@ async def provider_health(request: Request) -> list[dict[str, object]]:
     dormant no-credentials fallback; it is simply no longer surfaced.
     """
     _require_auth(request)
+
+    if pv.demo_mode() == "only":
+        # PI_DEMO_MODE=only (#1274): no tier is probed, so no reachability
+        # is claimed; every row says so and the table is labelled demo.
+        pv.mark(DataState.DEMO, _HEALTH_NOT_PROBED, source=pv.STUB)
+        return [
+            {
+                "tier": tier,
+                "role": _TIER_ROLE.get(tier, ""),
+                "status": f"{_STATUS_BADGE['unknown']} not probed",
+                "latency_ms": 0,
+                "note": "demo_mode_only",
+                "serving": "",
+            }
+            for tier in dict.fromkeys(TRACK_A_DEFAULT)
+        ]
 
     # Cold cache: return a fully-``unknown`` strip immediately per spec
     # §T12.1 P0-1. The next request within the TTL window still hits
@@ -3174,6 +3262,8 @@ async def data_provenance(request: Request) -> str:
     if cached:
         healthy = sum(1 for h in cached if getattr(h, "status", "") == "healthy")
         providers = f"{healthy}/{len(cached)} healthy"
+    elif pv.demo_mode() == "only":
+        providers = "not probed (demo only)"
     else:
         providers = "probing…"
 

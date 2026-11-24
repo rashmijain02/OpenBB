@@ -8,9 +8,16 @@ math: every plotted value is a row value, unchanged.
 Every figure carries its provenance record in ``layout.meta`` (state,
 source, as-of and reason, #1269) and, for every state except ``live``, shows
 it in an annotation, so demo, partial and unavailable figures cannot be
-mistaken for real data. An unavailable figure has no traces; the annotation
-explains why. Figures never set ``layout.title``: Workspace shows the widget
-name as the title (#1268).
+mistaken for real data. An unavailable figure has no data traces; the
+annotation explains why. Figures never set ``layout.title``: Workspace shows
+the widget name as the title (#1268).
+
+Workspace's chart widget renders nothing for ``data: []`` (it only mounts
+Plotly when ``data.length > 0``), so a trace-free figure showed as a blank
+frame and its state annotation was never drawn (#1274). A state figure
+therefore carries one invisible placeholder trace (an empty scatter with
+hover and legend off, marked ``meta.placeholder``) next to hidden axes and
+the centred annotation. :func:`data_traces` drops the placeholder.
 """
 
 from __future__ import annotations
@@ -79,10 +86,44 @@ def header_note(text: str) -> dict[str, Any]:
     return {**note(text), "y": 1.08}
 
 
-def state_figure(provenance: Provenance, message: str | None = None) -> Figure:
-    """Return a trace-free figure that states why there is nothing to plot."""
+#: ``meta`` key marking the invisible trace of a state figure (#1274).
+PLACEHOLDER_META = "placeholder"
+
+
+def placeholder_trace() -> dict[str, Any]:
+    """Return the invisible trace that makes Workspace draw a state figure."""
     return {
-        "data": [],
+        "type": "scatter",
+        "mode": "markers",
+        "x": [],
+        "y": [],
+        "hoverinfo": "skip",
+        "showlegend": False,
+        "meta": {PLACEHOLDER_META: True},
+    }
+
+
+def data_traces(figure: Mapping[str, Any]) -> list[Any]:
+    """Return a figure's traces without the state-figure placeholder."""
+    return [
+        trace
+        for trace in figure.get("data") or []
+        if not (
+            isinstance(trace, Mapping)
+            and isinstance(trace.get("meta"), Mapping)
+            and trace["meta"].get(PLACEHOLDER_META) is True
+        )
+    ]
+
+
+def state_figure(provenance: Provenance, message: str | None = None) -> Figure:
+    """Return a figure with no data traces that states why there is nothing to plot.
+
+    The one placeholder trace exists only so Workspace mounts the chart and
+    draws the annotation; it has no points, hover or legend entry.
+    """
+    return {
+        "data": [placeholder_trace()],
         "layout": layout(
             provenance,
             annotations=[note(message or f"{provenance.summary()}.")],

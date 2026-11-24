@@ -11,22 +11,50 @@ import sys
 from pathlib import Path
 
 from .drivers import (
+    _WORKSPACE_AVAILABLE,
     HarnessSetupError,
     StandaloneDriver,
     WorkspaceDriver,
-    _WORKSPACE_AVAILABLE,
 )
 from .report import write_report_json, write_report_md
 from .steps import Step, StepResult
 from .stories import STORIES
 
+#: Workspace app whose tabs hold each story's widgets (``apps.json`` names).
+STORY_APPS: dict[str, str] = {
+    "portfolio": "Portfolio Intelligence - Terminal",
+    "techtrade": "Techtrade Trading Desk",
+}
 
-async def _run_story(
+
+def workspace_driver_kwargs(args: argparse.Namespace) -> dict[str, object]:
+    """Return the ``WorkspaceDriver`` keyword arguments the CLI flags set (#1274).
+
+    Unset flags are left out so the driver defaults apply.
+    """
+    kwargs: dict[str, object] = {
+        "mode": args.workspace_mode,
+        "app_name": args.app_name or STORY_APPS.get(args.story),
+    }
+    if args.workspace_url:
+        kwargs["workspace_url"] = args.workspace_url
+    if args.backend_url:
+        kwargs["backend_url"] = args.backend_url
+    if args.headless is not None:
+        kwargs["headless"] = args.headless
+    if args.profile_dir is not None:
+        kwargs["profile_dir"] = args.profile_dir
+    if args.dashboard:
+        kwargs["dashboard_name"] = args.dashboard
+    return kwargs
+
+
+async def _run_story(  # pylint: disable=too-many-locals
     story_id: str,
     mode: str,
     out_dir: Path,
-    workspace_mode: str,
     capture_guide_screenshots: bool,
+    driver_kwargs: dict[str, object] | None = None,
 ) -> int:
     story = STORIES[story_id]
     steps_by_id: dict[str, Step] = {s.id: s for s in story.steps}
@@ -58,8 +86,8 @@ async def _run_story(
                 / story_id
             )
         driver = WorkspaceDriver(
-            mode=workspace_mode,
             screenshots_dir=screenshots_dir,
+            **(driver_kwargs or {}),  # type: ignore[arg-type]
         )
     else:
         print(f"Unknown mode {mode!r}", file=sys.stderr)
@@ -93,7 +121,8 @@ async def _run_story(
     return 0 if failed == 0 else 1
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Return the CLI parser."""
     parser = argparse.ArgumentParser(
         prog="openbb-browser-harness",
         description="Run the browser test harness against the portfolio or techtrade Workspace app.",
@@ -130,14 +159,65 @@ def main() -> int:
         default=Path(".dev-cycle/browser-harness-report"),
         help="Where to write report.md and report.json.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--workspace-url",
+        default=None,
+        help="Workspace base URL (workspace mode; default: the driver default).",
+    )
+    parser.add_argument(
+        "--backend-url",
+        default=None,
+        help=(
+            "Attach to this running widget backend instead of spawning one "
+            "(workspace mode)."
+        ),
+    )
+    headless = parser.add_mutually_exclusive_group()
+    headless.add_argument(
+        "--headless",
+        dest="headless",
+        action="store_true",
+        default=None,
+        help="Run Chromium headless (workspace mode).",
+    )
+    headless.add_argument(
+        "--headed",
+        dest="headless",
+        action="store_false",
+        help="Run Chromium visibly (workspace mode; the driver default).",
+    )
+    parser.add_argument(
+        "--profile-dir",
+        type=Path,
+        default=None,
+        help="Persistent Chromium profile directory (workspace mode).",
+    )
+    parser.add_argument(
+        "--app-name",
+        default=None,
+        help=(
+            "Workspace app whose tabs hold the story's widgets (default: the "
+            "story's app from apps.json)."
+        ),
+    )
+    parser.add_argument(
+        "--dashboard",
+        default=None,
+        help="Visible name of the Workspace dashboard to open after login.",
+    )
+    return parser
+
+
+def main() -> int:
+    """Parse the CLI and run one story."""
+    args = build_parser().parse_args()
     return asyncio.run(
         _run_story(
             args.story,
             args.mode,
             args.out,
-            args.workspace_mode,
             args.capture_guide_screenshots,
+            workspace_driver_kwargs(args),
         )
     )
 

@@ -22,6 +22,7 @@ os.environ.setdefault("PI_WIDGET_BACKEND_AUTH_MODE", "loopback-dev")
 from fastapi.testclient import TestClient
 from openbb_portfolio_intel.widget_backend.contracts import collect_response_issues
 from openbb_portfolio_intel.widget_backend.main import app
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 _BACKEND = (
     Path(__file__).resolve().parents[2] / "openbb_portfolio_intel" / "widget_backend"
@@ -107,7 +108,7 @@ def test_xray_sector_unwired_account_is_an_explicit_unavailable_figure() -> None
     figure = _get("/pi/xray/sector?account_id=NOT_WIRED_YET")
     assert figure["layout"]["meta"]["state"] == "unavailable"
     # No trace pretends to be data: the state is carried by meta + annotation.
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert "title" not in figure["layout"]
     assert "account resolver not wired" in _annotation_text(figure)
     _assert_contract_clean("pi_xray_sector", "/pi/xray/sector?account_id=NOT_WIRED")
@@ -192,7 +193,7 @@ def test_empty_brinson_rows_render_an_explicit_empty_state() -> None:
     figure = brinson_attribution_figure(
         [], Provenance(DataState.DEMO, "stub", "synthetic demo book")
     )
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     # #1269: an empty result is "unavailable", never a success shape.
     assert figure["layout"]["meta"]["state"] == "unavailable"
     assert "no attribution rows" in _annotation_text(figure).lower()

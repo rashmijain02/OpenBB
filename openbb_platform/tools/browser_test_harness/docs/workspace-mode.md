@@ -40,6 +40,37 @@ Tracked in [#541](https://github.com/rashmijain02/OpenBB/issues/541).
   on teardown only if the driver spawned it; attach-mode processes are
   left alone.
 
+## Finding widgets in self-hosted Workspace (#1274)
+
+Self-hosted Workspace sets `data-widget-id` on each grid item to a
+per-instance UUID, not the backend widget id. The driver therefore reads
+every rendered grid item (`selectors.RENDERED_WIDGETS_JS`) and maps a
+backend widget to it by, in order:
+
+1. the card root class `widget-<backend widget id>`;
+2. a `data-widget-id` equal to the backend id (older hosted builds);
+3. the exact widget title (`._left-navbar p.font-semibold`, the
+   `widgets.json` `name`).
+
+Visible means a non-zero box. Not blank is per type: a chart needs a
+mounted Plotly plot (Workspace mounts none for a figure with `data: []`), a
+table a grid, markdown and metric body text. A step whose endpoint backs a
+widget **fails** when the widget is unseen or blank, whatever the step's
+action; it never reports OK for a widget it did not see. With `app_name`
+set (the CLI sets it per story), the driver first clicks the tab that holds
+the widget in `apps.json`. `tests/fixtures/workspace_dom_selfhosted.html`
+is the synthetic DOM the mapping is unit-tested on.
+
+```powershell
+python -m openbb_browser_test_harness.run --story techtrade --mode workspace `
+  --workspace-url http://127.0.0.1:1420 --backend-url http://127.0.0.1:6120 `
+  --headless --profile-dir .dev-cycle/browser-acceptance/tmp/chrome_profile
+```
+
+`--headed` (the default) shows Chromium; `--app-name` overrides the app
+whose tabs are opened; `--dashboard "<visible name>"` opens the dashboard
+that holds the app after login (otherwise the caller opens it).
+
 ## Why random ports?
 
 The manual dev loop uses `openbb.sh api` bound to port `8000`. Hardcoding

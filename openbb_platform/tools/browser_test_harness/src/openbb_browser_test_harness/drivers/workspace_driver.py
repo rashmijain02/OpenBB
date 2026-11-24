@@ -24,6 +24,7 @@ someone imports this module without playwright installed, they get a clear
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
@@ -36,7 +37,15 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from ..redact import assert_screenshot_clean
-from ..selectors import WidgetSelector, selector_for_endpoint
+from ..selectors import (
+    RENDERED_WIDGETS_JS,
+    RenderedWidget,
+    WidgetSelector,
+    judge_rendered,
+    load_widget_tabs,
+    match_rendered,
+    selector_for_endpoint,
+)
 from ..steps import ActionKind, Step, StepResult
 
 if TYPE_CHECKING:
@@ -151,6 +160,14 @@ class WorkspaceDriver:
         default_factory=_default_managed_credentials_path
     )
     login_timeout_ms: float = 30_000
+    #: Workspace app (``apps.json`` name) whose tabs the driver opens to find
+    #: a step's widget (#1274). ``None`` checks only the current page.
+    app_name: str | None = None
+    #: Dashboard (its visible name) to open after login (#1274). ``None``
+    #: leaves the landing page as is.
+    dashboard_name: str | None = None
+    #: How long a step waits for its widget to render (seconds, #1274).
+    widget_settle_s: float = 15.0
 
     #: If None, spawn a fresh uvicorn on a random ephemeral 127.0.0.1 port
     #: (#1789). If set, attach to an existing backend.
@@ -296,12 +313,31 @@ class WorkspaceDriver:
             await self._ensure_local_login()
         # Wait for the widget grid selector, or fall through after 5s — the
         # grid may not exist on every route (e.g. login redirect page).
-        import contextlib
-
         with contextlib.suppress(Exception):
             await self._page.wait_for_selector(
                 '[data-testid="widget-grid"]', timeout=5000
             )
+        if self.dashboard_name:
+            await self._open_dashboard(self.dashboard_name)
+
+    async def _open_dashboard(self, name: str) -> None:
+        """Close a start-up dialog, then open the named dashboard (#1274)."""
+        assert self._page is not None
+        dialog = self._page.get_by_role("dialog")
+        # A missing or already-closed dialog is fine.
+        with contextlib.suppress(Exception):
+            if await dialog.count():
+                await dialog.get_by_role("button", name="Close").click()
+        link = self._page.get_by_text(name, exact=True).first
+        try:
+            await link.click(timeout=self.login_timeout_ms)
+        except Exception as exc:
+            raise WorkspaceDriverError(
+                f"Workspace dashboard {name!r} was not found."
+            ) from exc
+        await self._page.wait_for_selector(
+            "[data-widget-id]", timeout=self.login_timeout_ms
+        )
 
     async def _ensure_local_login(self) -> None:
         """Log into local Workspace only when the persisted profile needs it."""
@@ -400,18 +436,19 @@ class WorkspaceDriver:
         """Execute one step against the live Workspace UI.
 
         Screenshots the page, computes SHA-256, redacts the path, then
-        (for steps with an endpoint) uses the selector graph (B10, #1735)
-        to turn ``widget_visible`` and ``not_blank`` from ``"unverified"``
-        sentinels into REAL UI assertions:
+        (for steps with an endpoint) finds the backend widget on the page
+        (#1274): it opens the ``app_name`` tab that holds the widget, reads
+        the rendered grid items (``selectors.RENDERED_WIDGETS_JS``) and maps
+        the backend id to one by the ``widget-<id>`` card class, a legacy
+        ``data-widget-id``, or the exact title.
 
-        - ``widget_visible``: container ``[data-widget-id="<id>"]`` is
-          attached AND ``bounding_box().height > 0``.
-        - ``not_blank``: at least one type-appropriate content selector
-          resolves to a locator with non-empty ``innerText`` OR non-zero
-          bounding-box area (charts/canvases are legitimately empty-text).
+        - ``widget_visible``: a matched item with a non-zero box.
+        - ``not_blank``: type-appropriate body content (a mounted plot for a
+          chart, a grid for a table, body text for markdown/metric).
 
-        Steps with no endpoint (NAVIGATE / SCREENSHOT chrome steps) fall
-        back to page-level "did we load" observations.
+        A step whose endpoint backs a widget fails when the widget is unseen
+        or blank, whatever its action (:func:`step_verdict`). Steps with no
+        widget (chrome / navigation) carry ``"n/a"`` observations.
         """
         if self._page is None:
             return StepResult(
@@ -424,6 +461,18 @@ class WorkspaceDriver:
             )
 
         start = time.monotonic()
+
+        # Find the step's widget first (opening its tab), so the screenshot
+        # shows what was judged (#1274).
+        selector: WidgetSelector | None = None
+        if step.endpoint:
+            selector = selector_for_endpoint(step.endpoint)
+        rendered: RenderedWidget | None = None
+        matched_by = "n/a"
+        tab: str | None = None
+        if selector is not None:
+            tab = await self._open_widget_tab(selector)
+            rendered, matched_by = await self._await_widget(selector)
 
         # Screenshot capture — page.screenshot() only, no OS-level grab.
         screenshot_path: str | None = None
@@ -448,16 +497,10 @@ class WorkspaceDriver:
             )
             screenshot_sha = hashlib.sha256(png_bytes).hexdigest()
 
-        # Selector-graph assertions (B10, #1735).
         widget_visible: object = "n/a"
         not_blank: object = "n/a"
-        selector: WidgetSelector | None = None
-        if step.endpoint:
-            selector = selector_for_endpoint(step.endpoint)
         if selector is not None:
-            widget_visible = await self._is_widget_visible(selector)
-            if widget_visible is True:
-                not_blank = await self._is_widget_not_blank(selector)
+            widget_visible, not_blank = judge_rendered(selector, rendered)
 
         duration_ms = int((time.monotonic() - start) * 1000)
 
@@ -467,26 +510,14 @@ class WorkspaceDriver:
             "screenshot_bytes": len(png_bytes),
         }
         if selector is not None:
-            observations["container_selector"] = selector.container
+            observations["widget_id"] = selector.widget_id
             observations["widget_type"] = selector.widget_type
+            observations["matched_by"] = matched_by
+            observations["tab"] = tab or "current"
         if step.action == ActionKind.NAVIGATE:
             observations["current_url"] = self._page.url
 
-        # An ASSERT-kind step in workspace mode gates ok on widget_visible.
-        # OBSERVE / NAVIGATE / SCREENSHOT still record the observation but
-        # don't fail on it (the standalone driver already gated the shape).
-        ok = True
-        error: str | None = None
-        if step.action == ActionKind.ASSERT and selector is not None:
-            if widget_visible is not True:
-                ok = False
-                error = f"widget_not_visible: selector={selector.container}"
-            elif not_blank is not True:
-                ok = False
-                error = (
-                    f"widget_blank: selector={selector.container} "
-                    f"type={selector.widget_type}"
-                )
+        ok, error = step_verdict(selector, widget_visible, not_blank)
 
         return StepResult(
             step_id=step.id,
@@ -498,62 +529,69 @@ class WorkspaceDriver:
             screenshot_sha256=screenshot_sha,
         )
 
-    async def _is_widget_visible(self, selector: WidgetSelector) -> bool:
-        """Container ``[data-widget-id="..."]`` is attached and has size.
+    async def _rendered_widgets(self) -> list[RenderedWidget]:
+        """Read one record per rendered grid item from the live DOM."""
+        assert self._page is not None
+        try:
+            records = await self._page.evaluate(RENDERED_WIDGETS_JS)
+        except Exception:  # noqa: BLE001 — a failed read is "nothing rendered"
+            return []
+        return [RenderedWidget.from_record(r) for r in records or []]
 
-        Uses ``locator.count()`` to survive missing containers without
-        throwing (Playwright's ``bounding_box()`` on an absent locator
-        raises). We return ``False`` (not None) so downstream logic is
-        boolean-clean; the observation dict still carries the selector
-        string for diagnosis.
+    async def _open_widget_tab(self, selector: WidgetSelector) -> str | None:
+        """Open the ``app_name`` tab that holds the widget; return its name.
+
+        Best effort: when no app is configured, the widget is not in the
+        app's layout, or the tab button is absent, the current page is
+        judged as is (an unseen widget then fails the step).
         """
         assert self._page is not None
-        loc = self._page.locator(selector.container).first
+        if not self.app_name:
+            return None
+        tab = load_widget_tabs().get(self.app_name, {}).get(selector.widget_id)
+        if not tab:
+            return None
+        button = self._page.get_by_role("button", name=tab, exact=True).first
         try:
-            n = await loc.count()
-        except Exception:  # noqa: BLE001 — treat any playwright error as "not visible"
-            return False
-        if n == 0:
-            return False
-        try:
-            box = await loc.bounding_box()
-        except Exception:  # noqa: BLE001
-            return False
-        return bool(box and box.get("height", 0) > 0 and box.get("width", 0) > 0)
+            if await button.count():
+                await button.click()
+        except Exception:  # noqa: BLE001 — judged on the current page
+            return tab
+        return tab
 
-    async def _is_widget_not_blank(self, selector: WidgetSelector) -> bool:
-        """Content non-blank per widget type.
-
-        For each candidate content selector (rooted inside the container),
-        we consider the widget non-blank if EITHER:
-        - text mode: ``innerText.strip()`` is non-empty (tables / markdown /
-          metrics), OR
-        - visual mode: ``bounding_box().height > 0`` on a canvas / svg
-          (charts legitimately have empty text but a visible frame).
-
-        Returns True on the first candidate that satisfies either mode.
-        """
+    async def _await_widget(
+        self, selector: WidgetSelector
+    ) -> tuple[RenderedWidget | None, str]:
+        """Poll the DOM until the widget renders content or the settle time ends."""
         assert self._page is not None
-        container = self._page.locator(selector.container).first
-        for content_sel in selector.content_candidates:
-            child = container.locator(content_sel).first
-            try:
-                if await child.count() == 0:
-                    continue
-            except Exception:  # noqa: BLE001
-                continue
-            # Text mode
-            try:
-                text = (await child.inner_text()).strip()
-            except Exception:  # noqa: BLE001
-                text = ""
-            if text:
-                return True
-            # Visual mode
-            try:
-                box = await child.bounding_box()
-            except Exception:  # noqa: BLE001
-                box = None
-            if box and box.get("height", 0) > 0:
-                return True
-        return False
+        deadline = time.monotonic() + self.widget_settle_s
+        while True:
+            item, how = match_rendered(selector, await self._rendered_widgets())
+            visible, not_blank = judge_rendered(selector, item)
+            if (visible and not_blank) or time.monotonic() >= deadline:
+                return item, how
+            await asyncio.sleep(0.5)
+
+
+def step_verdict(
+    selector: WidgetSelector | None, widget_visible: object, not_blank: object
+) -> tuple[bool, str | None]:
+    """Return ``(ok, error)`` for a workspace step (#1274).
+
+    A step whose endpoint backs a widget passes only when that widget is
+    seen on the page and is not blank, whatever the step's action: an
+    unseen widget is a FAIL, never an OK. Steps without a widget (chrome,
+    navigation, non-widget endpoints) carry no widget verdict.
+    """
+    if selector is None:
+        return True, None
+    if widget_visible is not True:
+        return False, (
+            f"widget_not_visible: widget={selector.widget_id} "
+            f"title={selector.name!r}"
+        )
+    if not_blank is not True:
+        return False, (
+            f"widget_blank: widget={selector.widget_id} type={selector.widget_type}"
+        )
+    return True, None

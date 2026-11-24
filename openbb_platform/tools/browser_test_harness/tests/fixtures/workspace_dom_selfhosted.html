@@ -1,0 +1,79 @@
+<!--
+  Synthetic self-hosted Workspace DOM (#1274). Structure follows the pinned
+  terminalpro source: routes/tab.tsx (grid item with a per-instance UUID in
+  data-widget-id), DraggableCard.tsx (card root class widget-<backend id>,
+  body id widget-content-<uuid>), NavBar.tsx (title in
+  ._left-navbar p.font-semibold) and PlotlyChart.tsx (.js-plotly-plot only
+  when the figure has a trace). Synthetic values only. Boxes come from
+  data-test-width / data-test-height because static HTML has no layout.
+-->
+<div class="react-grid-layout">
+  <!-- 1. chart that rendered: matched by the card class -->
+  <div data-widget-id="3f0c9a52-1d7e-4c1b-9b8e-0a1f2e3d4c5b" class="react-grid-item"
+       data-test-width="600" data-test-height="340">
+    <div class="group/widget relative flex flex-col widget-pi_xray_sector">
+      <div class="flex w-full items-center">
+        <div class="flex items-center gap-2 _left-navbar min-w-0">
+          <p class="font-semibold relative whitespace-nowrap">X-Ray - Sector Weights</p>
+        </div>
+      </div>
+      <div id="widget-content-3f0c9a52-1d7e-4c1b-9b8e-0a1f2e3d4c5b" class="relative flex-1">
+        <div class="js-plotly-plot"><svg class="main-svg"><text>Demo: sample</text></svg></div>
+      </div>
+    </div>
+  </div>
+  <!-- 2. chart returned data: [] -> Workspace mounts no plot (blank frame) -->
+  <div data-widget-id="7b1e2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d" class="react-grid-item"
+       data-test-width="600" data-test-height="340">
+    <div class="group/widget relative flex flex-col widget-tt_segment_movers">
+      <div class="flex w-full items-center">
+        <div class="flex items-center gap-2 _left-navbar min-w-0">
+          <p class="font-semibold relative whitespace-nowrap">Techtrade - Segment Movers</p>
+          <svg class="icon"><path d="M0 0"></path></svg>
+        </div>
+      </div>
+      <div id="widget-content-7b1e2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d" class="relative flex-1"></div>
+    </div>
+  </div>
+  <!-- 3. table still loading: params in the navbar, no grid in the body -->
+  <div data-widget-id="0a9b8c7d-6e5f-4d3c-2b1a-0f9e8d7c6b5a" class="react-grid-item"
+       data-test-width="600" data-test-height="410">
+    <div class="group/widget relative flex flex-col widget-pi_equity_analyst_forecasts">
+      <div class="flex w-full items-center">
+        <div class="flex items-center gap-2 _left-navbar min-w-0">
+          <p class="font-semibold relative whitespace-nowrap">Equity Profile - Analyst Forecasts</p>
+          <span>1</span><span>AAPL</span>
+        </div>
+      </div>
+      <div class="loading-spinner" role="status"></div>
+    </div>
+  </div>
+  <!-- 4. no card class (older build): matched by the exact title -->
+  <div data-widget-id="5c4b3a29-1807-4f6e-5d4c-3b2a19087f6e" class="react-grid-item"
+       data-test-width="600" data-test-height="340">
+    <div class="group/widget relative flex flex-col">
+      <div class="flex w-full items-center">
+        <div class="flex items-center gap-2 _left-navbar min-w-0">
+          <p class="font-semibold relative whitespace-nowrap">Equity Profile -  Key Stats</p>
+        </div>
+      </div>
+      <div id="widget-content-5c4b3a29-1807-4f6e-5d4c-3b2a19087f6e" class="relative flex-1">
+        <div class="ag-root" role="grid"><div role="row">Market Cap 3.47 T demo</div></div>
+      </div>
+    </div>
+  </div>
+  <!-- 5. markdown on a hidden tab (zero box) -->
+  <div data-widget-id="9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4" class="react-grid-item"
+       data-test-width="0" data-test-height="0">
+    <div class="group/widget relative flex flex-col widget-pi_data_provenance">
+      <div class="flex w-full items-center">
+        <div class="flex items-center gap-2 _left-navbar min-w-0">
+          <p class="font-semibold relative whitespace-nowrap">Data Provenance Bar</p>
+        </div>
+      </div>
+      <div id="widget-content-9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4" class="relative flex-1">
+        <p>Data mode: Demo</p>
+      </div>
+    </div>
+  </div>
+</div>

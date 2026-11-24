@@ -24,6 +24,7 @@ os.environ.setdefault("PI_WIDGET_BACKEND_AUTH_MODE", "loopback-dev")
 from fastapi.testclient import TestClient
 from openbb_portfolio_intel.widget_backend import widgets_endpoints
 from openbb_portfolio_intel.widget_backend.main import app
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 _client = TestClient(app)
 
@@ -123,7 +124,7 @@ def test_simulate_result_cold_start_is_loud() -> None:
     r = _client.get("/tt/position/simulate?symbol=NVDA")
     assert r.status_code == 200
     figure = r.json()
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert figure["layout"]["meta"]["state"] == "unavailable"
     notes = " ".join(a["text"] for a in figure["layout"]["annotations"])
     assert "no EOD snapshot available" in notes

@@ -43,6 +43,7 @@ from openbb_portfolio_intel.widget_backend.contracts import collect_response_iss
 from openbb_portfolio_intel.widget_backend.main import app
 from openbb_techtrade.snapshot.registry import DEFAULT_DATASET_REGISTRY
 from openbb_techtrade.snapshot.store import SnapshotStatus, SqliteSnapshotStore
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 _UNIT = Path(__file__).resolve().parent
 _BACKEND = _UNIT.parents[1] / "openbb_portfolio_intel" / "widget_backend"
@@ -298,7 +299,7 @@ def test_chart_without_snapshot_is_an_unavailable_figure(
 ) -> None:
     response = _CLIENT.get(url)
     figure = response.json()
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert figure["layout"]["meta"]["state"] == "unavailable"
     assert "no eod snapshot" in _annotation_text(figure).lower()
     assert _issues(widget_id, response) == []
@@ -735,7 +736,7 @@ def test_simulate_for_an_excluded_symbol_is_an_unavailable_figure(
     store.close()
     assert response.status_code == 200
     figure = response.json()
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert figure["layout"]["meta"]["state"] == "unavailable"
     assert "excluded" in _annotation_text(figure).lower()
     assert "halted" in _annotation_text(figure).lower()
@@ -768,7 +769,7 @@ def test_simulate_figure_skips_rows_without_day_or_pnl() -> None:
     )
     assert [t["y"] for t in figure["data"]] == [[-1.0]]
     empty = simulate_figure([{"symbol": "NVDA", "note": "partial"}], ctx)
-    assert empty["data"] == [] and empty["layout"]["meta"]["state"] == "unavailable"
+    assert data_traces(empty) == [] and empty["layout"]["meta"]["state"] == "unavailable"
 
 
 def test_write_batch_receipt_withholds_account_and_absolute_paths(

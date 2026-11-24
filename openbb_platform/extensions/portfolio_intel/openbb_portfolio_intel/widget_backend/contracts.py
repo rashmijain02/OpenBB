@@ -731,6 +731,14 @@ def _check_chart(out: _Collector, path: str, payload: Any) -> None:
     if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
         out.add("response.shape.chart", path, "chart must return a Plotly figure")
         return
+    if not payload["data"]:
+        # Workspace mounts Plotly only when ``data.length > 0`` (#1274).
+        out.add(
+            "response.render.chart",
+            path,
+            "a figure with no traces renders as a blank frame in Workspace; "
+            "state figures need the placeholder trace",
+        )
     layout = payload.get("layout")
     layout = layout if isinstance(layout, dict) else {}
     meta = layout.get("meta")

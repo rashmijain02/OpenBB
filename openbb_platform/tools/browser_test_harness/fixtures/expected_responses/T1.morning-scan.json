@@ -1,6 +1,18 @@
 {
   "body": {
-    "data": [],
+    "data": [
+      {
+        "hoverinfo": "skip",
+        "meta": {
+          "placeholder": true
+        },
+        "mode": "markers",
+        "showlegend": false,
+        "type": "scatter",
+        "x": [],
+        "y": []
+      }
+    ],
     "layout": {
       "annotations": [
         {

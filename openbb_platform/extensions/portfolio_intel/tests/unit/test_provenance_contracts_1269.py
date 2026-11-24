@@ -170,8 +170,9 @@ def test_response_checker_rejects_missing_or_invalid_state(
 def test_response_checker_accepts_valid_states() -> None:
     """Valid per-type state carriers raise no issue."""
     assert not _codes(_TABLE, [_ROW_OK])
-    assert not _codes({"type": "chart"}, {"data": [], "layout": {"meta": _META_OK}})
-    demo = {"data": [], "layout": {"meta": {**_META_OK, "state": "demo"}}}
+    trace = [{"type": "scatter", "x": [1], "y": [1]}]
+    assert not _codes({"type": "chart"}, {"data": trace, "layout": {"meta": _META_OK}})
+    demo = {"data": trace, "layout": {"meta": {**_META_OK, "state": "demo"}}}
     demo["layout"]["annotations"] = [_NOTE]
     assert not _codes({"type": "chart"}, demo)
     card = [{"label": "x", "value": 1}, {"label": "Data State", "value": "Demo: a"}]

@@ -203,8 +203,17 @@ def test_response_checker_rejects_wrong_shapes() -> None:
     for widget, status, body, code in cases:
         codes = {i.code for i in collect_response_issues("w", widget, status, body)}
         assert code in codes, (widget, body, codes)
-    live = '{"data": [], "layout": {"meta": {"state": "live", "source": "x"}}}'
+    live = '{"data": [{}], "layout": {"meta": {"state": "live", "source": "x"}}}'
     assert not collect_response_issues("w", {"type": "chart"}, 200, live)
+    # #1274: Workspace draws nothing for ``data: []``, not even the annotation.
+    blank = (
+        '{"data": [], "layout": {"meta": {"state": "unavailable", "source": "x"},'
+        ' "annotations": [{"text": "Unavailable: x"}]}}'
+    )
+    blank_codes = {
+        i.code for i in collect_response_issues("w", {"type": "chart"}, 200, blank)
+    }
+    assert "response.render.chart" in blank_codes
     row = '{"a": 1, "data_state": "demo", "data_source": "stub", "data_as_of": "u"}'
     assert not collect_response_issues("w", table, 200, f"[{row}]")
     keyed = {"type": "table", "data": {"dataKey": "rows"}}

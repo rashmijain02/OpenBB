@@ -36,6 +36,7 @@ from openbb_portfolio_intel.widget_backend import widgets_endpoints
 from openbb_portfolio_intel.widget_backend.contracts import collect_response_issues
 from openbb_portfolio_intel.widget_backend.main import app
 from openbb_techtrade.snapshot import store as snapshot_store
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 _UNIT = Path(__file__).resolve().parent
 _BACKEND = _UNIT.parents[1] / "openbb_portfolio_intel" / "widget_backend"
@@ -161,7 +162,7 @@ def test_off_mode_serves_unavailable_not_sample_values(
         assert body.startswith("**Unavailable:**")
         assert "$228.14" not in body  # the stub's sample price
     else:
-        assert body["data"] == []
+        assert data_traces(body) == [] and body["data"]
         assert body["layout"]["meta"]["state"] == "unavailable"
         raw = _CLIENT.get(
             "/" + _WIDGETS[widget_id]["endpoint"].lstrip("/"),

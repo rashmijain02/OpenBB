@@ -31,6 +31,7 @@ from openbb_techtrade.snapshot.store import (  # noqa: E402
     SnapshotState,
     SnapshotStatus,
 )
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 
 def _snapshot(dataset: str, segment: str, rows: list[dict]) -> SnapshotRow:
@@ -290,7 +291,7 @@ def test_segment_movers_empty_loud() -> None:
     assert r.status_code == 200
     figure = r.json()
     # #1271: an unavailable figure (no traces) that says why.
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert figure["layout"]["meta"]["state"] == "unavailable"
     assert any(
         "no eod snapshot" in note["text"].lower()

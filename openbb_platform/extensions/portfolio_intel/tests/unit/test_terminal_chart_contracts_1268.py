@@ -30,6 +30,7 @@ from fastapi.testclient import TestClient
 from openbb_portfolio_intel.providers.retrofit import _TIER_CALLS
 from openbb_portfolio_intel.widget_backend.contracts import collect_response_issues
 from openbb_portfolio_intel.widget_backend.main import app
+from openbb_portfolio_intel.widget_backend.overview_charts import data_traces
 
 _UNIT = Path(__file__).resolve().parent
 _BACKEND = _UNIT.parents[1] / "openbb_portfolio_intel" / "widget_backend"
@@ -319,7 +320,7 @@ def test_unwired_account_is_an_explicit_unavailable_figure(widget_id: str) -> No
     url = f"{_ACCOUNT_URLS[widget_id]}?account_id=NOT_WIRED"
     response = _CLIENT.get(url)
     figure = response.json()
-    assert figure["data"] == []
+    assert data_traces(figure) == [] and figure["data"]
     assert figure["layout"]["meta"]["state"] == "unavailable"
     assert "title" not in figure["layout"]
     assert "not wired" in _notes(figure)
@@ -382,7 +383,7 @@ def test_empty_rows_render_an_explicit_empty_state() -> None:
     ]
     for build in builders:
         figure = build([], context)
-        assert figure["data"] == [], build.__name__
+        assert data_traces(figure) == [] and figure["data"], build.__name__
         # #1269: an empty result is "unavailable", never a success shape.
         assert figure["layout"]["meta"]["state"] == "unavailable", build.__name__
         assert "no " in _notes(figure).lower(), build.__name__
