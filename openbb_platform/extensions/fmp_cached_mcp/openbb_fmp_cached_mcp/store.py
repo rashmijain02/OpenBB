@@ -15,6 +15,7 @@ pool) and ``SqliteDatabase`` (tests and local development).
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import gzip
 import hashlib
@@ -77,6 +78,9 @@ class Database(Protocol):
     def executemany(self, sql: str, rows: list[tuple]) -> int:
         """Run one statement for many parameter rows (one round trip / commit)."""
 
+    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
+        """Run ``(sql, params_or_rows, many)`` steps in one transaction."""
+
 
 _SQLITE_UNREACHABLE = ("locked", "busy", "unable to open", "disk i/o", "readonly")
 
@@ -101,34 +105,47 @@ class SqliteDatabase:
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
 
+    def _exec(self, sql: str, params: Any, many: bool) -> sqlite3.Cursor:
+        """Run one statement without committing (caller holds the lock)."""
+        sql = sql.replace("%s", "?")
+        if many:
+            return self._conn.executemany(sql, params)
+        return self._conn.execute(sql, params)
+
     def query(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
         """Run a SELECT and return rows as dicts."""
         try:
             with self._lock:
-                cur = self._conn.execute(sql.replace("%s", "?"), params)
-                return [dict(r) for r in cur.fetchall()]
+                return [dict(r) for r in self._exec(sql, params, False).fetchall()]
         except sqlite3.Error as exc:
             raise _sqlite_error(exc) from None
 
     def execute(self, sql: str, params: tuple = ()) -> int:
         """Run a statement and return the affected row count."""
-        try:
-            with self._lock:
-                cur = self._conn.execute(sql.replace("%s", "?"), params)
-                self._conn.commit()
-                return cur.rowcount
-        except sqlite3.Error as exc:
-            raise _sqlite_error(exc) from None
+        return self._commit([(sql, params, False)])
 
     def executemany(self, sql: str, rows: list[tuple]) -> int:
         """Run one statement for many parameter rows in one transaction."""
-        try:
-            with self._lock:
-                cur = self._conn.executemany(sql.replace("%s", "?"), rows)
+        return self._commit([(sql, rows, True)])
+
+    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
+        """Run the steps in one transaction; roll all back on any error."""
+        self._commit(steps)
+
+    def _commit(self, steps: list[tuple[str, Any, bool]]) -> int:
+        with self._lock:
+            try:
+                count = 0
+                for sql, params, many in steps:
+                    count = self._exec(sql, params, many).rowcount
                 self._conn.commit()
-                return cur.rowcount
-        except sqlite3.Error as exc:
-            raise _sqlite_error(exc) from None
+                return count
+            except sqlite3.Error as exc:
+                self._conn.rollback()
+                raise _sqlite_error(exc) from None
+            except Exception:
+                self._conn.rollback()
+                raise
 
 
 class MySqlDatabase:
@@ -162,6 +179,31 @@ class MySqlDatabase:
             return int(self._db.execute_many(sql, rows) or 0)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             raise classify_db_error(exc) from None
+
+    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
+        """Run the steps on one ``autocommit=False`` connection (as ``replace_rows``)."""
+        import pymysql  # pylint: disable=import-outside-toplevel
+
+        try:
+            params = self._db.get_connection_pool().connection_params
+            conn = pymysql.connect(**params, autocommit=False)
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
+            raise classify_db_error(exc) from None
+        try:
+            with conn.cursor() as cursor:
+                for sql, args, many in steps:
+                    if many:
+                        cursor.executemany(sql, args)
+                    else:
+                        cursor.execute(sql, args)
+            conn.commit()
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
+            # The transaction is lost either way; report the original error.
+            with contextlib.suppress(Exception):
+                conn.rollback()
+            raise classify_db_error(exc) from None
+        finally:
+            conn.close()
 
 
 _DDL = {
@@ -234,15 +276,22 @@ class Store:
     ) -> None:
         self.db = db
         self.now = now or (lambda: dt.datetime.now(dt.timezone.utc))
+        self._coverage_lock = threading.Lock()
 
     # -- schema ---------------------------------------------------------------
 
     def create_tables(self) -> None:
         """Create the store tables if they do not exist (idempotent)."""
         types = _TYPES[self.db.dialect]
+        # Same table options as the fmp_cached schema registry, whichever runs first.
+        options = (
+            " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            if self.db.dialect == "mysql"
+            else ""
+        )
         for table, cols in _DDL.items():
             self.db.execute(
-                f"CREATE TABLE IF NOT EXISTS {table} ({cols.format(**types)})"
+                f"CREATE TABLE IF NOT EXISTS {table} ({cols.format(**types)}){options}"
             )
 
     def _upsert_sql(self, table: str, cols: list[str], keys: Iterable[str]) -> str:
@@ -341,27 +390,28 @@ class Store:
         )
         return [(r["ts"], r["row_json"], _parse(r["fetched_at"])) for r in rows]
 
+    _SERIES_COLS = ["family", "series_key", "ts", "row_json", "fetched_at"]
+
+    def _series_tuples(
+        self, family: str, skey: str, rows: list[dict[str, Any]]
+    ) -> list[tuple]:
+        now = _fmt(self.now())
+        return [
+            (family, skey, str(row["date"]), json.dumps(row, ensure_ascii=False), now)
+            for row in rows
+        ]
+
     def put_series_rows(
         self, family: str, skey: str, rows: list[dict[str, Any]]
     ) -> None:
         """Upsert raw rows keyed by their ``date`` value (one batched statement)."""
-        now = _fmt(self.now())
-        self._upsert_many(
-            SERIES_ROW_TABLE,
-            [
-                {
-                    "family": family,
-                    "series_key": skey,
-                    "ts": str(row["date"]),
-                    "row_json": json.dumps(row, ensure_ascii=False),
-                    "fetched_at": now,
-                }
-                for row in rows
-            ],
-            ("family", "series_key", "ts"),
-        )
+        if rows:
+            sql = self._upsert_sql(
+                SERIES_ROW_TABLE, self._SERIES_COLS, ("family", "series_key", "ts")
+            )
+            self.db.executemany(sql, self._series_tuples(family, skey, rows))
 
-    def replace_series_range(
+    def replace_series_range(  # pylint: disable=too-many-arguments
         self,
         family: str,
         skey: str,
@@ -369,13 +419,30 @@ class Store:
         end: dt.date,
         rows: list[dict[str, Any]],
     ) -> None:
-        """Make FMP's answer for ``[start, end]`` the stored rows for that range."""
-        self.db.execute(
-            f"DELETE FROM {SERIES_ROW_TABLE} "  # noqa: S608
-            "WHERE family = %s AND series_key = %s AND ts >= %s AND ts < %s",
-            (family, skey, start.isoformat(), (end + dt.timedelta(days=1)).isoformat()),
-        )
-        self.put_series_rows(family, skey, rows)
+        """Make FMP's answer for ``[start, end]`` the stored rows for that range.
+
+        Delete and insert run in one transaction: a failed insert keeps the
+        rows held before.
+        """
+        steps: list[tuple[str, Any, bool]] = [
+            (
+                f"DELETE FROM {SERIES_ROW_TABLE} "  # noqa: S608
+                "WHERE family = %s AND series_key = %s AND ts >= %s AND ts < %s",
+                (
+                    family,
+                    skey,
+                    start.isoformat(),
+                    (end + dt.timedelta(days=1)).isoformat(),
+                ),
+                False,
+            )
+        ]
+        if rows:
+            sql = self._upsert_sql(
+                SERIES_ROW_TABLE, self._SERIES_COLS, ("family", "series_key", "ts")
+            )
+            steps.append((sql, self._series_tuples(family, skey, rows), True))
+        self.db.atomic(steps)
 
     def coverage(
         self, family: str, skey: str, kind: str
@@ -398,44 +465,69 @@ class Store:
     def add_final_coverage(
         self, family: str, skey: str, start: dt.date, end: dt.date
     ) -> None:
-        """Record ``[start, end]`` as fetched and final, merging overlapping ranges."""
-        ranges = [(a, b) for a, b, _ in self.coverage(family, skey, "final")] + [
-            (start, end)
-        ]
-        ranges.sort()
-        merged: list[list[dt.date]] = []
-        for a, b in ranges:
-            if merged and a <= merged[-1][1] + dt.timedelta(days=1):
-                merged[-1][1] = max(merged[-1][1], b)
-            else:
-                merged.append([a, b])
-        self.db.execute(
-            f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
-            "WHERE family = %s AND series_key = %s AND kind = 'final'",
-            (family, skey),
-        )
-        now = _fmt(self.now())
-        for a, b in merged:
-            self.db.execute(
-                f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
-                "(family, series_key, kind, range_from, range_to, fetched_at) "
-                "VALUES (%s, %s, 'final', %s, %s, %s)",
-                (family, skey, a.isoformat(), b.isoformat(), now),
+        """Record ``[start, end]`` as fetched and final, merging overlapping ranges.
+
+        Read-merge-write runs under a process lock and in one transaction, so
+        concurrent requests for one series cannot drop each other's ranges.
+        """
+        with self._coverage_lock:
+            ranges = [(a, b) for a, b, _ in self.coverage(family, skey, "final")]
+            ranges.append((start, end))
+            ranges.sort()
+            merged: list[list[dt.date]] = []
+            for a, b in ranges:
+                if merged and a <= merged[-1][1] + dt.timedelta(days=1):
+                    merged[-1][1] = max(merged[-1][1], b)
+                else:
+                    merged.append([a, b])
+            now = _fmt(self.now())
+            self.db.atomic(
+                [
+                    (
+                        f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
+                        "WHERE family = %s AND series_key = %s AND kind = 'final'",
+                        (family, skey),
+                        False,
+                    ),
+                    (
+                        f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
+                        "(family, series_key, kind, range_from, range_to, fetched_at) "
+                        "VALUES (%s, %s, 'final', %s, %s, %s)",
+                        [
+                            (family, skey, a.isoformat(), b.isoformat(), now)
+                            for a, b in merged
+                        ],
+                        True,
+                    ),
+                ]
             )
 
     def set_tail(self, family: str, skey: str, start: dt.date, end: dt.date) -> None:
         """Record the open tail ``[start, end]`` as fetched now."""
-        self.db.execute(
-            f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
-            "WHERE family = %s AND series_key = %s AND kind = 'tail'",
-            (family, skey),
-        )
-        self.db.execute(
-            f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
-            "(family, series_key, kind, range_from, range_to, fetched_at) "
-            "VALUES (%s, %s, 'tail', %s, %s, %s)",
-            (family, skey, start.isoformat(), end.isoformat(), _fmt(self.now())),
-        )
+        with self._coverage_lock:
+            self.db.atomic(
+                [
+                    (
+                        f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
+                        "WHERE family = %s AND series_key = %s AND kind = 'tail'",
+                        (family, skey),
+                        False,
+                    ),
+                    (
+                        f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
+                        "(family, series_key, kind, range_from, range_to, fetched_at) "
+                        "VALUES (%s, %s, 'tail', %s, %s, %s)",
+                        (
+                            family,
+                            skey,
+                            start.isoformat(),
+                            end.isoformat(),
+                            _fmt(self.now()),
+                        ),
+                        False,
+                    ),
+                ]
+            )
 
     def drop_series(self, family: str, skey: str) -> None:
         """Forget one series (rows and coverage), e.g. after a price re-basing."""

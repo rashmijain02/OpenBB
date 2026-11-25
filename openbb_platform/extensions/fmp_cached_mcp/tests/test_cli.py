@@ -49,3 +49,8 @@ def test_plan_limited_aliases_name_real_endpoints_and_registry_entries():
         tool, ep = key.split("/", 1)
         assert ep in emap[tool], key
         assert plan_limited.is_plan_limited(model), model
+
+
+def test_unopenable_sqlite_path_is_a_clean_setup_error(tmp_path):
+    with pytest.raises(cli.StoreSetupError):
+        cli.build_upstream("k" * 32, f"sqlite:{tmp_path / 'missing' / 'dir' / 'x.db'}")

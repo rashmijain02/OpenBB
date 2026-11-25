@@ -55,7 +55,12 @@ MAX_STORED_BODY_BYTES = 32 * 1024 * 1024
 #: (splits, dividend adjustments).
 OVERLAP_DAYS = 5
 MAX_TS_LEN = 32  # fmp_mcp_series_row.ts is VARCHAR(32)
-_TRANSIENT = {429, 500, 502, 503, 504}
+#: Deterministic refusals: remembered briefly. Any other non-200 status
+#: (401/403/408/429/5xx/CDN 52x) is treated as transient: stale copy if held.
+_REFUSALS = {400, 402, 404}
+#: A fetched range whose oldest row starts this many days after the requested
+#: start was truncated by FMP (row caps, plan history limits).
+TRUNCATION_TOLERANCE_DAYS = 4
 _EMPTY_BODIES = (b"[]", b"{}", b"")
 
 
@@ -125,6 +130,8 @@ def _date_rows(body: bytes) -> list[dict[str, Any]] | None:
         for r in rows
     ):
         return None
+    if len({r["date"] for r in rows}) != len(rows):
+        return None  # several rows per date (e.g. COT per market): not a series
     return rows
 
 
@@ -150,6 +157,23 @@ def _subtract(
 
 def _in_range(ts: str, start: dt.date, end: dt.date) -> bool:
     return start.isoformat() <= ts[:10] <= end.isoformat()
+
+
+def _covered_from(
+    start: dt.date, end: dt.date, rows: list[dict[str, Any]]
+) -> dt.date | None:
+    """Return the first date FMP's answer for ``[start, end]`` really covers.
+
+    FMP caps rows per call (intraday, plan history limits) by dropping the
+    oldest ones. When the oldest returned row starts well after ``start``,
+    only ``[oldest, end]`` counts as fetched; the rest stays a gap. An empty
+    answer for a long range covers nothing.
+    """
+    tolerance = dt.timedelta(days=TRUNCATION_TOLERANCE_DAYS)
+    if not rows:
+        return start if end - start <= tolerance else None
+    oldest = min(dt.date.fromisoformat(r["date"][:10]) for r in rows)
+    return start if oldest - start <= tolerance else oldest
 
 
 def _fresh(stored: StoredResponse | None, now: dt.datetime) -> bool:
@@ -402,14 +426,14 @@ class StoreBackedUpstream:
             resp = prefetched or await self.upstream.fetch(call.path, call.params)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             return self._stale_or_raise(stored, exc)
-        if resp.status in _TRANSIENT:
+        if resp.status in _REFUSALS:
+            return await self._remember_refusal(call, resp)
+        if resp.status != 200:
             if stored:
                 return self._from_store(stored, "stale", f"upstream-{resp.status}")
             return FetchResult(
                 resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
             )
-        if resp.status != 200:
-            return await self._remember_refusal(call, resp)
         if resp.body.strip() in _EMPTY_BODIES:
             await self._remember_empty(call, resp)
         else:
@@ -528,12 +552,16 @@ class StoreBackedUpstream:
             empty = UpstreamResponse(200, b"[]")
             await self._remember_empty(call, empty)
             return FetchResult(empty, "live", "fmp", self.now())
-        fresh, stored = await self._check_rebased(store, call, skey, fresh, stored)
+        checked = await self._check_rebased(store, call, skey, fresh, stored)
+        if isinstance(checked, FetchResult):
+            return checked
+        fresh, stored = checked
         return await self._store_series(store, call, skey, fresh, stored)
 
     async def _check_rebased(  # pylint: disable=too-many-arguments
         self, store: Store, call: _Call, skey: str, fresh, stored
     ):
+        """Return ``(fresh, stored)`` to store, or a final ``FetchResult``."""
         try:
             rebased = await self._rebased(store, call, skey, fresh)
         except (StoreUnavailable, StoreDataError) as exc:
@@ -544,10 +572,24 @@ class StoreBackedUpstream:
         logger.info(
             "series %s re-based upstream; re-fetching the requested range", call.path
         )
-        await self._write(store.drop_series, call.path, skey)
         start = dt.date.fromisoformat(call.params["from"])
         end = dt.date.fromisoformat(call.params["to"])
-        return await self._fetch_segments(call, [(start, end)]), []
+        try:  # re-fetch first: the stored series is only dropped once replaced
+            refetched = await self._fetch_segments(call, [(start, end)])
+        except _Refused as exc:
+            return await self._remember_refusal(call, exc.response)
+        except _Fallback:
+            raise
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
+            if not stored:
+                raise exc
+            logger.warning(
+                "re-fetch after re-basing failed (%s); serving stored series",
+                type(exc).__name__,
+            )
+            return self._series_result(stored, "stale", "upstream-error")
+        await self._write(store.drop_series, call.path, skey)
+        return refetched, []
 
     async def _store_series(  # pylint: disable=too-many-arguments
         self, store: Store, call: _Call, skey: str, fresh, stored
@@ -563,13 +605,23 @@ class StoreBackedUpstream:
             for row in rows:
                 if _in_range(row["date"], start, end):
                     merged[row["date"]] = (json.dumps(row, ensure_ascii=False), now)
-            await self._write(store.replace_series_range, call.path, skey, a, b, rows)
-            if a <= final_cut:
+            if not await self._write(
+                store.replace_series_range, call.path, skey, a, b, rows
+            ):
+                continue  # rows not stored: record no coverage for them
+            covered_from = _covered_from(a, b, rows)
+            if covered_from is None:
+                continue
+            if covered_from <= final_cut:
                 await self._write(
-                    store.add_final_coverage, call.path, skey, a, min(b, final_cut)
+                    store.add_final_coverage,
+                    call.path,
+                    skey,
+                    covered_from,
+                    min(b, final_cut),
                 )
             if b > final_cut:
-                tail_from = max(a, final_cut + dt.timedelta(days=1))
+                tail_from = max(covered_from, final_cut + dt.timedelta(days=1))
                 await self._write(store.set_tail, call.path, skey, tail_from, b)
         rows_out = [(ts, rj, f) for ts, (rj, f) in sorted(merged.items(), reverse=True)]
         return self._series_result(rows_out, "live", None)
@@ -582,10 +634,10 @@ class StoreBackedUpstream:
             params = {**call.params, "from": a.isoformat(), "to": b.isoformat()}
             resp = await self.upstream.fetch(call.path, params)
             own_request = params == call.params
-            if resp.status != 200:
-                if resp.status in _TRANSIENT:
-                    raise ConnectionError(f"upstream-{resp.status}")
+            if resp.status in _REFUSALS:
                 raise _Refused(resp)
+            if resp.status != 200:
+                raise ConnectionError(f"upstream-{resp.status}")
             rows = _date_rows(resp.body)
             if rows is None or not all(_in_range(r["date"], a, b) for r in rows):
                 # Not a range series after all (FMP ignored from/to, or rows

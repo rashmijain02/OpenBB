@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import logging
 import os
+import sqlite3
 import sys
 
 from openbb_fmp_cached_mcp.app import (
@@ -29,6 +30,7 @@ from openbb_fmp_cached_mcp.store import (
     MySqlDatabase,
     SqliteDatabase,
     Store,
+    StoreDataError,
     StoreUnavailable,
 )
 from openbb_fmp_cached_mcp.upstream import FmpRestUpstream, Upstream, load_fmp_key
@@ -37,7 +39,7 @@ logger = logging.getLogger("openbb_fmp_cached_mcp")
 
 
 class StoreSetupError(RuntimeError):
-    """``--store mysql`` was requested but the database is unreachable."""
+    """The requested store (``mysql`` or ``sqlite:PATH``) cannot be opened."""
 
 
 def open_store(spec: str) -> Store | None:
@@ -45,8 +47,13 @@ def open_store(spec: str) -> Store | None:
     if spec == "none":
         return None
     if spec.startswith("sqlite:"):
-        store = Store(SqliteDatabase(spec[len("sqlite:") :]))
-        store.create_tables()
+        try:
+            store = Store(SqliteDatabase(spec[len("sqlite:") :]))
+            store.create_tables()
+        except (sqlite3.Error, StoreUnavailable, StoreDataError, OSError) as exc:
+            raise StoreSetupError(
+                f"cannot open the SQLite store ({type(exc).__name__})"
+            ) from None
         return store
     try:
         store = Store(MySqlDatabase())

@@ -11,6 +11,7 @@ import datetime as dt
 import gzip
 import json
 import logging
+import sqlite3
 
 import pytest
 
@@ -843,3 +844,149 @@ def test_an_empty_refresh_wins_over_the_stale_document(env):
     _get(svc, "statements", args)
     _get(svc, "statements", args)
     assert len(fmp.calls) == 2, "the empty answer is served for its day"
+
+
+# --- /code-review (high) round 2 on PR #1308 -------------------------------------
+
+
+class _FailingSeriesInsert(SqliteDatabase):
+    """Rejects series-row inserts the way MySQL rejects a too-long value."""
+
+    fail = False
+
+    def _exec(self, sql, params, many):
+        if self.fail and many and "INSERT INTO fmp_mcp_series_row" in sql:
+            raise sqlite3.IntegrityError("value too long")
+        return super()._exec(sql, params, many)
+
+
+def _env_with(db):
+    clock = Clock()
+    store = Store(db, now=clock)
+    store.create_tables()
+    fmp = FakeFmp()
+    fmp.clock = clock
+    return StoreBackedUpstream(fmp, store, now=clock), fmp, store, clock
+
+
+def test_coverage_is_not_recorded_when_the_rows_were_not_stored():
+    db = _FailingSeriesInsert(":memory:")
+    db.fail = True
+    svc, fmp, store, _ = _env_with(db)
+    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
+    assert store.count("fmp_mcp_series_coverage") == 0
+    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
+    assert len(fmp.calls) == 2, "the range is asked for again"
+
+
+def test_a_failed_row_replace_keeps_the_rows_held_before():
+    db = _FailingSeriesInsert(":memory:")
+    svc, fmp, store, clock = _env_with(db)
+    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
+    held = len(store.dump("fmp_mcp_series_row"))
+    db.fail = True
+    clock.advance(hours=2)  # tail refresh re-fetches and replaces a range
+    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
+    assert len(store.dump("fmp_mcp_series_row")) == held, "delete+insert is atomic"
+
+
+def test_a_truncated_answer_only_covers_the_dates_it_returned(env):
+    svc, fmp, store, _ = env
+
+    class Truncating(FakeFmp):
+        async def fetch(self, path, params):
+            self.calls.append((path, dict(params)))
+            end = dt.date.fromisoformat(params["to"])
+            rows = _daily_rows(end - dt.timedelta(days=6), end, params["symbol"])
+            return UpstreamResponse(200, json.dumps(rows).encode())
+
+    svc.upstream = trunc = Truncating()
+    _get(svc, "chart", _range("2026-01-01", "2026-06-30"))
+    _get(svc, "chart", _range("2026-02-02", "2026-02-06"))
+    assert len(trunc.calls) == 2, "February was never returned, so it is not covered"
+
+
+def test_series_with_several_rows_per_date_use_the_document_path(env):
+    svc, fmp, store, _ = env
+    body = json.dumps(
+        [{"date": "2026-11-03", "market": "A"}, {"date": "2026-11-03", "market": "B"}]
+    ).encode()
+    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(200, body)
+    out = _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
+    assert out.response.body == body
+    assert store.count("fmp_mcp_series_row") == 0
+
+
+def test_a_failed_refetch_after_rebasing_serves_the_stored_rows_as_stale(env):
+    svc, fmp, store, clock = env
+    fmp.clock = clock
+    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
+    clock.advance(days=1, hours=2)
+    fmp.price_shift = -50.0
+
+    class FailThird(FakeFmp):
+        pass
+
+    real_fetch = fmp.fetch
+
+    async def flaky(path, params):
+        if len(fmp.calls) >= 2:  # the full re-fetch after re-basing
+            fmp.calls.append((path, dict(params)))
+            raise ConnectionError("429")
+        return await real_fetch(path, params)
+
+    fmp.fetch = flaky
+    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
+    assert out.state == "stale" and out.response.status == 200
+    assert store.count("fmp_mcp_series_row") > 0, "the series is not dropped"
+
+
+def test_only_400_402_404_are_remembered_as_refusals(env):
+    svc, fmp, _, clock = env
+    args = {"endpoint": "income-statement", "symbol": "AAPL"}
+    first = _get(svc, "statements", args)
+    clock.advance(days=2)
+    fmp.docs["/income-statement"] = UpstreamResponse(522, b"cloudflare")
+    stale = _get(svc, "statements", args)
+    assert stale.state == "stale" and stale.response.body == first.response.body
+    del fmp.docs["/income-statement"]
+    fresh = _get(svc, "statements", args)
+    assert fresh.state == "live", "a 522 is not remembered for ten minutes"
+
+
+def test_mysql_tables_are_created_with_the_schema_charset():
+    seen = []
+
+    class FakeMySql:
+        dialect = "mysql"
+
+        def execute(self, sql, params=()):
+            seen.append(sql)
+            return 0
+
+        def query(self, sql, params=()):
+            return []
+
+    Store(FakeMySql()).create_tables()
+    creates = [s for s in seen if s.startswith("CREATE TABLE")]
+    assert creates and all(
+        "CHARSET=utf8mb4" in s and "ENGINE=InnoDB" in s for s in creates
+    )
+
+
+def test_concurrent_coverage_updates_are_merged():
+    import threading  # pylint: disable=import-outside-toplevel
+
+    store = Store(SqliteDatabase(":memory:"), now=Clock())
+    store.create_tables()
+    days = [dt.date(2026, 1, 1) + dt.timedelta(days=2 * i) for i in range(40)]
+    threads = [
+        threading.Thread(target=store.add_final_coverage, args=("/x", "k" * 64, d, d))
+        for d in days
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    covered = {a for a, _, _ in store.coverage("/x", "k" * 64, "final")}
+    assert covered == set(days)
