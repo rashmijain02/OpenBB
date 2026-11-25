@@ -8,9 +8,11 @@
    one document), store the raw answer, and return it (``live``);
 4. if FMP fails and the store holds an older answer, return that (``stale``).
 
-A store outage degrades to live mode with a single warning and is re-tried
-after ``STORE_RETRY_S``. A rejected write (a data error, not an outage) is
-logged and the fetched answer is still returned, without a second fetch.
+Store I/O runs in worker threads so a slow database never blocks other MCP
+sessions. A store outage degrades to live mode with a single warning and is
+re-tried after ``STORE_RETRY_S``. A rejected write (a data error, not an
+outage) is logged and the fetched answer is still returned, without a second
+fetch.
 """
 
 from __future__ import annotations
@@ -28,7 +30,6 @@ from typing import Any
 from openbb_fmp_cached_mcp.endpoint_map import PARAM_RENAMES, endpoint_spec
 from openbb_fmp_cached_mcp.policy import (
     NEGATIVE_TTL_S,
-    RECENT_DAYS,
     REVISABLE_REFRESH_S,
     Policy,
     resolve_policy,
@@ -82,7 +83,23 @@ class _Call:
 
 
 class _Fallback(Exception):
-    """Internal: the series path cannot serve this call; use the document path."""
+    """Internal: serve this call through the document path.
+
+    ``prefetched`` carries FMP's answer when it was fetched for exactly the
+    call's own request, so the document path does not fetch it again.
+    """
+
+    def __init__(self, prefetched: UpstreamResponse | None = None) -> None:
+        super().__init__()
+        self.prefetched = prefetched
+
+
+class _Refused(Exception):
+    """Internal: FMP refused a series request (400/402/404)."""
+
+    def __init__(self, response: UpstreamResponse) -> None:
+        super().__init__()
+        self.response = response
 
 
 def _series_key(params: dict[str, str]) -> str:
@@ -135,6 +152,12 @@ def _in_range(ts: str, start: dt.date, end: dt.date) -> bool:
     return start.isoformat() <= ts[:10] <= end.isoformat()
 
 
+def _fresh(stored: StoredResponse | None, now: dt.datetime) -> bool:
+    return stored is not None and (
+        stored.fresh_until is None or now < stored.fresh_until
+    )
+
+
 class StoreBackedUpstream:
     """Hosted-tool answers from the persistent store, with FMP REST behind it."""
 
@@ -178,7 +201,7 @@ class StoreBackedUpstream:
         future: asyncio.Future[FetchResult] = asyncio.get_running_loop().create_future()
         self._inflight[key] = future
         try:
-            self._maybe_prune()
+            await self._maybe_prune()
             result = await self._answer(tool, args, spec, params, key)
         except asyncio.CancelledError:
             future.cancel()
@@ -193,7 +216,12 @@ class StoreBackedUpstream:
         finally:
             self._inflight.pop(key, None)
 
-    # -- store availability ---------------------------------------------------
+    # -- store access (worker threads) ----------------------------------------
+
+    @staticmethod
+    async def _io(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """Run blocking store I/O off the event loop."""
+        return await asyncio.to_thread(functools.partial(fn, *args, **kwargs))
 
     def _store_ok(self) -> bool:
         if self.store is None:
@@ -209,10 +237,10 @@ class StoreBackedUpstream:
             )
         self._store_down_until = self.now() + dt.timedelta(seconds=STORE_RETRY_S)
 
-    def _write(self, fn: Callable[[], Any]) -> bool:
+    async def _write(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> bool:
         """Run a store write; a failure never loses the already fetched answer."""
         try:
-            fn()
+            await self._io(fn, *args, **kwargs)
             return True
         except StoreDataError as exc:
             logger.warning("fmp_cached store rejected a write (%s)", exc)
@@ -220,7 +248,7 @@ class StoreBackedUpstream:
             self._mark_down(exc)
         return False
 
-    def _maybe_prune(self) -> None:
+    async def _maybe_prune(self) -> None:
         if not self._store_ok() or self.store is None:
             return
         now = self.now()
@@ -230,7 +258,7 @@ class StoreBackedUpstream:
         ):
             return
         self._last_prune = now
-        self._write(self.store.prune_ephemeral)
+        await self._write(self.store.prune_ephemeral)
 
     async def _with_store(
         self,
@@ -272,8 +300,8 @@ class StoreBackedUpstream:
             async def series() -> FetchResult:
                 try:
                     return await self._series(call)
-                except _Fallback:
-                    return await self._document(call)
+                except _Fallback as fb:
+                    return await self._document(call, prefetched=fb.prefetched)
 
             return await self._with_store(series, live)
 
@@ -293,9 +321,8 @@ class StoreBackedUpstream:
 
     # -- documents / ephemeral ------------------------------------------------
 
-    def _put(  # pylint: disable=too-many-arguments
+    async def _put(  # pylint: disable=too-many-arguments
         self,
-        store: Store,
         table: str,
         key: str,
         call: _Call,
@@ -308,38 +335,71 @@ class StoreBackedUpstream:
                 "not storing a %d-byte answer for %s", len(resp.body), call.path
             )
             return
-        self._write(
-            lambda: store.put_response(
-                table,
-                key,
-                tool=call.tool,
-                endpoint=call.args["endpoint"],
-                path=call.path,
-                params=call.params,
-                retention=call.policy.retention,
-                status=resp.status,
-                body=resp.body,
-                fresh_s=fresh_s,
-            )
+        await self._write(
+            self._require_store().put_response,
+            table,
+            key,
+            tool=call.tool,
+            endpoint=call.args["endpoint"],
+            path=call.path,
+            params=call.params,
+            retention=call.policy.retention,
+            status=resp.status,
+            body=resp.body,
+            fresh_s=fresh_s,
         )
 
-    async def _document(self, call: _Call) -> FetchResult:
+    async def _remember_refusal(
+        self, call: _Call, resp: UpstreamResponse
+    ) -> FetchResult:
+        """Deterministic refusals (400/402/404): remember briefly, never persist."""
+        await self._put(
+            EPHEMERAL_TABLE,
+            _negative_key(call.key),
+            call,
+            resp=resp,
+            fresh_s=NEGATIVE_TTL_S,
+        )
+        return FetchResult(
+            resp, "unavailable", "fmp", self.now(), f"upstream-{resp.status}"
+        )
+
+    async def _remember_empty(self, call: _Call, resp: UpstreamResponse) -> None:
+        """Keep an empty answer as ephemeral only.
+
+        Not found today may exist tomorrow, and arbitrary lookups must not grow
+        the persistent tables.
+        """
+        ttl = call.policy.refresh_s if call.policy.mode == "ephemeral" else None
+        await self._put(
+            EPHEMERAL_TABLE,
+            call.key,
+            call,
+            resp=resp,
+            fresh_s=ttl or REVISABLE_REFRESH_S,
+        )
+
+    async def _document(
+        self, call: _Call, prefetched: UpstreamResponse | None = None
+    ) -> FetchResult:
         store = self._require_store()
         policy, key, now = call.policy, call.key, self.now()
         persistent = policy.mode != "ephemeral"
-        neg_key = _negative_key(key)
-        stored = store.get_response(
-            DOCUMENT_TABLE if persistent else EPHEMERAL_TABLE, key
+        negative = await self._io(
+            store.get_response, EPHEMERAL_TABLE, _negative_key(key)
         )
-        if persistent and stored is None:  # an empty answer is kept as ephemeral
-            stored = store.get_response(EPHEMERAL_TABLE, key)
-        negative = store.get_response(EPHEMERAL_TABLE, neg_key)
-        if negative and negative.fresh_until and now < negative.fresh_until:
+        if negative is not None and _fresh(negative, now):
             return self._from_store(negative, "cached")
-        if stored and (stored.fresh_until is None or now < stored.fresh_until):
+        ephemeral = await self._io(store.get_response, EPHEMERAL_TABLE, key)
+        stored = ephemeral
+        if persistent:
+            if ephemeral is not None and _fresh(ephemeral, now):
+                return self._from_store(ephemeral, "cached")  # a fresh empty answer
+            stored = await self._io(store.get_response, DOCUMENT_TABLE, key)
+        if stored is not None and _fresh(stored, now):
             return self._from_store(stored, "cached")
         try:
-            resp = await self.upstream.fetch(call.path, call.params)
+            resp = prefetched or await self.upstream.fetch(call.path, call.params)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             return self._stale_or_raise(stored, exc)
         if resp.status in _TRANSIENT:
@@ -349,32 +409,16 @@ class StoreBackedUpstream:
                 resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
             )
         if resp.status != 200:
-            # Deterministic refusals (400/402/404): remember briefly, never persist.
-            self._put(
-                store, EPHEMERAL_TABLE, neg_key, call, resp=resp, fresh_s=NEGATIVE_TTL_S
-            )
-            return FetchResult(
-                resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
-            )
+            return await self._remember_refusal(call, resp)
         if resp.body.strip() in _EMPTY_BODIES:
-            # Not found today may exist tomorrow, and arbitrary lookups must not
-            # grow the persistent tables: keep empty answers as ephemeral only.
-            ttl = policy.refresh_s if not persistent else REVISABLE_REFRESH_S
-            self._put(
-                store,
-                EPHEMERAL_TABLE,
-                key,
-                call,
-                resp=resp,
-                fresh_s=ttl or REVISABLE_REFRESH_S,
-            )
+            await self._remember_empty(call, resp)
         else:
             table = DOCUMENT_TABLE if persistent else EPHEMERAL_TABLE
-            self._put(store, table, key, call, resp=resp, fresh_s=policy.refresh_s)
+            await self._put(table, key, call, resp=resp, fresh_s=policy.refresh_s)
             if policy.feed:
                 rows = _object_rows(resp.body)
                 if rows:
-                    self._write(lambda: store.put_feed_items(call.path, rows))
+                    await self._write(store.put_feed_items, call.path, rows)
         return FetchResult(resp, "live", "fmp", now)
 
     @staticmethod
@@ -389,25 +433,27 @@ class StoreBackedUpstream:
             reason,
         )
 
-    def _stale_or_raise(
-        self, stored: StoredResponse | None, exc: Exception
-    ) -> FetchResult:
+    @staticmethod
+    def _stale_or_raise(stored: StoredResponse | None, exc: Exception) -> FetchResult:
         if stored is None:
             raise exc
         logger.warning(
             "upstream failed (%s); serving stored answer", type(exc).__name__
         )
-        return self._from_store(stored, "stale", "upstream-error")
+        return StoreBackedUpstream._from_store(stored, "stale", "upstream-error")
 
     # -- series ---------------------------------------------------------------
 
-    def _plan_segments(
+    async def _plan_segments(  # pylint: disable=too-many-arguments
         self, store: Store, call: _Call, skey: str, start: dt.date, end: dt.date
     ) -> list[tuple[dt.date, dt.date]]:
-        """Date ranges to fetch: gaps in final coverage, plus the open tail."""
+        """Return the date ranges to fetch: final-coverage gaps plus the open tail."""
         now = self.now()
-        final_cut = now.date() - dt.timedelta(days=RECENT_DAYS)
-        covered = [(a, b) for a, b, _ in store.coverage(call.path, skey, "final")]
+        final_cut = now.date() - dt.timedelta(days=call.policy.final_lag_days)
+        covered = [
+            (a, b)
+            for a, b, _ in await self._io(store.coverage, call.path, skey, "final")
+        ]
         segments = (
             _subtract(start, min(end, final_cut), covered) if start <= final_cut else []
         )
@@ -415,11 +461,11 @@ class StoreBackedUpstream:
             return segments
         tail_from = max(start, final_cut + dt.timedelta(days=1))
         ttl = call.policy.refresh_s or 0
-        fresh_tail = any(
+        tails = await self._io(store.coverage, call.path, skey, "tail")
+        if any(
             a <= tail_from and b >= end and (now - fetched).total_seconds() < ttl
-            for a, b, fetched in store.coverage(call.path, skey, "tail")
-        )
-        if fresh_tail:
+            for a, b, fetched in tails
+        ):
             return segments
         seg_from = tail_from
         if segments and segments[-1][1] >= final_cut:
@@ -433,25 +479,40 @@ class StoreBackedUpstream:
         segments.append((seg_from, end))
         return segments
 
+    async def _cached_answer(self, store: Store, call: _Call) -> FetchResult | None:
+        """Return a fresh remembered refusal or empty answer for this exact call."""
+        now = self.now()
+        for key in (_negative_key(call.key), call.key):
+            hit = await self._io(store.get_response, EPHEMERAL_TABLE, key)
+            if hit is not None and _fresh(hit, now):
+                return self._from_store(hit, "cached")
+        return None
+
     async def _series(self, call: _Call) -> FetchResult:
         store = self._require_store()
+        lag = call.policy.final_lag_days
         try:
             start = dt.date.fromisoformat(call.params["from"])
             end = dt.date.fromisoformat(call.params["to"])
-            # Reject ranges whose arithmetic would overflow (e.g. to=9999-12-31).
-            _ = start + dt.timedelta(days=OVERLAP_DAYS + RECENT_DAYS + 1)
-            _ = end + dt.timedelta(days=1)
+            # Reject ranges whose date arithmetic would overflow either way.
+            _ = start - dt.timedelta(days=OVERLAP_DAYS + lag + 2)
+            _ = end + dt.timedelta(days=lag + 2)
         except (KeyError, ValueError, OverflowError):
             raise _Fallback() from None
-        if store.get_response(DOCUMENT_TABLE, call.key) is not None:
+        cached = await self._cached_answer(store, call)
+        if cached is not None:
+            return cached
+        if await self._io(store.get_response, DOCUMENT_TABLE, call.key) is not None:
             raise _Fallback()  # this request was served as a document before
         skey = _series_key(call.params)
-        stored = store.series_rows(call.path, skey, start, end)
-        segments = self._plan_segments(store, call, skey, start, end)
+        stored = await self._io(store.series_rows, call.path, skey, start, end)
+        segments = await self._plan_segments(store, call, skey, start, end)
         if not segments:
             return self._series_result(stored, "cached", None)
         try:
             fresh = await self._fetch_segments(call, segments)
+        except _Refused as exc:
+            return await self._remember_refusal(call, exc.response)
         except _Fallback:
             raise
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
@@ -461,41 +522,55 @@ class StoreBackedUpstream:
                 "upstream failed (%s); serving stored series", type(exc).__name__
             )
             return self._series_result(stored, "stale", "upstream-error")
+        if not stored and not any(rows for _, rows in fresh):
+            # Unknown symbol, not listed yet, or nothing in range: no persistent
+            # coverage; remember the empty answer for a day like documents do.
+            empty = UpstreamResponse(200, b"[]")
+            await self._remember_empty(call, empty)
+            return FetchResult(empty, "live", "fmp", self.now())
+        fresh, stored = await self._check_rebased(store, call, skey, fresh, stored)
+        return await self._store_series(store, call, skey, fresh, stored)
 
-        final_cut = self.now().date() - dt.timedelta(days=RECENT_DAYS)
-        if self._rebased(store, call.path, skey, fresh):
-            logger.info(
-                "series %s re-based upstream; re-fetching the requested range",
-                call.path,
-            )
-            self._write(lambda: store.drop_series(call.path, skey))
-            fresh = await self._fetch_segments(call, [(start, end)])
-            stored = []
+    async def _check_rebased(  # pylint: disable=too-many-arguments
+        self, store: Store, call: _Call, skey: str, fresh, stored
+    ):
+        try:
+            rebased = await self._rebased(store, call, skey, fresh)
+        except (StoreUnavailable, StoreDataError) as exc:
+            logger.warning("re-basing check skipped (%s)", type(exc).__name__)
+            return fresh, stored
+        if not rebased:
+            return fresh, stored
+        logger.info(
+            "series %s re-based upstream; re-fetching the requested range", call.path
+        )
+        await self._write(store.drop_series, call.path, skey)
+        start = dt.date.fromisoformat(call.params["from"])
+        end = dt.date.fromisoformat(call.params["to"])
+        return await self._fetch_segments(call, [(start, end)]), []
 
-        merged = {ts: (rj, f) for ts, rj, f in stored}
+    async def _store_series(  # pylint: disable=too-many-arguments
+        self, store: Store, call: _Call, skey: str, fresh, stored
+    ) -> FetchResult:
         now = self.now()
+        start = dt.date.fromisoformat(call.params["from"])
+        end = dt.date.fromisoformat(call.params["to"])
+        final_cut = now.date() - dt.timedelta(days=call.policy.final_lag_days)
+        merged = {ts: (rj, f) for ts, rj, f in stored}
         for (a, b), rows in fresh:
             for ts in [t for t in merged if _in_range(t, a, b)]:
                 del merged[ts]  # FMP's answer for [a, b] replaces what we held
             for row in rows:
                 if _in_range(row["date"], start, end):
                     merged[row["date"]] = (json.dumps(row, ensure_ascii=False), now)
-            self._write(
-                functools.partial(
-                    store.replace_series_range, call.path, skey, a, b, rows
-                )
-            )
+            await self._write(store.replace_series_range, call.path, skey, a, b, rows)
             if a <= final_cut:
-                self._write(
-                    functools.partial(
-                        store.add_final_coverage, call.path, skey, a, min(b, final_cut)
-                    )
+                await self._write(
+                    store.add_final_coverage, call.path, skey, a, min(b, final_cut)
                 )
             if b > final_cut:
                 tail_from = max(a, final_cut + dt.timedelta(days=1))
-                self._write(
-                    functools.partial(store.set_tail, call.path, skey, tail_from, b)
-                )
+                await self._write(store.set_tail, call.path, skey, tail_from, b)
         rows_out = [(ts, rj, f) for ts, (rj, f) in sorted(merged.items(), reverse=True)]
         return self._series_result(rows_out, "live", None)
 
@@ -506,29 +581,32 @@ class StoreBackedUpstream:
         for a, b in segments:
             params = {**call.params, "from": a.isoformat(), "to": b.isoformat()}
             resp = await self.upstream.fetch(call.path, params)
+            own_request = params == call.params
             if resp.status != 200:
                 if resp.status in _TRANSIENT:
                     raise ConnectionError(f"upstream-{resp.status}")
-                raise _Fallback()  # the document path renders/remembers the refusal
+                raise _Refused(resp)
             rows = _date_rows(resp.body)
-            if rows is None:
-                raise _Fallback()
+            if rows is None or not all(_in_range(r["date"], a, b) for r in rows):
+                # Not a range series after all (FMP ignored from/to, or rows
+                # without usable dates): serve FMP's answer as a document.
+                raise _Fallback(resp if own_request else None)
             out.append(((a, b), rows))
         return out
 
-    @staticmethod
-    def _rebased(store: Store, path: str, skey: str, fresh) -> bool:
+    async def _rebased(self, store: Store, call: _Call, skey: str, fresh) -> bool:
         """Return True when a re-fetched row differs from a copy stored as final.
 
-        Rows stored while their session was still open (within ``RECENT_DAYS``
-        of their fetch) are expected to change and are not compared.
+        Rows stored while still open (within the series' finality lag of their
+        fetch) are expected to change and are not compared.
         """
+        lag = dt.timedelta(days=call.policy.final_lag_days)
         for (a, b), rows in fresh:
+            held = await self._io(store.series_rows, call.path, skey, a, b)
             old = {
                 ts: rj
-                for ts, rj, fetched in store.series_rows(path, skey, a, b)
-                if dt.date.fromisoformat(ts[:10])
-                <= fetched.date() - dt.timedelta(days=RECENT_DAYS)
+                for ts, rj, fetched in held
+                if dt.date.fromisoformat(ts[:10]) <= fetched.date() - lag
             }
             for row in rows:
                 ts = str(row["date"])

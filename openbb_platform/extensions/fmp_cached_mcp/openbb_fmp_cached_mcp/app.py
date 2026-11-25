@@ -22,7 +22,7 @@ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
-from starlette.routing import Mount
+from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from openbb_fmp_cached_mcp.server import build_server
@@ -84,13 +84,30 @@ class BearerAuth:
             await send({"type": "websocket.close", "code": 1008})
 
 
-def loopback_security(port: int) -> TransportSecuritySettings:
+def loopback_security(port: int, host: str = DEFAULT_HOST) -> TransportSecuritySettings:
     """Host/Origin allow-lists for a loopback bind (DNS-rebinding protection)."""
+    names = list(LOOPBACK_NAMES)
+    bound = f"[{host.strip('[]')}]" if ":" in host else host
+    if bound not in names:
+        names.append(bound)  # e.g. 127.0.0.2: accept the address actually bound
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=[f"{name}:{port}" for name in LOOPBACK_NAMES],
-        allowed_origins=[f"http://{name}:{port}" for name in LOOPBACK_NAMES],
+        allowed_hosts=[f"{name}:{port}" for name in names],
+        allowed_origins=[f"http://{name}:{port}" for name in names],
     )
+
+
+class _SessionEndpoint:  # pylint: disable=too-few-public-methods
+    """ASGI endpoint for the exact ``/mcp`` path (a class, so Starlette's
+    ``Route`` treats it as a raw ASGI app rather than a request handler).
+    """
+
+    def __init__(self, manager: StreamableHTTPSessionManager) -> None:
+        self.manager = manager
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Hand the request to the MCP session manager."""
+        await self.manager.handle_request(scope, receive, send)
 
 
 def build_http_app(
@@ -101,18 +118,19 @@ def build_http_app(
     port: int = DEFAULT_PORT,
 ) -> ASGIApp:
     """Streamable-HTTP app serving the parity server at ``/mcp``."""
-    security = loopback_security(port) if is_loopback(host) else None
+    security = loopback_security(port, host) if is_loopback(host) else None
     manager = StreamableHTTPSessionManager(
         app=build_server(upstream), json_response=True, security_settings=security
     )
-
-    async def handle(scope: Scope, receive: Receive, send: Send) -> None:
-        await manager.handle_request(scope, receive, send)
 
     @contextlib.asynccontextmanager
     async def lifespan(_app: Starlette) -> AsyncIterator[None]:
         async with manager.run():
             yield
 
-    app: ASGIApp = Starlette(routes=[Mount("/mcp", app=handle)], lifespan=lifespan)
+    # The exact path: Mount("/mcp") would answer POST /mcp with a 307 to /mcp/.
+    app: ASGIApp = Starlette(
+        routes=[Route("/mcp", endpoint=_SessionEndpoint(manager), methods=None)],
+        lifespan=lifespan,
+    )
     return BearerAuth(app, token) if token else app

@@ -38,6 +38,10 @@ when it is set, every HTTP request must send `Authorization: Bearer <token>`.
 | no-store (custom DCF) | nothing | always |
 
 A call about a past date is immutable whatever its class; an empty answer is never immutable.
+Rows become final after 2 days, except late-published series: economic indicators after 120
+days, COT reports after 14. Endpoints where FMP ignores `from`/`to` (constituent histories) are
+documents, not series; any series answer with rows outside the requested range falls back to
+the document path. Empty series answers are kept ephemeral (1 day), never as coverage.
 On an FMP failure the stored copy is served with `_meta.openbb/provenance.state = "stale"`.
 Only `fmp_mcp_ephemeral` is prunable (`python -m openbb_fmp_cached.utils.cache_prune`); the
 persistent tables are not in its allowlist.

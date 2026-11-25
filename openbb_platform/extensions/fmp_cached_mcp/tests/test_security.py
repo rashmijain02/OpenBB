@@ -221,3 +221,18 @@ def test_bearer_auth_rejects_non_http_scopes():
     )
     assert reached == []
     assert sent and sent[0]["type"] == "websocket.close"
+
+
+# --- /code-review (high) findings on PR #1308 ------------------------------------
+
+
+def test_documented_url_answers_without_a_redirect():
+    app = build_http_app(_Up(), token="", port=8011)
+    with TestClient(app, base_url=BASE, follow_redirects=False) as client:
+        assert _post(client, INIT).status_code == 200
+
+
+def test_other_loopback_binds_accept_their_own_host_header():
+    app = build_http_app(_Up(), token="", host="127.0.0.2", port=8011)
+    with TestClient(app, base_url="http://127.0.0.2:8011") as client:
+        assert _post(client, INIT).status_code == 200

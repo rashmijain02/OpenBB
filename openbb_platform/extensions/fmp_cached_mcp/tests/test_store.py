@@ -78,6 +78,7 @@ class FakeFmp:
         if path.startswith("/historical-price-eod"):
             today = self.clock().date() if self.clock else TODAY
             start = dt.date.fromisoformat(params.get("from", "2026-01-01"))
+            start = max(start, dt.date(2020, 1, 2))  # first traded day in the fake
             end = dt.date.fromisoformat(params.get("to", today.isoformat()))
             end = min(end, today)
             rows = _daily_rows(start, end, params["symbol"], 100.0 + self.price_shift)
@@ -697,3 +698,148 @@ def test_a_rejected_read_goes_live_without_marking_the_store_down():
     out = _get(svc, "statements", {"endpoint": "income-statement", "symbol": "AAPL"})
     assert out.state == "live"
     assert svc._store_down_until is None  # pylint: disable=protected-access
+
+
+# --- /code-review (high) findings on PR #1308 ------------------------------------
+
+
+def test_constituent_histories_are_not_range_series():
+    """FMP ignores from/to for these: the hosted answer is the whole history."""
+    for ep in ("historical-sp-500", "historical-nasdaq", "historical-dow-jones"):
+        args = {"endpoint": ep, "from_date": "2026-11-17", "to_date": "2026-11-20"}
+        assert resolve_policy("indexes", args, today=TODAY).mode == "document", ep
+
+
+def test_rows_outside_the_requested_range_fall_back_to_the_document_path(env):
+    svc, fmp, store, _ = env
+    body = json.dumps(
+        [{"date": "2026-11-05", "v": 1}, {"date": "2020-01-02", "v": 2}]
+    ).encode()
+    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(200, body)
+    out = _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
+    assert out.response.body == body, "FMP's whole answer, as the hosted server returns"
+    assert store.count("fmp_mcp_series_row") == 0
+
+
+def test_late_published_series_stay_open_for_their_finality_lag(env):
+    """GDP rows are dated at period start but published weeks later."""
+    svc, fmp, _, clock = env
+    published: list[dict] = [{"date": "2026-04-01", "value": 1.0}]
+
+    class Econ(FakeFmp):
+        async def fetch(self, path, params):
+            self.calls.append((path, dict(params)))
+            rows = [r for r in published if params["from"] <= r["date"] <= params["to"]]
+            return UpstreamResponse(200, json.dumps(rows).encode())
+
+    econ = Econ()
+    svc.upstream = econ
+    args = {
+        "endpoint": "economics-indicators",
+        "name": "GDP",
+        "from_date": "2026-01-01",
+        "to_date": "2026-08-01",
+    }
+    clock.now = dt.datetime(2026, 8, 3, tzinfo=dt.timezone.utc)
+    _get(svc, "economics", args)
+    published.append({"date": "2026-07-01", "value": 2.0})  # Q3 printed in late Oct
+    clock.now = dt.datetime(2026, 10, 30, tzinfo=dt.timezone.utc)
+    out = _get(svc, "economics", args)
+    assert "2026-07-01" in {r["date"] for r in json.loads(out.response.body)}
+
+
+def test_sqlite_errors_are_classified():
+    from openbb_fmp_cached_mcp.store import StoreDataError  # pylint: disable=C0415
+
+    db = SqliteDatabase(":memory:")
+    with pytest.raises(StoreDataError):
+        db.query("SELECT * FROM no_such_table")
+    db._conn.close()  # pylint: disable=protected-access
+    with pytest.raises(StoreUnavailable):
+        db.query("SELECT 1")
+
+
+def test_store_io_does_not_block_other_sessions():
+    import time  # pylint: disable=import-outside-toplevel
+
+    class SlowDb(SqliteDatabase):
+        def query(self, sql, params=()):
+            time.sleep(0.3)
+            return super().query(sql, params)
+
+    clock = Clock()
+    store = Store(SlowDb(":memory:"), now=clock)
+    store.create_tables()
+    fmp = FakeFmp()
+    svc = StoreBackedUpstream(fmp, store, now=clock)
+    done: list[str] = []
+
+    async def call(name, tool, args):
+        await svc.fetch_tool(tool, args)
+        done.append(name)
+
+    async def scenario():
+        await asyncio.gather(
+            call(
+                "store", "statements", {"endpoint": "income-statement", "symbol": "A"}
+            ),
+            call(
+                "live",
+                "discountedCashFlow",
+                {"endpoint": "custom-dcf-advanced", "symbol": "B"},
+            ),
+        )
+
+    asyncio.run(scenario())
+    assert done[0] == "live", "a no-store call must not wait for store I/O"
+
+
+def test_empty_series_answers_do_not_record_persistent_coverage(env):
+    svc, fmp, store, _ = env
+    fmp.docs["/historical-chart/1min"] = UpstreamResponse(200, b"[]")
+    args = {
+        "endpoint": "intraday-1-min",
+        "symbol": "AAPLL",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31",
+    }
+    _get(svc, "chart", args)
+    again = _get(svc, "chart", args)
+    assert store.count("fmp_mcp_series_coverage") == 0
+    assert len(fmp.calls) == 1 and again.state == "cached"
+
+
+def test_series_refusals_are_remembered_without_a_second_request(env):
+    svc, fmp, _, _ = env
+    fmp.docs["/historical-chart/1min"] = UpstreamResponse(
+        402, b"Premium Query Parameter: x"
+    )
+    args = {
+        "endpoint": "intraday-1-min",
+        "symbol": "AAPL",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31",
+    }
+    first = _get(svc, "chart", args)
+    assert first.response.status == 402 and len(fmp.calls) == 1
+    _get(svc, "chart", args)
+    assert len(fmp.calls) == 1
+
+
+def test_ranges_starting_at_date_min_do_not_crash(env):
+    svc, _, _, _ = env
+    out = _get(
+        svc, "chart", _range("0001-01-01", "2026-11-24")
+    )  # reaches the tail overlap
+    assert out.response.status == 200
+
+
+def test_an_empty_refresh_wins_over_the_stale_document(env):
+    svc, fmp, _, clock = env
+    args = {"endpoint": "income-statement", "symbol": "DELISTED"}
+    _get(svc, "statements", args)
+    clock.advance(days=2)
+    fmp.docs["/income-statement"] = UpstreamResponse(200, b"[]")
+    _get(svc, "statements", args)
+    _get(svc, "statements", args)
+    assert len(fmp.calls) == 2, "the empty answer is served for its day"

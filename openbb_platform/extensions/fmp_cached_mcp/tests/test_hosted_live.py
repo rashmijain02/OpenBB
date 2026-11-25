@@ -7,7 +7,6 @@ fixtures must be re-recorded in a reviewed PR (README "Re-recording").
 from __future__ import annotations
 
 import asyncio
-import os
 import re
 import sys
 from pathlib import Path
@@ -92,17 +91,37 @@ def test_live_answer_equals_hosted(recorder, tool, args):
     assert bool(mine.isError) == bool(theirs.get("isError"))
 
 
-@pytest.mark.plan_limited
-@pytest.mark.parametrize("alias", sorted(PLAN_LIMITED_ALIASES))
-def test_plan_limited_aliases_live(recorder, alias):
-    """CLAUDE.md FMP-tier rule: gated unless --run-plan-limited on a higher plan."""
-    plan_limited = pytest.importorskip("openbb_fmp_cached.utils.plan_limited")
-    model = PLAN_LIMITED_ALIASES[alias]
-    if plan_limited.is_plan_limited(model) and not os.environ.get("RUN_PLAN_LIMITED"):
-        pytest.skip(
-            f"FMP endpoint {alias} maps to plan-limited model {model!r} "
-            "(see plan_limited.py); set RUN_PLAN_LIMITED=1 on a higher-tier key."
+def _is_plan_limited(alias: str) -> bool:
+    try:
+        from openbb_fmp_cached.utils.plan_limited import (  # pylint: disable=C0415
+            is_plan_limited,
         )
+    except ImportError:
+        return False
+    return is_plan_limited(PLAN_LIMITED_ALIASES[alias])
+
+
+@pytest.mark.plan_limited  # skipped without --run-plan-limited (conftest)
+@pytest.mark.parametrize(
+    "alias",
+    [
+        pytest.param(
+            a,
+            marks=pytest.mark.skipif(
+                _is_plan_limited(a),
+                reason=(
+                    f"FMP endpoint {a!r} maps to plan-limited model "
+                    f"{PLAN_LIMITED_ALIASES[a]!r} (see plan_limited.py). Our current "
+                    "key does not cover it; run `pytest -m plan_limited "
+                    "--run-plan-limited` on a higher-tier key to exercise."
+                ),
+            ),
+        )
+        for a in sorted(PLAN_LIMITED_ALIASES)
+    ],
+)
+def test_plan_limited_aliases_live(recorder, alias):
+    """CLAUDE.md FMP-tier rule: live call for an endpoint our key may not cover."""
     _, hosted, _ = recorder
     tool, ep = alias.split("/", 1)
     res = hosted.call(tool, {"endpoint": ep})

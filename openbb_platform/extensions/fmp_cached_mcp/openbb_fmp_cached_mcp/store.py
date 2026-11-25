@@ -78,6 +78,19 @@ class Database(Protocol):
         """Run one statement for many parameter rows (one round trip / commit)."""
 
 
+_SQLITE_UNREACHABLE = ("locked", "busy", "unable to open", "disk i/o", "readonly")
+
+
+def _sqlite_error(exc: sqlite3.Error) -> RuntimeError:
+    """Map a sqlite3 error to ``StoreUnavailable`` (outage) or ``StoreDataError``."""
+    text = str(exc).lower()
+    if isinstance(exc, sqlite3.ProgrammingError) or any(
+        word in text for word in _SQLITE_UNREACHABLE
+    ):
+        return StoreUnavailable(type(exc).__name__)
+    return StoreDataError(type(exc).__name__)
+
+
 class SqliteDatabase:
     """SQLite backend (tests and local development)."""
 
@@ -90,23 +103,32 @@ class SqliteDatabase:
 
     def query(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
         """Run a SELECT and return rows as dicts."""
-        with self._lock:
-            cur = self._conn.execute(sql.replace("%s", "?"), params)
-            return [dict(r) for r in cur.fetchall()]
+        try:
+            with self._lock:
+                cur = self._conn.execute(sql.replace("%s", "?"), params)
+                return [dict(r) for r in cur.fetchall()]
+        except sqlite3.Error as exc:
+            raise _sqlite_error(exc) from None
 
     def execute(self, sql: str, params: tuple = ()) -> int:
         """Run a statement and return the affected row count."""
-        with self._lock:
-            cur = self._conn.execute(sql.replace("%s", "?"), params)
-            self._conn.commit()
-            return cur.rowcount
+        try:
+            with self._lock:
+                cur = self._conn.execute(sql.replace("%s", "?"), params)
+                self._conn.commit()
+                return cur.rowcount
+        except sqlite3.Error as exc:
+            raise _sqlite_error(exc) from None
 
     def executemany(self, sql: str, rows: list[tuple]) -> int:
         """Run one statement for many parameter rows in one transaction."""
-        with self._lock:
-            cur = self._conn.executemany(sql.replace("%s", "?"), rows)
-            self._conn.commit()
-            return cur.rowcount
+        try:
+            with self._lock:
+                cur = self._conn.executemany(sql.replace("%s", "?"), rows)
+                self._conn.commit()
+                return cur.rowcount
+        except sqlite3.Error as exc:
+            raise _sqlite_error(exc) from None
 
 
 class MySqlDatabase:

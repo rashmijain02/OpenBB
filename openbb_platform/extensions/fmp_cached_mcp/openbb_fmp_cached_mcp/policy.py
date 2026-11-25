@@ -62,6 +62,9 @@ class Policy:
     refresh_s: int | None  # document refresh / ephemeral TTL / series tail TTL
     retention: str
     feed: bool = False
+    #: Days after which a series row is final (never re-fetched). Late-published
+    #: data (economic releases, COT) stays open much longer than prices.
+    final_lag_days: int = RECENT_DAYS
 
 
 def _has_range_params(tool: str) -> bool:
@@ -77,6 +80,21 @@ def _is_past(value: Any, today: dt.date) -> bool:
     except ValueError:
         return False
     return day <= today - dt.timedelta(days=RECENT_DAYS)
+
+
+#: Finality lag by REST path prefix for series published or revised late.
+_FINAL_LAG_DAYS: tuple[tuple[str, int], ...] = (
+    ("/economic-indicators", 120),  # GDP etc.: dated at period start, revised
+    ("/commitment-of-traders-", 14),  # Tuesday positions published Friday
+)
+
+
+def final_lag_days(path: str) -> int:
+    """Days after which a series row of ``path`` no longer changes."""
+    for prefix, lag in _FINAL_LAG_DAYS:
+        if path.startswith(prefix):
+            return lag
+    return RECENT_DAYS
 
 
 def series_tail_ttl(path: str, args: dict[str, Any]) -> int:
@@ -113,7 +131,12 @@ def resolve_policy(  # noqa: PLR0911
             # mark coverage. Keep it as a revisable document instead.
             return Policy("document", REVISABLE_REFRESH_S, retention)
         if "from_date" in args and "to_date" in args:
-            return Policy("series", series_tail_ttl(path, args), retention)
+            return Policy(
+                "series",
+                series_tail_ttl(path, args),
+                retention,
+                final_lag_days=final_lag_days(path),
+            )
         # Open-ended request (FMP picks the window): treat as a short-lived answer.
         return Policy("ephemeral", series_tail_ttl(path, args), retention)
     if retention in ("ephemeral", "revisable", "feed") and (

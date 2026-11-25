@@ -35,3 +35,23 @@ def hosted_paths() -> dict:
 @pytest.fixture(scope="session")
 def hosted_errors() -> list[dict]:
     return load_hosted(f"errors-{SNAPSHOT}.json")["cases"]
+
+
+def pytest_addoption(parser):
+    """CLAUDE.md FMP-tier rule: plan-limited live tests need --run-plan-limited."""
+    parser.addoption(
+        "--run-plan-limited",
+        action="store_true",
+        default=False,
+        help="run live tests for endpoints our FMP plan may not cover",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip ``plan_limited`` tests unless --run-plan-limited is given."""
+    if config.getoption("--run-plan-limited"):
+        return
+    skip = pytest.mark.skip(reason="plan_limited: run with --run-plan-limited")
+    for item in items:
+        if "plan_limited" in item.keywords:
+            item.add_marker(skip)

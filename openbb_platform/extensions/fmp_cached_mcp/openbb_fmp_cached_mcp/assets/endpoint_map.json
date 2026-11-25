@@ -675,17 +675,17 @@
   "historical-dow-jones": {
    "path": "/historical-dowjones-constituent",
    "required": [],
-   "retention": "series"
+   "retention": "revisable"
   },
   "historical-nasdaq": {
    "path": "/historical-nasdaq-constituent",
    "required": [],
-   "retention": "series"
+   "retention": "revisable"
   },
   "historical-sp-500": {
    "path": "/historical-sp500-constituent",
    "required": [],
-   "retention": "series"
+   "retention": "revisable"
   },
   "index-historical-price-eod-full": {
    "path": "/historical-price-eod/full",

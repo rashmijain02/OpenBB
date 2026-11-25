@@ -75,8 +75,11 @@ B9  run 1 (cold store): 10/10 identical to hosted; states=['cached', 'live']
 | Medium | Paged series marked coverage; removed rows were never deleted; double fetch on a write error | applied `3629a856b` |
 | Medium | Empty answers persisted forever; no body cap; ephemeral rows were never pruned | applied `3629a856b` |
 | Low | Cancellation propagated to waiters; `VALUES()` upsert syntax; per-row writes | applied `3629a856b` |
-| Low | Blocking DB calls inside the event loop (no `to_thread`) | **deferred**: bounded by local single-user use; revisit with MySQL latency data |
 | Info | FMP terms for permanent storage | README note; owner decision |
+| Important | /code-review (high) on PR #1308 found 7 issues: wrong rows for constituent histories (FMP ignores from/to), late-published series frozen after 2 days, raw SQLite errors failing calls, store I/O blocking the event loop, empty series answers persisted as coverage, a second FMP request after a series refusal, overflow near `date.min` | applied in the review-fix commit: reclassified constituents and added the out-of-range fallback; per-path finality lag (economic indicators 120 d, COT 14 d); SQLite error mapping; store I/O via `asyncio.to_thread`; empty answers kept ephemeral; series refusals remembered; guarded date arithmetic |
+| Nit | `POST /mcp` was redirected 307 to `/mcp/`; a loopback bind other than 127.0.0.1 was rejected by the Host check; plan_limited test not in CLAUDE.md form | applied |
+| Nit | The fmp_cached prune compares UTC `expires_at` with the database session clock | deferred to #1309 (fmp_mcp_ephemeral prune uses the DB session clock) |
+| Low | Blocking DB calls in the event loop (earlier deferral) | applied: now `asyncio.to_thread` |
 
 ## Local CI-equivalent (Actions is not creating runs)
 
@@ -101,5 +104,4 @@ B9  run 1 (cold store): 10/10 identical to hosted; states=['cached', 'live']
 - **B6 warm start, MySQL live verification, long intraday range truncation:** tracked as a comment
   on #1300.
 - **`fmp_cached` provider gaps** found along the way: #1302–#1307.
-- **Blocking DB calls (`asyncio.to_thread`):** deferred review finding. File it if MySQL latency
-  shows up.
+- **Prune clock mismatch:** #1309 (fmp_mcp_ephemeral prune compares UTC with the DB session clock).
