@@ -74,8 +74,8 @@ def open_store(spec: str) -> Store | None:
 
 def build_upstream(key: str, store_spec: str) -> tuple[Upstream, FmpRestUpstream]:
     """FMP REST client, with the persistent store in front unless disabled."""
+    store = open_store(store_spec)  # first: a failure must not leak a client
     rest = FmpRestUpstream(key)
-    store = open_store(store_spec)
     return (StoreBackedUpstream(rest, store) if store is not None else rest), rest
 
 

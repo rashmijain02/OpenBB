@@ -856,3 +856,39 @@ def test_a_corrupt_stored_row_degrades_to_a_live_fetch(env):
     assert out.state == "live" and out.response.status == 200
     assert len(fmp.calls) == 2
     assert _get(svc, "statements", args).state == "cached", "the bad row was repaired"
+
+
+# --- /code-review (high) round 5 on PR #1308 ---------------------------------------
+
+
+def test_an_empty_answer_is_held_no_longer_than_the_request_refresh(env):
+    """Intraday before the open: empty now, data a minute later."""
+    svc, fmp, _, clock = env
+    fmp.docs["/historical-chart/1min"] = UpstreamResponse(200, b"[]")
+    args = {
+        "endpoint": "intraday-1-min",
+        "symbol": "AAPL",
+        "from_date": "2026-11-24",
+        "to_date": "2026-11-24",
+    }
+    _get(svc, "chart", args)
+    clock.advance(seconds=61)
+    fmp.docs["/historical-chart/1min"] = UpstreamResponse(
+        200, b'[{"date": "2026-11-24 09:30:00"}]'
+    )
+    out = _get(svc, "chart", args)
+    assert out.state == "live" and out.response.body != b"[]"
+
+
+def test_a_refusal_while_a_copy_is_stored_serves_the_copy_as_stale(env):
+    svc, fmp, _, clock = env
+    args = {"endpoint": "profile-symbol", "symbol": "AAPL"}
+    good = _get(svc, "company", args)
+    clock.advance(days=2)
+    fmp.docs["/profile"] = UpstreamResponse(402, b"Premium Query Parameter: x")
+    first = _get(svc, "company", args)
+    again = _get(svc, "company", args)
+    for out in (first, again):
+        assert out.state == "stale" and out.response.body == good.response.body
+        assert out.reason == "upstream-402"
+    assert len(fmp.calls) == 2, "the refusal is remembered; FMP is not re-asked"

@@ -5633,7 +5633,8 @@ def create_fmp_mcp_tables(only: list[str] | None = None) -> dict[str, object]:
     """Create the fmp_cached MCP store tables (#1300); idempotent.
 
     Kept out of :data:`FLATTENED_TABLES`, whose consumers treat every entry as
-    an entity data table. ``create_all_flattened_tables`` calls this too.
+    an entity data table. The MCP server creates these on startup; operators
+    can call this to pre-create them.
     """
     names = only if only is not None else list(FMP_MCP_TABLE_COLUMNS)
     return {name: _fmp_mcp_table_creator(name)() for name in names}
@@ -5996,7 +5997,6 @@ def create_all_flattened_tables():
         results[table_name] = result
         logger.info("Created flattened table: %s", table_name)
 
-    results.update(create_fmp_mcp_tables())
     return results
 
 
@@ -6073,6 +6073,9 @@ class CacheExpiryRule:
     #: The table's timestamps are written in UTC by the application (not by the
     #: database clock), so the cutoff is taken from UTC_TIMESTAMP() (#1309).
     utc_clock: bool = False
+    #: The table may not exist yet (created by an optional component, e.g. the
+    #: MCP server); a missing table counts as nothing to prune, not an error.
+    optional: bool = False
 
     @property
     def label(self) -> str:
@@ -6144,6 +6147,7 @@ CACHE_EXPIRY_RULES: tuple[CacheExpiryRule, ...] = (
         key_columns=("cache_key",),
         timestamp_column="expires_at",
         utc_clock=True,
+        optional=True,
     ),
 )
 
@@ -6181,6 +6185,12 @@ def describe_db_error(exc: BaseException) -> str:
     """Return ``"<ExceptionType> <code>"`` without the driver's message text."""
     code = exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
     return type(exc).__name__ + (f" {code}" if code is not None else "")
+
+
+def _is_missing_table(exc: BaseException) -> bool:
+    """Return True for "table does not exist" (MySQL 1146, SQLite "no such table")."""
+    code = exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
+    return code == 1146 or "no such table" in str(exc).lower()
 
 
 def _database_now(utc: bool = False) -> datetime:
@@ -6321,6 +6331,10 @@ def prune_expired_cache(
             cutoff = clocks[rule.utc_clock] - timedelta(seconds=rule.ttl_seconds)
             entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
         except Exception as exc:  # noqa: BLE001 - one table must not stop the rest
+            if rule.optional and _is_missing_table(exc):
+                entry = {"ttl_seconds": rule.ttl_seconds, "rows": 0, "missing": True}
+                report["tables"][rule.label] = entry
+                continue
             # Type and driver error code only: driver messages can carry the
             # host or user name, which must not reach logs or reports.
             report["errors"][rule.label] = describe_db_error(exc)

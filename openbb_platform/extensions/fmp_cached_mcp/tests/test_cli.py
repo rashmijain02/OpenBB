@@ -83,3 +83,12 @@ def test_mysql_store_exits_cleanly_when_mysql_refuses_create(monkeypatch):
     monkeypatch.setattr(cli, "MySqlDatabase", _CreateDenied)
     with pytest.raises(cli.StoreSetupError):
         cli.build_upstream("k" * 32, "mysql")
+
+
+def test_store_is_opened_before_the_http_client(monkeypatch):
+    built = []
+    monkeypatch.setattr(cli, "FmpRestUpstream", lambda key: built.append(key))
+    monkeypatch.setattr(cli, "MySqlDatabase", _CreateDenied)
+    with pytest.raises(cli.StoreSetupError):
+        cli.build_upstream("k" * 32, "mysql")
+    assert built == [], "no client is created when the store cannot be opened"

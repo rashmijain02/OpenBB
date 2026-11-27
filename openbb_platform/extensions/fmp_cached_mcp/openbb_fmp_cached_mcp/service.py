@@ -93,6 +93,13 @@ def _empty_key(key: str) -> str:
     return hashlib.sha256(f"empty:{key}".encode()).hexdigest()
 
 
+def _empty_ttl(policy: Policy) -> int:
+    """Seconds an empty answer is remembered: the request's own refresh, at most a day."""
+    if policy.refresh_s:
+        return min(policy.refresh_s, REVISABLE_REFRESH_S)
+    return REVISABLE_REFRESH_S
+
+
 def _fresh(stored: StoredResponse | None, now: dt.datetime) -> bool:
     return stored is not None and (
         stored.fresh_until is None or now < stored.fresh_until
@@ -289,13 +296,22 @@ class StoreBackedUpstream:
         negative = await self._io(
             store.get_response, EPHEMERAL_TABLE, _negative_key(key)
         )
-        if negative is not None and _fresh(negative, now):
+        refused = negative is not None and _fresh(negative, now)
+        if refused and call.policy.mode == "ephemeral":
             return self._from_store(negative, "cached"), None
         stored = await self._io(store.get_response, EPHEMERAL_TABLE, key)
         if call.policy.mode != "ephemeral":
             if stored is not None and _fresh(stored, now):
                 return self._from_store(stored, "cached"), None  # fresh empty answer
             stored = await self._io(store.get_response, DOCUMENT_TABLE, key)
+            if refused and negative is not None:
+                if stored is None:
+                    return self._from_store(negative, "cached"), None
+                # FMP refused recently: keep serving the last good copy.
+                return (
+                    self._from_store(stored, "stale", f"upstream-{negative.status}"),
+                    None,
+                )
             if stored is not None and not _fresh(stored, now):
                 empty = await self._io(
                     store.get_response, EPHEMERAL_TABLE, _empty_key(key)
@@ -319,7 +335,8 @@ class StoreBackedUpstream:
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             return self._stale_or_raise(stored, exc)
         if resp.status in _REFUSALS:
-            # Deterministic refusals: remember briefly, never persist.
+            # Deterministic refusals: remember briefly, never persist; a stored
+            # copy is still the better answer (served as stale).
             await self._put(
                 EPHEMERAL_TABLE,
                 _negative_key(key),
@@ -327,6 +344,8 @@ class StoreBackedUpstream:
                 resp=resp,
                 fresh_s=NEGATIVE_TTL_S,
             )
+            if persistent and stored is not None:
+                return self._from_store(stored, "stale", f"upstream-{resp.status}")
             return FetchResult(
                 resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
             )
@@ -346,19 +365,18 @@ class StoreBackedUpstream:
                 _empty_key(key),
                 call,
                 resp=resp,
-                fresh_s=REVISABLE_REFRESH_S,
+                fresh_s=_empty_ttl(policy),
             )
             return self._from_store(stored, "stale", "upstream-empty")
         if resp.body.strip() in _EMPTY_BODIES:
             # Not found today may exist tomorrow, and arbitrary lookups must
             # not grow the persistent tables: empty answers stay ephemeral.
-            ttl = policy.refresh_s if not persistent else None
             await self._put(
                 EPHEMERAL_TABLE,
                 key,
                 call,
                 resp=resp,
-                fresh_s=ttl or REVISABLE_REFRESH_S,
+                fresh_s=_empty_ttl(policy),
             )
         else:
             table = DOCUMENT_TABLE if persistent else EPHEMERAL_TABLE

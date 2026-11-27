@@ -668,3 +668,25 @@ def test_utc_stamped_rule_uses_the_utc_clock(seam, monkeypatch):
 def test_only_the_mcp_ephemeral_rule_is_utc_stamped():
     utc = {r.table for r in cache_schema.CACHE_EXPIRY_RULES if r.utc_clock}
     assert utc == {"fmp_mcp_ephemeral"}
+
+
+def test_prune_skips_the_mcp_table_on_databases_without_it(seam):
+    """Databases provisioned before the MCP server existed have no such table."""
+    seam.setup("DROP TABLE fmp_mcp_ephemeral;")
+    report = cache_schema.cleanup_expired_cache()
+    assert report["errors"] == {}
+    assert report["tables"]["fmp_mcp_ephemeral"]["rows"] == 0
+
+
+def test_create_all_flattened_tables_does_not_create_mcp_tables(monkeypatch):
+    created = []
+    monkeypatch.setattr(
+        cache_schema,
+        "FLATTENED_TABLES",
+        {"alpha": {"schema": lambda: created.append("alpha")}},
+    )
+    monkeypatch.setattr(
+        cache_schema, "execute_query", lambda *a, **k: created.append("sql")
+    )
+    cache_schema.create_all_flattened_tables()
+    assert created == ["alpha"], "the MCP server creates its own tables"
