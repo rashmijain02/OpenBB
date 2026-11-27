@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from openbb_fmp_cached.utils import cache_schema, database
@@ -54,6 +54,12 @@ class SqliteSeam:
     def __init__(self) -> None:
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
+        # SQLite's CURRENT_TIMESTAMP is UTC; MySQL's UTC_TIMESTAMP() is too.
+        self.conn.create_function(
+            "UTC_TIMESTAMP",
+            0,
+            lambda: datetime.utcnow().isoformat(sep=" ", timespec="seconds"),
+        )
         self.statements: list[tuple[str, tuple]] = []
 
     @staticmethod
@@ -286,8 +292,9 @@ def test_cutoff_uses_the_database_clock(seam, monkeypatch):
     real = seam
 
     def skewed(query, params=()):
-        if "CURRENT_TIMESTAMP" in query.upper() and query.lstrip().upper().startswith(
-            "SELECT"
+        upper = query.upper()
+        if ("CURRENT_TIMESTAMP" in upper or "UTC_TIMESTAMP" in upper) and (
+            query.lstrip().upper().startswith("SELECT")
         ):
             # Database clock one year behind: nothing has expired yet.
             return [{"db_now": "2000-01-01 00:00:00"}]
@@ -603,3 +610,37 @@ def test_table_error_text_is_not_echoed(seam, monkeypatch, caplog, capsys):
     assert "OperationalError 2013" in captured.out
     for leaked in ("secret-host", FAKE_PASSWORD):
         assert leaked not in captured.out + captured.err + logs
+
+
+# ---------------------------------------------------------------------------
+# #1309: fmp_mcp_ephemeral stamps expires_at in UTC, so its cutoff must be UTC
+# even when the MySQL session clock is not.
+# ---------------------------------------------------------------------------
+
+
+def test_utc_stamped_rule_uses_the_utc_clock(seam, monkeypatch):
+    real = seam
+
+    def ist_session(query, params=()):
+        if "CURRENT_TIMESTAMP" in query.upper() and query.lstrip().upper().startswith(
+            "SELECT"
+        ):
+            # Session clock at UTC+05:30: 5.5 hours ahead of the UTC stamps.
+            ahead = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            return [{"db_now": ahead.isoformat(sep=" ", timespec="seconds")}]
+        return real(query, params)
+
+    seam.setup(
+        "INSERT INTO fmp_mcp_ephemeral VALUES "
+        "('k-3h-left', datetime('now', '+3 hours'));"
+    )
+    monkeypatch.setattr(cache_schema, "execute_query", ist_session)
+    cache_schema.prune_expired_cache(tables=["fmp_mcp_ephemeral"])
+
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-3h-left'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-expired'") == 0
+
+
+def test_only_the_mcp_ephemeral_rule_is_utc_stamped():
+    utc = {r.table for r in cache_schema.CACHE_EXPIRY_RULES if r.utc_clock}
+    assert utc == {"fmp_mcp_ephemeral"}

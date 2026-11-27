@@ -3,8 +3,6 @@
 Tables (all raw FMP JSON, so hosted payloads can be rebuilt exactly):
 
 ``fmp_mcp_document``         one raw response per canonical request; kept forever
-``fmp_mcp_series_row``       one raw FMP row per (path, series key, timestamp); kept forever
-``fmp_mcp_series_coverage``  date ranges already fetched (``final``) plus the open ``tail``
 ``fmp_mcp_feed_item``        news / filings / trades items by id; kept forever
 ``fmp_mcp_ephemeral``        short-lived answers (quotes, snapshots, feed listings,
                              remembered 4xx); the **only** prunable table
@@ -15,7 +13,6 @@ pool) and ``SqliteDatabase`` (tests and local development).
 
 from __future__ import annotations
 
-import contextlib
 import datetime as dt
 import gzip
 import hashlib
@@ -27,17 +24,10 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 DOCUMENT_TABLE = "fmp_mcp_document"
-SERIES_ROW_TABLE = "fmp_mcp_series_row"
-SERIES_COVERAGE_TABLE = "fmp_mcp_series_coverage"
 FEED_ITEM_TABLE = "fmp_mcp_feed_item"
 EPHEMERAL_TABLE = "fmp_mcp_ephemeral"
 #: Kept forever; never in ``cache_prune``'s allowlist (asserted by tests).
-PERSISTENT_TABLES = (
-    DOCUMENT_TABLE,
-    SERIES_ROW_TABLE,
-    SERIES_COVERAGE_TABLE,
-    FEED_ITEM_TABLE,
-)
+PERSISTENT_TABLES = (DOCUMENT_TABLE, FEED_ITEM_TABLE)
 ALL_TABLES = (*PERSISTENT_TABLES, EPHEMERAL_TABLE)
 
 
@@ -77,9 +67,6 @@ class Database(Protocol):
 
     def executemany(self, sql: str, rows: list[tuple]) -> int:
         """Run one statement for many parameter rows (one round trip / commit)."""
-
-    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
-        """Run ``(sql, params_or_rows, many)`` steps in one transaction."""
 
 
 _SQLITE_UNREACHABLE = ("locked", "busy", "unable to open", "disk i/o", "readonly")
@@ -127,10 +114,6 @@ class SqliteDatabase:
     def executemany(self, sql: str, rows: list[tuple]) -> int:
         """Run one statement for many parameter rows in one transaction."""
         return self._commit([(sql, rows, True)])
-
-    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
-        """Run the steps in one transaction; roll all back on any error."""
-        self._commit(steps)
 
     def _commit(self, steps: list[tuple[str, Any, bool]]) -> int:
         with self._lock:
@@ -180,31 +163,6 @@ class MySqlDatabase:
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             raise classify_db_error(exc) from None
 
-    def atomic(self, steps: list[tuple[str, Any, bool]]) -> None:
-        """Run the steps on one ``autocommit=False`` connection (as ``replace_rows``)."""
-        import pymysql  # pylint: disable=import-outside-toplevel
-
-        try:
-            params = self._db.get_connection_pool().connection_params
-            conn = pymysql.connect(**params, autocommit=False)
-        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
-            raise classify_db_error(exc) from None
-        try:
-            with conn.cursor() as cursor:
-                for sql, args, many in steps:
-                    if many:
-                        cursor.executemany(sql, args)
-                    else:
-                        cursor.execute(sql, args)
-            conn.commit()
-        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
-            # The transaction is lost either way; report the original error.
-            with contextlib.suppress(Exception):
-                conn.rollback()
-            raise classify_db_error(exc) from None
-        finally:
-            conn.close()
-
 
 _DDL = {
     DOCUMENT_TABLE: (
@@ -218,16 +176,6 @@ _DDL = {
         "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json {text} NOT NULL, "
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body {blob} NOT NULL, "
         "fetched_at {ts} NOT NULL, expires_at {ts} NOT NULL"
-    ),
-    SERIES_ROW_TABLE: (
-        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, ts VARCHAR(32) NOT NULL, "
-        "row_json {text} NOT NULL, fetched_at {ts} NOT NULL, "
-        "PRIMARY KEY (family, series_key, ts)"
-    ),
-    SERIES_COVERAGE_TABLE: (
-        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, kind VARCHAR(8) NOT NULL, "
-        "range_from VARCHAR(10) NOT NULL, range_to VARCHAR(10) NOT NULL, fetched_at {ts} NOT NULL, "
-        "PRIMARY KEY (family, series_key, kind, range_from)"
     ),
     FEED_ITEM_TABLE: (
         "family VARCHAR(128) NOT NULL, item_id CHAR(64) NOT NULL, row_json {text} NOT NULL, "
@@ -269,14 +217,13 @@ class StoredResponse:
 
 
 class Store:
-    """Typed operations over the five store tables."""
+    """Typed operations over the three store tables."""
 
     def __init__(
         self, db: Database, *, now: Callable[[], dt.datetime] | None = None
     ) -> None:
         self.db = db
         self.now = now or (lambda: dt.datetime.now(dt.timezone.utc))
-        self._coverage_lock = threading.Lock()
 
     # -- schema ---------------------------------------------------------------
 
@@ -376,166 +323,6 @@ class Store:
             ("expires_at" if table == EPHEMERAL_TABLE else "refresh_after"): until,
         }
         self._upsert(table, row, ("cache_key",))
-
-    # -- series ---------------------------------------------------------------
-
-    def series_rows(
-        self, family: str, skey: str, start: dt.date, end: dt.date
-    ) -> list[tuple[str, str, dt.datetime]]:
-        """Rows with ``start <= date <= end``, newest first: ``(ts, row_json, fetched_at)``."""
-        rows = self.db.query(
-            f"SELECT ts, row_json, fetched_at FROM {SERIES_ROW_TABLE} "  # noqa: S608
-            "WHERE family = %s AND series_key = %s AND ts >= %s AND ts < %s ORDER BY ts DESC",
-            (family, skey, start.isoformat(), (end + dt.timedelta(days=1)).isoformat()),
-        )
-        return [(r["ts"], r["row_json"], _parse(r["fetched_at"])) for r in rows]
-
-    _SERIES_COLS = ["family", "series_key", "ts", "row_json", "fetched_at"]
-
-    def _series_tuples(
-        self, family: str, skey: str, rows: list[dict[str, Any]]
-    ) -> list[tuple]:
-        now = _fmt(self.now())
-        return [
-            (family, skey, str(row["date"]), json.dumps(row, ensure_ascii=False), now)
-            for row in rows
-        ]
-
-    def put_series_rows(
-        self, family: str, skey: str, rows: list[dict[str, Any]]
-    ) -> None:
-        """Upsert raw rows keyed by their ``date`` value (one batched statement)."""
-        if rows:
-            sql = self._upsert_sql(
-                SERIES_ROW_TABLE, self._SERIES_COLS, ("family", "series_key", "ts")
-            )
-            self.db.executemany(sql, self._series_tuples(family, skey, rows))
-
-    def replace_series_range(  # pylint: disable=too-many-arguments
-        self,
-        family: str,
-        skey: str,
-        start: dt.date,
-        end: dt.date,
-        rows: list[dict[str, Any]],
-    ) -> None:
-        """Make FMP's answer for ``[start, end]`` the stored rows for that range.
-
-        Delete and insert run in one transaction: a failed insert keeps the
-        rows held before.
-        """
-        steps: list[tuple[str, Any, bool]] = [
-            (
-                f"DELETE FROM {SERIES_ROW_TABLE} "  # noqa: S608
-                "WHERE family = %s AND series_key = %s AND ts >= %s AND ts < %s",
-                (
-                    family,
-                    skey,
-                    start.isoformat(),
-                    (end + dt.timedelta(days=1)).isoformat(),
-                ),
-                False,
-            )
-        ]
-        if rows:
-            sql = self._upsert_sql(
-                SERIES_ROW_TABLE, self._SERIES_COLS, ("family", "series_key", "ts")
-            )
-            steps.append((sql, self._series_tuples(family, skey, rows), True))
-        self.db.atomic(steps)
-
-    def coverage(
-        self, family: str, skey: str, kind: str
-    ) -> list[tuple[dt.date, dt.date, dt.datetime]]:
-        """Return fetched ranges of ``kind`` (``final`` or ``tail``)."""
-        rows = self.db.query(
-            f"SELECT range_from, range_to, fetched_at FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
-            "WHERE family = %s AND series_key = %s AND kind = %s ORDER BY range_from",
-            (family, skey, kind),
-        )
-        return [
-            (
-                dt.date.fromisoformat(r["range_from"]),
-                dt.date.fromisoformat(r["range_to"]),
-                _parse(r["fetched_at"]),
-            )
-            for r in rows
-        ]
-
-    def add_final_coverage(
-        self, family: str, skey: str, start: dt.date, end: dt.date
-    ) -> None:
-        """Record ``[start, end]`` as fetched and final, merging overlapping ranges.
-
-        Read-merge-write runs under a process lock and in one transaction, so
-        concurrent requests for one series cannot drop each other's ranges.
-        """
-        with self._coverage_lock:
-            ranges = [(a, b) for a, b, _ in self.coverage(family, skey, "final")]
-            ranges.append((start, end))
-            ranges.sort()
-            merged: list[list[dt.date]] = []
-            for a, b in ranges:
-                if merged and a <= merged[-1][1] + dt.timedelta(days=1):
-                    merged[-1][1] = max(merged[-1][1], b)
-                else:
-                    merged.append([a, b])
-            now = _fmt(self.now())
-            self.db.atomic(
-                [
-                    (
-                        f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
-                        "WHERE family = %s AND series_key = %s AND kind = 'final'",
-                        (family, skey),
-                        False,
-                    ),
-                    (
-                        f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
-                        "(family, series_key, kind, range_from, range_to, fetched_at) "
-                        "VALUES (%s, %s, 'final', %s, %s, %s)",
-                        [
-                            (family, skey, a.isoformat(), b.isoformat(), now)
-                            for a, b in merged
-                        ],
-                        True,
-                    ),
-                ]
-            )
-
-    def set_tail(self, family: str, skey: str, start: dt.date, end: dt.date) -> None:
-        """Record the open tail ``[start, end]`` as fetched now."""
-        with self._coverage_lock:
-            self.db.atomic(
-                [
-                    (
-                        f"DELETE FROM {SERIES_COVERAGE_TABLE} "  # noqa: S608
-                        "WHERE family = %s AND series_key = %s AND kind = 'tail'",
-                        (family, skey),
-                        False,
-                    ),
-                    (
-                        f"INSERT INTO {SERIES_COVERAGE_TABLE} "  # noqa: S608
-                        "(family, series_key, kind, range_from, range_to, fetched_at) "
-                        "VALUES (%s, %s, 'tail', %s, %s, %s)",
-                        (
-                            family,
-                            skey,
-                            start.isoformat(),
-                            end.isoformat(),
-                            _fmt(self.now()),
-                        ),
-                        False,
-                    ),
-                ]
-            )
-
-    def drop_series(self, family: str, skey: str) -> None:
-        """Forget one series (rows and coverage), e.g. after a price re-basing."""
-        for table in (SERIES_ROW_TABLE, SERIES_COVERAGE_TABLE):
-            self.db.execute(
-                f"DELETE FROM {table} WHERE family = %s AND series_key = %s",  # noqa: S608
-                (family, skey),
-            )
 
     # -- feeds ----------------------------------------------------------------
 

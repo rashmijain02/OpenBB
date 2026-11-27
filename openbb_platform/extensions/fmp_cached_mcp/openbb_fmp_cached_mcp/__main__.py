@@ -59,7 +59,8 @@ def open_store(spec: str) -> Store | None:
         store = Store(MySqlDatabase())
         store.create_tables()
         return store
-    except (StoreUnavailable, ImportError) as exc:
+    except (StoreUnavailable, StoreDataError, ImportError) as exc:
+        # StoreDataError: reachable but refused (e.g. 1142 CREATE denied).
         if spec == "mysql":
             raise StoreSetupError(
                 f"fmp_cached MySQL store unavailable ({type(exc).__name__})"

@@ -5589,8 +5589,9 @@ def create_fmp_trading_state_table():
 
 # ---------------------------------------------------------------------------
 # fmp_cached MCP server store (#1300). Column definitions are shared with
-# openbb_fmp_cached_mcp.store (its tests assert they match). All five keep raw
+# openbb_fmp_cached_mcp.store (its tests assert they match). All three keep raw
 # FMP JSON; only fmp_mcp_ephemeral is prunable (see EXPIRABLE_CACHE_TABLES).
+# (Per-date series tables are deferred to #1310, series gap-fill.)
 # ---------------------------------------------------------------------------
 
 FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
@@ -5606,16 +5607,6 @@ FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
         "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
         "fetched_at DATETIME NOT NULL, expires_at DATETIME NOT NULL"
     ),
-    "fmp_mcp_series_row": (
-        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, ts VARCHAR(32) NOT NULL, "
-        "row_json MEDIUMTEXT NOT NULL, fetched_at DATETIME NOT NULL, "
-        "PRIMARY KEY (family, series_key, ts)"
-    ),
-    "fmp_mcp_series_coverage": (
-        "family VARCHAR(128) NOT NULL, series_key CHAR(64) NOT NULL, kind VARCHAR(8) NOT NULL, "
-        "range_from VARCHAR(10) NOT NULL, range_to VARCHAR(10) NOT NULL, "
-        "fetched_at DATETIME NOT NULL, PRIMARY KEY (family, series_key, kind, range_from)"
-    ),
     "fmp_mcp_feed_item": (
         "family VARCHAR(128) NOT NULL, item_id CHAR(64) NOT NULL, row_json MEDIUMTEXT NOT NULL, "
         "fetched_at DATETIME NOT NULL, PRIMARY KEY (family, item_id)"
@@ -5625,7 +5616,9 @@ FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
 
 def _fmp_mcp_table_creator(base_name: str):
     def create():
-        table = get_table_name(base_name)
+        # Unprefixed even in FMP_CACHE_TEST_MODE: the MCP store and the prune
+        # rule always use these exact names.
+        table = safe_identifier(base_name)
         return execute_query(
             f"CREATE TABLE IF NOT EXISTS {table} ({FMP_MCP_TABLE_COLUMNS[base_name]}) "
             "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
@@ -6069,6 +6062,9 @@ class CacheExpiryRule:
     partition_value: str | None = None
     test_prefixed: bool = False
     timestamp_column: str = "cached_at"
+    #: The table's timestamps are written in UTC by the application (not by the
+    #: database clock), so the cutoff is taken from UTC_TIMESTAMP() (#1309).
+    utc_clock: bool = False
 
     @property
     def label(self) -> str:
@@ -6096,8 +6092,8 @@ EXPIRABLE_CACHE_TABLES: frozenset[str] = frozenset(
         "institutional_ownership",
         "equity_quote",
         # fmp_cached MCP server (#1300): the only prunable MCP table. Its
-        # persistent tables (fmp_mcp_document, fmp_mcp_series_row,
-        # fmp_mcp_series_coverage, fmp_mcp_feed_item) are never listed here.
+        # persistent tables (fmp_mcp_document, fmp_mcp_feed_item) are never
+        # listed here.
         "fmp_mcp_ephemeral",
     }
 )
@@ -6139,6 +6135,7 @@ CACHE_EXPIRY_RULES: tuple[CacheExpiryRule, ...] = (
         0,
         key_columns=("cache_key",),
         timestamp_column="expires_at",
+        utc_clock=True,
     ),
 )
 
@@ -6178,9 +6175,14 @@ def describe_db_error(exc: BaseException) -> str:
     return type(exc).__name__ + (f" {code}" if code is not None else "")
 
 
-def _database_now() -> datetime:
-    """Read the database clock, the clock that stamps ``cached_at``."""
-    rows = execute_query("SELECT CURRENT_TIMESTAMP AS db_now")
+def _database_now(utc: bool = False) -> datetime:
+    """Read the database clock, the clock that stamps ``cached_at``.
+
+    ``utc=True`` reads ``UTC_TIMESTAMP()`` for tables whose timestamps the
+    application writes in UTC (``fmp_mcp_ephemeral``, #1309).
+    """
+    clock = "UTC_TIMESTAMP()" if utc else "CURRENT_TIMESTAMP"
+    rows = execute_query(f"SELECT {clock} AS db_now")  # noqa: S608 (constant)
     value = rows[0]["db_now"]
     if isinstance(value, datetime):
         return value
@@ -6298,9 +6300,11 @@ def prune_expired_cache(
     }
     if not resolved:
         return report
-    now = _database_now()
+    clocks: dict[bool, datetime] = {}
     for rule, table in resolved:
-        cutoff = now - timedelta(seconds=rule.ttl_seconds)
+        if rule.utc_clock not in clocks:
+            clocks[rule.utc_clock] = _database_now(utc=rule.utc_clock)
+        cutoff = clocks[rule.utc_clock] - timedelta(seconds=rule.ttl_seconds)
         try:
             entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
         except Exception as exc:  # noqa: BLE001 - one table must not stop the rest

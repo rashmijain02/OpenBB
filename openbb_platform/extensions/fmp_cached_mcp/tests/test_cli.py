@@ -54,3 +54,32 @@ def test_plan_limited_aliases_name_real_endpoints_and_registry_entries():
 def test_unopenable_sqlite_path_is_a_clean_setup_error(tmp_path):
     with pytest.raises(cli.StoreSetupError):
         cli.build_upstream("k" * 32, f"sqlite:{tmp_path / 'missing' / 'dir' / 'x.db'}")
+
+
+class _CreateDenied:
+    """MySQL reachable, but the user lacks CREATE (error 1142)."""
+
+    dialect = "mysql"
+
+    def execute(self, sql, params=()):
+        from openbb_fmp_cached_mcp.store import (  # pylint: disable=C0415
+            StoreDataError,
+        )
+
+        raise StoreDataError("OperationalError 1142")
+
+    def query(self, sql, params=()):
+        return []
+
+
+def test_auto_store_goes_live_when_mysql_refuses_create(monkeypatch, caplog):
+    monkeypatch.setattr(cli, "MySqlDatabase", _CreateDenied)
+    up, rest = cli.build_upstream("k" * 32, "auto")
+    assert up is rest
+    assert any("store unavailable" in r.getMessage() for r in caplog.records)
+
+
+def test_mysql_store_exits_cleanly_when_mysql_refuses_create(monkeypatch):
+    monkeypatch.setattr(cli, "MySqlDatabase", _CreateDenied)
+    with pytest.raises(cli.StoreSetupError):
+        cli.build_upstream("k" * 32, "mysql")

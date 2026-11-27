@@ -143,7 +143,33 @@ def _range(a, b):
             "no-store",
             None,
         ),
-        ("chart", _range("2026-11-02", "2026-11-06"), "series", 3600),
+        # Series ranges are stored per request (#1310 tracks gap-fill):
+        # open ranges refresh by interval, past ranges daily (split-adjusted
+        # history can be re-based upstream).
+        ("chart", _range("2026-11-02", "2026-11-06"), "document", 86400),
+        ("chart", _range("2026-11-02", "2026-11-24"), "document", 3600),
+        (
+            "chart",
+            {
+                "endpoint": "intraday-1-min",
+                "symbol": "AAPL",
+                "from_date": "2026-11-20",
+                "to_date": "2026-11-24",
+            },
+            "document",
+            60,
+        ),
+        (
+            "economics",
+            {
+                "endpoint": "economics-indicators",
+                "name": "GDP",
+                "from_date": "2026-01-01",
+                "to_date": "2026-09-01",
+            },
+            "document",
+            86400,
+        ),
         (
             "marketPerformance",
             {"endpoint": "sector-performance-snapshot", "date": "2025-01-02"},
@@ -252,80 +278,6 @@ def test_feed_listing_expires_but_items_are_kept(env):
 
 
 # --- series -------------------------------------------------------------------
-
-
-def test_closed_range_is_served_from_store_forever(env):
-    svc, fmp, _, clock = env
-    first = _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    clock.advance(days=365)
-    again = _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    assert len(fmp.calls) == 1
-    assert again.state == "cached"
-    assert json.loads(again.response.body) == json.loads(first.response.body)
-
-
-def test_sub_range_is_served_without_a_call_and_matches_fmp(env):
-    svc, fmp, _, _ = env
-    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    sub = _get(svc, "chart", _range("2026-11-04", "2026-11-10"))
-    assert len(fmp.calls) == 1
-    expected = _daily_rows(dt.date(2026, 11, 4), dt.date(2026, 11, 10))
-    assert json.loads(sub.response.body) == expected
-
-
-def test_only_the_gaps_are_fetched(env):
-    svc, fmp, _, _ = env
-    _get(svc, "chart", _range("2026-11-05", "2026-11-10"))
-    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    assert [c[1] for c in fmp.calls[1:]] == [
-        {"symbol": "AAPL", "from": "2026-11-02", "to": "2026-11-04"},
-        {"symbol": "AAPL", "from": "2026-11-11", "to": "2026-11-13"},
-    ]
-
-
-def test_open_tail_is_refetched_until_final(env):
-    svc, fmp, _, clock = env
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    clock.advance(minutes=30)
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert len(fmp.calls) == 1, "tail TTL not yet passed"
-    clock.advance(hours=2)
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert len(fmp.calls) == 2
-    tail = fmp.calls[1][1]
-    assert tail["to"] == "2026-11-24" and tail["from"] < "2026-11-22"
-    clock.advance(days=10)  # the whole range is now final
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert len(fmp.calls) == 3
-
-
-def test_price_adjustment_in_overlap_invalidates_the_series(env):
-    svc, fmp, _, clock = env
-    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
-    clock.advance(days=1, hours=2)
-    fmp.price_shift = -50.0  # e.g. a split re-based all history
-    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
-    rows = json.loads(out.response.body)
-    assert rows[-1]["date"] == "2026-10-01"
-    assert rows[-1]["price"] == 100.0 - 50.0 + 1, "old rows must be re-fetched"
-
-
-def test_series_upstream_failure_serves_stored_rows_as_stale(env):
-    svc, fmp, _, clock = env
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    clock.advance(hours=3)
-    fmp.fail = True
-    out = _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert out.state == "stale" and out.response.status == 200
-
-
-def test_series_without_date_rows_falls_back_to_document(env):
-    svc, fmp, store, _ = env
-    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(200, b'[{"x": 1}]')
-    out = _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
-    assert out.response.body == b'[{"x": 1}]'
-    assert store.count("fmp_mcp_series_row") == 0
 
 
 def test_series_rebuild_matches_recorded_hosted_text():
@@ -502,42 +454,6 @@ def test_negative_cache_keys_fit_the_char64_column(env):
     assert keys and all(len(k) == 64 for k in keys)
 
 
-def test_revised_open_bars_do_not_look_like_a_rebased_history(env):
-    """Bars stored while their session was open differ later; that is not a split."""
-    svc, fmp, _, clock = env
-    fmp.clock = clock
-    fmp.provisional_from = dt.date(2026, 11, 23)  # Nov 23-24 still open on Nov 24
-    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
-    clock.advance(days=1, hours=2)
-    fmp.provisional_from = dt.date(2026, 11, 24)  # Nov 23 is now final, value changed
-    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
-    assert len(fmp.calls) == 2, "no full re-fetch for a revised open bar"
-    rows = {r["date"]: r["price"] for r in json.loads(out.response.body)}
-    assert rows["2026-11-23"] == 100.0 + 23, "the revised bar is replaced"
-
-
-def test_rebasing_is_detected_one_day_later_in_the_merge_branch(env):
-    svc, fmp, _, clock = env
-    fmp.clock = clock
-    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
-    clock.advance(days=1, hours=2)
-    fmp.price_shift = -50.0
-    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
-    tail_call = fmp.calls[1][1]
-    assert tail_call["from"] <= "2026-11-18", "overlap must reach stored final rows"
-    assert json.loads(out.response.body)[-1]["price"] == 51.0
-
-
-def test_rows_fmp_no_longer_returns_are_removed_on_refetch(env):
-    svc, fmp, _, clock = env
-    fmp.clock = clock
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    clock.advance(hours=2)
-    fmp.omit = {"2026-11-24"}
-    out = _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert "2026-11-24" not in {r["date"] for r in json.loads(out.response.body)}
-
-
 def test_paged_series_endpoints_use_the_document_path():
     args = {
         "endpoint": "historical-grades",
@@ -590,29 +506,6 @@ def test_write_failure_returns_the_fetched_answer_without_refetch(caplog):
     assert not any("store unavailable" in r.getMessage() for r in caplog.records)
 
 
-def test_mysql_upsert_uses_the_row_alias_form():
-    seen = []
-
-    class FakeMySql:
-        dialect = "mysql"
-
-        def execute(self, sql, params=()):
-            seen.append(sql)
-            return 1
-
-        def executemany(self, sql, rows):
-            seen.append(sql)
-            return len(rows)
-
-        def query(self, sql, params=()):
-            return []
-
-    store = Store(FakeMySql())
-    store.put_series_rows("/x", "k" * 64, [{"date": "2026-11-02", "v": 1}])
-    sql = next(q for q in seen if q.lstrip().upper().startswith("INSERT"))
-    assert " AS new ON DUPLICATE KEY UPDATE " in sql and "VALUES(" not in sql
-
-
 def test_empty_answers_are_ephemeral_not_persistent(env):
     svc, fmp, store, _ = env
     fmp.docs["/senate-trades-by-name"] = UpstreamResponse(200, b"[]")
@@ -643,15 +536,6 @@ def test_far_future_range_does_not_crash(env):
     svc, _, _, _ = env
     out = _get(svc, "chart", _range("2026-11-02", "9999-12-31"))
     assert out.response.status == 200
-
-
-def test_overlong_row_dates_fall_back_to_the_document_path(env):
-    svc, fmp, store, _ = env
-    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(
-        200, json.dumps([{"date": "2026-11-02" + "x" * 40}]).encode()
-    )
-    _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
-    assert store.count("fmp_mcp_series_row") == 0
 
 
 def test_mysql_errors_are_classified():
@@ -711,44 +595,6 @@ def test_constituent_histories_are_not_range_series():
         assert resolve_policy("indexes", args, today=TODAY).mode == "document", ep
 
 
-def test_rows_outside_the_requested_range_fall_back_to_the_document_path(env):
-    svc, fmp, store, _ = env
-    body = json.dumps(
-        [{"date": "2026-11-05", "v": 1}, {"date": "2020-01-02", "v": 2}]
-    ).encode()
-    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(200, body)
-    out = _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
-    assert out.response.body == body, "FMP's whole answer, as the hosted server returns"
-    assert store.count("fmp_mcp_series_row") == 0
-
-
-def test_late_published_series_stay_open_for_their_finality_lag(env):
-    """GDP rows are dated at period start but published weeks later."""
-    svc, fmp, _, clock = env
-    published: list[dict] = [{"date": "2026-04-01", "value": 1.0}]
-
-    class Econ(FakeFmp):
-        async def fetch(self, path, params):
-            self.calls.append((path, dict(params)))
-            rows = [r for r in published if params["from"] <= r["date"] <= params["to"]]
-            return UpstreamResponse(200, json.dumps(rows).encode())
-
-    econ = Econ()
-    svc.upstream = econ
-    args = {
-        "endpoint": "economics-indicators",
-        "name": "GDP",
-        "from_date": "2026-01-01",
-        "to_date": "2026-08-01",
-    }
-    clock.now = dt.datetime(2026, 8, 3, tzinfo=dt.timezone.utc)
-    _get(svc, "economics", args)
-    published.append({"date": "2026-07-01", "value": 2.0})  # Q3 printed in late Oct
-    clock.now = dt.datetime(2026, 10, 30, tzinfo=dt.timezone.utc)
-    out = _get(svc, "economics", args)
-    assert "2026-07-01" in {r["date"] for r in json.loads(out.response.body)}
-
-
 def test_sqlite_errors_are_classified():
     from openbb_fmp_cached_mcp.store import StoreDataError  # pylint: disable=C0415
 
@@ -795,21 +641,6 @@ def test_store_io_does_not_block_other_sessions():
     assert done[0] == "live", "a no-store call must not wait for store I/O"
 
 
-def test_empty_series_answers_do_not_record_persistent_coverage(env):
-    svc, fmp, store, _ = env
-    fmp.docs["/historical-chart/1min"] = UpstreamResponse(200, b"[]")
-    args = {
-        "endpoint": "intraday-1-min",
-        "symbol": "AAPLL",
-        "from_date": "2026-10-01",
-        "to_date": "2026-10-31",
-    }
-    _get(svc, "chart", args)
-    again = _get(svc, "chart", args)
-    assert store.count("fmp_mcp_series_coverage") == 0
-    assert len(fmp.calls) == 1 and again.state == "cached"
-
-
 def test_series_refusals_are_remembered_without_a_second_request(env):
     svc, fmp, _, _ = env
     fmp.docs["/historical-chart/1min"] = UpstreamResponse(
@@ -849,98 +680,6 @@ def test_an_empty_refresh_wins_over_the_stale_document(env):
 # --- /code-review (high) round 2 on PR #1308 -------------------------------------
 
 
-class _FailingSeriesInsert(SqliteDatabase):
-    """Rejects series-row inserts the way MySQL rejects a too-long value."""
-
-    fail = False
-
-    def _exec(self, sql, params, many):
-        if self.fail and many and "INSERT INTO fmp_mcp_series_row" in sql:
-            raise sqlite3.IntegrityError("value too long")
-        return super()._exec(sql, params, many)
-
-
-def _env_with(db):
-    clock = Clock()
-    store = Store(db, now=clock)
-    store.create_tables()
-    fmp = FakeFmp()
-    fmp.clock = clock
-    return StoreBackedUpstream(fmp, store, now=clock), fmp, store, clock
-
-
-def test_coverage_is_not_recorded_when_the_rows_were_not_stored():
-    db = _FailingSeriesInsert(":memory:")
-    db.fail = True
-    svc, fmp, store, _ = _env_with(db)
-    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    assert store.count("fmp_mcp_series_coverage") == 0
-    _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
-    assert len(fmp.calls) == 2, "the range is asked for again"
-
-
-def test_a_failed_row_replace_keeps_the_rows_held_before():
-    db = _FailingSeriesInsert(":memory:")
-    svc, fmp, store, clock = _env_with(db)
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    held = len(store.dump("fmp_mcp_series_row"))
-    db.fail = True
-    clock.advance(hours=2)  # tail refresh re-fetches and replaces a range
-    _get(svc, "chart", _range("2026-11-16", "2026-11-24"))
-    assert len(store.dump("fmp_mcp_series_row")) == held, "delete+insert is atomic"
-
-
-def test_a_truncated_answer_only_covers_the_dates_it_returned(env):
-    svc, fmp, store, _ = env
-
-    class Truncating(FakeFmp):
-        async def fetch(self, path, params):
-            self.calls.append((path, dict(params)))
-            end = dt.date.fromisoformat(params["to"])
-            rows = _daily_rows(end - dt.timedelta(days=6), end, params["symbol"])
-            return UpstreamResponse(200, json.dumps(rows).encode())
-
-    svc.upstream = trunc = Truncating()
-    _get(svc, "chart", _range("2026-01-01", "2026-06-30"))
-    _get(svc, "chart", _range("2026-02-02", "2026-02-06"))
-    assert len(trunc.calls) == 2, "February was never returned, so it is not covered"
-
-
-def test_series_with_several_rows_per_date_use_the_document_path(env):
-    svc, fmp, store, _ = env
-    body = json.dumps(
-        [{"date": "2026-11-03", "market": "A"}, {"date": "2026-11-03", "market": "B"}]
-    ).encode()
-    fmp.docs["/historical-price-eod/light"] = UpstreamResponse(200, body)
-    out = _get(svc, "chart", _range("2026-11-02", "2026-11-06"))
-    assert out.response.body == body
-    assert store.count("fmp_mcp_series_row") == 0
-
-
-def test_a_failed_refetch_after_rebasing_serves_the_stored_rows_as_stale(env):
-    svc, fmp, store, clock = env
-    fmp.clock = clock
-    _get(svc, "chart", _range("2026-10-01", "2026-11-24"))
-    clock.advance(days=1, hours=2)
-    fmp.price_shift = -50.0
-
-    class FailThird(FakeFmp):
-        pass
-
-    real_fetch = fmp.fetch
-
-    async def flaky(path, params):
-        if len(fmp.calls) >= 2:  # the full re-fetch after re-basing
-            fmp.calls.append((path, dict(params)))
-            raise ConnectionError("429")
-        return await real_fetch(path, params)
-
-    fmp.fetch = flaky
-    out = _get(svc, "chart", _range("2026-10-01", "2026-11-25"))
-    assert out.state == "stale" and out.response.status == 200
-    assert store.count("fmp_mcp_series_row") > 0, "the series is not dropped"
-
-
 def test_only_400_402_404_are_remembered_as_refusals(env):
     svc, fmp, _, clock = env
     args = {"endpoint": "income-statement", "symbol": "AAPL"}
@@ -974,19 +713,118 @@ def test_mysql_tables_are_created_with_the_schema_charset():
     )
 
 
-def test_concurrent_coverage_updates_are_merged():
-    import threading  # pylint: disable=import-outside-toplevel
+# --- Series stored per exact request (PR #1308 option 1; gap-fill is #1310) -------
 
+
+def test_a_series_range_is_stored_per_request(env):
+    svc, fmp, store, _ = env
+    first = _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
+    again = _get(svc, "chart", _range("2026-11-02", "2026-11-13"))
+    assert len(fmp.calls) == 1 and again.state == "cached"
+    assert again.response.body == first.response.body
+    _get(svc, "chart", _range("2026-11-04", "2026-11-10"))
+    assert len(fmp.calls) == 2, "another range is another request"
+    assert store.count("fmp_mcp_document") == 2
+
+
+def test_an_open_range_refreshes_hourly_and_keeps_the_last_good_copy(env):
+    svc, fmp, _, clock = env
+    args = _range("2026-11-16", "2026-11-24")
+    _get(svc, "chart", args)
+    clock.advance(minutes=50)
+    assert _get(svc, "chart", args).state == "cached"
+    clock.advance(minutes=20)
+    fmp.fail = True
+    stale = _get(svc, "chart", args)
+    assert stale.state == "stale" and stale.response.status == 200
+
+
+def test_a_past_range_is_kept_and_refreshed_daily(env):
+    """Split-adjusted history can change upstream, so past ranges are revisable."""
+    svc, fmp, _, clock = env
+    args = _range("2026-10-01", "2026-10-31")
+    _get(svc, "chart", args)
+    clock.advance(hours=23)
+    assert _get(svc, "chart", args).state == "cached"
+    clock.advance(hours=2)
+    fmp.price_shift = -50.0  # a split re-based the history
+    out = _get(svc, "chart", args)
+    assert out.state == "live"
+    assert json.loads(out.response.body)[-1]["price"] == 100.0 - 50.0 + 1
+
+
+def test_no_series_tables_are_created():
     store = Store(SqliteDatabase(":memory:"), now=Clock())
     store.create_tables()
-    days = [dt.date(2026, 1, 1) + dt.timedelta(days=2 * i) for i in range(40)]
-    threads = [
-        threading.Thread(target=store.add_final_coverage, args=("/x", "k" * 64, d, d))
-        for d in days
-    ]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    covered = {a for a, _, _ in store.coverage("/x", "k" * 64, "final")}
-    assert covered == set(days)
+    names = {
+        r["name"]
+        for r in store.db.query("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert names == {"fmp_mcp_document", "fmp_mcp_feed_item", "fmp_mcp_ephemeral"}
+
+
+def test_mysql_upsert_uses_the_row_alias_form():
+    seen = []
+
+    class FakeMySql:
+        dialect = "mysql"
+
+        def execute(self, sql, params=()):
+            seen.append(sql)
+            return 1
+
+        def executemany(self, sql, rows):
+            seen.append(sql)
+            return len(rows)
+
+        def query(self, sql, params=()):
+            return []
+
+    Store(FakeMySql()).put_response(
+        "fmp_mcp_document",
+        "k" * 64,
+        tool="t",
+        endpoint="e",
+        path="/x",
+        params={},
+        retention="revisable",
+        status=200,
+        body=b"[]",
+        fresh_s=60,
+    )
+    sql = next(q for q in seen if q.lstrip().upper().startswith("INSERT"))
+    assert " AS new ON DUPLICATE KEY UPDATE " in sql and "VALUES(" not in sql
+
+
+def test_first_call_upstream_error_renders_the_hosted_text(env):
+    """No stored copy + FMP 429: the hosted 'Bad request ...' text, not an exception."""
+    from openbb_fmp_cached_mcp.server import (
+        Scrubber,
+        call_tool,
+    )  # pylint: disable=C0415
+
+    svc, fmp, _, _ = env
+    fmp.docs["/historical-price-eod/full"] = UpstreamResponse(429, b"Limit Reach")
+    args = {
+        "endpoint": "historical-price-eod-full",
+        "symbol": "AAPL",
+        "from_date": "2026-11-02",
+        "to_date": "2026-11-06",
+    }
+    result = asyncio.run(call_tool(svc, Scrubber(), "chart", args))
+    assert result.isError is True
+    assert result.content[0].text == (
+        'Bad request for tool "chart" (endpoint /historical-price-eod/full): Limit Reach'
+    )
+
+
+def test_registry_creates_unprefixed_mcp_tables_in_test_mode(monkeypatch):
+    cache_schema = pytest.importorskip("openbb_fmp_cached.utils.cache_schema")
+    seen = []
+    monkeypatch.setenv("FMP_CACHE_TEST_MODE", "true")
+    monkeypatch.setattr(
+        cache_schema, "execute_query", lambda sql, p=(): seen.append(sql)
+    )
+    for name in ("fmp_mcp_document", "fmp_mcp_feed_item", "fmp_mcp_ephemeral"):
+        cache_schema.FLATTENED_TABLES[name]["schema"]()
+    assert all("test_fmp_mcp" not in s for s in seen) and len(seen) == 3

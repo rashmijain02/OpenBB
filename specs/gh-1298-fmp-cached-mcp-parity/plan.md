@@ -132,6 +132,13 @@ Persistent: 173 of 208. Ephemeral: 33. Never stored: 2.
   example `sector-performance-snapshot?date=2025-01-02`) is immutable and is stored
   forever. The class is resolved per call, not only per endpoint.
 
+> **Amended 2026-11-25 (owner, G1 for PR #1308 option 1).** The `series` mode below (per-date
+> rows, gap-fill, open tail, re-basing overlap) did not converge across three `/code-review`
+> rounds. It is replaced by per-request storage: a series range is a document, refreshed daily
+> once closed (split-adjusted history can change) and by interval while open (60 s intraday,
+> 1 h daily, 1 day late-published). `fmp_mcp_series_row` / `fmp_mcp_series_coverage` are not
+> created. Gap-fill is redesigned in #1310 (series gap-fill redesign).
+
 ### 4.3 Store layout (all raw FMP JSON, so hosted payloads are reproducible)
 
 - **`fmp_raw_series`**: `(family, symbol, variant, ts)` primary key, `row_json` (key order

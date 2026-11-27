@@ -37,21 +37,19 @@ when it is set, every HTTP request must send `Authorization: Bearer <token>`.
 
 | Mode | Kept | FMP is called |
 |---|---|---|
-| series (prices, indicators, rates) | rows forever (`fmp_mcp_series_row`) | for missing date ranges and the open tail (last 2 days); a re-based history (split, adjustment) is detected on the overlap and re-fetched |
+| series range (prices, indicators, rates with `from`/`to`) | forever, per exact request (`fmp_mcp_document`) | when stale: a range that is still open after 60 s (intraday), 1 h (daily) or 1 day (economic indicators, COT); a closed range daily, because split-adjusted history can be re-based upstream |
 | document, immutable (as-reported, filings, past trades) | forever (`fmp_mcp_document`) | once |
 | document, revisable / reference (statements, profiles, lists) | forever, last good copy | after the refresh interval (1 day) |
 | feed (news, latest filings) | items forever (`fmp_mcp_feed_item`); listing 10 min | when the listing expires |
 | ephemeral (quotes, snapshots, screener) | `fmp_mcp_ephemeral` with `expires_at` | after 15 s to 15 min |
 | no-store (custom DCF) | nothing | always |
 
-A call about a past date is immutable whatever its class; an empty answer is never immutable.
-Rows become final after 2 days, except late-published series: economic indicators after 120
-days, COT reports after 14. Endpoints where FMP ignores `from`/`to` (constituent histories) are
-documents, not series; any series answer with rows outside the requested range falls back to
-the document path, as do answers with several rows per date. Empty series answers are kept
-ephemeral (1 day), never as coverage. When FMP truncates a long range (row caps, plan history),
-only the dates it returned count as fetched. Only 400/402/404 are remembered as refusals; other
-errors serve the stored copy as stale.
+A call about a past date on an ephemeral or revisable endpoint is immutable; an empty answer is
+never immutable (it is kept ephemeral for a day). A range is closed once its end is older than
+the series' finality lag: 2 days, economic indicators 120, COT reports 14. Overlapping ranges
+are separate requests; fetching only the missing dates of a stored series (gap-fill) is #1310.
+Only 400/402/404 are remembered as refusals (10 minutes); other errors serve the stored copy as
+stale, or FMP's own message when nothing is held.
 On an FMP failure the stored copy is served with `_meta.openbb/provenance.state = "stale"`.
 Only `fmp_mcp_ephemeral` is prunable (`python -m openbb_fmp_cached.utils.cache_prune`); the
 persistent tables are not in its allowlist.

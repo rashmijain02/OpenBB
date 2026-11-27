@@ -92,9 +92,9 @@ Every result carries `result._meta["openbb/provenance"] = {state, source, asOf, 
 ## 5. Storage and retention
 
 The store is persistent: meaningful data is kept for good and only ephemeral data expires. The
-retention rules (series gap-fill, immutable and revisable documents, feeds, ephemeral TTLs) are
-in the package README. The tables are `fmp_mcp_document`, `fmp_mcp_series_row`,
-`fmp_mcp_series_coverage`, `fmp_mcp_feed_item` and `fmp_mcp_ephemeral`. They are registered in
+retention rules (series ranges per request, immutable and revisable documents, feeds, ephemeral
+TTLs) are in the package README. The tables are `fmp_mcp_document`, `fmp_mcp_feed_item` and
+`fmp_mcp_ephemeral`. They are registered in
 `openbb_fmp_cached.utils.cache_schema` (`FMP_MCP_TABLE_COLUMNS`).
 
 **Pruning.**
@@ -123,7 +123,7 @@ with `scripts/fmp_mcp_build_assets.py`, and review the fixture diff in a PR.
 
 - **402 coverage.** Only the parameter-level 402 form ("Premium Query Parameter") has been
   recorded. An endpoint-level 402 uses the same `ACCESS DENIED` template (DIVERGENCES D5).
-- **Long ranges.** FMP may cap very long intraday ranges. A truncated answer would mark coverage
-  for days it did not return.
+- **Series gap-fill** (fetch only the missing dates of a stored series) is #1310. Until then,
+  each distinct range is its own stored request.
 - **Warm start** from the typed `fmp_cached` tables (task B6) is deferred: MySQL was unavailable
   when this shipped. The store fills on first use.

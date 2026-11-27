@@ -83,6 +83,16 @@ B9  run 1 (cold store): 10/10 identical to hosted; states=['cached', 'live']
 | Nit | The fmp_cached prune compares UTC `expires_at` with the database session clock | deferred to #1309 (fmp_mcp_ephemeral prune uses the DB session clock) |
 | Low | Blocking DB calls in the event loop (earlier deferral) | applied: now `asyncio.to_thread` |
 
+## Amendment 2026-11-25: option 1 (owner-approved, HITL dev cycle)
+
+A third `/code-review` round still found important issues, all in series gap-fill (truncation
+coverage, sparse series refetching, mixed bases after a failed drop). With the owner's approval:
+- series gap-fill was removed; series ranges are stored per request (#1310 tracks the redesign);
+- `--store auto` now falls back to live on a refused CREATE (MySQL 1142);
+- a first-call FMP 429/5xx now renders the hosted text (it used to say `ConnectionError`);
+- #1309 (prune clock) is fixed: the `fmp_mcp_ephemeral` rule cuts off on `UTC_TIMESTAMP()`;
+- the MCP tables are created unprefixed in test mode.
+
 ## Local CI-equivalent (Actions is not creating runs)
 
 | Workflow / job | Local result |

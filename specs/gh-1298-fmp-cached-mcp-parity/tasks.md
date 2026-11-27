@@ -26,7 +26,7 @@ Every task starts red (failing test first, red output kept). Sub-issues: A #1299
       `fmp_raw_feed_item`, `fmp_raw_feed_listing`, `fmp_mcp_ephemeral`. Add a canonical request
       key. Add `retention_classes.json` (owner-approved), with a completeness test: every
       endpoint has a class.
-- [x] B2 Series path: gap detection per asset calendar (24 h for crypto and forex; equity
+- [x] B2 (superseded 2026-11-25: per-request storage; gap-fill moved to #1310) Series path: gap detection per asset calendar (24 h for crypto and forex; equity
       holidays), fetching only the missing parts, open-tail refresh until final, rebuilding rows
       in FMP order. Tests:
       - a second call for a closed range makes zero upstream calls;
