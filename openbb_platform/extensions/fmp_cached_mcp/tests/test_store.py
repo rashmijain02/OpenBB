@@ -382,7 +382,8 @@ def test_mysql_ddl_matches_the_fmp_cached_schema_registry():
     mysql = store_mod._TYPES["mysql"]  # pylint: disable=protected-access
     for table, cols in store_mod._DDL.items():  # pylint: disable=protected-access
         assert cache_schema.FMP_MCP_TABLE_COLUMNS[table] == cols.format(**mysql), table
-        assert table in cache_schema.FLATTENED_TABLES
+        assert table not in cache_schema.FLATTENED_TABLES  # not entity tables
+        assert table in cache_schema.FMP_MCP_TABLE_COLUMNS
 
 
 def test_server_reports_store_provenance_in_meta_and_identical_content(env):
@@ -666,15 +667,28 @@ def test_ranges_starting_at_date_min_do_not_crash(env):
     assert out.response.status == 200
 
 
-def test_an_empty_refresh_wins_over_the_stale_document(env):
+def test_an_empty_refresh_keeps_serving_the_stored_document(env):
+    """A transient empty answer must not hide the last good copy (review #1308)."""
     svc, fmp, _, clock = env
-    args = {"endpoint": "income-statement", "symbol": "DELISTED"}
-    _get(svc, "statements", args)
+    args = {"endpoint": "income-statement", "symbol": "AAPL"}
+    good = _get(svc, "statements", args)
     clock.advance(days=2)
     fmp.docs["/income-statement"] = UpstreamResponse(200, b"[]")
-    _get(svc, "statements", args)
-    _get(svc, "statements", args)
-    assert len(fmp.calls) == 2, "the empty answer is served for its day"
+    first = _get(svc, "statements", args)
+    again = _get(svc, "statements", args)
+    for out in (first, again):
+        assert out.response.body == good.response.body
+        assert out.state == "stale" and out.reason == "upstream-empty"
+    assert len(fmp.calls) == 2, "the empty answer is remembered for a day, not re-asked"
+
+
+def test_an_empty_answer_without_a_stored_copy_is_kept_ephemeral(env):
+    svc, fmp, store, _ = env
+    fmp.docs["/income-statement"] = UpstreamResponse(200, b"[]")
+    args = {"endpoint": "income-statement", "symbol": "NOPE"}
+    assert _get(svc, "statements", args).response.body == b"[]"
+    assert _get(svc, "statements", args).state == "cached"
+    assert len(fmp.calls) == 1 and store.count("fmp_mcp_document") == 0
 
 
 # --- /code-review (high) round 2 on PR #1308 -------------------------------------
@@ -826,5 +840,19 @@ def test_registry_creates_unprefixed_mcp_tables_in_test_mode(monkeypatch):
         cache_schema, "execute_query", lambda sql, p=(): seen.append(sql)
     )
     for name in ("fmp_mcp_document", "fmp_mcp_feed_item", "fmp_mcp_ephemeral"):
-        cache_schema.FLATTENED_TABLES[name]["schema"]()
+        cache_schema.create_fmp_mcp_tables(only=[name])
     assert all("test_fmp_mcp" not in s for s in seen) and len(seen) == 3
+
+
+# --- /code-review (high) round 4 on PR #1308 ---------------------------------------
+
+
+def test_a_corrupt_stored_row_degrades_to_a_live_fetch(env):
+    svc, fmp, store, _ = env
+    args = {"endpoint": "as-reported-income-statements", "symbol": "AAPL"}
+    _get(svc, "statements", args)
+    store.db.execute("UPDATE fmp_mcp_document SET body = %s", (b"not gzip",))
+    out = _get(svc, "statements", args)
+    assert out.state == "live" and out.response.status == 200
+    assert len(fmp.calls) == 2
+    assert _get(svc, "statements", args).state == "cached", "the bad row was repaired"

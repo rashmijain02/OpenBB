@@ -17,11 +17,15 @@ import datetime as dt
 import gzip
 import hashlib
 import json
+import logging
 import sqlite3
 import threading
+import zlib
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+logger = logging.getLogger(__name__)
 
 DOCUMENT_TABLE = "fmp_mcp_document"
 FEED_ITEM_TABLE = "fmp_mcp_feed_item"
@@ -284,12 +288,20 @@ class Store:
             return None
         row = rows[0]
         until = row["until"]
-        return StoredResponse(
-            int(row["status"]),
-            gzip.decompress(bytes(row["body"])),
-            _parse(row["fetched_at"]),
-            None if until is None else _parse(until),
-        )
+        try:
+            return StoredResponse(
+                int(row["status"]),
+                gzip.decompress(bytes(row["body"])),
+                _parse(row["fetched_at"]),
+                None if until is None else _parse(until),
+            )
+        except (OSError, EOFError, ValueError, TypeError, zlib.error) as exc:
+            # A row that cannot be decoded is treated as missing: the caller
+            # fetches again and the upsert repairs it.
+            logger.warning(
+                "unreadable row in %s ignored (%s)", table, type(exc).__name__
+            )
+            return None
 
     def put_response(  # pylint: disable=too-many-arguments
         self,

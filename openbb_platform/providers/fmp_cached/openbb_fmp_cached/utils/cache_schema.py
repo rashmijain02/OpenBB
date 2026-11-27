@@ -5629,11 +5629,18 @@ def _fmp_mcp_table_creator(base_name: str):
     return create
 
 
+def create_fmp_mcp_tables(only: list[str] | None = None) -> dict[str, object]:
+    """Create the fmp_cached MCP store tables (#1300); idempotent.
+
+    Kept out of :data:`FLATTENED_TABLES`, whose consumers treat every entry as
+    an entity data table. ``create_all_flattened_tables`` calls this too.
+    """
+    names = only if only is not None else list(FMP_MCP_TABLE_COLUMNS)
+    return {name: _fmp_mcp_table_creator(name)() for name in names}
+
+
 # Complete table configuration for all 67 entities
 FLATTENED_TABLES = {
-    **{
-        name: {"schema": _fmp_mcp_table_creator(name)} for name in FMP_MCP_TABLE_COLUMNS
-    },
     "aftermarket_quote": {"schema": create_aftermarket_quote_table},
     "analyst_estimates": {"schema": create_analyst_estimates_table},
     "available_indices": {"schema": create_available_indices_table},
@@ -5989,6 +5996,7 @@ def create_all_flattened_tables():
         results[table_name] = result
         logger.info("Created flattened table: %s", table_name)
 
+    results.update(create_fmp_mcp_tables())
     return results
 
 
@@ -6300,12 +6308,17 @@ def prune_expired_cache(
     }
     if not resolved:
         return report
+    # The database clock is read up front: if it cannot be read, nothing can be
+    # pruned and the caller sees the connection error (CLI exit 2). The UTC
+    # clock (#1309) is read per rule, so its failure is reported per table.
     clocks: dict[bool, datetime] = {}
+    if any(not rule.utc_clock for rule, _ in resolved):
+        clocks[False] = _database_now()
     for rule, table in resolved:
-        if rule.utc_clock not in clocks:
-            clocks[rule.utc_clock] = _database_now(utc=rule.utc_clock)
-        cutoff = clocks[rule.utc_clock] - timedelta(seconds=rule.ttl_seconds)
         try:
+            if rule.utc_clock not in clocks:
+                clocks[rule.utc_clock] = _database_now(utc=rule.utc_clock)
+            cutoff = clocks[rule.utc_clock] - timedelta(seconds=rule.ttl_seconds)
             entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
         except Exception as exc:  # noqa: BLE001 - one table must not stop the rest
             # Type and driver error code only: driver messages can carry the

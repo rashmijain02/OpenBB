@@ -88,6 +88,11 @@ def _negative_key(key: str) -> str:
     return hashlib.sha256(f"neg:{key}".encode()).hexdigest()
 
 
+def _empty_key(key: str) -> str:
+    """Return the key remembering "FMP answered empty" for a stored document."""
+    return hashlib.sha256(f"empty:{key}".encode()).hexdigest()
+
+
 def _fresh(stored: StoredResponse | None, now: dt.datetime) -> bool:
     return stored is not None and (
         stored.fresh_until is None or now < stored.fresh_until
@@ -127,6 +132,12 @@ class StoreBackedUpstream:
     async def fetch(self, path: str, params: dict[str, str]) -> UpstreamResponse:
         """``Upstream`` protocol: a plain live request."""
         return await self.upstream.fetch(path, params)
+
+    async def aclose(self) -> None:
+        """Close the upstream HTTP client."""
+        close = getattr(self.upstream, "aclose", None)
+        if close is not None:
+            await close()
 
     # -- entry point ----------------------------------------------------------
 
@@ -270,23 +281,39 @@ class StoreBackedUpstream:
             fresh_s=fresh_s,
         )
 
-    async def _document(self, call: _Call) -> FetchResult:
-        store = self._require_store()
-        policy, key, now = call.policy, call.key, self.now()
-        persistent = policy.mode != "ephemeral"
+    async def _stored_answer(
+        self, store: Store, call: _Call, now: dt.datetime
+    ) -> tuple[FetchResult | None, StoredResponse | None]:
+        """Return ``(answer from the store or None, last stored copy or None)``."""
+        key = call.key
         negative = await self._io(
             store.get_response, EPHEMERAL_TABLE, _negative_key(key)
         )
         if negative is not None and _fresh(negative, now):
-            return self._from_store(negative, "cached")
-        ephemeral = await self._io(store.get_response, EPHEMERAL_TABLE, key)
-        stored = ephemeral
-        if persistent:
-            if ephemeral is not None and _fresh(ephemeral, now):
-                return self._from_store(ephemeral, "cached")  # a fresh empty answer
+            return self._from_store(negative, "cached"), None
+        stored = await self._io(store.get_response, EPHEMERAL_TABLE, key)
+        if call.policy.mode != "ephemeral":
+            if stored is not None and _fresh(stored, now):
+                return self._from_store(stored, "cached"), None  # fresh empty answer
             stored = await self._io(store.get_response, DOCUMENT_TABLE, key)
+            if stored is not None and not _fresh(stored, now):
+                empty = await self._io(
+                    store.get_response, EPHEMERAL_TABLE, _empty_key(key)
+                )
+                if empty is not None and _fresh(empty, now):
+                    # FMP answered empty recently: keep serving the last good copy.
+                    return self._from_store(stored, "stale", "upstream-empty"), None
         if stored is not None and _fresh(stored, now):
-            return self._from_store(stored, "cached")
+            return self._from_store(stored, "cached"), None
+        return None, stored
+
+    async def _document(self, call: _Call) -> FetchResult:
+        store = self._require_store()
+        policy, key, now = call.policy, call.key, self.now()
+        persistent = policy.mode != "ephemeral"
+        answer, stored = await self._stored_answer(store, call, now)
+        if answer is not None:
+            return answer
         try:
             resp = await self.upstream.fetch(call.path, call.params)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
@@ -311,6 +338,17 @@ class StoreBackedUpstream:
             return FetchResult(
                 resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
             )
+        if resp.body.strip() in _EMPTY_BODIES and persistent and stored is not None:
+            # A transient empty answer must not hide the last good copy: serve
+            # it as stale and remember the empty answer for a day.
+            await self._put(
+                EPHEMERAL_TABLE,
+                _empty_key(key),
+                call,
+                resp=resp,
+                fresh_s=REVISABLE_REFRESH_S,
+            )
+            return self._from_store(stored, "stale", "upstream-empty")
         if resp.body.strip() in _EMPTY_BODIES:
             # Not found today may exist tomorrow, and arbitrary lookups must
             # not grow the persistent tables: empty answers stay ephemeral.

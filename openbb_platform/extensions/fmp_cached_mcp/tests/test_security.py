@@ -236,3 +236,15 @@ def test_other_loopback_binds_accept_their_own_host_header():
     app = build_http_app(_Up(), token="", host="127.0.0.2", port=8011)
     with TestClient(app, base_url="http://127.0.0.2:8011") as client:
         assert _post(client, INIT).status_code == 200
+
+
+def test_http_app_closes_the_upstream_client_on_shutdown():
+    closed = []
+
+    class Closable(_Up):
+        async def aclose(self):
+            closed.append(True)
+
+    with TestClient(build_http_app(Closable(), token="", port=8011), base_url=BASE):
+        pass
+    assert closed == [True]

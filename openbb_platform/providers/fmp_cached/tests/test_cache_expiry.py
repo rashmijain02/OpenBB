@@ -284,7 +284,31 @@ def test_rules_are_inside_the_explicit_allowlist():
     for table in PROTECTED_TABLES:
         assert table not in allow
     for table in allow:
-        assert table in cache_schema.FLATTENED_TABLES, table
+        assert (
+            table in cache_schema.FLATTENED_TABLES
+            or table in cache_schema.FMP_MCP_TABLE_COLUMNS
+        ), table
+
+
+def test_mcp_store_tables_are_not_entity_tables():
+    """Entity scripts loop over FLATTENED_TABLES; MCP tables are not entities."""
+    assert not set(cache_schema.FMP_MCP_TABLE_COLUMNS) & set(
+        cache_schema.FLATTENED_TABLES
+    )
+
+
+def test_a_failed_clock_read_is_reported_not_raised(seam, monkeypatch):
+    real = seam
+
+    def no_utc(query, params=()):
+        if "UTC_TIMESTAMP" in query.upper():
+            raise RuntimeError("connection dropped")
+        return real(query, params)
+
+    monkeypatch.setattr(cache_schema, "execute_query", no_utc)
+    report = cache_schema.cleanup_expired_cache()
+    assert "fmp_mcp_ephemeral" in report["errors"]
+    assert seam.count("equity_quote", "symbol = 'STALE'") == 0, "other tables pruned"
 
 
 def test_cutoff_uses_the_database_clock(seam, monkeypatch):

@@ -125,8 +125,13 @@ def build_http_app(
 
     @contextlib.asynccontextmanager
     async def lifespan(_app: Starlette) -> AsyncIterator[None]:
-        async with manager.run():
-            yield
+        try:
+            async with manager.run():
+                yield
+        finally:
+            close = getattr(upstream, "aclose", None)
+            if close is not None:
+                await close()
 
     # The exact path: Mount("/mcp") would answer POST /mcp with a 307 to /mcp/.
     app: ASGIApp = Starlette(
