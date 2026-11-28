@@ -36,6 +36,7 @@ from openbb_core.app.jobs.schedules import DailySchedule
 from pydantic import BaseModel, ConfigDict, Field
 
 from portfolio_utils.fetch_position_history import run_position_history_warm
+from portfolio_utils.fmp_sync.locking import LockBusy
 from portfolio_utils.refresh_etf_holdings_cache import run_etf_holdings_warm
 
 #: Weekdays Monday-Friday (matches ``datetime.weekday()`` 0=Mon..4=Fri).
@@ -139,14 +140,24 @@ class EtfHoldingsJobParams(BaseModel):
 def _run_position_history_job(
     context: JobContext, params: PositionHistoryJobParams
 ) -> JobResult:
-    """Warm the equity_historical cache for portfolio symbols (handler)."""
-    result = run_position_history_warm(
-        symbols=params.symbols,
-        years=params.years,
-        dry_run=False,
-        skip_holiday_prestep=params.skip_holiday_prestep,
-        should_cancel=_should_cancel(context),
-    )
+    """Warm the equity_historical cache for portfolio symbols (handler).
+
+    The warmer holds the per-target fmp-sync lock (#1344, D8). When a manual or
+    cron run already holds it, the job is skipped (never queued, never failed).
+    """
+    try:
+        result = run_position_history_warm(
+            symbols=params.symbols,
+            years=params.years,
+            dry_run=False,
+            skip_holiday_prestep=params.skip_holiday_prestep,
+            should_cancel=_should_cancel(context),
+        )
+    except LockBusy:
+        return JobResult(
+            summary={"outcome": "SKIPPED_BUSY"},
+            warnings=["skipped: another price-warming run holds the target lock"],
+        )
 
     warnings = [f"{item['symbol']}: {item['error']}" for item in result.failed]
     if result.cancelled:
