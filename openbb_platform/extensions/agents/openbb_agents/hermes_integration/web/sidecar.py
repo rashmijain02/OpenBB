@@ -279,7 +279,16 @@ def live_story_principal(settings: Any = None) -> str:
     from openbb_mcp_server.service.mcp_service import MCPService
 
     if settings is None:
-        settings = MCPService.read_with_overrides()
+        try:
+            settings = MCPService.read_with_overrides()
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            # Never chain or echo the error: validation errors carry the raw
+            # (possibly secret) ``server_auth`` input.
+            raise PairingError(
+                "principal_unpaired",
+                "the MCP server settings are malformed; fix OPENBB_MCP_SERVER_AUTH"
+                " or server_auth in mcp_settings.json",
+            ) from None
     auth = tuple(getattr(settings, "server_auth", None) or ())
     if len(auth) != 2 or not all(
         isinstance(value, str) and value.strip() for value in auth

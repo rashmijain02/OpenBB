@@ -98,3 +98,58 @@ def test_main_takes_its_principal_from_live_story_principal():
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
     }
     assert "live_story_principal" in calls
+
+
+FAKE_SECRET = "FAKESECRET123"  # noqa: S105
+
+
+def _assert_no_leak(capsys, caplog):
+    out = capsys.readouterr()
+    assert FAKE_SECRET not in out.out + out.err
+    assert FAKE_SECRET not in caplog.text
+    assert all(FAKE_SECRET not in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize(
+    "auth",
+    [
+        f"FAKEUSER:{FAKE_SECRET}",
+        json.dumps(["FAKEUSER", FAKE_SECRET, "extra"]),
+        json.dumps(["FAKEUSER"]),
+        json.dumps({"user": "FAKEUSER", "pw": FAKE_SECRET}),
+    ],
+)
+def test_malformed_env_server_auth_does_not_leak(
+    no_settings_file, monkeypatch, capsys, caplog, auth
+):
+    """A malformed env ``server_auth`` fails closed without echoing its value."""
+    monkeypatch.setenv("OPENBB_MCP_SERVER_AUTH", auth)
+    caplog.set_level("DEBUG")
+    with pytest.raises(sidecar.PairingError) as caught:
+        sidecar.live_story_principal()
+    assert caught.value.code == "principal_unpaired"
+    assert FAKE_SECRET not in str(caught.value)
+    assert sidecar.main(["--check"]) == 4
+    _assert_no_leak(capsys, caplog)
+
+
+@pytest.mark.parametrize(
+    "auth",
+    [
+        ["FAKEUSER", FAKE_SECRET, "extra"],
+        ["FAKEUSER"],
+        {"user": "FAKEUSER", "pw": FAKE_SECRET},
+    ],
+)
+def test_malformed_file_server_auth_does_not_leak(
+    no_settings_file, capsys, caplog, auth
+):
+    """A malformed ``server_auth`` in the settings file fails closed, no leak."""
+    no_settings_file.write_text(json.dumps({"server_auth": auth}), encoding="utf-8")
+    caplog.set_level("DEBUG")
+    with pytest.raises(sidecar.PairingError) as caught:
+        sidecar.live_story_principal()
+    assert caught.value.code == "principal_unpaired"
+    assert caught.value.__cause__ is None and caught.value.__suppress_context__
+    assert sidecar.main(["--check"]) == 4
+    _assert_no_leak(capsys, caplog)
