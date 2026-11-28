@@ -18,7 +18,7 @@ against fakes; nothing connects to `openbb_fmp_cache_test` (live store) or `open
 | same, `fetch_history` | `should_cancel` polled between symbols only; per-item `str(e)[:80]` into `failed`; `init_database()` (skipped when `FMP_CACHE_AUTO_CREATE_DB=false`, which the module `setdefault`s). | Error strings are never forwarded; cancellation granularity = one symbol. |
 | same, `_fetch_one_symbol_history_in_scope` | One `_fetch_from_fmp_sync` per gapped symbol (full overall range); if `_analyze_cache_gaps` raises it falls back to the full range. | Request estimate is "≤1 per symbol", not a cap; T02 enforces the cap at transport. |
 | same, `check_portfolio_app_readiness` | Unconditional `COUNT(*)` on `Portfolio_Positions`, `Account_Owner`, `ESPP_Plan`; previous-weekday target. | Least-privilege user fails it; P07 wraps it as `READINESS_UNAVAILABLE`; the fix is HFP-P08-T01. |
-| same, module import | `load_dotenv(<PROJECT_ROOT>/.env, override=True)` where `PROJECT_ROOT` resolves to `openbb_platform/tools/portfolio_utils`; `sys.path` bootstrap with the same root. | Import can silently override `DB_*`/`FMP_CACHE_TEST_MODE`; admission snapshots DB env before/after import and blocks on drift. |
+| same, module import | `load_dotenv(<PROJECT_ROOT>/.env, override=True)` where `PROJECT_ROOT` resolves to `openbb_platform/tools/portfolio_utils`; `sys.path` bootstrap with the same root. | Import can silently override `DB_*`/`FMP_CACHE_TEST_MODE`; admission snapshots DB, TLS/proxy (`HTTP(S)_PROXY`, `ALL_PROXY`, `NO_PROXY`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `SSL_CERT_FILE`), `FMP_API_KEY` and state-root env before/after import (presence + SHA-256 only, never a value) and blocks on drift (`DOTENV_DRIFT`). **Stripped-env interaction:** the cron child starts with an allowlisted environment (no Hermes env is passed), so any of these keys that the warmer's `.env` sets counts as drift and blocks the cron run. Credential sources on the cron path: DB credentials from `~/.openbb_platform/user_settings.json` (`DatabaseConfig`; `DB_*` env only as a manual-run fallback), FMP key from `user_settings.json` credentials (`_resolve_api_key`); a warmer `.env` that defines `DB_*` or `FMP_API_KEY` must not be relied on by the cron child (OPS-ATTEST h). |
 | `openbb_platform/providers/fmp_cached/openbb_fmp_cached/models/equity_historical.py` `_fetch_from_fmp_sync` | Bare `requests.get(..., params={"apikey": ...}, timeout=120)`, no retries; `raise_for_status_redacted`. | Account at `requests.Session.send` in the dispatcher process; no provider edit. |
 | `.../openbb_fmp_cached/utils/database.py` `database_override`, `DatabaseConfig._load_config` | ContextVar DB scope with `safe_identifier`; `FMP_CACHE_TEST_MODE=true` forces `openbb_fmp_cache_test`, default `openbb_fmp_cache`. | Never set test mode; explicit `database=` always. |
 | `openbb_platform/tools/portfolio_utils/portfolio_utils/jobs.py` | `portfolio.position_history` (weekdays 01:00, `overlap_policy="forbid"`, **no `database` param** by design, `_should_cancel` always False). | Same guard must cover this handler (lock inside the warmer). Schedule cutover stays HFP-P09-T03. |
@@ -36,7 +36,8 @@ against fakes; nothing connects to `openbb_fmp_cache_test` (live store) or `open
 New package `openbb_platform/tools/portfolio_utils/portfolio_utils/fmp_sync/`:
 `locking.py`, `admission.py`, `budget.py`, `outcome.py`, `state.py`, `dispatcher.py` (`__main__`),
 `render.py`. Only `admission.py` imports `openbb_agents.hermes_integration`, lazily; import failure is
-`BLOCKED` with `FailedLayer.MODULE_ORIGIN`. No `subprocess` in the warming path (AST test).
+`BLOCKED` with `FailedLayer.MODULE_ORIGIN`. No `subprocess` in the warming path (AST test); only
+the rendered cron wrapper (§1.6) uses `subprocess`, to start the isolated venv child.
 
 ### 1.1 Lock protocol (shared by manual CLI, jobs handler and cron)
 - **Key:** one lock per resolved target DB: `<lock_root>/fmp-sync.<db-lowercase>.lock`. Resolved DB =
@@ -96,10 +97,19 @@ New package `openbb_platform/tools/portfolio_utils/portfolio_utils/fmp_sync/`:
   without a matching reservation -> fail closed (`ACCOUNTING_GAP`).
 - 429: parse `Retry-After`, persist `defer_until`, set cancel -> `DEFERRED_RATE_LIMIT`. 401/403 ->
   `AUTH`; 402 -> `BLOCKED_PLAN`; no retries are added in P07 (retry policy is HFP-P08).
-- Deadline: monotonic, default 900 s (Hermes job timeout 1200 s backstop); `send` caps `timeout`
-  to `min(orig, remaining - reserve, 60)`. `should_cancel` = deadline | budget exhausted |
-  rate-limit defer | `<state>/cancel/<run_id>` file | SIGINT/SIGBREAK flag. DB statement time is
-  not capped (provider scope); kill leaves upserts idempotent and the lock released.
+- Deadline (one story, innermost first): (1) the dispatcher's monotonic deadline,
+  `locking.DEFAULT_DEADLINE_S` = 900 s, ends the run itself (`CANCELLED_DEADLINE`); `send` caps
+  `timeout` to `min(orig, remaining - reserve, 60)`. (2) The wrapper's hard deadline,
+  `WRAPPER_DEADLINE_S` = 900 + 120 s margin = 1020 s: it touches `<state>/cancel/<run_id>`.
+  (3) Grace, `WRAPPER_GRACE_S` = 30 s (rendered; render refuses grace outside (0, margin)): the
+  child's CANCELLED line is relayed if it ends in time, otherwise the wrapper terminates the Job
+  Object ("killed after grace", exit 5). (4) Hermes' script timeout (3600 s default) is only the
+  outer backstop; render refuses deadline + grace >= 3600 s. `should_cancel` = deadline | budget
+  exhausted | rate-limit defer | `<state>/cancel/<run_id>` file | SIGINT/SIGBREAK flag. Ctrl+C /
+  Ctrl+Break reach the child only in a console run; under cron the wrapper receives them (the
+  child is `CREATE_NO_WINDOW`) and relays them as the cancel file; a second stop request kills at
+  once. DB statement time is not capped (provider scope); a kill leaves upserts idempotent and the
+  lock released.
 - Execute mode refuses to run without explicit limits in the map (no built-in quota default).
 
 ### 1.4 Sanitized structured outcome
@@ -111,9 +121,14 @@ transport status-class counts, `outcome` enum (`OK`, `PARTIAL`, `SKIPPED_BUSY`, 
 `data_status` (`UNVALIDATED` until HFP-P08 readiness exists), `failed_layer: FailedLayer | None`,
 finding codes, business exit code (0 ok, 10 partial/deferred/busy, 20 critical, 30 infra,
 40 policy/config). Never: exception text, URLs, keys, account data, amounts. Symbols appear only in
-`runs/<run_id>.json` (local). Errors map by type + transport ledger to codes. The wrapper redirects
-fd 1/2 to `os.devnull` before importing the dispatcher and replaces root log handlers; only the
-final counts-only line (≤512 chars) is written to the saved original stdout.
+`runs/<run_id>.json` (local). Errors map by type + transport ledger to codes. The wrapper never
+imports the dispatcher: it reads the child's stdout through a pipe (first 4 KiB kept, rest drained)
+and sends the child's stderr to `os.devnull`. Exactly one non-empty line is accepted and validated
+field by field (`op`=prices, `mode`=execute, `run_id` 32 lowercase hex and equal to the run id the
+wrapper chose, `outcome` from the enum with its matching `exit`, `data_status`/`failed_layer`
+enums, `counts` with exactly requested/skipped/success/failed/deferred as non-negative ints, `sent`
+non-negative int, <= 8 finding codes; or the short `BLOCKED_CONFIG` shape). Anything else, or a
+non-business exit, prints only "internal error" (exit 4). Nothing else reaches cron.
 
 ### 1.5 State, receipts and Windows replacement
 `<state>/status.json` (atomic, per-job entries), `history.jsonl` (append-only; run-start receipt
@@ -130,7 +145,7 @@ guard, never truncate. No SQLite fallback.
 
 ### 1.6 Versioned paused cron wrappers
 `render.py` (Python, pytest-testable; no PS1 so no Pester gate): `plan` (default) renders
-`fmp_cache_prices.py` (`WRAPPER_VERSION=1`, fixed operation `prices`, no params from cron) from an
+`fmp_cache_prices.py` (`WRAPPER_VERSION=3`, fixed operation `prices`, no params from cron) from an
 in-repo template plus a private deployment map (outside git: source root, source SHA, interpreter,
 target, manifest path, state root, profile path, limits, `account_label`, `HERMES_TIMEZONE`).
 Output: semantic diff + hashes; actions `create|update|unchanged|drift` (foreign edit blocks).
@@ -138,8 +153,19 @@ Output: semantic diff + hashes; actions `create|update|unchanged|drift` (foreign
 `%LOCALAPPDATA%\hermes`; must contain `cron\`) via `atomic_write_json`'s replace helper (text
 variant). It **prints** the paused registration command (`hermes cron create ... --no-agent
 --paused`, local delivery and failure delivery, schedule `30 15 * * 1-5`); it never runs Hermes,
-never edits `cron\jobs.json`. Wrapper at runtime verifies its own hash, interpreter and dispatcher
-module hashes against the map; mismatch -> one generic line, nonzero.
+never edits `cron\jobs.json`. Wrapper runtime (v2 introduced the isolated child, v3 cooperative
+cancel and the hardening below): stdlib-only, runs under whatever python Hermes uses; drops the
+script directory with `sys` alone and imports `os` with `sys.path` narrowed to the stdlib (safe
+under `-S`), then strips cwd and inherited `PYTHONPATH`. It verifies three SHA-256 values baked at
+render time: its own text, the deployment map and the venv python (`CHILD_SHA256`); any mismatch
+-> one generic integrity line, exit 3. It then starts the pinned venv python with `-I` and an
+allowlisted environment (system/profile variables plus `FMP_SYNC_STATE_ROOT`; no Hermes env, no
+`PYTHONPATH`), inserting the baked source paths after the stdlib (before site-packages). On
+Windows the child is created suspended and `CREATE_NO_WINDOW`, assigned to a Job Object with
+`KILL_ON_JOB_CLOSE` and only then resumed (every kernel32 call has explicit ctypes prototypes; an
+assign/resume failure terminates the job: exit 4); elsewhere it gets its own session. The wrapper
+chooses the run id and passes `--run-id`; cancellation follows §1.3. The venv python hash covers
+the venv launcher only, not the base interpreter it starts (LIVE caveat, §6).
 
 ## 2. Tasks
 
@@ -229,7 +255,11 @@ SHA (clean), `.venv_portfolio` version, installed Hermes version + `HERMES_HOME`
 that gateway and manual runs use the same Windows account; (e) optional least-privilege sync user
 (SELECT/INSERT/UPDATE on `equity_historical`, `market_holidays`; no DELETE/TRUNCATE/DDL);
 (f) a disposable schema `obb_disposable_<hex>` the owner creates with synthetic seed and a grant
-without DELETE/TRUNCATE/DDL; (g) installed `hermes cron create --help` output to bind exact flags.
+without DELETE/TRUNCATE/DDL; (g) installed `hermes cron create --help` output to bind exact flags;
+(h) where the DB credentials and the FMP key live for the account that runs the gateway
+(`~/.openbb_platform/user_settings.json` and/or `.env`): the cron child does **not** inherit the
+Hermes environment, and a warmer `.env` (`openbb_platform/tools/portfolio_utils/.env`, loaded on import with override) that sets `DB_*` or `FMP_API_KEY` blocks the cron run as
+`DOTENV_DRIFT`, so both must resolve from `user_settings.json` (confirm yes/no per item).
 **FMP-QUOTA:** plan tier; per-minute, per-day and bandwidth limits; reset boundary/timezone; other
 consumers' reservation (Workspace, MCP, agents, manual runs); this job's allocation (proposed 200/day,
 20/min, per-run 120, bytes/day) and probe allowance; a LIVE test allocation (proposed ≤10 requests).
@@ -255,7 +285,7 @@ batch with HFP-P08 only if its plan is approved before this PR's local CI run.
 - **D3** Lock/state root `%LOCALAPPDATA%\OpenBB\fmp-sync`, same Windows account for gateway and manual runs. *Accept; otherwise a shared ACL'd machine path set in both.*
 - **D4** Manifest-only universe; legacy selector opt-in and labelled. *Accept.*
 - **D5** No built-in quota: execute is BLOCKED until FMP-QUOTA limits are in the map. *Accept.*
-- **D6** Raw child output to `os.devnull`, no private diagnostic file. *Accept; add one later only with ACL and owner consent.*
+- **D6** The child's stderr goes to `os.devnull`; its stdout is piped to the wrapper, which relays only the one validated outcome line and discards the rest. No private diagnostic file. *Accept; add one later only with ACL and owner consent.*
 - **D7** Manual CLI: busy -> exit 75; `--dry-run` stops writing holidays (behaviour change). *Accept.*
 - **D8** Leave `portfolio.position_history` job definition (now lock-guarded); do not run the worker; cutover in HFP-P09-T03. *Accept.*
 - **D9** `fmp_sync` lives in `portfolio_utils`, lazily importing `openbb_agents.hermes_integration`. *Accept; alternative is moving admission glue into `openbb_agents`.*
@@ -266,8 +296,15 @@ batch with HFP-P08 only if its plan is approved before this PR's local CI run.
 - `_analyze_cache_gaps` failure falls back to a full-range fetch and full-history responses are large;
   budget counts requests and bytes but cannot shrink responses (provider scope; no change).
 - `ensure_market_holidays` swallows errors; P07 cannot prove calendar coverage (HFP-P08-T01).
-- DB statements have no timeout under our control; Hermes timeout is the backstop.
-- Hermes v0.22.5 CLI flags, kill semantics on timeout and interpreter selection are unverified (LIVE g).
+- DB statements have no timeout under our control; the wrapper's hard deadline + grace and the
+  Job Object kill are the backstop (Hermes' timeout is outermost).
+- LIVE verification still needed: the installed Hermes `cron create` flags (OPS-ATTEST g); what the
+  gateway does to the wrapper on its own timeout (console event -> cooperative cancel; hard
+  terminate -> the Job Object still kills the child and frees the lock, but no run file is
+  written); which python the gateway runs the wrapper with (any 3.x works, the child is always the
+  venv python); whether the child sees the expected credentials without the Hermes env
+  (OPS-ATTEST h); and that the venv launcher's base interpreter is the attested one (only the
+  launcher is hashed).
 - Uninstrumented writers (Workspace/MCP/LAN) are outside the lock; standing limitation finding.
 - `data_status` stays `UNVALIDATED` until HFP-P08; production jobs must stay paused until then.
 - Conflict check with #1298-#1301: none required; no edits to `openbb_fmp_cached` storage, schema,
@@ -281,7 +318,7 @@ D1–D9 are accepted as recommended:
 - D3: the lock and state root is `%LOCALAPPDATA%\OpenBB\fmp-sync`; the gateway and manual runs use the same Windows account.
 - D4: the universe comes from the manifest only.
 - D5: there is no built-in quota default.
-- D6: raw output goes to devnull.
+- D6: the child's stderr goes to devnull; of its stdout only the one validated outcome line is relayed.
 - D7: a busy lock makes the manual command exit 75, and `--dry-run` no longer writes holidays.
 - D8: the openbb-jobs schedule stays and is now lock-guarded; the worker is not run, and cutover happens in HFP-P09.
 - D9: `fmp_sync` lives in `portfolio_utils` and imports `hermes_integration` lazily.
