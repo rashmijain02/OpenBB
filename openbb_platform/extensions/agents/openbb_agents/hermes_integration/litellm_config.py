@@ -455,7 +455,11 @@ def evaluate_gateway(
                 reasons.append(f"alias_{name}_captured_by_hosted_wildcard")
     for key, pairs in sorted(facts.fallbacks.items()):
         for src, targets in pairs:
-            applies = src == "*" or src in private or not private
+            # litellm also looks up ``<provider>/<group>`` keys for a group named
+            # without a slash (``_provider_prefixed_model_group``), so match on the
+            # last path segment too (a superset, so it fails closed).
+            bare = src.rsplit("/", 1)[-1]
+            applies = src == "*" or src in private or bare in private or not private
             if applies and any(t not in local for t in targets):
                 reasons.append(f"unsafe_fallback:{key}")
                 break

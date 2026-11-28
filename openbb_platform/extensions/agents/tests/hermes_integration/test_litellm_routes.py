@@ -801,3 +801,17 @@ def test_malformed_entry_next_to_valid_local_alias_still_blocks(tmp_path):
     cfg["model_list"].append("hosted-z")
     _, verdict = _verdict(tmp_path, cfg)
     assert verdict.reasons == ["model_list_2_unparsed"]
+
+
+# --- provider-prefixed fallback source keys (#1338 N4) ----------------------------------
+
+
+@pytest.mark.parametrize("src", [f"openai/{ALIAS}", f"hosted_vllm/{ALIAS}"])
+@pytest.mark.parametrize("section", ["router_settings", "litellm_settings"])
+def test_provider_prefixed_fallback_source_applies_to_private_alias(
+    tmp_path, section, src
+):
+    cfg = _local_cfg()
+    cfg[section]["fallbacks"] = [{src: ["hosted-a"]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert f"unsafe_fallback:{section}.fallbacks" in verdict.reasons, verdict.reasons
