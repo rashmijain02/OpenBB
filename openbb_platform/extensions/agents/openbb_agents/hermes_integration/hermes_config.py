@@ -1,6 +1,6 @@
-"""Metadata-only Hermes ``config.yaml`` reader and route policy (#1338-T02).
+"""Metadata-only Hermes ``config.yaml`` readers and route policy (#1338, #1339).
 
-The reader keeps routing facts only. Secret-shaped keys become :class:`Presence`
+The readers keep routing and skill-source facts only. Secret-shaped keys become :class:`Presence`
 and URL credentials are dropped. Nothing here imports or runs Hermes.
 """
 
@@ -30,7 +30,12 @@ CONSUMED_KEYS = (
     "delegation.fallback_providers",
     "auxiliary",
     "auth.adopt_external_logins",
+    "memory.memory_enabled",
+    "memory.user_profile_enabled",
 )
+# Built-in memory and the user profile persist conversation content in the Hermes
+# home and inject it into later prompts; upstream defaults both to on (truthy read).
+MEMORY_SWITCHES = ("memory_enabled", "user_profile_enabled")
 
 # Fail-closed allowlists derived from Hermes ``DEFAULT_CONFIG`` at the pin
 # (rashmijain02/hermes-agent 710fa8a, ``hermes_cli/config_defaults.py``). A
@@ -40,7 +45,6 @@ CONSUMED_KEYS = (
 HARMLESS_TOP_LEVEL = frozenset(
     {
         "_config_version",
-        "agent",
         "approvals",
         "attachments",
         "checkpoints",
@@ -80,10 +84,14 @@ HARMLESS_TOP_LEVEL = frozenset(
     }
 )
 # Top-level keys this policy reads and polices (pinned plus legacy routing keys).
+# ``agent``, ``skills`` and ``curator`` carry the skill-writer switches the skill
+# reader consumes (#1339-T02); they are vetted by shape here.
 POLICED_TOP_LEVEL = frozenset(
     {
+        "agent",
         "auth",
         "auxiliary",
+        "curator",
         "custom_providers",
         "delegation",
         "fallback_model",
@@ -94,6 +102,7 @@ POLICED_TOP_LEVEL = frozenset(
         "model_aliases",
         "platforms",
         "providers",
+        "skills",
         "smart_model_routing",
         "telemetry",
     }
@@ -138,6 +147,18 @@ _URL_KEYS = ("base_url", "url", "api", "inference_base_url")
 # Leaf keys whose value is a credential, never a route: a ``${VAR}`` there is allowed.
 _SECRET_LEAF = re.compile(r"(?:^|_)(?:api_key|key|token|password|secret)$")
 _LABEL = re.compile(r"[^A-Za-z0-9_.-]")
+
+# Dotted keys the skill reader consumes (#1339-T02). The pinned example file omits
+# them, so the fixture takes their defaults from ``hermes_cli/config_defaults.py``.
+SKILL_CONSUMED_KEYS = (
+    "skills.create_dir",
+    "skills.external_dirs",
+    "skills.project_discovery",
+    "skills.inline_shell",
+    "curator.enabled",
+    "auxiliary.background_review.enabled",
+    "agent.disabled_toolsets",
+)
 
 _LOOPBACK_NAMES = {"localhost"}
 # Managed-scope directory default at the pin (``hermes_cli/managed_scope.py``).
@@ -567,6 +588,37 @@ def _scan_surfaces(loaded: dict[str, Any]) -> tuple[list[str], list[str]]:
     return unvetted, issues
 
 
+# Shape checks for the skill-writer keys (#1339-T02). The skills component judges
+# the values; the route policy only refuses shapes the skill reader would ignore.
+_SKILL_BOOL_KEYS = (
+    "skills.project_discovery",
+    "skills.inline_shell",
+    "curator.enabled",
+    "auxiliary.background_review.enabled",
+)
+_SKILL_LIST_KEYS = ("skills.external_dirs", "agent.disabled_toolsets")
+
+
+def _scan_skill_keys(loaded: dict[str, Any]) -> list[str]:
+    issues = [
+        f"{section}_unparsed"
+        for section in ("agent", "skills", "curator")
+        if section in loaded and not isinstance(loaded[section], dict)
+    ]
+    for key in _SKILL_BOOL_KEYS:
+        value = _get(loaded, key)
+        if value is not None and not isinstance(value, bool):
+            issues.append(f"{key.replace('.', '_')}_not_bool")
+    for key in _SKILL_LIST_KEYS:
+        value = _get(loaded, key)
+        if value is not None and not isinstance(value, (str, list)):
+            issues.append(f"{key.replace('.', '_')}_not_list")
+    create_dir = _get(loaded, "skills.create_dir")
+    if create_dir is not None and not isinstance(create_dir, str):
+        issues.append("skills_create_dir_not_str")
+    return issues
+
+
 def _scan_misc(loaded: dict[str, Any]) -> list[str]:
     issues: list[str] = []
     if _set(loaded.get("fallback_model")):  # legacy single fallback route
@@ -578,6 +630,12 @@ def _scan_misc(loaded: dict[str, Any]) -> list[str]:
         issues.append("smart_model_routing_not_disabled")
     if _set(_get(loaded, "memory.provider")):  # external memory providers are hosted
         issues.append("memory_provider_set")
+    # Memory switches default on at the pin: only an explicit ``false`` turns them off.
+    issues += [
+        f"{switch}_not_false"
+        for switch in MEMORY_SWITCHES
+        if _get(loaded, f"memory.{switch}") is not False
+    ]
     # Absent flags keep the pinned default (``False``); any other value counts as on.
     telemetry = loaded.get("telemetry")
     metrics = telemetry.get("shared_metrics") if isinstance(telemetry, dict) else None
@@ -665,12 +723,14 @@ def _managed_overlay(raw: dict[str, Any]) -> dict[str, Any]:
     return loaded
 
 
-def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
-    """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
+def _load_config(path: Path, managed: Path | None) -> tuple[dict[str, Any], list[str]]:
+    """Load ``path`` with the ``managed`` overlay deep-merged on top, as Hermes does.
 
-    Each file is normalised as Hermes ``_load_config_impl`` does before the merge.
-    Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for refused shapes)
-    when either file is unusable.
+    The one loader for route and skill facts: Hermes YAML semantics
+    (:func:`load_hermes_yaml`), each file normalised as ``_load_config_impl`` does
+    before the merge. Returns the merged mapping and the root model keys seen in
+    either file. Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for
+    refused shapes) when either file is unusable.
     """
     user = load_hermes_yaml(Path(path).read_text(encoding="utf-8-sig"))
     if not isinstance(user, dict):
@@ -681,6 +741,16 @@ def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
         raw = _load_mapping(managed, "managed hermes config")
         raw_roots += [k for k in _ROOT_MODEL_KEYS if k in raw]
         loaded = _deep_merge(loaded, _managed_overlay(raw))
+    return loaded, raw_roots
+
+
+def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
+    """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
+
+    Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for refused shapes)
+    when either file is unusable.
+    """
+    loaded, raw_roots = _load_config(path, managed)
     host, port, base_path, scheme = _split(_get(loaded, "model.base_url"))
     aux, aux_unvetted, aux_issues = _read_auxiliary(loaded.get("auxiliary"))
     surf_unvetted, surf_issues = _scan_surfaces(loaded)
@@ -710,6 +780,7 @@ def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
         ],
         route_issues=[
             *_scan_misc(loaded),
+            *_scan_skill_keys(loaded),
             *_scan_delegation(loaded),
             *_scan_providers(loaded),
             *surf_issues,
@@ -737,6 +808,66 @@ def _aux_reasons(
         if aux.model is not None and aux.model not in profile.private_alias_allowlist:
             reasons.append(f"auxiliary_{task}_model_not_private_alias")
     return reasons
+
+
+class SkillFacts(BaseModel):
+    """Skill-source and skill-writer facts from a Hermes config.
+
+    ``None`` means the key is unset or not a boolean, so the upstream default
+    applies. Directory strings are kept for path checks and never reported.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    create_dir: str | None = None
+    external_dirs: list[str] = Field(default_factory=list)
+    project_discovery: bool | None = None
+    inline_shell: bool | None = None
+    curator_enabled: bool | None = None
+    background_review_enabled: bool | None = None
+    disabled_toolsets: list[str] = Field(default_factory=list)
+
+
+def _bool_or_none(value: Any) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _str_list(value: Any) -> list[str]:
+    """Scalar-or-list config value as stripped strings (upstream ``parse_config_string_list``)."""
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            try:
+                parsed = yaml.safe_load(text)
+            except yaml.YAMLError:
+                parsed = None
+            value = parsed if isinstance(parsed, list) else [text]
+        else:
+            value = [text]
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def read_skill_facts(path: Path, managed: Path | None = None) -> SkillFacts:
+    """Read skill facts from ``path`` with the ``managed`` overlay merged on top.
+
+    Raises ``OSError``/``ValueError`` when either file is unusable.
+    """
+    loaded, _ = _load_config(path, managed)
+    create_dir = _get(loaded, "skills.create_dir")
+    create_dir = str(create_dir).strip() if isinstance(create_dir, str) else ""
+    return SkillFacts(
+        create_dir=create_dir or None,
+        external_dirs=_str_list(_get(loaded, "skills.external_dirs")),
+        project_discovery=_bool_or_none(_get(loaded, "skills.project_discovery")),
+        inline_shell=_bool_or_none(_get(loaded, "skills.inline_shell")),
+        curator_enabled=_bool_or_none(_get(loaded, "curator.enabled")),
+        background_review_enabled=_bool_or_none(
+            _get(loaded, "auxiliary.background_review.enabled")
+        ),
+        disabled_toolsets=_str_list(_get(loaded, "agent.disabled_toolsets")),
+    )
 
 
 def evaluate_route(facts: RouteFacts, profile: FinanceRuntimeProfile) -> RouteVerdict:

@@ -6,6 +6,7 @@ non-loopback network connections refused. All data is synthetic.
 
 from __future__ import annotations
 
+import secrets
 import socket
 import sys
 from pathlib import Path
@@ -57,3 +58,12 @@ def deny_non_loopback(monkeypatch):
         return real_connect(self, address)
 
     monkeypatch.setattr(socket.socket, "connect", guarded)
+
+
+@pytest.fixture(autouse=True)
+def projection_key(tmp_path_factory, monkeypatch):
+    """A synthetic per-test projection ID key in a temp file outside the repo."""
+    path = tmp_path_factory.mktemp("projection-key") / "projection.key"
+    path.write_bytes(secrets.token_hex(32).encode())
+    monkeypatch.setenv("HFP_PROJECTION_ID_KEY", str(path))
+    return path

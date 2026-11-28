@@ -16,6 +16,7 @@ attributes set with ``setattr(litellm, key, value)``, such as
 from __future__ import annotations
 
 import fnmatch
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -583,6 +584,29 @@ def evaluate_gateway(
     reasons += [f"unvetted_key:{key}" for key in facts.unvetted_keys]
     reasons = list(dict.fromkeys(reasons))
     return RouteVerdict(blocked=bool(reasons), reasons=reasons)
+
+
+def select_private_aliases(
+    facts: GatewayFacts,
+    profile: FinanceRuntimeProfile,
+    served: Collection[str] | None = None,
+) -> tuple[str, ...]:
+    """Aliases the private operation may use; empty means the operation must block.
+
+    An alias qualifies only if it is allowlisted and served, and the gateway verdict
+    admits the private route: every allowlisted alias then sits on an allowlisted
+    local runtime, in a group with no hosted member, wildcard capture or hosted
+    fallback, with logging and callbacks off. ``served`` is the alias list the
+    gateway reports for the scoped key; ``None`` means the aliases in the config.
+    Preflight and projection callers use this instead of picking an alias.
+    """
+    if evaluate_gateway(facts, profile).blocked:
+        return ()
+    allowed = set(profile.private_alias_allowlist)
+    names = {a.name for a in facts.aliases}
+    if served is not None:
+        names &= set(served)
+    return tuple(sorted(names & allowed))
 
 
 def gateway_report(facts: GatewayFacts, verdict: RouteVerdict) -> GatewayReport:

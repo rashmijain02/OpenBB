@@ -43,6 +43,7 @@ Unannotated parameters and complex types fall back to ``{}``.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import inspect
 import json
@@ -254,8 +255,14 @@ def _call_tool_safe(
         return [json.dumps({"error": "tool_failed", "tool": tool_name})], True
 
 
-async def _serve() -> None:
-    """Build and run the MCP server over stdio."""
+async def _serve(
+    policy_profile: str | None = None, principal: str | None = None
+) -> None:
+    """Build and run the MCP server over stdio.
+
+    ``policy_profile`` is opt-in (#1339). When it is ``None`` (the default)
+    no policy code is imported and the server behaves exactly as before.
+    """
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
     from mcp.types import TextContent, Tool
@@ -263,6 +270,11 @@ async def _serve() -> None:
     server = Server("openbb-agents")
     discovered = collect_tools()
     tool_index = {t["name"]: t for t in discovered}
+    gate = None
+    if policy_profile is not None:
+        from openbb_agents.hermes_integration.access import build_tool_gate
+
+        gate = build_tool_gate(policy_profile, principal)
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -277,6 +289,13 @@ async def _serve() -> None:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        if gate is not None:
+            # Server-side capability check (#1339) before any tool code
+            # runs. The decision uses the launch-bound principal only;
+            # model-supplied arguments cannot grant access.
+            decision = gate.decide_tool(name, arguments)
+            if not decision.allowed:
+                raise _McpToolError(gate.denial_payload(name, decision))
         descriptor = tool_index.get(name)
         # Delegate to the testable helper — see _call_tool_safe for the
         # LLM-boundary sanitization contract (bd-9ck7 / bd-lq4l). The
@@ -305,10 +324,27 @@ async def _serve() -> None:
         await server.run(read_stream, write_stream, init_opts)
 
 
-def main() -> None:
-    """Console-script entry point."""
+def main(argv: list[str] | None = None) -> None:
+    """Console-script entry point.
+
+    ``--policy-profile hermes-finance`` enables the server-side capability
+    gate (#1339) for the launch-bound ``--principal``. Without it the server
+    is ungated, as before.
+    """
+    parser = argparse.ArgumentParser(prog="openbb-agents-mcp")
+    parser.add_argument("--policy-profile", choices=["hermes-finance"])
+    parser.add_argument("--principal")
+    args = parser.parse_args(argv)
+    if args.principal is not None and args.policy_profile is None:
+        # A principal without a profile would silently serve ungated.
+        parser.error("--principal requires --policy-profile")
     logging.basicConfig(level=logging.WARNING)
-    asyncio.run(_serve())
+    if args.policy_profile is None:
+        asyncio.run(_serve())
+    else:
+        asyncio.run(
+            _serve(policy_profile=args.policy_profile, principal=args.principal)
+        )
 
 
 if __name__ == "__main__":

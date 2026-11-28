@@ -501,16 +501,17 @@ class _Backend(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         srv = self.server
-        srv.hits += 1  # count only; request bodies are never kept
+        srv.hits += 1
         length = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(length)
+        body_in = self.rfile.read(length)
+        if srv.record:  # synthetic prompts only, kept in memory to be scanned
+            srv.bodies.append(body_in.decode("utf-8", "replace"))
         if srv.mode == "timeout":
             time.sleep(3)
-        status, body = (
-            (429, b'{"error":{"message":"rate limited"}}')
-            if (srv.mode == "ratelimit")
-            else (200, _OK_BODY)
-        )
+        status, body = {
+            "ratelimit": (429, b'{"error":{"message":"rate limited"}}'),
+            "servererror": (500, b'{"error":{"message":"internal error"}}'),
+        }.get(srv.mode, (200, _OK_BODY))
         try:
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -522,9 +523,9 @@ class _Backend(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def _serve(mode="ok"):
+def _serve(mode="ok", record=False):
     srv = ThreadingHTTPServer(("127.0.0.1", 0), _Backend)
-    srv.mode, srv.hits = mode, 0
+    srv.mode, srv.hits, srv.record, srv.bodies = mode, 0, record, []
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     try:
@@ -599,13 +600,13 @@ def _no_sentinel(*texts):
 
 
 @pytest.mark.requires_agents
-@pytest.mark.parametrize("mode", ["refused", "timeout", "ratelimit"])
+@pytest.mark.parametrize("mode", ["refused", "timeout", "ratelimit", "servererror"])
 def test_inprocess_router_refused_local_backend_makes_no_hosted_connect(
     tmp_path, monkeypatch, caplog, capsys, litellm_mod, egress, mode
 ):
     """Admitted config + failing local backend: exception, zero hosted requests."""
     with _serve("ok") as (hosted, hosted_port), _serve(
-        "timeout" if mode == "timeout" else "ratelimit"
+        mode if mode in ("timeout", "servererror") else "ratelimit"
     ) as (local, live_port):
         local_port = _closed_port() if mode == "refused" else live_port
         cfg = _local_cfg(local_port)
@@ -670,6 +671,145 @@ def test_inprocess_request_level_fallback_bypasses_config_policy(
             model=ALIAS, messages=_prompt(), timeout=2, fallbacks=["hosted-a"]
         )
         assert hosted.hits >= 1
+
+
+def _with_hosted_stand_in(cfg, hosted_port):
+    cfg["model_list"][1]["litellm_params"] = {
+        "model": "openai/hosted-model-a",
+        "api_base": f"http://127.0.0.1:{hosted_port}/v1",
+        "api_key": "os.environ/SYNTHETIC_HOSTED_KEY_ENV",
+    }
+    return cfg
+
+
+def _proxy_maps_key_disable_fallbacks(litellm) -> bool:
+    """AST check: the 1.106.6 proxy copies key metadata ``disable_fallbacks`` onto
+    the request (``data["disable_fallbacks"] = key_metadata["disable_fallbacks"]``).
+    """
+    import ast
+
+    src = Path(litellm.__file__).parent / "proxy" / "litellm_pre_call_utils.py"
+    tree = ast.parse(src.read_text(encoding="utf-8"))
+
+    def sub(node, name, key):
+        return (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == name
+            and isinstance(node.slice, ast.Constant)
+            and node.slice.value == key
+        )
+
+    return any(
+        isinstance(n, ast.Assign)
+        and any(sub(t, "data", "disable_fallbacks") for t in n.targets)
+        and sub(n.value, "key_metadata", "disable_fallbacks")
+        for n in ast.walk(tree)
+    )
+
+
+@pytest.mark.requires_agents
+@pytest.mark.parametrize("mode", ["refused", "servererror", "ratelimit"])
+def test_inprocess_key_disable_fallbacks_stops_request_level_fallbacks(
+    tmp_path, monkeypatch, litellm_mod, egress, mode
+):
+    """Key metadata ``disable_fallbacks: true`` (copied onto every request by the
+    proxy) stops a caller-supplied ``fallbacks=[hosted]`` from reaching hosted.
+    """
+    assert _proxy_maps_key_disable_fallbacks(litellm_mod)
+    with _serve("ok") as (hosted, hosted_port), _serve(
+        "ratelimit" if mode == "refused" else mode
+    ) as (_local, live_port):
+        local_port = _closed_port() if mode == "refused" else live_port
+        cfg = _with_hosted_stand_in(_local_cfg(local_port), hosted_port)
+        router = _router(litellm_mod, cfg, monkeypatch)
+        with pytest.raises(Exception):
+            router.completion(
+                model=ALIAS,
+                messages=_prompt(),
+                timeout=2,
+                fallbacks=["hosted-a"],
+                disable_fallbacks=True,
+            )
+        assert hosted.hits == 0, "request-level fallback reached the hosted alias"
+        assert egress == []
+
+
+@pytest.fixture
+def projection_mod(monkeypatch):
+    """Import ``projection`` in the litellm venv (``access`` needs the MCP models)."""
+    try:
+        import openbb_mcp_server  # noqa: F401  pylint: disable=unused-import
+    except ImportError:
+        ext = Path(__file__).resolve().parents[3] / "mcp_server"
+        monkeypatch.syspath_prepend(str(ext))
+    from openbb_agents.hermes_integration import projection
+
+    return projection
+
+
+def _projected_prompt(projection):
+    from openbb_agents.hermes_integration.access import HERMES_FINANCE_POLICY
+
+    artifact = {
+        "run_id": SENTINELS["account"],
+        "artifact_id": SENTINELS["name"],
+        "findings": ["CONCENTRATION_HIGH", SENTINELS["amount"]],
+        "metrics": {"market_value": SENTINELS["amount"]},
+        "aggregates": {"top_weight": 0.31, "total_value": 4242424.42},
+        "as_of": "2026-01-02",
+    }
+    proj = projection.project(
+        artifact,
+        gate=HERMES_FINANCE_POLICY,
+        principal="hermes_runtime",
+        fields=sorted(projection.EVIDENCE_PROJECTION_FIELDS),
+    )
+    return proj, [{"role": "user", "content": proj.model_dump_json()}]
+
+
+@pytest.mark.requires_agents
+def test_inprocess_projection_prompt_keeps_sentinels_out_of_logs_callbacks_requests(
+    tmp_path, monkeypatch, caplog, capsys, litellm_mod, egress, projection_mod
+):
+    """A projection-built prompt through the real Router: INFO logs (set_verbose
+    off), input/success callbacks and the provider request carry no sentinel.
+    A raw prompt through the same seams is the positive control.
+    """
+    from litellm.integrations.custom_logger import CustomLogger
+
+    seen: list[str] = []
+    done = threading.Event()
+
+    class Capture(CustomLogger):
+        def log_pre_api_call(self, model, messages, kwargs):
+            seen.append(repr(messages))
+
+        def log_success_event(self, kwargs, response_obj, start_time, end_time):
+            seen.append(repr(kwargs.get("messages")) + repr(response_obj))
+            done.set()
+
+    monkeypatch.setattr(litellm_mod, "callbacks", [Capture()])
+    with _serve("ok", record=True) as (local, local_port):
+        cfg = _local_cfg(local_port)
+        cfg["model_list"] = cfg["model_list"][:1]
+        router = _router(litellm_mod, cfg, monkeypatch)
+        assert litellm_mod.set_verbose is False
+        proj, messages = _projected_prompt(projection_mod)
+        with caplog.at_level(logging.INFO):
+            router.completion(model=ALIAS, messages=messages, timeout=5)
+            assert done.wait(5), "success callback never ran"
+        out = capsys.readouterr()
+        assert local.hits == 1 and proj.run_id in local.bodies[0]
+        assert seen, "callbacks captured nothing"
+        assert not _no_sentinel(caplog.text, out.out, out.err, *seen, *local.bodies)
+        assert projection_mod.scan_text("\n".join(seen + local.bodies)) == []
+        # positive control: the same seams do see a raw prompt
+        seen.clear()
+        done.clear()
+        router.completion(model=ALIAS, messages=_prompt(), timeout=5)
+        assert done.wait(5)
+        assert _no_sentinel(*seen) and _no_sentinel(local.bodies[1])
 
 
 @pytest.mark.requires_agents

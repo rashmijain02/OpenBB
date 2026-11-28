@@ -52,6 +52,9 @@ class FinanceRuntimeProfile(_Strict):
     # Loopback base URLs of allowlisted local inference runtimes (#1338-T03).
     local_backends: list[str] = Field(default_factory=list)
     skills_roots: list[str] = Field(default_factory=list)
+    # Admitted local-tier skills (#1339-T02): POSIX path relative to
+    # ``$HERMES_HOME/skills`` -> ``skills_admission.tree_sha256`` pin.
+    admitted_skills: dict[str, str] = Field(default_factory=dict)
 
 
 def load_profile(path: Path) -> FinanceRuntimeProfile:

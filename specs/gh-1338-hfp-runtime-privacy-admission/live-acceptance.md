@@ -1,7 +1,8 @@
 # Live acceptance steps (owner-run)
 
-Status: partial. Sections for #1338 T02 (step L2) and T03 (step L3) are written. L1, L4 and L5 stay in
-`plan.md` section 4 until their code lands. Nothing here is executed by agents.
+Status: partial. Sections for #1338 T02 (step L2), T03 (step L3) and #1339 T02 (step L4) and T03 (step L5) are
+written. L1 stays in `plan.md` section 4 until its code lands. Nothing here is executed by agents, except the
+synthetic-home scan in L5 step 3, which the plan allows.
 
 ## L2: #1338 T02, Hermes/WebUI and provider handshake matrix
 
@@ -106,3 +107,104 @@ Notes for the owner:
   outside `private_alias_allowlist`, which is what the master key or an unscoped key produce.
 - The preflight cannot see CLI flags or env vars of the running proxy (`--detailed_debug`, `LITELLM_LOG`), so
   step 4 is a manual check.
+
+## L4: #1339 T02, read-only admitted skills and quarantined proposals
+
+Code-only parts (skill reader, hash pin, drift, write probes, search-root recomputation, proposal writer,
+shadowing, ACL detection on a temp dir) are tested in
+`openbb_platform/extensions/agents/tests/hermes_integration/test_skill_admission.py`. This step applies the chosen
+protection to the qualification home and proves the preflight sees it. Decision O6: a same-user deny ACE plus the
+hash pin is **tamper-evident, not immutable**. The owner can rewrite the DACL, and the ACE does not stop file
+deletion (denying DELETE on files also breaks plain reads, see below); the hash pin reports both as `drift` or
+`missing`. A separate runtime identity for real read-only access stays with OPS-ATTEST.
+
+```text
+Live acceptance for #1339 (HFP-P02 skills admission) - normal (non-elevated) pwsh 7 window
+Preconditions: L2 done (<qual-home> exists, pinned runtime); the owner's own Hermes home is never used.
+  Hermes has run once in <qual-home>, so its bundled-skill seeding has finished BEFORE the ACE is applied.
+1. Write <qual-home>\config.yaml from fixtures/hermes/config-finance-safe.yaml (skills/curator/background_review
+   and agent.disabled_toolsets: [skills] exactly as in the fixture). Create <qual-quarantine> OUTSIDE <qual-home>.
+2. Decide the admitted set. Remove every other skill dir from <qual-home>\skills (bundled seeds included) or
+   admit it too. For each admitted dir (POSIX path relative to <qual-home>\skills):
+     python -c "from openbb_agents.hermes_integration.skills_admission import tree_sha256 as t; print(t(r'<qual-home>\skills\<rel>'))"
+   and record `admitted_skills: {<rel>: <sha256>}` in the owner profile.
+3. Before the ACE: hermes_preflight --profile <owner profile> --hermes-config <qual-home>\config.yaml `
+     --skills-root <qual-home>\skills --skills-quarantine <qual-quarantine> --probe none --format text
+                                    Expect: skills failed_layer=skills, detail contains admitted_dir_writable
+4. $sid = (whoami /USER /FO CSV /NH).Split(',')[-1].Trim('"')
+   icacls <qual-home>\skills /deny "*${sid}:(OI)(CI)(WD,AD,WEA,WA,DC)"
+                                    (Do NOT add D: denying DELETE on files also denies reads for this user.)
+5. Re-run step 3.                   Expect: skills level=admitted detail=skills_admitted: n=<count>
+6. Tamper check: Set-Content -Path <qual-home>\skills\<rel>\SKILL.md -Value x
+                                    Expect: Access denied
+7. Hermes session with the finance profile; ask it to create or edit a skill (synthetic text only).
+                                    Expect: no skill_manage tool offered; no file under <qual-home>\skills changes
+                                    (re-run step 5: still admitted, same hashes).
+8. Drift check (owner, deliberate): remove the ACE (icacls <qual-home>\skills /remove:d "*$sid" /T), append one byte
+   to an admitted SKILL.md, re-apply step 4, re-run step 3.
+                                    Expect: exit 2, skills failed_layer=skills, detail contains drift:<rel>.
+                                    Then restore the byte (or re-pin) and re-run step 5.
+Cleanup: keep the ACE in place for qualification. To undo: icacls <qual-home>\skills /remove:d "*$sid" /T
+Report back: exit codes and the `skills ...` lines from steps 3, 5 and 8, and any Expect line that did not match.
+```
+
+Notes for the owner:
+
+- Proposals go only through `skills_admission.write_proposal`, into `<qual-quarantine>`. The preflight blocks a
+  quarantine inside any Hermes search root and any proposal whose directory or frontmatter name shadows an
+  admitted skill.
+- Hermes' `skills_sync` seeds bundled skills into the local tier on first run. Any file under `<qual-home>\skills`
+  that is not part of an admitted skill blocks with `unadmitted_content`, so step 2 must cover the seeds.
+- `skill_manage` is removed only by `agent.disabled_toolsets: [skills]`, which also removes `skills_list` and
+  `skill_view` (upstream subtracts disabled toolsets at tool granularity). How admitted skills then load (for
+  example `skills.auto_load` or slash commands) is not verified at the pin; step 7 and T03 / HFP-P05 confirm it.
+- `skills.external_dirs` must be empty for P0. Hash-pinned external dirs are not implemented.
+
+## L5: #1339 T03, one end-to-end Hermes turn with synthetic sentinels
+
+Code-only parts (field allowlist, re-identification denial, sentinel scanner, egress guard, the loopback model
+capture, and the in-process LiteLLM 1.106.6 Router under refused / timeout / 429 / 500 backends with key
+`disable_fallbacks`) are tested in `test_projection_routing.py` and `test_litellm_routes.py` (`requires_agents`).
+The code-only real path is `policy_probe --synthetic --projection | projection --scan-stdin` (exit 0, `hits=0`).
+This step proves the same boundary in one real Hermes turn. All data is synthetic: the sentinels are the values in
+`projection.SENTINELS` (an account, an amount and a name), never real holdings.
+
+```text
+Live acceptance for #1339 (HFP-P02 evidence projections) - normal (non-elevated) pwsh 7 window
+Preconditions: L2, L3 and L4 done in <qual-home>; the LiteLLM proxy runs the admitted finance-local config; the
+finance virtual key carries metadata {"disable_fallbacks": true}; the owner's own Hermes home is never used.
+$py = <worktree python>; $env:PYTHONPATH = <absolute path to openbb_platform\extensions\agents>
+Projection ID key (once per deployment): <key-file> is a new file OUTSIDE every git work tree, e.g. under
+  <secret-dir>; write 32 random bytes as hex, never commit, print or paste it:
+  & $py -c "import secrets,sys; open(sys.argv[1],'x').write(secrets.token_hex(32))" <key-file>
+  $env:HFP_PROJECTION_ID_KEY = '<key-file>'   (projection.project() fails closed without it:
+  projection_key_unconfigured; projection_key_in_repo if the file is inside a work tree)
+Preflight reports `disable_fallbacks: unverified`: the key metadata above cannot be checked statically, so
+  confirm it in the LiteLLM admin UI before step 2.
+1. Preflight: & $py -m openbb_agents.hermes_integration.hermes_preflight <the L3 arguments>
+                                    Expect: exit 0, route level=local for the finance alias
+2. In <qual-home>, one Hermes turn through the finance alias. The prompt carries only an EvidenceProjection built
+   by projection.project() from a sentinel artifact (all projection fields, principal hermes_runtime); paste its
+   JSON, never the artifact.       Expect: an answer that cites [[metric:run_...:art_...:<field>]] refs only
+3. Agent-run scan of the synthetic home (bytes, so state.db is covered):
+   Get-ChildItem <qual-home>\memories,<qual-home>\sessions,<qual-home>\logs,<qual-home>\state.db -Recurse -File |
+     ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Latin1) } |
+     & $py -m openbb_agents.hermes_integration.projection --scan-stdin
+                                    Expect: exit 0, scan_result hits=0
+4. Owner only: a count-only query on the LiteLLM request history for each sentinel value (spend logs / request
+   log table). Never print rows.  Expect: 0 for each sentinel
+5. Owner: stop the local model runtime (not the proxy), re-run the turn from step 2.
+                                    Expect: an explicit unavailable / error state; zero requests on any hosted alias
+                                    (count-only check as in step 4, by model group)
+6. Restart the local runtime; re-run step 1.
+                                    Expect: exit 0 again
+Report back: exit codes, the scan_result line from step 3, the counts from steps 4 and 5, and any Expect line
+that did not match. Never paste prompts, responses or rows.
+```
+
+Notes for the owner:
+
+- Step 5 depends on the key metadata. Without `disable_fallbacks`, a caller-supplied `fallbacks=[hosted]` request
+  field still reaches a hosted alias on an admitted config (`test_inprocess_request_level_fallback_bypasses_config_policy`).
+- Keep LiteLLM at INFO. DEBUG (`--detailed_debug`, `LITELLM_LOG=DEBUG`, `set_verbose`) writes prompts to logs even
+  with `turn_off_message_logging: true`, so the projection is the only thing that keeps sentinels out.
