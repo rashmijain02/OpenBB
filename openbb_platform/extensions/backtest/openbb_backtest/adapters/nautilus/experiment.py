@@ -566,8 +566,9 @@ def validation_report(  # pylint: disable=too-many-locals
     """Selection-aware ``ValidationReport`` (configs as PBO columns, N from ledger).
 
     Statistics run on the out-of-sample sessions of the matrix (the union of
-    the fold test windows); the verdict is capped at ``fragile`` when PBO is
-    undefined or the matrix is incomplete (D3).
+    the fold test windows); the verdict is capped at ``fragile`` when PBO or DSR
+    is undefined or the matrix is incomplete (D3). An undefined DSR stays
+    ``None`` with its reason code (CODE-1), never 0.0.
     """
     # pylint: disable=import-outside-toplevel
     import math
@@ -612,13 +613,16 @@ def validation_report(  # pylint: disable=too-many-locals
         if oos_metrics.sharpe > 0.0
         else 0.0
     )
-    dsr = stats.deflated_sharpe if math.isfinite(stats.deflated_sharpe) else 0.0
+    dsr = stats.deflated_sharpe
+    if dsr is not None and not math.isfinite(dsr):
+        dsr = 0.0
     return ValidationReport(
         method="cpcv" if folds.method == "cpcv" else "wfo",
         folds=fold_results,
         oos_metrics=oos_metrics,
         pbo=stats.pbo,
         deflated_sharpe=dsr,
+        dsr_undefined_reason=stats.dsr_undefined_reason,
         min_backtest_length_years=minbtl,
         verdict=capped_verdict(
             pbo=stats.pbo,

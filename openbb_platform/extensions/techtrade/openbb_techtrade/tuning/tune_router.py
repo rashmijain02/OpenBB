@@ -135,6 +135,11 @@ def _fmt_pbo(pbo: Any, spec: str = ".2f") -> str:
     return "undefined" if pbo is None else format(pbo, spec)
 
 
+def _fmt_dsr(dsr: Any, spec: str = ".2f") -> str:
+    """Format a DSR; ``None`` (undefined on the nautilus backend) is "undefined"."""
+    return "undefined" if dsr is None else format(dsr, spec)
+
+
 def _reason_for(verdict: str, report: Any, *, no_op: bool) -> str:
     """Build the human-stable reason string (Q-F + Q-F guard 4 stable shape)."""
     if no_op:
@@ -142,7 +147,7 @@ def _reason_for(verdict: str, report: Any, *, no_op: bool) -> str:
     pbo = getattr(report, "pbo", float("nan"))
     dsr = getattr(report, "deflated_sharpe", float("nan"))
     # Stable field order + 2-decimal precision so two runs produce identical strings.
-    return f"verdict={verdict} (pbo={_fmt_pbo(pbo)}, dsr={dsr:.2f})"
+    return f"verdict={verdict} (pbo={_fmt_pbo(pbo)}, dsr={_fmt_dsr(dsr)})"
 
 
 @router.command(
@@ -266,7 +271,7 @@ async def tune(  # pylint: disable=too-many-arguments
             segment,
             verdict,
             _fmt_pbo(getattr(report, "pbo", None), ""),
-            getattr(report, "deflated_sharpe", None),
+            _fmt_dsr(getattr(report, "deflated_sharpe", None), ""),
         )
 
     reason = _reason_for(verdict, report, no_op=no_op)

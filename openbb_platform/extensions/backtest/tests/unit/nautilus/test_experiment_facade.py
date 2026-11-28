@@ -28,9 +28,7 @@ from openbb_backtest.routers import run_router as rr, validate_router as vr
 from openbb_nautilus_worker.catalog_build import DATA_ROOT_ENV
 
 START, END = "2024-01-02", "2024-03-28"
-SESSIONS = [
-    ts.date().isoformat() for ts in sessions_in_range(START, END, "XNYS")
-]
+SESSIONS = [ts.date().isoformat() for ts in sessions_in_range(START, END, "XNYS")]
 EXEC = {"fill_timing": "same_close"}
 GRID = {
     "weights": [
@@ -59,7 +57,9 @@ def _bars() -> dict[str, list[list[str]]]:
 @pytest.fixture(scope="module")
 def snap(tmp_path_factory) -> Path:
     path = tmp_path_factory.mktemp("snap") / "snap"
-    golden._snapshot({"bars": _bars()}, SESSIONS, path)  # pylint: disable=protected-access
+    golden._snapshot(
+        {"bars": _bars()}, SESSIONS, path
+    )  # pylint: disable=protected-access
     return path
 
 
@@ -86,7 +86,9 @@ def _options(tmp: Path, snap: Path, *extra: str, exports: list | None = None):
     return backend.NautilusOptions(**{**opts.__dict__, "export": counting})
 
 
-def _config(strategy="target_weight_rebalance", universe=("AAA", "BBB")) -> BacktestConfig:
+def _config(
+    strategy="target_weight_rebalance", universe=("AAA", "BBB")
+) -> BacktestConfig:
     return BacktestConfig(
         strategy=strategy,
         universe=list(universe),
@@ -250,7 +252,21 @@ def test_validate_without_grid_counts_external_trials(tmp_path, monkeypatch, sna
     )
     assert report.experiment.n_trials_dsr == 100
     assert report.pbo is None, "undefined PBO is None, never 0.0"
-    assert report.verdict in ("fragile", "overfit")
+    # CODE-1: one ok config cannot estimate V, so N=100 cannot deflate the
+    # Sharpe; DSR is undefined (None + reason), never the undeflated PSR.
+    assert report.deflated_sharpe is None
+    assert report.dsr_undefined_reason == "dsr_undefined_insufficient_variance"
+    expected = "overfit" if report.oos_metrics.sharpe <= 0.0 else "fragile"
+    assert report.verdict == expected
+    # N == 1 keeps the PSR (benchmark 0): a number in [0, 1], no reason code.
+    alone = _validate(
+        monkeypatch,
+        _options(tmp_path / "n1", snap),
+        {**BASE, "weights": GRID["weights"][0]},
+    )
+    assert alone.experiment.n_trials_dsr == 1
+    assert alone.dsr_undefined_reason is None
+    assert alone.deflated_sharpe is not None and 0.0 <= alone.deflated_sharpe <= 1.0
 
 
 def test_sweep_through_real_worker(tmp_path, monkeypatch, snap, clean, no_legacy):
@@ -320,7 +336,9 @@ def test_tearsheet_nautilus_through_real_worker(tmp_path, monkeypatch, snap, no_
         vr.tearsheet(_config("buy_and_hold", ["AAA"]), strategy_params=HOLD)
     ).results
     direct = rr.execute_run(
-        _config("buy_and_hold", ["AAA"]), strategy_params=HOLD, nautilus=_options(tmp_path, snap)
+        _config("buy_and_hold", ["AAA"]),
+        strategy_params=HOLD,
+        nautilus=_options(tmp_path, snap),
     )
     from openbb_backtest.analytics import build_tearsheet, to_returns
 
@@ -332,7 +350,9 @@ def test_tearsheet_nautilus_through_real_worker(tmp_path, monkeypatch, snap, no_
 def test_reconcile_nautilus_is_diagnostic(tmp_path, monkeypatch, snap):
     monkeypatch.setattr(rr, "_nautilus_options", lambda: _options(tmp_path, snap))
     monkeypatch.setattr(rr, "_build_feed", lambda config, provider: _BarsFeed())
-    report = rr.reconcile(_config("buy_and_hold", ["AAA"]), strategy_params=HOLD).results
+    report = rr.reconcile(
+        _config("buy_and_hold", ["AAA"]), strategy_params=HOLD
+    ).results
     assert report.diagnostic_only is True
     assert report.reference_engine == "nautilus"
     assert report.candidate_engine == "event"
@@ -398,5 +418,7 @@ def test_classify_protocol_errors(exc, status, code):
 def test_classify_unsupported_semantics_is_excluded():
     from openbb_backtest.errors import UnsupportedSemanticsError
 
-    out = experiment.classify(UnsupportedSemanticsError("x", reason="universe_mismatch"))
+    out = experiment.classify(
+        UnsupportedSemanticsError("x", reason="universe_mismatch")
+    )
     assert (out.status, out.reason) == ("excluded", "unsupported_semantics")

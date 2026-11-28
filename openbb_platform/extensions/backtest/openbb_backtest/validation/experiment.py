@@ -141,6 +141,7 @@ def _run(args: argparse.Namespace) -> int:
         "matrix_sha256": summary.matrix_sha256,
         "pbo": report.pbo,
         "deflated_sharpe": report.deflated_sharpe,
+        "dsr_undefined_reason": report.dsr_undefined_reason,
         "verdict": report.verdict,
         "new_attempts": outcome.appended,
     }

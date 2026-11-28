@@ -452,7 +452,19 @@ class ValidationReport(Data):
             " (nautilus backend only, never 0.0)."
         )
     )
-    deflated_sharpe: float = Field(description="Deflated Sharpe ratio.")
+    deflated_sharpe: float | None = Field(
+        description=(
+            "Deflated Sharpe ratio; None when undefined (nautilus backend only,"
+            " see dsr_undefined_reason; never 0.0)."
+        )
+    )
+    dsr_undefined_reason: Literal["dsr_undefined_insufficient_variance"] | None = Field(
+        default=None,
+        description=(
+            "Why deflated_sharpe is None: N > 1 trials but fewer than two ok"
+            " configurations (or zero cross-config Sharpe variance)."
+        ),
+    )
     min_backtest_length_years: float = Field(
         description="Minimum backtest length (years) to trust the target Sharpe."
     )

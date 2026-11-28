@@ -85,12 +85,13 @@ def main(
         return None
 
     report = result.results
+    dsr = getattr(report, "deflated_sharpe", float("nan"))
     logger.info(
-        "verdict=%s  pbo=%s  dsr=%.3f  oos_sharpe=%.3f",
+        "verdict=%s  pbo=%s  dsr=%s  oos_sharpe=%.3f",
         report.verdict,
         # None = undefined (nautilus backend, #1357); never shown as 0.0
         ("undefined" if getattr(report, "pbo", None) is None else f"{report.pbo:.3f}"),
-        getattr(report, "deflated_sharpe", float("nan")),
+        "undefined" if dsr is None else f"{dsr:.3f}",
         getattr(getattr(report, "oos_metrics", None), "sharpe", float("nan")),
     )
     return report

@@ -90,15 +90,21 @@ def verdict(
 def capped_verdict(  # pylint: disable=too-many-arguments
     *,
     pbo: float | None,
-    dsr: float,
+    dsr: float | None,
     oos_sharpe: float,
     matrix_complete: bool,
     thresholds: dict[str, float] | None = None,
 ) -> VerdictLiteral:
-    """Nautilus-path verdict (#1357 D3): capped at ``fragile`` when PBO is undefined
-    or the trial matrix is incomplete. ``overfit`` triggers from DSR / OOS Sharpe
-    still win; an undefined PBO never helps the reading.
+    """Nautilus-path verdict (#1357 D3): capped at ``fragile`` when PBO or DSR is
+    undefined (``None``) or the trial matrix is incomplete. The remaining
+    ``overfit`` triggers (PBO, DSR, OOS Sharpe) still win; an undefined statistic
+    never helps the reading and is never read as 0.0.
     """
+    if dsr is None:
+        cut = _effective_thresholds(thresholds)
+        if oos_sharpe <= 0.0 or (pbo is not None and pbo >= cut["pbo_overfit"]):
+            return "overfit"
+        return "fragile"
     if pbo is None:
         cut = _effective_thresholds(thresholds)
         if dsr < cut["dsr_overfit"] or oos_sharpe <= 0.0:

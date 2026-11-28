@@ -390,7 +390,13 @@ def test_validate_nautilus_without_grid_pbo_none(legacy_spy, synthetic_cells):
     report = _validate_nautilus(strategy_params=params, external_trials=4)
     assert report.pbo is None
     assert report.experiment.n_trials_dsr == 5
-    assert report.verdict != "robust"
+    # CODE-1: V is not estimable from one config, so DSR is undefined at N=5.
+    assert report.deflated_sharpe is None
+    assert report.dsr_undefined_reason == "dsr_undefined_insufficient_variance"
+    assert report.verdict == (
+        "overfit" if report.oos_metrics.sharpe <= 0.0 else "fragile"
+    )
+    assert report.model_dump()["deflated_sharpe"] is None, "never coerced to 0.0"
 
 
 def test_legacy_validate_rejects_nautilus_only_args(legacy_spy):

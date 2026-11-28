@@ -307,3 +307,85 @@ def test_single_config_pbo_undefined_not_zero(tmp_path):
     st = selection_statistics(a.matrix, a.n_trials_dsr)
     assert st.pbo is None and st.pbo_undefined_reason == "single_configuration"
     assert series_for(cells[0])  # helper sanity
+
+
+def _three_config_matrix(t=252):
+    """3 configs x ``t`` sessions, seeded, distinct drifts (V > 0, DSR unsaturated)."""
+    rng = np.random.default_rng(1357)
+    days = series_days(t)
+    rows = []
+    for i, mu in enumerate((0.0015, 0.0008, 0.0002)):
+        rets = rng.normal(mu, 0.01, t)
+        rows += [(f"{i:064x}", 0, d, float(x)) for d, x in zip(days, rets)]
+    return FoldReturnMatrix.from_rows(rows)
+
+
+def series_days(t):
+    """``t`` ISO days (independent of the helper module)."""
+    start = np.datetime64("2024-01-02")
+    return [str(start + np.timedelta64(k, "D")) for k in range(t)]
+
+
+def test_dsr_deflates_with_n_when_two_or_more_ok_configs():
+    """CODE-1 (b): with >= 2 ok configs V > 0, so N=100 deflates below N=1."""
+    from openbb_backtest.validation.stats import deflated_sharpe
+
+    m = _three_config_matrix()
+    st100 = selection_statistics(m, 100)
+    st3 = selection_statistics(m, 3)
+    assert st100.dsr_undefined_reason is None and st100.sr_variance > 0.0
+    dsr1 = deflated_sharpe(
+        st3.best_sharpe, 1, st3.skew, st3.kurt, st3.n_obs, sr_variance=st3.sr_variance
+    )
+    assert st100.deflated_sharpe < st3.deflated_sharpe < dsr1
+    for st, n in ((st100, 100), (st3, 3)):
+        assert st.deflated_sharpe == pytest.approx(
+            _dsr_reference(st.best_sharpe, n, st.sr_variance, st.skew, st.kurt, 252),
+            rel=1e-9,
+        )
+    # literal anchors (independent closed form above; pinned to 4 dp)
+    assert round(st100.deflated_sharpe, 4) == 0.2974
+    assert round(dsr1, 4) == 0.9963
+
+
+def test_dsr_undefined_when_n_exceeds_one_and_single_config(tmp_path):
+    """CODE-1: N > 1 with one ok config -> DSR None + reason, never the PSR."""
+    cells = wfo_cells(1, 1, per_window=40)
+    led = _ledger(tmp_path)
+    dispatch(led, cells, ok_executor)
+    a = assemble(led.planned(), led.records(), external_trials=99)
+    st = selection_statistics(a.matrix, a.n_trials_dsr)
+    assert st.n_trials == 100
+    assert st.deflated_sharpe is None
+    assert st.dsr_undefined_reason == "dsr_undefined_insufficient_variance"
+    one = selection_statistics(a.matrix, 1)  # N == 1 keeps the PSR (benchmark 0)
+    assert one.dsr_undefined_reason is None
+    assert one.deflated_sharpe == pytest.approx(
+        _dsr_reference(one.best_sharpe, 1, 0.0, one.skew, one.kurt, one.n_obs)
+    )
+
+
+def test_dsr_undefined_when_cross_config_variance_is_zero():
+    """CODE-1: two identical columns give V = 0; with N > 1 DSR is undefined."""
+    days = series_days(30)
+    rets = np.random.default_rng(7).normal(0.001, 0.01, 30)
+    rows = [
+        (cfg, 0, d, float(x))
+        for cfg in ("a" * 64, "b" * 64)
+        for d, x in zip(days, rets)
+    ]
+    st = selection_statistics(FoldReturnMatrix.from_rows(rows), 2)
+    assert st.sr_variance == 0.0 and st.deflated_sharpe is None
+    assert st.dsr_undefined_reason == "dsr_undefined_insufficient_variance"
+
+
+def test_undefined_dsr_caps_verdict():
+    """CODE-1: an undefined DSR never helps; overfit triggers still win."""
+    good = {"oos_sharpe": 1.5, "matrix_complete": True}
+    assert capped_verdict(pbo=0.05, dsr=None, **good) == "fragile"
+    assert capped_verdict(pbo=None, dsr=None, **good) == "fragile"
+    assert capped_verdict(pbo=0.6, dsr=None, **good) == "overfit"
+    assert (
+        capped_verdict(pbo=0.05, dsr=None, oos_sharpe=0.0, matrix_complete=True)
+        == "overfit"
+    )

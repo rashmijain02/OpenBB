@@ -8,6 +8,11 @@ Bridges the T01 assembler to the T02 primitives on the Nautilus path:
   ``V = var(per-config per-observation SR, ddof=1)`` over ok configurations;
   ``N = 1`` gives a zero benchmark. Skew and non-excess kurtosis are the sample
   moment ratios ``m3 / m2**1.5`` and ``m4 / m2**2`` of the selected series.
+- With ``N > 1`` but fewer than two ok configurations (or zero cross-config
+  variance) ``V`` is not estimable, so the benchmark would collapse to 0 and
+  extra trials (``external_trials``, failed or excluded configurations) would
+  not deflate anything. DSR is then **undefined**: ``None`` with reason
+  :data:`DSR_UNDEFINED_INSUFFICIENT_VARIANCE` (never 0.0, never the PSR).
 """
 
 from __future__ import annotations
@@ -21,6 +26,13 @@ import numpy as np
 from openbb_backtest.validation.matrix import FoldReturnMatrix
 from openbb_backtest.validation.pbo import pbo_detail
 from openbb_backtest.validation.stats import deflated_sharpe
+
+#: Closed vocabulary of reasons for an undefined DSR.
+DsrUndefinedReason = Literal["dsr_undefined_insufficient_variance"]
+#: ``N > 1`` but ``V`` (cross-config Sharpe variance) is not estimable.
+DSR_UNDEFINED_INSUFFICIENT_VARIANCE: DsrUndefinedReason = (
+    "dsr_undefined_insufficient_variance"
+)
 
 
 @dataclass(frozen=True)
@@ -36,9 +48,10 @@ class SelectionStats:  # pylint: disable=too-many-instance-attributes
     skew: float
     kurt: float
     n_obs: int
-    deflated_sharpe: float
+    deflated_sharpe: float | None
     pbo: float | None
     pbo_undefined_reason: str | None
+    dsr_undefined_reason: DsrUndefinedReason | None = None
 
 
 def _moments(x: np.ndarray) -> tuple[float, float]:
@@ -69,9 +82,22 @@ def selection_statistics(  # pylint: disable=too-many-locals
     best = int(np.argmax(sharpes))  # first index on ties; columns are sorted
     variance = float(np.var(sharpes, ddof=1)) if len(cols) > 1 else 0.0
     skew, kurt = _moments(mat[:, best])
-    dsr = deflated_sharpe(
-        float(sharpes[best]), n_trials, skew, kurt, mat.shape[0], sr_variance=variance
-    )
+    dsr: float | None
+    dsr_why: DsrUndefinedReason | None = None
+    if n_trials > 1 and (len(cols) < 2 or variance == 0.0):
+        # V is not estimable: a zero benchmark would ignore the other N-1 trials.
+        dsr, dsr_why = None, DSR_UNDEFINED_INSUFFICIENT_VARIANCE
+    else:
+        dsr = float(
+            deflated_sharpe(
+                float(sharpes[best]),
+                n_trials,
+                skew,
+                kurt,
+                mat.shape[0],
+                sr_variance=variance,
+            )
+        )
     pbo_value: float | None
     why: str | None
     if len(cols) < 2:
@@ -91,7 +117,8 @@ def selection_statistics(  # pylint: disable=too-many-locals
         skew=skew,
         kurt=kurt,
         n_obs=int(mat.shape[0]),
-        deflated_sharpe=float(dsr),
+        deflated_sharpe=dsr,
         pbo=pbo_value,
         pbo_undefined_reason=why,
+        dsr_undefined_reason=dsr_why,
     )

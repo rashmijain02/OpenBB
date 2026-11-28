@@ -420,3 +420,44 @@ def test_reason_for_undefined_pbo_is_never_zero():
     assert _reason_for("fragile", legacy, no_op=False) == (
         "verdict=fragile (pbo=0.31, dsr=0.62)"
     )
+
+
+def test_reason_for_undefined_dsr_is_never_zero():
+    """#1357 CODE-1: a nautilus report's deflated_sharpe=None reads "undefined"."""
+    from openbb_techtrade.tuning.tune_router import _reason_for
+
+    report = SimpleNamespace(pbo=None, deflated_sharpe=None)
+    assert _reason_for("fragile", report, no_op=False) == (
+        "verdict=fragile (pbo=undefined, dsr=undefined)"
+    )
+
+
+def test_undefined_dsr_report_does_not_persist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """#1357 CODE-1: an undefined DSR (verdict capped at fragile) is never persisted."""
+    path = _setup_tuned_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "openbb_techtrade.tuning.tune_router.pool_sector_ohlcv", _fake_pool
+    )
+    monkeypatch.setattr(
+        "openbb_techtrade.tuning.tune_router.fit_segment",
+        lambda X, y, *, trials=100, early_stop=20: (
+            _config_a(),
+            {"tuneta_version": "0.2.3-fake", "fit_seconds": 1.5, "tuned_columns": []},
+        ),
+    )
+    fake_validate, fake_report = _fake_validate("fragile")
+    fake_report.deflated_sharpe = None
+    fake_report.pbo = None
+    monkeypatch.setattr(
+        "openbb_techtrade.tuning.tune_router.validate_plan", fake_validate
+    )
+    from openbb_techtrade.tuning.tune_router import tune
+
+    report = asyncio.run(
+        tune(segment="Information Technology", as_of=date(2025, 6, 20))
+    ).results
+    assert report.persisted is False
+    assert report.reason == "verdict=fragile (pbo=undefined, dsr=undefined)"
+    assert not path.exists()
