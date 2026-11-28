@@ -186,10 +186,11 @@ async def _call_all(
         ):
             await session.initialize()
             listed = await session.list_tools()
-            assert {t.name for t in listed.tools} == {
-                "get_positions",
-                "get_sector_exposure",
-            }
+            expected = {"get_positions", "get_sector_exposure"}
+            if "--policy-profile" in flags:
+                # #1378: public-knowledge tools exist only behind the gate.
+                expected |= {"knowledge_search", "knowledge_get_section"}
+            assert {t.name for t in listed.tools} == expected
             for tool in ("get_positions", "get_sector_exposure"):
                 results[tool] = await session.call_tool(
                     tool, dict(_CLAIMS if arguments is None else arguments)

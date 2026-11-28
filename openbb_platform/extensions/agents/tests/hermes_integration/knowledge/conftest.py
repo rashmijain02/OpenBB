@@ -112,3 +112,95 @@ def write_register(tmp_path: Path):
         return path
 
     return _write
+
+
+# --- T02: a small synthetic public corpus for retrieval and grounding --------
+
+KNOWLEDGE_DOCS = {
+    "docs/Specs/gh-9-synth/spec.md": (
+        "# Synthetic spec\n\n## Requirements\n\n| ID | Requirement |\n|---|---|\n"
+        "| PF-15 | Answers cite pinned public sources with status. |\n"
+        "| PF-04 | Notebooks declare a role. |\n"
+    ),
+    "docs/designs/notes.md": (
+        "# Notes\n\n## Context\n\nThis note mentions PF-15 in passing; PF-15 is "
+        "discussed elsewhere. Zebra crossings are unrelated.\n"
+    ),
+    "docs/designs/limits_v1.md": (
+        "# Limits v1\n\n## Payload cap\n\nThe payload cap is 3000 characters.\n"
+    ),
+    "docs/designs/limits_v2.md": (
+        "# Limits v2\n\n## Payload cap\n\nThe payload cap is 4000 characters.\n"
+    ),
+    "specs/gh-7-mix/plan.md": (
+        "# Mixed plan\n\n## Operations\n\n### documents.search\n\n"
+        "The documents.search operation returns ranked public sections.\n\n"
+        "## Shipped reader\n\nThe register reader is merged and in use.\n"
+    ),
+    "docs/designs/widget_a.md": (
+        "# Widget A\n\n## Widget export\n\nWidget export uses the quokka format.\n"
+    ),
+    "docs/designs/widget_b.md": (
+        "# Widget B\n\n## Widget export\n\nWidget export uses the quokka format too.\n"
+    ),
+}
+
+
+def knowledge_rows(blob) -> list[dict[str, Any]]:
+    """Register rows for :data:`KNOWLEDGE_DOCS` (``blob(path)`` -> sha)."""
+    paths = list(KNOWLEDGE_DOCS)
+    return [
+        row(
+            "spec",
+            paths[0],
+            blob(paths[0]),
+            kind="requirement_spec",
+            authority="repo_requirement",
+            status="proposed",
+        ),
+        row("notes", paths[1], blob(paths[1])),
+        row(
+            "limits.v1",
+            paths[2],
+            blob(paths[2]),
+            status="superseded",
+            superseded_by=["limits.v2"],
+        ),
+        row(
+            "limits.v2",
+            paths[3],
+            blob(paths[3]),
+            status="proposed",
+            supersedes=["limits.v1"],
+        ),
+        row(
+            "mix",
+            paths[4],
+            blob(paths[4]),
+            kind="implementation_plan",
+            authority="repo_plan",
+            status="proposed",
+            status_evidence="pr:7",
+            section_status={"shipped-reader": "implemented"},
+        ),
+        row(
+            "widget.a",
+            paths[5],
+            blob(paths[5]),
+            status="implemented",
+            status_evidence="pr:8",
+        ),
+        row("widget.b", paths[6], blob(paths[6]), status="proposed"),
+    ]
+
+
+@pytest.fixture
+def knowledge_register(repo) -> Path:
+    """Commit :data:`KNOWLEDGE_DOCS` and return a register pinned to them."""
+    for rel, text in KNOWLEDGE_DOCS.items():
+        repo.write(rel, text)
+    commit = repo.commit()
+    doc = register_doc(commit, knowledge_rows(repo.blob))
+    path = repo.root / "knowledge_register.json"
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    return path

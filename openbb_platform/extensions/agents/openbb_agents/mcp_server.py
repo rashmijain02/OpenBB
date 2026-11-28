@@ -48,6 +48,7 @@ import asyncio
 import inspect
 import json
 import logging
+from pathlib import Path
 from typing import Any, get_type_hints
 
 logger = logging.getLogger(__name__)
@@ -110,8 +111,11 @@ def build_input_schema(fn: Any) -> dict:
     return schema
 
 
-def collect_tools() -> list[dict]:
+def collect_tools(modules: list | None = None) -> list[dict]:
     """Scan ``_TOOL_MODULES`` and return one descriptor per ``@mcp_tool``-decorated function.
+
+    ``modules`` overrides the scanned list (the gated server passes the
+    default modules plus the policy-only knowledge tools, #1378).
 
     Trust-boundary invariant (bd-17kv / bd-6bcf): a function reaches the
     LLM iff it carries ``__mcp_exposed__ = True`` (set by the
@@ -128,7 +132,7 @@ def collect_tools() -> list[dict]:
     tools: list[dict] = []
     seen: set[str] = set()
 
-    for module in _TOOL_MODULES:
+    for module in _TOOL_MODULES if modules is None else modules:
         for name, fn in inspect.getmembers(module, inspect.isfunction):
             if name.startswith("_") or name in seen:
                 continue
@@ -256,12 +260,16 @@ def _call_tool_safe(
 
 
 async def _serve(
-    policy_profile: str | None = None, principal: str | None = None
+    policy_profile: str | None = None,
+    principal: str | None = None,
+    knowledge_register: Path | None = None,
 ) -> None:
     """Build and run the MCP server over stdio.
 
     ``policy_profile`` is opt-in (#1339). When it is ``None`` (the default)
     no policy code is imported and the server behaves exactly as before.
+    Under a profile the public-knowledge tools (#1378) are added, reading
+    the launcher-chosen ``knowledge_register`` (default: the committed one).
     """
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
@@ -269,12 +277,15 @@ async def _serve(
 
     server = Server("openbb-agents")
     discovered = collect_tools()
-    tool_index = {t["name"]: t for t in discovered}
     gate = None
     if policy_profile is not None:
         from openbb_agents.hermes_integration.access import build_tool_gate
+        from openbb_agents.hermes_integration.knowledge import tools as knowledge
 
         gate = build_tool_gate(policy_profile, principal)
+        knowledge.configure(knowledge_register)
+        discovered = collect_tools([*_TOOL_MODULES, knowledge])
+    tool_index = {t["name"]: t for t in discovered}
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -334,17 +345,25 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="openbb-agents-mcp")
     parser.add_argument("--policy-profile", choices=["hermes-finance"])
     parser.add_argument("--principal")
+    parser.add_argument("--knowledge-register", type=Path)
     args = parser.parse_args(argv)
     if args.principal is not None and args.policy_profile is None:
         # A principal without a profile would silently serve ungated.
         parser.error("--principal requires --policy-profile")
+    if args.knowledge_register is not None and args.policy_profile is None:
+        # Knowledge tools exist only behind the gate (#1378 Q5).
+        parser.error("--knowledge-register requires --policy-profile")
     logging.basicConfig(level=logging.WARNING)
     if args.policy_profile is None:
         asyncio.run(_serve())
     else:
-        asyncio.run(
-            _serve(policy_profile=args.policy_profile, principal=args.principal)
-        )
+        kwargs: dict[str, Any] = {
+            "policy_profile": args.policy_profile,
+            "principal": args.principal,
+        }
+        if args.knowledge_register is not None:
+            kwargs["knowledge_register"] = args.knowledge_register
+        asyncio.run(_serve(**kwargs))
 
 
 if __name__ == "__main__":

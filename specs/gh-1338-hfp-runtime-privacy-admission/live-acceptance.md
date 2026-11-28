@@ -208,3 +208,36 @@ Notes for the owner:
   field still reaches a hosted alias on an admitted config (`test_inprocess_request_level_fallback_bypasses_config_policy`).
 - Keep LiteLLM at INFO. DEBUG (`--detailed_debug`, `LITELLM_LOG=DEBUG`, `set_verbose`) writes prompts to logs even
   with `turn_off_message_logging: true`, so the projection is the only thing that keeps sentinels out.
+
+## L6: #1378 T02, one real Hermes Q&A turn over the public knowledge tools
+
+Code-only parts (exact retrieval, quoted FTS5 tokens, payload caps, cite keys, supersession, the answer-contract
+validator `knowledge.grounding.check_answer`, and the gated stdio server with `knowledge_search` /
+`knowledge_get_section` under `--policy-profile hermes-finance --principal hermes_runtime`) are tested in
+`tests/hermes_integration/knowledge/`. The code-only real paths are `knowledge.probe --synthetic` and
+`knowledge.probe --register`, each piped through `projection --scan-stdin` (exit 0, `hits=0`). This step proves
+that a real Hermes turn on the admitted local finance alias answers from those tools with valid cites. The corpus
+is public, reviewed repository text only.
+
+```text
+Live acceptance for #1378 (HFP-P38 scoped public knowledge) - normal (non-elevated) pwsh 7 window
+Preconditions: L2, L3, L4 and L5 done in <qual-home>; the OpenBB agents MCP server is registered in <qual-home>
+with --policy-profile hermes-finance --principal hermes_runtime (no --knowledge-register: the committed register);
+the owner's own Hermes home is never used.
+1. & $py -m openbb_agents.hermes_integration.knowledge.probe --register
+                                    Expect: exit 0, checks=4 failed=0 egress=0
+2. In <qual-home>, three Hermes turns through the finance alias, one per fixed question:
+     answerable               "What does requirement PF-15 require? Cite sources."
+     proposed_vs_implemented  "Is documents.search implemented? Cite sources and label status."
+     absent                   "What is the zebra quokka platypus policy?"
+   Expect: answers that end each claim with "(status, authority) [[doc:...]]", or the literal
+   [[abstain:no_evidence]] / [[abstain:ambiguous]] for the absent question.
+3. Owner: write one line per answer to a local file as "<question_id><TAB><cite keys and abstain markers only>"
+   (copy only the [[doc:...]] / [[abstain:...]] tokens and the "(status, authority)" labels; no other text), then:
+   Get-Content <answers-file> | & $py -m openbb_agents.hermes_integration.knowledge.probe --grade-stdin
+                                    Expect: exit 0, graded=3 failed=0
+4. Owner only: the #1339 L5 count-only check on the LiteLLM request history by model group.
+                                    Expect: zero requests on any hosted alias
+Report back: exit codes, the checks= / graded= lines and the grade verdict codes. Never paste prompts,
+responses or excerpts beyond cite keys and codes.
+```

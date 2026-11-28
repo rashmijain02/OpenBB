@@ -41,6 +41,7 @@ KNOWN_SCOPES: frozenset[str] = frozenset(
         "portfolio.sector_exposure",
         "household.summary",
         "evidence.projection",
+        "knowledge.public_reference",
     }
 )
 
@@ -55,6 +56,24 @@ EVIDENCE_PROJECTION_FIELDS: frozenset[str] = frozenset(
         "metric_refs",
         "aggregate_buckets",
         "as_of",
+    }
+)
+
+# Fields of one public-knowledge hit (#1378 T02); mirrors
+# ``knowledge.index.HIT_FIELDS`` (asserted by the knowledge tests) without
+# importing the knowledge package here.
+KNOWLEDGE_HIT_FIELDS: frozenset[str] = frozenset(
+    {
+        "cite",
+        "path",
+        "section",
+        "revision",
+        "authority",
+        "status",
+        "superseded_by",
+        "match",
+        "flags",
+        "excerpt",
     }
 )
 
@@ -189,6 +208,18 @@ TOOL_BINDINGS: Mapping[str, ToolBinding] = MappingProxyType(
             scope="portfolio.sector_exposure",
             fields=frozenset({"sector", "market_value", "weight_pct"}),
         ),
+        # Public reviewed reference text only (#1378); served under a policy
+        # profile only, never by the default ungated server.
+        "knowledge_search": ToolBinding(
+            operation="public_metadata",
+            scope="knowledge.public_reference",
+            fields=KNOWLEDGE_HIT_FIELDS,
+        ),
+        "knowledge_get_section": ToolBinding(
+            operation="public_metadata",
+            scope="knowledge.public_reference",
+            fields=KNOWLEDGE_HIT_FIELDS,
+        ),
     }
 )
 
@@ -208,6 +239,12 @@ HERMES_FINANCE_POLICY = PolicyGate(
                 operation="evidence_projection_read",
                 scope="evidence.projection",
                 fields=EVIDENCE_PROJECTION_FIELDS,
+            ),
+            Capability(
+                principal="hermes_runtime",
+                operation="public_metadata",
+                scope="knowledge.public_reference",
+                fields=KNOWLEDGE_HIT_FIELDS,
             ),
         }
     )

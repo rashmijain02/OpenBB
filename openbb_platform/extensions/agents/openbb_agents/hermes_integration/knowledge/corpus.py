@@ -127,6 +127,10 @@ def _git(repo: Path, *args: str) -> bytes | None:
             ],
             check=True,
             capture_output=True,
+            # Never inherit stdin: under the stdio MCP server it is the JSON-RPC
+            # pipe, and on Windows inheriting a pipe another thread is reading
+            # can block process creation.
+            stdin=subprocess.DEVNULL,
             timeout=60,
             env={
                 **os.environ,
