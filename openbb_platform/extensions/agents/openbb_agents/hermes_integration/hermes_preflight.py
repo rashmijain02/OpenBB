@@ -17,7 +17,7 @@ from typing import Any
 
 import yaml
 
-from . import handshake, hermes_config, litellm_config, provenance
+from . import handshake, hermes_config, litellm_config, provenance, skills_admission
 from .models import (
     ComponentReport,
     EdgeReport,
@@ -214,6 +214,43 @@ def _check_route(
     return [cfg, route], facts
 
 
+def _check_skills(
+    profile: FinanceRuntimeProfile,
+    config: Path | None,
+    skills_root: Path | None,
+    quarantine: Path | None,
+) -> ComponentReport:
+    """Admit hash-pinned, read-only local skills; every other skill source blocks."""
+    if skills_root is None:
+        return ComponentReport(
+            name="skills", detail="not_evaluated: --skills-root unset"
+        )
+
+    def blocked(reasons: str) -> ComponentReport:
+        return ComponentReport(
+            name="skills",
+            failed_layer=FailedLayer.SKILLS,
+            detail=f"skills_blocked: {reasons}",
+        )
+
+    if config is None:
+        return blocked("no_hermes_config")
+    try:
+        facts = hermes_config.read_skill_facts(config)
+    except (OSError, ValueError, yaml.YAMLError):
+        return blocked("hermes_config_unreadable")
+    verdict = skills_admission.evaluate_skills(
+        facts, profile.admitted_skills, skills_root, quarantine=quarantine
+    )
+    if verdict.blocked:
+        return blocked(",".join(verdict.reasons))
+    return ComponentReport(
+        name="skills",
+        level=HealthLevel.ADMITTED,
+        detail=f"skills_admitted: n={len(verdict.admitted)}",
+    )
+
+
 def _check_gateway(
     profile: FinanceRuntimeProfile, config: Path | None
 ) -> tuple[list[ComponentReport], GatewayReport | None]:
@@ -260,6 +297,8 @@ class PreflightOptions:
     openbb_settings: Path | None = None
     hermes_config_path: Path | None = None
     litellm_config_path: Path | None = None
+    skills_root: Path | None = None
+    skills_quarantine: Path | None = None
     probe: str = "none"
     mcp_tools: Sequence[Mapping[str, Any]] | None = None
     mcp_http_url: str | None = None
@@ -287,6 +326,12 @@ def run_preflight(
         _check_abi(profile, env),
         _check_database(profile, settings, env),
         *route_components,
+        _check_skills(
+            profile,
+            opts.hermes_config_path,
+            opts.skills_root,
+            opts.skills_quarantine,
+        ),
         *gateway_components,
     ]
     edges: list[EdgeReport] = []
@@ -363,6 +408,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--openbb-settings", type=Path, default=None)
     parser.add_argument("--hermes-config", type=Path, default=None)
     parser.add_argument("--litellm-config", type=Path, default=None)
+    parser.add_argument(
+        "--skills-root", type=Path, default=None, help="$HERMES_HOME/skills"
+    )
+    parser.add_argument("--skills-quarantine", type=Path, default=None)
     parser.add_argument("--mcp-tools", type=Path, default=None, help="JSON tool list")
     parser.add_argument("--mcp-http-url", default=None)
     parser.add_argument("--backend-url", default=None)
@@ -395,6 +444,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             openbb_settings=args.openbb_settings,
             hermes_config_path=args.hermes_config,
             litellm_config_path=args.litellm_config,
+            skills_root=args.skills_root,
+            skills_quarantine=args.skills_quarantine,
             probe=args.probe,
             mcp_tools=tools,
             mcp_http_url=args.mcp_http_url,

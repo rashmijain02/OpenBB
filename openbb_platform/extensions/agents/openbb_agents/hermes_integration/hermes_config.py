@@ -1,6 +1,6 @@
-"""Metadata-only Hermes ``config.yaml`` reader and route policy (#1338-T02).
+"""Metadata-only Hermes ``config.yaml`` readers and route policy (#1338, #1339).
 
-The reader keeps routing facts only. Secret-shaped keys become :class:`Presence`
+The readers keep routing and skill-source facts only. Secret-shaped keys become :class:`Presence`
 and URL credentials are dropped. Nothing here imports or runs Hermes.
 """
 
@@ -138,6 +138,18 @@ _URL_KEYS = ("base_url", "url", "api", "inference_base_url")
 # Leaf keys whose value is a credential, never a route: a ``${VAR}`` there is allowed.
 _SECRET_LEAF = re.compile(r"(?:^|_)(?:api_key|key|token|password|secret)$")
 _LABEL = re.compile(r"[^A-Za-z0-9_.-]")
+
+# Dotted keys the skill reader consumes (#1339-T02). The pinned example file omits
+# them, so the fixture takes their defaults from ``hermes_cli/config_defaults.py``.
+SKILL_CONSUMED_KEYS = (
+    "skills.create_dir",
+    "skills.external_dirs",
+    "skills.project_discovery",
+    "skills.inline_shell",
+    "curator.enabled",
+    "auxiliary.background_review.enabled",
+    "agent.disabled_toolsets",
+)
 
 _LOOPBACK_NAMES = {"localhost"}
 # Managed-scope directory default at the pin (``hermes_cli/managed_scope.py``).
@@ -737,6 +749,65 @@ def _aux_reasons(
         if aux.model is not None and aux.model not in profile.private_alias_allowlist:
             reasons.append(f"auxiliary_{task}_model_not_private_alias")
     return reasons
+
+
+class SkillFacts(BaseModel):
+    """Skill-source and skill-writer facts from a Hermes config.
+
+    ``None`` means the key is unset or not a boolean, so the upstream default
+    applies. Directory strings are kept for path checks and never reported.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    create_dir: str | None = None
+    external_dirs: list[str] = Field(default_factory=list)
+    project_discovery: bool | None = None
+    inline_shell: bool | None = None
+    curator_enabled: bool | None = None
+    background_review_enabled: bool | None = None
+    disabled_toolsets: list[str] = Field(default_factory=list)
+
+
+def _bool_or_none(value: Any) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _str_list(value: Any) -> list[str]:
+    """Scalar-or-list config value as stripped strings (upstream ``parse_config_string_list``)."""
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            try:
+                parsed = yaml.safe_load(text)
+            except yaml.YAMLError:
+                parsed = None
+            value = parsed if isinstance(parsed, list) else [text]
+        else:
+            value = [text]
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def read_skill_facts(path: Path) -> SkillFacts:
+    """Read skill facts from ``path``; raises ``OSError``/``ValueError`` when unusable."""
+    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError("hermes config is not a mapping")
+    create_dir = _get(loaded, "skills.create_dir")
+    create_dir = str(create_dir).strip() if isinstance(create_dir, str) else ""
+    return SkillFacts(
+        create_dir=create_dir or None,
+        external_dirs=_str_list(_get(loaded, "skills.external_dirs")),
+        project_discovery=_bool_or_none(_get(loaded, "skills.project_discovery")),
+        inline_shell=_bool_or_none(_get(loaded, "skills.inline_shell")),
+        curator_enabled=_bool_or_none(_get(loaded, "curator.enabled")),
+        background_review_enabled=_bool_or_none(
+            _get(loaded, "auxiliary.background_review.enabled")
+        ),
+        disabled_toolsets=_str_list(_get(loaded, "agent.disabled_toolsets")),
+    )
 
 
 def evaluate_route(facts: RouteFacts, profile: FinanceRuntimeProfile) -> RouteVerdict:

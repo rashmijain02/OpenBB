@@ -1,6 +1,6 @@
 # Live acceptance steps (owner-run)
 
-Status: partial. Sections for #1338 T02 (step L2) and T03 (step L3) are written. L1, L4 and L5 stay in
+Status: partial. Sections for #1338 T02 (step L2), T03 (step L3) and #1339 T02 (step L4) are written. L1 and L5 stay in
 `plan.md` section 4 until their code lands. Nothing here is executed by agents.
 
 ## L2: #1338 T02, Hermes/WebUI and provider handshake matrix
@@ -106,3 +106,55 @@ Notes for the owner:
   outside `private_alias_allowlist`, which is what the master key or an unscoped key produce.
 - The preflight cannot see CLI flags or env vars of the running proxy (`--detailed_debug`, `LITELLM_LOG`), so
   step 4 is a manual check.
+
+## L4: #1339 T02, read-only admitted skills and quarantined proposals
+
+Code-only parts (skill reader, hash pin, drift, write probes, search-root recomputation, proposal writer,
+shadowing, ACL detection on a temp dir) are tested in
+`openbb_platform/extensions/agents/tests/hermes_integration/test_skill_admission.py`. This step applies the chosen
+protection to the qualification home and proves the preflight sees it. Decision O6: a same-user deny ACE plus the
+hash pin is **tamper-evident, not immutable**. The owner can rewrite the DACL, and the ACE does not stop file
+deletion (denying DELETE on files also breaks plain reads, see below); the hash pin reports both as `drift` or
+`missing`. A separate runtime identity for real read-only access stays with OPS-ATTEST.
+
+```text
+Live acceptance for #1339 (HFP-P02 skills admission) - normal (non-elevated) pwsh 7 window
+Preconditions: L2 done (<qual-home> exists, pinned runtime); the owner's own Hermes home is never used.
+  Hermes has run once in <qual-home>, so its bundled-skill seeding has finished BEFORE the ACE is applied.
+1. Write <qual-home>\config.yaml from fixtures/hermes/config-finance-safe.yaml (skills/curator/background_review
+   and agent.disabled_toolsets: [skills] exactly as in the fixture). Create <qual-quarantine> OUTSIDE <qual-home>.
+2. Decide the admitted set. Remove every other skill dir from <qual-home>\skills (bundled seeds included) or
+   admit it too. For each admitted dir (POSIX path relative to <qual-home>\skills):
+     python -c "from openbb_agents.hermes_integration.skills_admission import tree_sha256 as t; print(t(r'<qual-home>\skills\<rel>'))"
+   and record `admitted_skills: {<rel>: <sha256>}` in the owner profile.
+3. Before the ACE: hermes_preflight --profile <owner profile> --hermes-config <qual-home>\config.yaml `
+     --skills-root <qual-home>\skills --skills-quarantine <qual-quarantine> --probe none --format text
+                                    Expect: skills failed_layer=skills, detail contains admitted_dir_writable
+4. $sid = (whoami /user /fo csv /nh).Split(',')[-1].Trim('"')
+   icacls <qual-home>\skills /deny "*${sid}:(OI)(CI)(WD,AD,WEA,WA,DC)"
+                                    (Do NOT add D: denying DELETE on files also denies reads for this user.)
+5. Re-run step 3.                   Expect: skills level=admitted detail=skills_admitted: n=<count>
+6. Tamper check: Set-Content -Path <qual-home>\skills\<rel>\SKILL.md -Value x
+                                    Expect: Access denied
+7. Hermes session with the finance profile; ask it to create or edit a skill (synthetic text only).
+                                    Expect: no skill_manage tool offered; no file under <qual-home>\skills changes
+                                    (re-run step 5: still admitted, same hashes).
+8. Drift check (owner, deliberate): remove the ACE (icacls <qual-home>\skills /remove:d "*$sid" /T), append one byte
+   to an admitted SKILL.md, re-apply step 4, re-run step 3.
+                                    Expect: exit 2, skills failed_layer=skills, detail contains drift:<rel>.
+                                    Then restore the byte (or re-pin) and re-run step 5.
+Cleanup: keep the ACE in place for qualification. To undo: icacls <qual-home>\skills /remove:d "*$sid" /T
+Report back: exit codes and the `skills ...` lines from steps 3, 5 and 8, and any Expect line that did not match.
+```
+
+Notes for the owner:
+
+- Proposals go only through `skills_admission.write_proposal`, into `<qual-quarantine>`. The preflight blocks a
+  quarantine inside any Hermes search root and any proposal whose directory or frontmatter name shadows an
+  admitted skill.
+- Hermes' `skills_sync` seeds bundled skills into the local tier on first run. Any file under `<qual-home>\skills`
+  that is not part of an admitted skill blocks with `unadmitted_content`, so step 2 must cover the seeds.
+- `skill_manage` is removed only by `agent.disabled_toolsets: [skills]`, which also removes `skills_list` and
+  `skill_view` (upstream subtracts disabled toolsets at tool granularity). How admitted skills then load (for
+  example `skills.auto_load` or slash commands) is not verified at the pin; step 7 and T03 / HFP-P05 confirm it.
+- `skills.external_dirs` must be empty for P0. Hash-pinned external dirs are not implemented.

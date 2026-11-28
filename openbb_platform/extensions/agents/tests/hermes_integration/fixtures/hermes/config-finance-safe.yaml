@@ -1,8 +1,9 @@
 # Synthetic Hermes config trimmed from cli-config.yaml.example (MIT, (c) 2025 Nous Research)
 # Source: rashmijain02/hermes-agent main @ 710fa8a073f9a8136e10749b083a16779341faef
-# Only the keys the route reader consumes are kept. No real values.
+# Only the keys the route and skill readers consume are kept. No real values.
 # Finance-safe: explicit loopback gateway, private alias, no fallbacks, no adoption,
-# and every auxiliary task of the pinned DEFAULT_CONFIG bound to the gateway (#1338).
+# every auxiliary task bound to the gateway (#1338),
+# no skill writers (curator, background review, skill_manage) and no extra skill roots.
 model:
   default: "finance-private"
   provider: "custom"
@@ -16,6 +17,7 @@ auxiliary:
     provider: "custom"
     base_url: "http://127.0.0.1:4000/v1"
   background_review:
+    enabled: false
     provider: "custom"
     base_url: "http://127.0.0.1:4000/v1"
   compression:
@@ -69,6 +71,15 @@ auxiliary:
   voice_chat:
     provider: "custom"
     base_url: "http://127.0.0.1:4000/v1"
+agent:
+  disabled_toolsets: [skills]
+skills:
+  external_dirs: []
+  create_dir: ""
+  project_discovery: false
+  inline_shell: false
+curator:
+  enabled: false
 auth:
   adopt_external_logins: false
 memory:
