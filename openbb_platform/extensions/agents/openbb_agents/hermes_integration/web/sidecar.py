@@ -9,6 +9,9 @@ sent). No route starts a workflow, submits a job or approves a paper action. Wit
 
 Usage: ``python -m openbb_agents.hermes_integration.web.sidecar --port N``. The token
 file comes from ``HERMES_EXT_SIDECAR_TOKEN_FILE`` or ``HERMES_WEBUI_STATE_DIR``.
+The story principal is the finance-web MCP server's own (``live_story_principal``:
+its ``OPENBB_MCP_SERVER_AUTH`` credentials); without them the sidecar exits 4
+(``principal_unpaired``) before binding. ``--check`` runs only that check.
 The listener binds ``127.0.0.1`` only. The sidecar never runs a model or Hermes.
 """
 
@@ -254,16 +257,74 @@ class LoopbackSidecar:
         self.stop()
 
 
+class PairingError(RuntimeError):
+    """The sidecar cannot act as the MCP server's story principal."""
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
+
+
+def live_story_principal(settings: Any = None) -> str:
+    """Return the story principal the live MCP server writes plans and runs as.
+
+    It is derived exactly as the server derives it (``story_principal_for`` of
+    its ``server_auth`` credentials), from the same settings source the server
+    reads (``mcp_settings.json`` under env and no CLI overrides). Missing or
+    blank credentials raise ``principal_unpaired``; the secret is never logged.
+    """
+    # pylint: disable=import-outside-toplevel
+    from openbb_mcp_server.app.app import story_principal_for
+    from openbb_mcp_server.service.mcp_service import MCPService
+
+    if settings is None:
+        settings = MCPService.read_with_overrides()
+    auth = getattr(settings, "server_auth", None)
+    if (
+        not auth
+        or len(auth) != 2
+        or not all(isinstance(value, str) and value.strip() for value in auth)
+    ):
+        raise PairingError(
+            "principal_unpaired",
+            "set OPENBB_MCP_SERVER_AUTH (or server_auth in mcp_settings.json)"
+            " to the finance-web MCP server's credentials",
+        )
+    return story_principal_for((auth[0], auth[1]))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entry point; serves until interrupted."""
+    """CLI entry point; serves until interrupted.
+
+    Exit codes: 0 served (or ``--check`` passed), 2 cannot bind, 3 usage,
+    4 ``principal_unpaired`` (no usable MCP server credentials).
+    """
     parser = argparse.ArgumentParser(prog="hfp_sidecar", description=__doc__)
     parser.add_argument("--host", default=LOOPBACK_HOST)
-    parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--principal", default="hfp-web")
+    parser.add_argument("--port", type=int)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="only check the pairing with the MCP server credentials",
+    )
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 3
+    # Fail closed before binding: without the MCP server's own credentials the
+    # sidecar would read another principal's (empty) plan and run stores.
+    try:
+        principal = live_story_principal()
+    except PairingError as exc:
+        sys.stderr.write(f"{exc.code}: {exc.detail}\n")
+        return 4
+    if args.check:
+        sys.stdout.write("pairing_ok\n")
+        return 0
+    if args.port is None:
+        sys.stderr.write("usage: --port is required\n")
+        return 3
     try:
         sock = bind_loopback(args.host, args.port)
     except (ValueError, OSError) as exc:
@@ -274,10 +335,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     from openbb_mcp_server.story_adapters.artifacts import default_artifact_root
     from openbb_mcp_server.story_adapters.registry import default_store_path
 
-    from ..workflow_admit import in_process_principal
     from .backend import StoryBackend
 
-    principal = in_process_principal(args.principal)
     config = SidecarConfig(
         port=sock.getsockname()[1],
         principal=principal,
