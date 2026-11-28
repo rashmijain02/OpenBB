@@ -65,6 +65,8 @@ Each agent gets:
 
 ### 3. Dispatch in Parallel
 
+Model: choose per `docs/dev-cycle/model-selection.md` (Sonnet default; Opus for design or high-risk work); name it on every dispatch.
+
 Issue all three subagent dispatches in the same response — they run in parallel:
 
 ```text

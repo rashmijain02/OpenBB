@@ -98,12 +98,7 @@ conflicts that only emerge from implementation.
 
 ## Model Selection
 
-Follow the canonical model policy in [`docs/dev-strategy.md`](../../../docs/dev-strategy.md) (D1):
-use the best available model suited to the task, chosen by complexity,
-ambiguity and risk, and name the selected model explicitly on every dispatch
-that accepts one. Do not rely on the session default. If no suitable model is
-available, stop and report the blocker; never silently degrade. No model
-family or model ID is required.
+Model: choose per `docs/dev-cycle/model-selection.md` (Sonnet default; Opus for design or high-risk work); name it on every dispatch. Canonical: [`docs/dev-cycle/model-selection.md`](../../../docs/dev-cycle/model-selection.md) (D1 in [`docs/dev-strategy.md`](../../../docs/dev-strategy.md)). If no suitable model is available, stop and report the blocker; never silently degrade.
 
 ## Handling Implementer Status
 

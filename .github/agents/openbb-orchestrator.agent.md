@@ -17,7 +17,7 @@ Then route:
 
 Invariants:
 
-- Model (D1, `docs/dev-strategy.md`): use the best available model suited to the task
+- Model (D1, `docs/dev-strategy.md`; default tiers in `docs/dev-cycle/model-selection.md`: Sonnet, Opus for design or high-risk work): use the best available model suited to the task
   (complexity, ambiguity, risk), name it explicitly on every dispatch that accepts one, and stop
   and report if none is suitable.
 - Verify the checkout is `rashmijain02/OpenBB`. Every `gh` call uses `--repo rashmijain02/OpenBB`;

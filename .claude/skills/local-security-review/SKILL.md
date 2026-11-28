@@ -15,7 +15,7 @@ installation, tests/builds, commits, pushes, or publication.
 For an explicit security/vulnerability review, invoke the available read-only
 `security-review` agent before conducting the audit yourself, as required by
 the caller's security-review contract. Dispatch with an explicitly named
-model: the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1). Give it the scope,
+model: the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1; default tiers in `docs/dev-cycle/model-selection.md`: Sonnet, Opus for high-risk work). Give it the scope,
 repository instructions, safe-data limits, and this entire review rubric.
 Use one bounded reviewer, not a speculative fleet. If the reviewer or no
 suitable model is available, report BLOCKED; do not silently substitute a

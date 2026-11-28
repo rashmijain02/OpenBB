@@ -18,8 +18,8 @@ never merge.
 ## Models (D1, D13)
 
 - Use the best available model suited to the task (complexity, ambiguity, risk) for the main agent
-  and every subagent, and name it explicitly on every dispatch (e.g. a stronger model for hard
-  implementation, a lighter one for read-only search). Canonical: D1 in `docs/dev-strategy.md`.
+  and every subagent, and name it explicitly on every dispatch. Default tiers (Sonnet; Opus for design
+  or high-risk work): `docs/dev-cycle/model-selection.md`. Canonical: D1 in `docs/dev-strategy.md`.
 - If no suitable model is available, stop and report; do not silently degrade.
 - A model clause in a user-level skill copy (for example the `local-*-review` skills) never
   overrides D1; run those reviews with the best available model.
