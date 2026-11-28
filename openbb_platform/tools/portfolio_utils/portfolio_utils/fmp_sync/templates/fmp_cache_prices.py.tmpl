@@ -1,0 +1,107 @@
+"""fmp_cache_prices no-agent wrapper (#1344-T03). Rendered file: do not edit.
+
+Rendered by portfolio_utils.fmp_sync.render. It takes no arguments or paths from
+the cron job: every value below is baked in at render time and guarded by two
+SHA-256 checks (this file and the deployment map). Raw output of the warm goes to
+the null device; at most one counts-only line is printed, only when the recorded
+state changed.
+"""
+
+import hashlib
+import os
+import sys
+import uuid
+from pathlib import Path
+
+WRAPPER_VERSION = @@VERSION@@
+SELF_SHA256 = "@@SELF_SHA256@@"
+MAP_PATH = @@MAP_PATH@@
+MAP_SHA256 = @@MAP_SHA256@@
+STATE_ROOT = @@STATE_ROOT@@
+SYNC_PYTHON = @@SYNC_PYTHON@@
+SOURCE_PATHS = @@SOURCE_PATHS@@
+SITE_PACKAGES = @@SITE_PACKAGES@@
+RUN_MODE = @@MODE@@
+GENERIC_FAILURE = "fmp_cache_prices: integrity check failed"
+INTERNAL_FAILURE = "fmp_cache_prices: internal error"
+EXIT_INTEGRITY = 3
+EXIT_INTERNAL = 4
+_ZERO = "0" * 64
+
+
+def _normalized(data):
+    return data.replace(b"\r\n", b"\n")
+
+
+def _self_ok():
+    try:
+        with open(__file__, "rb") as handle:
+            data = _normalized(handle.read())
+        marker = ('SELF_SHA256 = "' + SELF_SHA256 + '"').encode("utf-8")
+        blank = ('SELF_SHA256 = "' + _ZERO + '"').encode("utf-8")
+        if data.count(marker) != 1:
+            return False
+        return hashlib.sha256(data.replace(marker, blank)).hexdigest() == SELF_SHA256
+    except OSError:
+        return False
+
+
+def _map_ok():
+    try:
+        with open(MAP_PATH, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest() == MAP_SHA256
+    except OSError:
+        return False
+
+
+def _say(fd, text):
+    os.write(fd, (text + "\n").encode("utf-8"))
+
+
+def _run():
+    from portfolio_utils.fmp_sync import dispatcher, locking, state
+    from portfolio_utils.fmp_sync.admission import load_map
+
+    dmap = load_map(MAP_PATH)
+    root = locking.validate_state_root(Path(STATE_ROOT))
+    run_id = uuid.uuid4().hex
+    state.record_start(root, run_id, RUN_MODE)
+    outcome = dispatcher.run_prices(
+        dmap, mode=RUN_MODE, requested_class=dmap.target_class, run_id=run_id
+    )
+    receipt = state.record_end(root, outcome)
+    line = receipt.outcome.to_line() if receipt.emit else ""
+    return line, (0 if receipt.persisted else receipt.outcome.exit_code)
+
+
+def main():
+    if not (_self_ok() and _map_ok()):
+        _say(1, GENERIC_FAILURE)
+        return EXIT_INTEGRITY
+    if ".".join(map(str, sys.version_info[:2])) != SYNC_PYTHON:
+        _say(1, GENERIC_FAILURE)
+        return EXIT_INTEGRITY
+    real_out = os.dup(1)
+    null_fd = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(null_fd, 1)
+    os.dup2(null_fd, 2)
+    sys.stdout = sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    line, code = "", EXIT_INTERNAL
+    try:
+        os.environ["FMP_SYNC_STATE_ROOT"] = STATE_ROOT
+        for path in SOURCE_PATHS:
+            if path not in sys.path:
+                sys.path.insert(0, path)
+        for path in SITE_PACKAGES:
+            if os.path.isdir(path) and path not in sys.path:
+                sys.path.append(path)
+        line, code = _run()
+    except BaseException:  # noqa: BLE001 - nothing may leak from here
+        line, code = INTERNAL_FAILURE, EXIT_INTERNAL
+    if line:
+        _say(real_out, line)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
