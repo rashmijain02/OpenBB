@@ -172,7 +172,7 @@ Real path, code-only: `& $py -m openbb_backtest.validation.experiment qualify-st
 
 ### T03 — bounded realistic benchmark jobs + modeling-differences document (CODE-ONLY + LIVE)
 Files: `validation/experiment.py` subcommand `bench`; `$V/fixtures/bench_spec.json` (2 reviewed strategies, 3×3 grid, 2 symbols,
-756 synthetic sessions from a seeded generator in the existing `synthetic_bundle` shape, WFO 4 folds and CPCV(6,2) in both window
+756 synthetic sessions from a seeded generator in the existing `synthetic_bundle` shape, WFO (legacy `_run_folds` layout: train T//2, test = step T//4, so always 2 folds; 378/189 sessions for T=756) and CPCV(6,2) in both window
 policies); new doc `docs/designs/backtest-design/14-nautilus-modeling-differences.md`.
 Red-first tests (`$V/test_bench.py`, fake worker; no network, no DB, no wall-clock asserts — `benchmark_sweep` precedent):
 `test_bench_counts_cells_attempts_and_n` (literal planned/ok/failed/N), `test_bench_peak_concurrency_one` (HeavyJobLock observed),
