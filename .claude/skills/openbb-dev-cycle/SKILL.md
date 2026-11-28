@@ -31,12 +31,11 @@ If a `specs/gh-<NN>-<slug>/handoff.md` already exists, the work is ready to ship
 
 ## 2. Models (per tool)
 
-Canonical: D1 and D13 in `docs/dev-strategy.md`. In short: **Copilot CLI uses GPT-family models;
-Claude Code uses Claude models** (main agent Opus; subagents `opus` / `sonnet`, `haiku` for
-read-only search). Name the model on every dispatch; if it is unavailable, stop and report. The
-tool you are running in decides the family. A model clause inside any skill copy (including the
-user-level `local-*-review` skills) applies only when that skill runs in its own tool family; it is
-never a reason to report BLOCKED in the other tool.
+Canonical: D1 in `docs/dev-strategy.md`. In short: use the best available model suited to the
+task (complexity, ambiguity, risk), in whichever tool you are running. Name the model explicitly
+on every dispatch; if none is suitable, stop and report. Never pin a model family or ID as a
+requirement; concrete names are examples only. A model clause inside any skill copy (including the
+user-level `local-*-review` skills) is never a reason to report BLOCKED.
 
 ## 3. Authority profiles
 

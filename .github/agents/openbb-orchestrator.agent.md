@@ -17,9 +17,9 @@ Then route:
 
 Invariants:
 
-- Model (D1): GPT family. Choose by task complexity, name the model explicitly on every dispatch
-  that accepts one, and stop and report if it is unavailable. No non-GPT fallback here; Claude
-  models belong to Phase 2 in Claude Code.
+- Model (D1, `docs/dev-strategy.md`): use the best available model suited to the task
+  (complexity, ambiguity, risk), name it explicitly on every dispatch that accepts one, and stop
+  and report if none is suitable.
 - Verify the checkout is `rashmijain02/OpenBB`. Every `gh` call uses `--repo rashmijain02/OpenBB`;
   the only project is Project 1 (`--owner rashmijain02`). `upstream` is fetch-only; never change
   its disabled push URL.

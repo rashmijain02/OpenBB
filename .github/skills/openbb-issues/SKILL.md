@@ -12,7 +12,7 @@ metadata:
 Spec Kit 1.4 has no built-in `taskstoissues`. This skill does that job for this repository,
 because issues here must also be sub-issues of the parent and items on the board.
 
-Model (D1): GPT family, named explicitly.
+Model (D1): best available for the task, named explicitly; stop if none is suitable.
 
 ## Board
 

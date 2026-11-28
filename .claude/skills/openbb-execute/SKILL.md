@@ -17,12 +17,12 @@ never merge.
 
 ## Models (D1, D13)
 
-- Main agent: the session's Claude model (Opus). Subagents: Claude models only, named
-  explicitly on every dispatch (`opus` for implementers on hard tasks, `sonnet` for implementers
-  and reviewers otherwise, `haiku` only for read-only search).
-- If a named model is unavailable, stop and report. Never fall back to another model family.
-- A GPT-only clause in a user-level skill copy (for example the `local-*-review` skills) does not
-  apply in Claude Code (D13); run those reviews with Claude models.
+- Use the best available model suited to the task (complexity, ambiguity, risk) for the main agent
+  and every subagent, and name it explicitly on every dispatch (e.g. a stronger model for hard
+  implementation, a lighter one for read-only search). Canonical: D1 in `docs/dev-strategy.md`.
+- If no suitable model is available, stop and report; do not silently degrade.
+- A model clause in a user-level skill copy (for example the `local-*-review` skills) never
+  overrides D1; run those reviews with the best available model.
 
 Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
 `$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`
