@@ -86,6 +86,13 @@ class DeploymentMap(_Strict):
     limits: dict[str, int] | None = None
     account_label: str | None = None
     hermes_timezone: str | None = None
+    # Python minor of the sync process itself (e.g. "3.12"); separate from the
+    # Hermes runtime pin in the profile. When set, admission checks the sync
+    # interpreter against it instead of the profile pin.
+    sync_python: str | None = Field(default=None, pattern=r"^\d+\.\d+$")
+    # Transport allowlist for the budget guard (FMP host names, loopback MySQL port).
+    fmp_hosts: list[str] | None = None
+    mysql_port: int | None = Field(default=None, gt=0, lt=65536)
 
 
 class UniverseManifest(_Strict):
@@ -217,6 +224,10 @@ def _check_process(dmap, profile, layers, prov, executable: str) -> None:
     running = platform.python_version()
     if recorded.split(".")[:2] != running.split(".")[:2]:
         raise _Blocked("BLOCKED_ABI", layers.ABI.value, "PYVENV_RUNNING_MISMATCH")
+    if dmap.sync_python:
+        if ".".join(running.split(".")[:2]) != dmap.sync_python:
+            raise _Blocked("BLOCKED_ABI", layers.ABI.value, "SYNC_PYTHON_MISMATCH")
+        return
     if not prov.python_matches(
         recorded, profile.python.requires, profile.python.supported
     ):

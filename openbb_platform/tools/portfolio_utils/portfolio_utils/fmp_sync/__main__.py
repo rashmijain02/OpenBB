@@ -2,10 +2,12 @@
 
 Commands:
 
-- ``prices --dry-run --map <map.json> [--target-class production]`` -- run the
-  ordered target/universe admission and print one counts-only JSON line. Exit 0
-  when admitted (preview only: no database or FMP access), 40 when blocked.
-  ``--execute`` is refused (exit 40) until the budgeted dispatcher lands (T02).
+- ``prices --dry-run|--execute --map <map.json> [--target-class production]`` --
+  take the target lock, run the ordered admission, and (execute only) warm under
+  the transport budget. Prints one counts-only JSON line; the exit code is the
+  business code from ``outcome.EXIT_CODES`` (0 ok, 10 partial/deferred/busy,
+  20 critical, 30 infra, 40 policy/config). ``--dry-run`` opens no socket;
+  ``--execute`` is blocked (40) until the map carries explicit limits.
 - ``lock --status --map <map.json>`` -- print whether the target lock is free or
   busy. Never takes ownership.
 
@@ -17,15 +19,22 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-from portfolio_utils.fmp_sync.admission import EXIT_POLICY, admit, load_map
+from portfolio_utils.fmp_sync.admission import EXIT_POLICY, Mode, load_map
+from portfolio_utils.fmp_sync.dispatcher import run_prices
 from portfolio_utils.fmp_sync.locking import LockRootRejected, lock_status
 
 
 def _emit(payload: dict) -> None:
     line = json.dumps(payload, sort_keys=True, separators=(",", ":"))[:512]
     print(line)  # noqa: T201
+
+
+def _emit_line(line: str) -> None:
+    print(line[:512])  # noqa: T201
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -45,7 +54,9 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None, *, runner: Callable[..., Any] | None = None
+) -> int:
     """Entry point; returns the process exit code."""
     args = _parser().parse_args(argv)
     try:
@@ -76,31 +87,10 @@ def main(argv: list[str] | None = None) -> int:
         _emit({"op": "lock", "lock": status})
         return 0
 
-    if args.execute:
-        _emit(
-            {
-                "op": "prices",
-                "mode": "execute",
-                "outcome": "BLOCKED_POLICY",
-                "findings": ["EXECUTE_NOT_AVAILABLE"],
-            }
-        )
-        return EXIT_POLICY
-
-    result = admit(dmap, mode="dry_run", requested_class=args.target_class)
-    _emit(
-        {
-            "op": "prices",
-            "mode": "dry_run",
-            "outcome": "PREVIEW" if result.admitted else result.code,
-            "failed_layer": result.failed_layer,
-            "findings": list(result.findings),
-            "target_class": result.target_class,
-            "db_category": result.db_category,
-            "manifest_id": result.manifest_id,
-            "counts": dict(result.counts),
-        }
-    )
+    run = runner or run_prices
+    mode: Mode = "execute" if args.execute else "dry_run"
+    result = run(dmap, mode=mode, requested_class=args.target_class)
+    _emit_line(result.to_line())
     return result.exit_code
 
 

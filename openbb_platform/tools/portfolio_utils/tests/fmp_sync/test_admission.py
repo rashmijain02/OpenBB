@@ -426,3 +426,30 @@ def test_map_rejects_unknown_fields(tmp_path):
     path.write_text(json.dumps({"schema_version": 1, "bogus": 1}), encoding="utf-8")
     with pytest.raises(ValueError):
         load_map(path)
+
+
+def test_sync_python_pin_is_separate_from_hermes_pin(world):
+    """The sync process is checked against the map's own pin, not the Hermes profile pin."""
+    minor = ".".join(platform.python_version().split(".")[:2])
+    ok = _admit(world, map={"sync_python": minor})
+    assert ok.admitted, ok
+    wrong = "2.7"
+    result = _admit(world, map={"sync_python": wrong})
+    assert result.failed_layer == FailedLayer.ABI.value
+    assert "SYNC_PYTHON_MISMATCH" in result.findings
+
+
+def test_sync_python_replaces_profile_python_check(world):
+    """A profile pin the sync interpreter does not satisfy no longer blocks it."""
+    make, kwargs = world
+    minor = ".".join(platform.python_version().split(".")[:2])
+    dmap = make(sync_python=minor)
+    profile = yaml.safe_load(Path(dmap.profile_path).read_text(encoding="utf-8"))
+    profile["python"]["supported"] = "2.7"  # Hermes runtime pin differs
+    Path(dmap.profile_path).write_text(yaml.safe_dump(profile), encoding="utf-8")
+    assert admit(dmap, mode="dry_run", **kwargs).admitted
+    legacy = make()
+    profile["python"]["supported"] = "2.7"
+    Path(legacy.profile_path).write_text(yaml.safe_dump(profile), encoding="utf-8")
+    blocked = admit(legacy, mode="dry_run", **kwargs)
+    assert "PYTHON_PIN_MISMATCH" in blocked.findings

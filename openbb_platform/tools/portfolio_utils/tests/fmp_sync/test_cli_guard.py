@@ -187,7 +187,7 @@ def test_main_lock_status_reports_busy(
     assert '"lock":"busy"' in capsys.readouterr().out
 
 
-def test_main_execute_refused_until_dispatcher(
+def test_main_execute_blocked_without_limits(
     tmp_path, state_root, capsys
 ):  # noqa: F811
     from portfolio_utils.fmp_sync.__main__ import (
@@ -196,7 +196,7 @@ def test_main_execute_refused_until_dispatcher(
 
     map_path = _write_map(tmp_path, state_root)
     assert main(["prices", "--execute", "--map", str(map_path)]) == 40
-    assert "EXECUTE_NOT_AVAILABLE" in capsys.readouterr().out
+    assert "LIMITS_MISSING" in capsys.readouterr().out
     bad = tmp_path / "bad.json"
     bad.write_text("{", encoding="utf-8")
     assert main(["prices", "--dry-run", "--map", str(bad)]) == 40
