@@ -16,6 +16,14 @@ The module also carries the sentinel scanner used by real-path checks::
     ... | python -m openbb_agents.hermes_integration.projection --scan-stdin
 
 It reports labels only (never the matched text) and exits 1 on any hit.
+
+Names that reach Hermes come from closed vocabularies (:data:`FINDING_CODES`,
+:data:`AGGREGATE_NAMES`, :data:`METRIC_NAMES`). A producer-supplied code or
+name outside them (``TOP_HOLDING_NVDA``, an aggregate named after a ticker, a
+digit-bearing code) is dropped and counted in ``dropped_unvetted``, never
+passed. Opaque IDs are keyed HMAC-SHA256 digests; the key file is named by
+:data:`PROJECTION_KEY_ENV` and must live outside any git work tree. Without a
+usable key, :func:`project` fails closed (``projection_key_unconfigured``).
 """
 
 from __future__ import annotations
@@ -23,9 +31,12 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import hmac
+import os
 import re
 import sys
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -67,12 +78,62 @@ Bucket = Literal[
     "out_of_range",
 ]
 
+# Closed vocabularies: the only finding codes and names that may reach Hermes.
+# Producer-supplied codes or names outside them are dropped and counted.
+FINDING_CODES: frozenset[str] = frozenset(
+    {
+        "CAPABILITY_DENIED",
+        "CAPABILITY_UNAVAILABLE",
+        "CASH_HIGH",
+        "CASH_LOW",
+        "CONCENTRATION_HIGH",
+        "CONCENTRATION_MODERATE",
+        "DATA_INCOMPLETE",
+        "DATA_STALE",
+        "DIVERSIFICATION_LOW",
+        "DRAWDOWN_HIGH",
+        "SECTOR_CONCENTRATION_HIGH",
+        "VOLATILITY_HIGH",
+    }
+)
+AGGREGATE_NAMES: frozenset[str] = frozenset(
+    {
+        "cash_share",
+        "equity_share",
+        "fixed_income_share",
+        "position_count",
+        "sector_count",
+        "top_weight",
+        "total_value",
+    }
+)
+METRIC_NAMES: frozenset[str] = frozenset(
+    {
+        "beta",
+        "cash_share",
+        "market_value",
+        "max_drawdown",
+        "position_count",
+        "realized_gain",
+        "sharpe_ratio",
+        "top_weight",
+        "total_value",
+        "unrealized_gain",
+        "volatility",
+    }
+)
+
 _OPAQUE = r"[a-z]{3}_[0-9a-f]{16}"
-_FIELD = r"[a-z][a-z0-9_]{0,63}"
+_NAME = r"[a-z]+(?:_[a-z]+)*"
 OPAQUE_ID_RE = re.compile(rf"^{_OPAQUE}$")
-FIELD_RE = re.compile(rf"^{_FIELD}$")
-METRIC_REF_RE = re.compile(rf"^\[\[metric:{_OPAQUE}:{_OPAQUE}:{_FIELD}\]\]$")
-FINDING_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
+NAME_RE = re.compile(rf"^{_NAME}$")
+METRIC_REF_RE = re.compile(rf"^\[\[metric:{_OPAQUE}:{_OPAQUE}:(?P<name>{_NAME})\]\]$")
+FINDING_CODE_RE = re.compile(r"^[A-Z]+(?:_[A-Z]+)*$")
+# A name segment from this class names a security, so it never crosses.
+_SYMBOL_WORDS = frozenset({"ticker", "symbol", "cusip", "isin", "sedol", "figi"})
+
+PROJECTION_KEY_ENV = "HFP_PROJECTION_ID_KEY"
+MIN_KEY_BYTES = 32
 
 OPERATION = "evidence_projection_read"
 SCOPE = "evidence.projection"
@@ -98,6 +159,7 @@ class EvidenceProjection(BaseModel):
     metric_refs: tuple[str, ...] = ()
     aggregate_buckets: dict[str, Bucket] = Field(default_factory=dict)
     as_of: dt.date | None = None
+    dropped_unvetted: int = Field(default=0, ge=0)
 
     @field_validator("run_id", "artifact_id")
     @classmethod
@@ -109,29 +171,83 @@ class EvidenceProjection(BaseModel):
     @field_validator("finding_codes")
     @classmethod
     def _codes(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not FINDING_CODE_RE.match(code) for code in value):
-            raise ValueError("finding codes must be fixed codes")
+        if any(not vetted_code(code) for code in value):
+            raise ValueError("finding codes must come from FINDING_CODES")
         return value
 
     @field_validator("metric_refs")
     @classmethod
     def _refs(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not METRIC_REF_RE.match(ref) for ref in value):
-            raise ValueError("metric refs must be [[metric:run:artifact:field]]")
+        for ref in value:
+            match = METRIC_REF_RE.match(ref)
+            if not match or not vetted_name(match.group("name"), METRIC_NAMES):
+                raise ValueError("metric refs must be [[metric:run:artifact:name]]")
         return value
 
     @field_validator("aggregate_buckets")
     @classmethod
     def _bucket_names(cls, value: dict[str, str]) -> dict[str, str]:
-        if any(not FIELD_RE.match(name) for name in value):
-            raise ValueError("aggregate names must be field names")
+        if any(not vetted_name(name, AGGREGATE_NAMES) for name in value):
+            raise ValueError("aggregate names must come from AGGREGATE_NAMES")
         return value
 
 
-def opaque_id(prefix: str, raw: object) -> str:
-    """Return a stable opaque ID (``prefix_`` + 16 hex) for a raw identifier."""
-    digest = hashlib.sha256(f"{prefix}\x00{raw}".encode()).hexdigest()
-    return f"{prefix}_{digest[:16]}"
+def vetted_code(code: object) -> bool:
+    """Return True for a finding code in :data:`FINDING_CODES` with no digits."""
+    return (
+        isinstance(code, str)
+        and code in FINDING_CODES
+        and bool(FINDING_CODE_RE.match(code))
+        and not _SYMBOL_WORDS.intersection(code.lower().split("_"))
+    )
+
+
+def vetted_name(name: object, vocabulary: frozenset[str]) -> bool:
+    """Return True for a name in ``vocabulary`` with no digits or symbol words."""
+    return (
+        isinstance(name, str)
+        and name in vocabulary
+        and bool(NAME_RE.match(name))
+        and not _SYMBOL_WORDS.intersection(name.split("_"))
+    )
+
+
+def _in_git_work_tree(path: Path) -> bool:
+    return any((parent / ".git").exists() for parent in path.parents)
+
+
+def load_projection_key() -> bytes:
+    """Read the per-deployment ID key from the file named by the env var.
+
+    Raises :class:`ProjectionDenied` (``projection_key_unconfigured``) when the
+    variable is unset, the path is relative or unreadable, or the key is shorter
+    than :data:`MIN_KEY_BYTES`; ``projection_key_in_repo`` when the file sits in
+    a git work tree. There is no unkeyed fallback.
+    """
+    raw = os.environ.get(PROJECTION_KEY_ENV, "").strip()
+    if not raw:
+        raise ProjectionDenied("projection_key_unconfigured")
+    path = Path(raw)
+    if not path.is_absolute():
+        raise ProjectionDenied("projection_key_unconfigured")
+    try:
+        resolved = path.resolve(strict=True)
+        key = resolved.read_bytes().strip()
+    except OSError as exc:
+        raise ProjectionDenied("projection_key_unconfigured") from exc
+    if _in_git_work_tree(resolved):
+        raise ProjectionDenied("projection_key_in_repo")
+    if len(key) < MIN_KEY_BYTES:
+        raise ProjectionDenied("projection_key_unconfigured")
+    return key
+
+
+def opaque_id(prefix: str, raw: object, key: bytes) -> str:
+    """Return a keyed opaque ID (``prefix_`` + 16 hex of HMAC-SHA256)."""
+    if len(key) < MIN_KEY_BYTES:
+        raise ProjectionDenied("projection_key_unconfigured")
+    digest = hmac.new(key, f"{prefix}\x00{raw}".encode(), hashlib.sha256)
+    return f"{prefix}_{digest.hexdigest()[:16]}"
 
 
 def bucket(value: object) -> str:
@@ -152,10 +268,31 @@ def bucket(value: object) -> str:
     return COUNT_BUCKETS[-1]
 
 
+def _touches(name: str, cls: frozenset[str]) -> bool:
+    return name in cls or bool(cls.intersection(name.lower().split("_")))
+
+
 def is_reidentifying(fields: Iterable[str]) -> bool:
-    """Return True when ``fields`` touch every re-identifying class at once."""
-    requested = set(fields)
-    return all(requested & cls for cls in REIDENTIFYING_CLASSES)
+    """Return True when ``fields`` touch every re-identifying class at once.
+
+    A name touches a class when it is a member or one of its ``_`` segments is
+    (``top_weight`` touches the weight class).
+    """
+    names = [name for name in fields if isinstance(name, str)]
+    return all(
+        any(_touches(name, cls) for name in names) for cls in REIDENTIFYING_CLASSES
+    )
+
+
+def _vetted(items: Iterable[object], ok: Any) -> tuple[list[str], int]:
+    kept: set[str] = set()
+    dropped = 0
+    for item in items:
+        if ok(item):
+            kept.add(str(item))
+        else:
+            dropped += 1
+    return sorted(kept), dropped
 
 
 def project(
@@ -167,10 +304,12 @@ def project(
 ) -> EvidenceProjection:
     """Project ``artifact`` onto the requested, granted fields.
 
-    Raises :class:`ProjectionDenied` when the request combines re-identifying
-    fields or the gate refuses it. Raw values never reach the result: IDs are
-    hashed, findings are kept only when they are fixed codes, metrics become
-    references and aggregates become buckets.
+    Raises :class:`ProjectionDenied` when the request (or the names it would
+    emit) combines re-identifying classes, the gate refuses it, or no ID key is
+    configured. Raw values never reach the result: IDs are keyed HMACs,
+    finding codes and metric / aggregate names come only from the closed
+    vocabularies (anything else is dropped and counted in
+    ``dropped_unvetted``), metrics become references and aggregates buckets.
     """
     requested = frozenset(fields)
     if is_reidentifying(requested):
@@ -184,10 +323,13 @@ def project(
         raise ProjectionDenied(decision.reason)
     if not requested <= EVIDENCE_PROJECTION_FIELDS:
         raise ProjectionDenied("field_not_projectable")
+    key = load_projection_key()
 
-    run = opaque_id("run", artifact.get("run_id"))
-    art = opaque_id("art", artifact.get("artifact_id"))
+    run = opaque_id("run", artifact.get("run_id"), key)
+    art = opaque_id("art", artifact.get("artifact_id"), key)
     values: dict[str, Any] = {}
+    dropped = 0
+    emitted: set[str] = set(requested)
     if "run_id" in requested:
         values["run_id"] = run
     if "artifact_id" in requested:
@@ -198,25 +340,28 @@ def project(
             status if status in ("granted", "denied", "unavailable") else "unavailable"
         )
     if "finding_codes" in requested:
-        values["finding_codes"] = tuple(
-            code
-            for code in artifact.get("findings") or ()
-            if isinstance(code, str) and FINDING_CODE_RE.match(code)
-        )
+        codes, n = _vetted(artifact.get("findings") or (), vetted_code)
+        values["finding_codes"] = tuple(codes)
+        emitted.update(code.lower() for code in codes)
+        dropped += n
     if "metric_refs" in requested:
-        values["metric_refs"] = tuple(
-            f"[[metric:{run}:{art}:{name}]]"
-            for name in sorted(artifact.get("metrics") or {})
-            if isinstance(name, str) and FIELD_RE.match(name)
+        names, n = _vetted(
+            artifact.get("metrics") or {}, lambda m: vetted_name(m, METRIC_NAMES)
         )
+        values["metric_refs"] = tuple(f"[[metric:{run}:{art}:{m}]]" for m in names)
+        emitted.update(names)
+        dropped += n
     if "aggregate_buckets" in requested:
-        values["aggregate_buckets"] = {
-            name: bucket(value)
-            for name, value in sorted((artifact.get("aggregates") or {}).items())
-            if isinstance(name, str) and FIELD_RE.match(name)
-        }
+        aggregates = artifact.get("aggregates") or {}
+        names, n = _vetted(aggregates, lambda a: vetted_name(a, AGGREGATE_NAMES))
+        values["aggregate_buckets"] = {a: bucket(aggregates[a]) for a in names}
+        emitted.update(names)
+        dropped += n
     if "as_of" in requested:
         values["as_of"] = _as_date(artifact.get("as_of"))
+    if is_reidentifying(emitted):
+        raise ProjectionDenied("reidentifying_combination")
+    values["dropped_unvetted"] = dropped
     return EvidenceProjection(**values)
 
 

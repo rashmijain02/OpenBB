@@ -8,6 +8,7 @@ request bodies only to scan them.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import socket
@@ -185,6 +186,179 @@ def test_projection_model_rejects_raw_values():
         EvidenceProjection(market_value=SENTINELS["amount"])
 
 
+# --- closed vocabularies (SECURITY-1) ------------------------------------------------
+# The verified leak: producer keys and codes carrying a ticker and an amount passed
+# the old shape-only checks and reached the projection as names.
+
+_VERIFIED_LEAK = {
+    "run_id": "synthetic-run-1",
+    "artifact_id": "synthetic-artifact-1",
+    "capability_status": "granted",
+    "findings": ["CONCENTRATION_HIGH", "TOP_HOLDING_NVDA", "MV_4242424_42"],
+    "metrics": {"nvda_market_value": 1.0, "market_value": 2.0},
+    "aggregates": {"nvda": 0.31, "top_weight": 0.31},
+    "as_of": "2026-01-02",
+}
+
+
+def _emitted_names(proj: EvidenceProjection) -> set[str]:
+    names = set(proj.finding_codes) | set(proj.aggregate_buckets)
+    return names | {ref[:-2].rsplit(":", 1)[1] for ref in proj.metric_refs}
+
+
+def _project_artifact(artifact, fields=ALL_FIELDS):
+    return project(
+        artifact, gate=HERMES_FINANCE_POLICY, principal="hermes_runtime", fields=fields
+    )
+
+
+def test_verified_leak_projects_only_vocabulary_names():
+    proj = _project_artifact(_VERIFIED_LEAK)
+    names = _emitted_names(proj)
+    assert names == {"CONCENTRATION_HIGH", "market_value", "top_weight"}
+    assert not [n for n in names if any(ch.isdigit() for ch in n)]
+    text = proj.model_dump_json()
+    assert "nvda" not in text.lower() and "4242424" not in text
+    assert proj.dropped_unvetted == 4
+    assert proj.as_of is not None  # the date still crosses; the ticker does not
+
+
+@pytest.mark.parametrize(
+    ("slot", "item"),
+    [
+        ("findings", "TOP_HOLDING_NVDA"),
+        ("findings", "MV_4242424_42"),
+        ("findings", "CONCENTRATION_HIGH_2"),
+        ("aggregates", "nvda"),
+        ("aggregates", "aapl_weight"),
+        ("metrics", "nvda_market_value"),
+        ("metrics", "market_value_2"),
+    ],
+)
+def test_unvetted_codes_and_names_are_dropped_and_counted(slot, item):
+    artifact = {"run_id": "r", "artifact_id": "a", slot: {item: 0.2}}
+    if slot == "findings":
+        artifact[slot] = [item]
+    proj = _project_artifact(artifact)
+    assert item not in proj.model_dump_json()
+    assert proj.dropped_unvetted == 1
+    assert _emitted_names(proj) == set()
+
+
+def test_vocabulary_entries_with_digits_or_symbol_words_still_drop(monkeypatch):
+    """Defense in depth: a bad vocabulary entry is still not emitted."""
+    monkeypatch.setattr(
+        projection,
+        "FINDING_CODES",
+        projection.FINDING_CODES | {"MV_4242424_42", "TOP_TICKER_HIGH"},
+    )
+    monkeypatch.setattr(
+        projection, "AGGREGATE_NAMES", projection.AGGREGATE_NAMES | {"nvda2", "symbol_weight"}
+    )
+    monkeypatch.setattr(
+        projection, "METRIC_NAMES", projection.METRIC_NAMES | {"cusip_value"}
+    )
+    proj = _project_artifact(
+        {
+            "findings": ["MV_4242424_42", "TOP_TICKER_HIGH"],
+            "aggregates": {"nvda2": 0.1, "symbol_weight": 0.1},
+            "metrics": {"cusip_value": 1},
+        }
+    )
+    assert _emitted_names(proj) == set()
+    assert proj.dropped_unvetted == 5
+
+
+def test_emitted_names_are_checked_for_the_reidentifying_combination(monkeypatch):
+    """A weight aggregate + a security-id metric + as_of re-identifies a holding."""
+    monkeypatch.setattr(
+        projection, "METRIC_NAMES", projection.METRIC_NAMES | {"security_id"}
+    )
+    artifact = {"metrics": {"security_id": 1}, "aggregates": {"top_weight": 0.3}}
+    with pytest.raises(ProjectionDenied) as err:
+        _project_artifact({**artifact, "as_of": "2026-01-02"})
+    assert err.value.reason == "reidentifying_combination"
+    fields = [f for f in ALL_FIELDS if f != "as_of"]
+    assert "security_id" in _emitted_names(_project_artifact(artifact, fields))
+
+
+def test_projection_model_rejects_unvetted_names():
+    with pytest.raises(ValueError):
+        EvidenceProjection(finding_codes=("TOP_HOLDING_NVDA",))
+    with pytest.raises(ValueError):
+        EvidenceProjection(aggregate_buckets={"nvda": "25-50%"})
+    ref = f"[[metric:run_{'0' * 16}:art_{'0' * 16}:nvda_market_value]]"
+    with pytest.raises(ValueError):
+        EvidenceProjection(metric_refs=(ref,))
+    ok = f"[[metric:run_{'0' * 16}:art_{'0' * 16}:market_value]]"
+    assert EvidenceProjection(metric_refs=(ok,)).metric_refs == (ok,)
+
+
+# --- keyed opaque IDs (PRIVACY-1) ------------------------------------------------------
+
+
+def _key_file(tmp_path, name, data=None):
+    path = tmp_path / "keys" / name
+    path.parent.mkdir(exist_ok=True)
+    path.write_bytes(data if data is not None else (name * 64).encode()[:64])
+    return path
+
+
+def test_projected_ids_are_keyed_not_plain_sha256():
+    proj = _project_artifact(_VERIFIED_LEAK)
+    for prefix, raw, got in (
+        ("run", "synthetic-run-1", proj.run_id),
+        ("art", "synthetic-artifact-1", proj.artifact_id),
+    ):
+        plain = hashlib.sha256(f"{prefix}\x00{raw}".encode()).hexdigest()[:16]
+        assert got != f"{prefix}_{plain}"
+
+
+def test_projected_ids_are_stable_per_key_and_differ_across_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv(projection.PROJECTION_KEY_ENV, str(_key_file(tmp_path, "a")))
+    first = _project_artifact(_VERIFIED_LEAK)
+    again = _project_artifact(_VERIFIED_LEAK)
+    assert (first.run_id, first.artifact_id) == (again.run_id, again.artifact_id)
+    monkeypatch.setenv(projection.PROJECTION_KEY_ENV, str(_key_file(tmp_path, "b")))
+    other = _project_artifact(_VERIFIED_LEAK)
+    assert other.run_id != first.run_id and other.artifact_id != first.artifact_id
+    assert other.metric_refs != first.metric_refs
+
+
+def _denied(monkeypatch, value):
+    if value is None:
+        monkeypatch.delenv(projection.PROJECTION_KEY_ENV, raising=False)
+    else:
+        monkeypatch.setenv(projection.PROJECTION_KEY_ENV, value)
+    with pytest.raises(ProjectionDenied) as err:
+        _project_artifact(_VERIFIED_LEAK)
+    return err.value.reason
+
+
+def test_projection_without_a_usable_key_fails_closed(tmp_path, monkeypatch):
+    assert _denied(monkeypatch, None) == "projection_key_unconfigured"
+    assert _denied(monkeypatch, "") == "projection_key_unconfigured"
+    assert _denied(monkeypatch, "relative.key") == "projection_key_unconfigured"
+    missing = str(tmp_path / "missing.key")
+    assert _denied(monkeypatch, missing) == "projection_key_unconfigured"
+    short = _key_file(tmp_path, "short", b"x" * 31)
+    assert _denied(monkeypatch, str(short)) == "projection_key_unconfigured"
+
+
+def test_projection_key_inside_a_git_work_tree_fails_closed(tmp_path, monkeypatch):
+    tree = tmp_path / "clone"
+    (tree / ".git").mkdir(parents=True)
+    key = tree / "sub" / "projection.key"
+    key.parent.mkdir()
+    key.write_bytes(b"k" * 64)
+    assert _denied(monkeypatch, str(key)) == "projection_key_in_repo"
+
+
+def test_opaque_id_refuses_a_short_key():
+    with pytest.raises(ProjectionDenied):
+        projection.opaque_id("run", "x", b"short")
+
+
 # --- scanner -------------------------------------------------------------------------
 
 
@@ -351,8 +525,30 @@ def test_policy_probe_projection_real_path(capsys):
     assert proj["model_capture_scan_hits"] == [] and proj["egress_attempts"] == []
     assert proj["unlisted_field_denied"] == "field_not_granted"
     assert proj["reidentifying_denied"] == "reidentifying_combination"
+    assert proj["dropped_unvetted"] >= 4 and proj["unvetted_names_emitted"] == 0
+    assert "NVDA" not in out and "4242424" not in out
     assert summary["scan_hits"] == []
     assert scan_text(out) == []
+
+
+def test_policy_probe_projection_fails_closed_without_a_key(monkeypatch):
+    from openbb_agents.hermes_integration import policy_probe
+
+    monkeypatch.delenv(projection.PROJECTION_KEY_ENV)
+    ok, summary = policy_probe._projection_check()
+    assert ok is False
+    assert summary["denied"] == "projection_key_unconfigured"
+
+
+def test_policy_probe_counts_unvetted_names():
+    from openbb_agents.hermes_integration import policy_probe
+
+    leaky = EvidenceProjection.model_construct(
+        finding_codes=("TOP_HOLDING_NVDA",),
+        aggregate_buckets={"nvda": "25-50%", "top_weight": "25-50%"},
+        metric_refs=(f"[[metric:run_{'0' * 16}:art_{'0' * 16}:market_value_2]]",),
+    )
+    assert policy_probe._unvetted_names(leaky) == 3
 
 
 @pytest.mark.parametrize(

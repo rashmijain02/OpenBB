@@ -14,8 +14,11 @@ With ``--projection`` it also projects a sentinel artifact through the
 hermes-finance gate and posts the projection to a probe-owned loopback
 "model" under :func:`.egress_guard.egress_guard` (live ports refused). It
 checks that the model capture scans clean, that no non-loopback lookup or
-connect was attempted, and that unlisted and re-identifying field requests
-fail closed.
+connect was attempted, that unlisted and re-identifying field requests
+fail closed, and that producer codes and names carrying a ticker or digits
+(the verified #1339 leak) are dropped, not emitted. ``--projection`` needs
+the projection ID key (``HFP_PROJECTION_ID_KEY``, a key file outside the
+repo); without it the projection check fails closed.
 
 Usage::
 
@@ -49,7 +52,17 @@ import openbb_agents
 
 from .access import EVIDENCE_PROJECTION_FIELDS, HERMES_FINANCE_POLICY
 from .egress_guard import egress_guard
-from .projection import SENTINELS, ProjectionDenied, project, scan_text
+from .projection import (
+    AGGREGATE_NAMES,
+    METRIC_NAMES,
+    SENTINELS,
+    EvidenceProjection,
+    ProjectionDenied,
+    project,
+    scan_text,
+    vetted_code,
+    vetted_name,
+)
 
 _TOOLS = ("get_positions", "get_sector_exposure")
 _CLAIMS = {"approved": True, "principal": "operator", "note": SENTINELS["account"]}
@@ -168,9 +181,24 @@ def _sentinel_artifact() -> dict[str, Any]:
         "run_id": SENTINELS["account"],
         "artifact_id": SENTINELS["name"],
         "capability_status": "granted",
-        "findings": ["CONCENTRATION_HIGH", SENTINELS["amount"], SENTINELS["name"]],
-        "metrics": {"market_value": SENTINELS["amount"], "top_weight": 0.31},
-        "aggregates": {"top_weight": 0.31, "position_count": 12, "total": 4.2e6},
+        "findings": [
+            "CONCENTRATION_HIGH",
+            SENTINELS["amount"],
+            SENTINELS["name"],
+            "TOP_HOLDING_NVDA",
+            "MV_4242424_42",
+        ],
+        "metrics": {
+            "market_value": SENTINELS["amount"],
+            "top_weight": 0.31,
+            "nvda_market_value": 1.0,
+        },
+        "aggregates": {
+            "top_weight": 0.31,
+            "position_count": 12,
+            "total": 4.2e6,
+            "nvda": 0.31,
+        },
         "as_of": "2026-01-02",
         "account_number": SENTINELS["account"],
     }
@@ -209,14 +237,27 @@ def _denied_reason(fields: list[str]) -> str | None:
     return None
 
 
+def _unvetted_names(proj: EvidenceProjection) -> int:
+    """Count emitted codes / names outside the vocabularies or with digits."""
+    names = [(c, vetted_code(c)) for c in proj.finding_codes]
+    names += [(a, vetted_name(a, AGGREGATE_NAMES)) for a in proj.aggregate_buckets]
+    for ref in proj.metric_refs:
+        metric = ref[:-2].rsplit(":", 1)[1]
+        names.append((metric, vetted_name(metric, METRIC_NAMES)))
+    return sum(1 for name, ok in names if not ok or any(c.isdigit() for c in name))
+
+
 def _projection_check() -> tuple[bool, dict[str, Any]]:
     fields = sorted(EVIDENCE_PROJECTION_FIELDS)
-    proj = project(
-        _sentinel_artifact(),
-        gate=HERMES_FINANCE_POLICY,
-        principal=_PRINCIPAL,
-        fields=fields,
-    )
+    try:
+        proj = project(
+            _sentinel_artifact(),
+            gate=HERMES_FINANCE_POLICY,
+            principal=_PRINCIPAL,
+            fields=fields,
+        )
+    except ProjectionDenied as err:
+        return False, {"fields": fields, "result": "FAIL", "denied": err.reason}
     message = {"messages": [{"role": "user", "content": proj.model_dump_json()}]}
     server = ThreadingHTTPServer(("127.0.0.1", 0), _ModelHandler)
     setattr(server, "bodies", [])
@@ -248,6 +289,8 @@ def _projection_check() -> tuple[bool, dict[str, Any]]:
         "egress_attempts": list(attempts),
         "unlisted_field_denied": unlisted,
         "reidentifying_denied": reidentifying,
+        "dropped_unvetted": proj.dropped_unvetted,
+        "unvetted_names_emitted": _unvetted_names(proj),
     }
     ok = (
         len(bodies) == 1
@@ -255,6 +298,8 @@ def _projection_check() -> tuple[bool, dict[str, Any]]:
         and not attempts
         and unlisted is not None
         and reidentifying == "reidentifying_combination"
+        and proj.dropped_unvetted > 0
+        and summary["unvetted_names_emitted"] == 0
     )
     summary["result"] = "projected" if ok else "FAIL"
     return ok, summary

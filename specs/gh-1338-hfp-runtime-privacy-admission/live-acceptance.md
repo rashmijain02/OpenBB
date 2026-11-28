@@ -174,6 +174,13 @@ Live acceptance for #1339 (HFP-P02 evidence projections) - normal (non-elevated)
 Preconditions: L2, L3 and L4 done in <qual-home>; the LiteLLM proxy runs the admitted finance-local config; the
 finance virtual key carries metadata {"disable_fallbacks": true}; the owner's own Hermes home is never used.
 $py = <worktree python>; $env:PYTHONPATH = <absolute path to openbb_platform\extensions\agents>
+Projection ID key (once per deployment): <key-file> is a new file OUTSIDE every git work tree, e.g. under
+  <secret-dir>; write 32 random bytes as hex, never commit, print or paste it:
+  & $py -c "import secrets,sys; open(sys.argv[1],'x').write(secrets.token_hex(32))" <key-file>
+  $env:HFP_PROJECTION_ID_KEY = '<key-file>'   (projection.project() fails closed without it:
+  projection_key_unconfigured; projection_key_in_repo if the file is inside a work tree)
+Preflight reports `disable_fallbacks: unverified`: the key metadata above cannot be checked statically, so
+  confirm it in the LiteLLM admin UI before step 2.
 1. Preflight: & $py -m openbb_agents.hermes_integration.hermes_preflight <the L3 arguments>
                                     Expect: exit 0, route level=local for the finance alias
 2. In <qual-home>, one Hermes turn through the finance alias. The prompt carries only an EvidenceProjection built
