@@ -48,7 +48,8 @@ This governs execution agents, not models the product deploys, trains, evaluates
 - Every `gh` call uses `--repo rashmijain02/OpenBB`. Never target another owner's repository;
   `upstream` is fetch-only.
 - Work on `feat|fix|docs/<topic>-gh-<NN>` side branches. Never commit or merge into `portfolio`,
-  `portfolio_validations` or `develop`; the owner merges PRs.
+  `portfolio_validations` or `develop`; the owner merges PRs (or the lead under the lead-delegated
+  profile, D15; see `.claude/skills/openbb-dev-cycle/SKILL.md`).
 
 ## Environment
 
