@@ -1,0 +1,684 @@
+schema_version: 1
+plan_id: hermes-financial-planning
+title: Hermes financial assistant - proposed GitHub delivery hierarchy
+status: draft-awaiting-publication-approval
+target: {repository: rashmijain02/OpenBB, project_owner: rashmijain02, project_number: 1}
+baseline: {branch: portfolio, revision: 827e226e47bf1b8cadbf6fba6b9c5eadc7665db7}
+sources:
+  SPEC:
+    path: 'docs\Specs\gh-1312-hermes-financial-planning\spec.md'
+    sha256: 82755ead712e67415492e9b8ceab134aad0f0fb6ed78e2a99ed9a7cf6a984ff2
+  PLAN:
+    path: 'docs\Specs\gh-1312-hermes-financial-planning\plan.md'
+    sha256: 262321857620e2d0b99a945c489216fb5a2edf0770863130410657a457456d07
+  RESEARCH:
+    path: 'docs\Specs\gh-1312-hermes-financial-planning\research.md'
+    sha256: ec6de6673ef56268721003a942f3825e63152ad9752e11dee28ac8c7b52fe4d9
+  CRON:
+    scope: workspace
+    path: 'prompts\out\fmp-cache-hermes-sync-design.md'
+    sha256: 9441326a80560a2a58eae6bd9aeb1b4d0684448f90858262e76d62f6e1dcfbbd
+requirements:
+  - PF-01
+  - PF-02
+  - PF-03
+  - PF-04
+  - PF-05
+  - PF-06
+  - PF-07
+  - PF-08
+  - PF-09
+  - PF-10
+  - PF-11
+  - PF-12
+  - PF-13
+  - PF-14
+  - PF-15
+  - PF-16
+  - PF-17
+  - PF-18
+  - PF-19
+  - PF-20
+  - PF-21
+  - PF-22
+  - PF-23
+  - PF-24
+  - PF-25
+  - PF-26
+  - PF-27
+  - BT-01
+  - BT-02
+  - BT-03
+  - OPS-01
+  - OPS-02
+  - OPS-03
+  - OPS-04
+  - OPS-05
+  - OPS-06
+  - OPS-07
+requirement_definitions:
+  OPS-01: No-agent scheduled warming with explicit database and request budgets
+  OPS-02: Per-sync and independent readiness/integrity validation
+  OPS-03: Durable status/history and state-change delivery
+  OPS-04: Pacific cron expressions with Eastern session calendars and next-year coverage
+  OPS-05: Retention-safe ETF/reference admission only after storage-owner acceptance
+  OPS-06: Secret-safe least-privilege operations and ticker-only universe
+  OPS-07: Bounded retries, shared locks, partial outcomes and wake/restart recovery
+decisions:
+  - "Interview: personal reusable skill, adapting to each repository's rules."
+  - "Epic -> Feature -> PBI are GitHub issues; Tasks are checklists, not separate issues."
+  - "Full decomposition across all selected roadmap phases; no fixed dates or staffing assumptions."
+  - "Relative S/M/L estimates with rationale and low confidence until child implementation specs are qualified."
+  - "YAML is the canonical plan; generated Markdown is a view; GitHub remains execution-status authority."
+  - "Product descendants use proposed program:hermes-financial-planning; FMP cron descendants inherit program:openbb-jobs."
+  - "Add PBI to project Type and a separate Roadmap phase field only after preview approval; preserve the existing Phase field."
+  - "Keep Paperless + Docling as the baseline; Vault-Lite remains an unselected alternative."
+  - "Publishing planning issues is not G1 approval, execution authorization, deployment consent or source publication."
+  - "Issue #1312 (financial-planning proposal) stays unchanged as the design reference."
+  - "Each Task delivers a tested observable slice; red-first and real-path evidence are required before marking it done."
+excluded:
+  - "PF-28 through PF-33 candidate extensions, template valuation haircuts, options illustrations and automated order tickets."
+  - "Gmail, WhatsApp, new external messaging accounts and other future personal connectors."
+  - "Live brokerage access, trades, transfers, tax filing or payments."
+  - "FMP storage/schema/retention/prune redesign; existing owner issues remain dependencies."
+  - "Reinstallation of OpenBBPortfolio service, new scheduler daemons, unrestricted agent shell/SQL or a second harness."
+  - "Automatic choice of pilot states, activation of semantic search/digest, or raw-document model access."
+  - "Unrequested commits, pushes, PRs, issue closure/deletion/reparenting, private input reads or runtime changes."
+external_dependencies:
+  G1: Owner approval of the reconciled spec and implementation plan; all implementation remains gated
+  OPS-ATTEST: Separately authorized operator evidence of credential remediation, network isolation, backup target and runtime identity
+  FMP-QUOTA: Verified current entitlement and shared account request/bandwidth allocation
+  STORE-1300: "rashmijain02/OpenBB#1300 (Persistent raw store): approved non-destructive ETF/reference refresh interface; no duplicated storage work"
+  SWITCH-1301: "rashmijain02/OpenBB#1301 (Switch-over and plan-limited fixtures): compatible routing/provenance acceptance"
+  PRIVATE-APPROVAL: Explicit private-service identity, storage and data-access approval; synthetic inputs until then
+  TAX-YEAR: Owner-selected tax year and qualified statutory manifest; official forms and exceptions verified
+  STATE-PILOT: Owner selects a non-CA pilot jurisdiction and bounded residency/features
+  OPTIONAL-SEMANTIC: Owner accepts benchmark results and separately permits the local semantic index
+  SOURCES-PINNED: Approved release/runtime/source hashes and dependency licenses verified before execution
+  WEBUI-OWNER: "Owner-approved WebUI-fork work if required; OpenBB issues own integration and acceptance, not authorization to modify another repository"
+publication:
+  approved: false
+  implementation_approved: false
+  status_value: Todo
+  type_field: Type
+  type_mapping: {epic: Epic, feature: Feature, pbi: PBI}
+  phase_field: Roadmap phase
+  phase_mapping:
+    cross: Cross-phase
+    "0": "0 - Foundation"
+    "1": "1 - Core Hermes"
+    "1b": "1b - Nautilus"
+    "2A": "2A - Core analytics"
+    "2B": "2B - Remaining capabilities"
+    "3": "3 - Household and tax"
+    "3a": "3a - Document evidence"
+    "4": "4 - Compensation and retirement"
+    "5": "5 - Expansion and operations"
+  schema_changes:
+    - "Existing Type field: preserve Epic, Feature, Task and Bug option IDs; add only PBI."
+    - "Create Roadmap phase single-select field with exactly the phase_mapping values, only if no equivalent existing field is discovered."
+    - "Leave existing Phase, Lane, Start, End and existing item values unchanged."
+  new_labels: [program:hermes-financial-planning]
+  existing_work:
+    - "#1312 (financial-planning proposal): reference only; no title/body/label/status changes."
+    - "#1298-#1301 (FMP cached MCP/storage program): external capability dependencies; no new storage implementation issues or reparenting."
+    - "#4 (optional non-vendored engine adapters): legacy generic adapter scope; HFP-P15/P16 cover selected Nautilus qualification/integration only, not a competing generic framework."
+    - "#5 (test harness, CI and NFR benchmarks): reuse existing test infrastructure; HFP-P17/P35 add product-specific acceptance, not another general harness."
+    - "#151 (backtest bridge for historical intraday): existing fmp_trading bridge remains owned there; HFP-P13/P18 adapt approved callers and do not recreate that route."
+    - "#215 (artifacts, jobs, paper gates and provider modes): reuse existing adapters; HFP-P04/P06/P18 only bind Hermes/Nautilus-specific contracts. Existing children and migration references stay unchanged."
+    - "#1311 (Windows service installation): explicitly excluded; do not revive its service-host scope."
+    - "Searches included targeted open-work results and existing container issues; refresh overlaps before apply, and stop rather than duplicate newly discovered work."
+  blockers:
+    - "Owner must review YAML/Markdown and explicitly approve the final issue count, schema changes and exact mutation set."
+    - "Refresh project fields/labels and stable-marker searches immediately before approval/apply; any drift requires a new preview."
+    - "Verify the four source hashes and baseline provenance; the source documents remain local and unpushed."
+    - "Obtain any remaining cross-repository ownership decisions before implementation; this preview targets only rashmijain02/OpenBB."
+    - "Real-path commands and package pins are qualification tasks, not claims of execution readiness."
+defaults:
+  program: program:hermes-financial-planning
+  priority: P1
+  area: area:core
+  phase: cross
+  confidence: low
+  verification_command: null
+  issue_action: create
+label_policy:
+  program_required: true
+  program_prefix: "program:"
+  inherit_program: true
+  priority_prefix: "priority:"
+  kind_labels: {epic: "type:epic", feature: "type:feature", pbi: "type:task"}
+  container_label: "tracking:container"
+nodes:
+  - {id: HFP-E01, kind: epic, title: Safe native Hermes financial workspace, outcome: One local harness and authenticated browser experience with explicit private-data boundaries, priority: P0}
+  - {id: HFP-E02, kind: epic, title: Deterministic FMP cache operations, outcome: Freshness and health are observable without LLM calls or durable-data deletion, program: program:openbb-jobs, area: area:jobs}
+  - {id: HFP-E03, kind: epic, title: OpenBB analytical capability parity, outcome: Existing financial capabilities are qualified through Hermes rather than notebook execution, area: area:analysis}
+  - {id: HFP-E04, kind: epic, title: Nautilus strategy and simulation migration, outcome: One qualified event-simulation authority behind existing OpenBB interfaces, phase: "1b", area: area:backtest}
+  - {id: HFP-E05, kind: epic, title: Private household tax and document foundation, outcome: Reviewed household facts and evidence support qualified federal and state calculations, area: area:portfolio-intel}
+  - {id: HFP-E06, kind: epic, title: Tax-aware wealth and retirement planning, outcome: Deterministic lot and long-horizon alternatives respect household constraints, phase: "4", area: area:portfolio-intel}
+  - {id: HFP-E07, kind: epic, title: Evidence delivery and operational qualification, outcome: Reports monitoring and recovery remain useful truthful and private across the product, phase: "5", area: area:validation}
+  - {id: HFP-F01, kind: feature, parent: HFP-E01, title: Runtime and privacy admission, outcome: Misconfigured or unsafe runtimes fail closed before financial operations, phase: "0"}
+  - {id: HFP-F02, kind: feature, parent: HFP-E01, title: Notebook-free workflow and run contracts, outcome: Hermes owns orchestration with resumable typed workflows, phase: "1", area: area:agents}
+  - {id: HFP-F03, kind: feature, parent: HFP-E01, title: Unified web and Workspace experience, outcome: One authenticated conversation and evidence identity across both UIs, phase: "1", area: area:workspace}
+  - {id: HFP-F04, kind: feature, parent: HFP-E02, title: FMP warming validation and gated expansion, outcome: Shared guarded warmers provide counts-only operational evidence}
+  - {id: HFP-F05, kind: feature, parent: HFP-E03, title: Core portfolio and single-name research, outcome: Existing analytics and independent filing evidence remain traceable, phase: "2A"}
+  - {id: HFP-F06, kind: feature, parent: HFP-E03, title: Remaining capability and knowledge qualification, outcome: Tutorials and public references map to tested production capabilities, phase: "2B"}
+  - {id: HFP-F07, kind: feature, parent: HFP-E04, title: Isolated Nautilus runtime and adapters, outcome: Pinned data strategy and result contracts preserve callers}
+  - {id: HFP-F08, kind: feature, parent: HFP-E04, title: Independent statistical qualification and cutover, outcome: Accepted simulations migrate without losing trials ledger boundaries or rollback}
+  - {id: HFP-F09, kind: feature, parent: HFP-E05, title: Household facts and cash reconciliation, outcome: Accepted private snapshots are complete versioned and reconciled, phase: "3"}
+  - {id: HFP-F10, kind: feature, parent: HFP-E05, title: Qualified tax engines and jurisdiction coverage, outcome: Supported tax cases are distinguishable from unknown or unsupported cases}
+  - {id: HFP-F11, kind: feature, parent: HFP-E05, title: Private document evidence pipeline, outcome: Reviewed extraction and authorized retrieval preserve document lineage, phase: "3a"}
+  - {id: HFP-F12, kind: feature, parent: HFP-E06, title: Lots compensation and tax-aware alternatives, outcome: Basis income and household constraints survive portfolio comparisons}
+  - {id: HFP-F13, kind: feature, parent: HFP-E06, title: Retirement and household goals, outcome: Bounded long-horizon and goal scenarios disclose assumptions and limitations}
+  - {id: HFP-F14, kind: feature, parent: HFP-E07, title: Monitoring and private review packages, outcome: Owner receives timely evidence without implicit transactions}
+  - {id: HFP-F15, kind: feature, parent: HFP-E07, title: Product resilience and release qualification, outcome: Recovery privacy and full selected-scope coverage have independent evidence}
+
+  - id: HFP-P01
+    kind: pbi
+    parent: HFP-F01
+    title: Qualify native runtime provenance and connection health
+    outcome: Owner can distinguish configured authenticated admitted callable and qualified services before use.
+    requirements: [PF-20, PF-26]
+    primary_for: [PF-20, PF-26]
+    source_refs: [SPEC#11, PLAN#12, RESEARCH#9]
+    depends_on: [G1, SOURCES-PINNED]
+    acceptance: ["Given the selected native runtime and local aliases, health reports exact process and module provenance without secret values.", "Given a stopped model, wrong database or incompatible ABI, admission blocks and reports the failed layer instead of installing or falling back."]
+    tasks: [{"id": "HFP-P01-T01", "title": "Implement metadata-only provenance checks with wrong-origin and wrong-database regression cases."}, {"id": "HFP-P01-T02", "title": "Qualify the selected Hermes/WebUI and provider handshake matrix with unavailable-service outcomes."}, {"id": "HFP-P01-T03", "title": "Bind existing LiteLLM aliases to verified local backends and prove refused-backend behavior with synthetic sentinels."}]
+    verification: Run the real native health/preflight path against a synthetic profile and denied backend; record versions and failure states.
+    estimate: {size: L, rationale: Multiple native processes and independent package origins require real-path qualification}
+  - id: HFP-P02
+    kind: pbi
+    parent: HFP-F01
+    title: Enforce private data and immutable skill boundaries
+    outcome: Raw household facts stay in authorized services while Hermes receives only reviewed evidence projections.
+    requirements: [PF-18, PF-26]
+    primary_for: [PF-18]
+    source_refs: [SPEC#4.8, PLAN#4, PLAN#12]
+    depends_on: [HFP-P01, PRIVATE-APPROVAL]
+    acceptance: ["Given private-shaped sentinels, model logs callbacks memory and provider requests contain no raw values.", "Given unauthorized artifact fields, writable runtime skills or a hosted fallback route, the request fails closed."]
+    tasks: [{"id": "HFP-P02-T01", "title": "Implement principal and operation-scoped access capabilities with default-deny tests."}, {"id": "HFP-P02-T02", "title": "Enforce read-only admitted skills and quarantined proposals using synthetic write-denial cases."}, {"id": "HFP-P02-T03", "title": "Qualify field-level evidence projections and local-only routing under inference logging and fallback failures."}]
+    verification: Exercise denied routes and artifact reads through the actual policy boundary using synthetic private-shaped data.
+    estimate: {size: L, rationale: Cross-process authorization and inference-risk controls must agree}
+  - id: HFP-P03
+    kind: pbi
+    parent: HFP-F02
+    title: Extract notebook-independent workflow manifests
+    outcome: Production workflows run without notebook files kernels or notebook readiness imports.
+    requirements: [PF-27, PF-03]
+    primary_for: [PF-27]
+    source_refs: [SPEC#PF-27, PLAN#3.1, PLAN#5]
+    depends_on: [HFP-P01]
+    acceptance: ["Given an admitted WorkflowManifest, the same shared engine executes with notebook directories unmounted.", "Given unknown access literals, schema drift or a runtime notebook dependency, admission rejects the workflow."]
+    tasks: [{"id": "HFP-P03-T01", "title": "Extract typed workflow and access-version contracts with schema-drift rejection cases."}, {"id": "HFP-P03-T02", "title": "Move cell/hash mappings to optional tutorial traceability without runtime imports."}, {"id": "HFP-P03-T03", "title": "Demonstrate an engine-backed workflow with notebook files and kernels absent."}]
+    verification: Run a synthetic browser-independent workflow against shared services in a notebook-free runtime.
+    estimate: {size: M, rationale: Existing story contracts can be reused but path and hash coupling must be removed}
+  - id: HFP-P04
+    kind: pbi
+    parent: HFP-F02
+    title: Bind Hermes runs to resumable jobs and approvals
+    outcome: Lost replies cancellation and restart cannot duplicate jobs artifacts or paper effects.
+    requirements: [PF-17, PF-27]
+    primary_for: [PF-17]
+    source_refs: [SPEC#PF-17, PLAN#8]
+    depends_on: [HFP-P03, HFP-P02]
+    acceptance: ["Given repeated delivery of one operation, existing job/artifact adapters retain one logical outcome.", "Given expired approval changed arguments or drifted workflow hashes, resume requires a new decision and partial states never become success."]
+    tasks: [{"id": "HFP-P04-T01", "title": "Bind existing job and artifact adapters to Hermes run IDs and workflow digests with duplicate-submit tests."}, {"id": "HFP-P04-T02", "title": "Add explicit cancel-requested confirmed and too-late outcomes without promising unsupported interruption."}, {"id": "HFP-P04-T03", "title": "Prove restart and approval-replay behavior while preserving the existing Portfolio/TechTrade action contracts."}]
+    verification: Exercise actual adapter calls with lost responses and restarted coordinator; inspect durable receipts rather than LLM prose.
+    estimate: {size: L, rationale: Reuses issue 215 adapters but introduces new coordinator and restart boundaries}
+  - id: HFP-P05
+    kind: pbi
+    parent: HFP-F03
+    title: Deliver the native Hermes web vertical slice
+    outcome: Owner can select a workflow preview its plan approve it and inspect run evidence in one local browser app.
+    requirements: [PF-25, PF-26]
+    primary_for: [PF-25]
+    source_refs: [SPEC#6, SPEC#12, PLAN#12]
+    depends_on: [HFP-P04, WEBUI-OWNER]
+    acceptance: ["Given the synthetic basket x-ray workflow, browser interaction reaches native Hermes and returns engine-backed evidence.", "Given reconnect duplicate clicks or cross-origin approval attempts, the UI observes existing state or rejects the request without duplicate work."]
+    tasks: [{"id": "HFP-P05-T01", "title": "Qualify native WebUI delegation and authenticated sessions with cross-origin rejection tests."}, {"id": "HFP-P05-T02", "title": "Implement plan/run/approval cards using shared IDs and explicit unavailable states."}, {"id": "HFP-P05-T03", "title": "Demonstrate browser disconnect and reconnect without restarting the run or enabling another agent loop."}]
+    verification: Real browser journey from workflow selection to authorized result using synthetic engine inputs.
+    estimate: {size: L, rationale: WebUI delegation and native runtime compatibility are not yet qualified}
+  - id: HFP-P06
+    kind: pbi
+    parent: HFP-F03
+    title: Unify Workspace conversation and private metric display
+    outcome: Workspace shares Hermes run identity while exact private metrics render only through authorized UI requests.
+    requirements: [PF-16, PF-18, PF-25]
+    primary_for: [PF-16]
+    source_refs: [SPEC#6, PLAN#3.1, PLAN#4]
+    depends_on: [HFP-P05]
+    acceptance: ["Given an authorized drill-through, both UIs refer to the same run and private fields hydrate only in the browser.", "Given an external copilot path or unauthorized field token, private widgets remain denied; unqualified query delegation stays disabled."]
+    tasks: [{"id": "HFP-P06-T01", "title": "Proxy the production query contract to Hermes or explicitly disable it until qualified."}, {"id": "HFP-P06-T02", "title": "Implement principal/run/artifact/field authorization for metric tokens and deny arbitrary paths."}, {"id": "HFP-P06-T03", "title": "Prove hydrated values do not re-enter chat memory telemetry or external widget context."}]
+    verification: Native Workspace browser acceptance with selected private-shaped widgets and handcrafted denied queries.
+    estimate: {size: L, rationale: Two UIs and multiple artifact/context paths must enforce one policy}
+
+  - id: HFP-P07
+    kind: pbi
+    parent: HFP-F04
+    phase: "1"
+    priority: P0
+    title: Run guarded price warming through Hermes no-agent cron
+    outcome: Approved ticker scope is warmed through existing functions with bounded cost and private operational receipts.
+    requirements: [OPS-01, OPS-03, OPS-06]
+    primary_for: [OPS-01, OPS-03, OPS-06]
+    source_refs: [CRON#4, CRON#5, CRON#8, CRON#13]
+    depends_on: [HFP-P01, OPS-ATTEST, FMP-QUOTA]
+    acceptance: ["Given an approved database and ticker manifest, the existing history warmer runs without LLM calls and produces structured status/history.", "Given wrong target, lock contention, secret-bearing failure or quota exhaustion, it blocks/defers safely without raw output or durable deletion."]
+    tasks: [{"id": "HFP-P07-T01", "title": "Add shared manual/cron locking and explicit target/universe admission with wrong-target and contention tests."}, {"id": "HFP-P07-T02", "title": "Wrap existing warming with transport-accounted budgets cancellation deadlines and sanitized structured outcomes."}, {"id": "HFP-P07-T03", "title": "Render versioned paused cron wrappers and durable state-change receipts including Windows replacement failure handling."}]
+    verification: Disposable-database no-agent run plus a second manual process contending for the same lock; capture API counts and redacted receipts.
+    estimate: {size: L, rationale: Direct warmer reuse is bounded by process locks transport accounting and durable state}
+  - id: HFP-P08
+    kind: pbi
+    parent: HFP-F04
+    phase: "1"
+    title: Extend market readiness and independent operational audits
+    outcome: The owner can distinguish real coverage gaps lifecycle exclusions infrastructure failure and unknown evidence.
+    requirements: [OPS-02, OPS-04, OPS-07]
+    primary_for: [OPS-02, OPS-04, OPS-07]
+    source_refs: [CRON#6, CRON#9, CRON#10]
+    depends_on: [HFP-P07]
+    acceptance: ["Given holidays half-days DST and next-year fixtures, Pacific schedules evaluate the correct Eastern market session and real dry-run readiness.", "Given NULL partitions missing private-table grants ambiguous timestamps or unknown delivery, checks report explicit states without fabricated health or repeated fetch storms."]
+    tasks: [{"id": "HFP-P08-T01", "title": "Extend existing readiness with dry-run evaluation optional private counts table-case checks and lifecycle-aware sessions."}, {"id": "HFP-P08-T02", "title": "Add bounded integrity and matched-basis fundamental diagnostics with loud empty and unavailable evidence cases."}, {"id": "HFP-P08-T03", "title": "Prove backup/binlog/disk observability and catch-up recovery under test gateway failure and simulated 429 responses."}]
+    verification: Synthetic calendar and disposable SQL fixtures plus test-only recovery exercises; no production service interruption.
+    estimate: {size: L, rationale: Calendar data semantics and recovery faults require independent fixtures}
+  - id: HFP-P09
+    kind: pbi
+    parent: HFP-F04
+    phase: "2B"
+    title: Admit retention-safe ETF and reference schedules
+    outcome: Additional approved datasets refresh only through storage-owner-qualified non-destructive interfaces.
+    requirements: [OPS-05, OPS-01, OPS-02]
+    primary_for: [OPS-05]
+    source_refs: [CRON#3, CRON#7, CRON#11]
+    depends_on: [HFP-P08, STORE-1300, SWITCH-1301]
+    acceptance: ["Given accepted storage interfaces and quotas, weekly ETF and selected reference refreshes preserve historical records and validate pagination.", "Given legacy delete/truncate paths or incomplete capability acceptance, jobs remain blocked even when manually triggered."]
+    tasks: [{"id": "HFP-P09-T01", "title": "Bind capability admission to approved owner interfaces and reject destructive legacy fallbacks."}, {"id": "HFP-P09-T02", "title": "Qualify selected dataset cadence completeness and shared budget behavior with retained-history fixtures."}, {"id": "HFP-P09-T03", "title": "Preview approved trigger cutover and prove pause/rollback leaves unrelated jobs backups and data unchanged."}]
+    verification: Disposable retention and paging tests followed by explicitly approved paused-job deployment evidence.
+    estimate: {size: M, rationale: Integration reuses warmers but depends on separately delivered storage capability}
+
+  - id: HFP-P10
+    kind: pbi
+    parent: HFP-F05
+    title: Expose core look-through risk attribution and catalysts
+    outcome: Owner receives the existing portfolio analytical evidence with aligned coverage and as-of dates.
+    requirements: [PF-06, PF-03]
+    primary_for: [PF-06]
+    source_refs: [SPEC#PF-06, SPEC#W1, RESEARCH#3]
+    depends_on: [HFP-P05]
+    acceptance: ["Given a synthetic portfolio, shared engines produce independently expected concentration risk attribution and catalyst artifacts.", "Given missing constituents mismatched dates or absent provider data, coverage limitations are visible rather than filled with invented values."]
+    tasks: [{"id": "HFP-P10-T01", "title": "Map existing look-through/risk adapters to notebook-free workflow inputs and independent fixtures."}, {"id": "HFP-P10-T02", "title": "Normalize as-of and coverage metadata across attribution and catalyst evidence."}, {"id": "HFP-P10-T03", "title": "Exercise the combined x-ray workflow through Hermes without reimplementing financial engines."}]
+    verification: Engine-backed synthetic x-ray with missing-data and mixed-date cases rendered in the real UI.
+    estimate: {size: M, rationale: Existing domain engines reduce implementation but cross-adapter evidence needs qualification}
+  - id: HFP-P11
+    kind: pbi
+    parent: HFP-F05
+    title: Reconcile seven-phase analysis with independent filings
+    outcome: A single-name memo separates pipeline results filing evidence discrepancies and unknowns.
+    requirements: [PF-05, PF-15]
+    primary_for: [PF-05]
+    source_refs: [SPEC#W2, PLAN#VendorReconciliationReport, RESEARCH#R18]
+    depends_on: [HFP-P10]
+    acceptance: ["Given complete synthetic filing evidence, all seven existing phases and eight matched-basis vendor diagnostics appear with provenance.", "Given truncated filings unsupported XBRL or repeated legitimate shares, the memo reports unknown/diagnostic states without overwriting vendor data or applying unselected heuristics."]
+    tasks: [{"id": "HFP-P11-T01", "title": "Bridge the actual seven-phase pipeline and preserve gates and source timestamps."}, {"id": "HFP-P11-T02", "title": "Implement the independent filing-evidence adapter and matched-basis discrepancy report before synthesis sees pipeline conclusions."}, {"id": "HFP-P11-T03", "title": "Generate the scorecard and differences section with missing-source abstention and no illustrative trade tickets."}]
+    verification: Replay recorded public/synthetic filing shapes and compare deterministic report facts against independent expected values.
+    estimate: {size: L, rationale: Filing coverage and accounting-basis reconciliation are substantial domain boundaries}
+  - id: HFP-P12
+    kind: pbi
+    parent: HFP-F06
+    phase: "2A"
+    title: Qualify core portfolio scenario and analyst-basket workflows
+    outcome: Owner can compare portfolio what-if and analyst-basket alternatives without running tutorial cells.
+    requirements: [PF-03, PF-06]
+    primary_for: []
+    source_refs: [SPEC#PF-03, RESEARCH#3]
+    depends_on: [HFP-P10]
+    acceptance: ["Given approved synthetic inputs, core portfolio workflow results match independent service-level expectations and retain do-nothing comparisons.", "Given fixture gaps or provider mismatches, the workflow blocks the affected result rather than mixing unapproved modes."]
+    tasks: [{"id": "HFP-P12-T01", "title": "Map the eight core portfolio tutorial capabilities to runtime workflows and approved provider contracts."}, {"id": "HFP-P12-T02", "title": "Qualify what-if attribution and analyst-basket outputs with independent scenario fixtures."}, {"id": "HFP-P12-T03", "title": "Verify mode/source provenance and user-visible partial outcomes without any notebook runtime dependency."}]
+    verification: Direct service and controlled Hermes replay for core portfolio scenarios; simulation-specific evidence links to the qualified Nautilus track.
+    estimate: {size: L, rationale: Multiple existing workflows need consolidated independent acceptance rather than new engines}
+  - id: HFP-P13
+    kind: pbi
+    parent: HFP-F06
+    title: Qualify TechTrade workflows against the selected backend
+    outcome: Scans tuning batches workbooks and paper fills retain intent and ledger boundaries after integration.
+    requirements: [PF-08, PF-03, BT-03]
+    primary_for: [PF-08]
+    source_refs: [SPEC#PF-08, SPEC#9.1, PLAN#3.3]
+    depends_on: [HFP-P18, HFP-P12]
+    acceptance: ["Given reviewed synthetic strategy inputs, scans through approved paper artifacts retain expected intent and bounded validation evidence.", "Given duplicate delivery mismatched strategy hash or unsupported intrabar assumptions, no duplicate fills or success-shaped fallback occurs."]
+    tasks: [{"id": "HFP-P13-T01", "title": "Bind existing scan/tuning and workbook surfaces without recreating the fmp_trading bridge owned by issue 151."}, {"id": "HFP-P13-T02", "title": "Route simulation-dependent validation through the accepted Nautilus adapter and retain trial lineage."}, {"id": "HFP-P13-T03", "title": "Exercise end-to-end batches and separate Portfolio/TechTrade paper state with duplicate-effect rejection."}]
+    verification: Synthetic scan-to-workbook-to-approved-paper journey with deterministic expected fills and failure cases.
+    estimate: {size: L, rationale: Existing workflows span several state machines and depend on backend cutover}
+  - id: HFP-P14
+    kind: pbi
+    parent: HFP-F06
+    title: Disposition documentation examples and provider variants
+    outcome: Every referenced example and alternate provider capability has an explicit supported or excluded production disposition.
+    requirements: [PF-04, PF-03]
+    primary_for: [PF-04]
+    source_refs: [SPEC#PF-04, RESEARCH#3, RESEARCH#4]
+    depends_on: [HFP-P12]
+    acceptance: ["Given the eleven documentation examples and alternate-provider tutorials, each maps to analytics explanation setup-only or template coverage.", "Given a YFinance illustration or unavailable field, production policy remains cache-first and does not authorize the disallowed provider."]
+    tasks: [{"id": "HFP-P14-T01", "title": "Create source-to-capability dispositions for all eleven examples with independent evidence references."}, {"id": "HFP-P14-T02", "title": "Map alternate-provider tutorial intent to approved production sources or explicit unsupported outcomes."}, {"id": "HFP-P14-T03", "title": "Preserve tutorials for manual learning while checking that no production workflow imports their execution state."}]
+    verification: Validate the complete example inventory and run its selected service-level cases without notebook kernels.
+    estimate: {size: M, rationale: Classification and adapter qualification reuse existing capabilities}
+
+  - id: HFP-P15
+    kind: pbi
+    parent: HFP-F07
+    title: Qualify the isolated Nautilus runtime and data catalog
+    outcome: Approved historical data reaches a pinned isolated worker with reproducible transformations and no broker access.
+    requirements: [BT-02, BT-01]
+    primary_for: []
+    source_refs: [SPEC#9.1, PLAN#3.1, RESEARCH#S34]
+    depends_on: [HFP-P01, SOURCES-PINNED]
+    acceptance: ["Given the selected wheel and dataset, worker ABI precision calendar and catalog hashes are recorded and accepted transformations reproduce.", "Given arbitrary paths wrong hashes incompatible precision or a broker endpoint, worker admission rejects the request."]
+    tasks: [{"id": "HFP-P15-T01", "title": "Compare the candidate native and local-container runtimes with pinned wheel/license/precision evidence."}, {"id": "HFP-P15-T02", "title": "Adapt cache-derived data to content-addressed catalogs with action basis and calendar checks."}, {"id": "HFP-P15-T03", "title": "Enforce authenticated worker bounds and verify no broker credentials or order-network permissions exist."}]
+    verification: Independent buy-and-hold data case on the selected real worker; no generic adapter framework duplication of issue 4.
+    estimate: {size: L, rationale: Compiled runtime compatibility and data normalization are unqualified}
+  - id: HFP-P16
+    kind: pbi
+    parent: HFP-F07
+    title: Standardize reviewed strategies and preserve OpenBB callers
+    outcome: Existing callers invoke a versioned Nautilus backend with typed strategy and result contracts.
+    requirements: [BT-01, BT-02]
+    primary_for: [BT-01, BT-02]
+    source_refs: [SPEC#BT-01, SPEC#BT-02, PLAN#3.2]
+    depends_on: [HFP-P15, HFP-P03]
+    acceptance: ["Given a reviewed StrategySpec, code and parameter hashes bind event timing sizing and normalized output to the run.", "Given an unsupported strategy arbitrary plugin or settlement assumption, the facade rejects it instead of silently using the legacy engine."]
+    tasks: [{"id": "HFP-P16-T01", "title": "Implement reviewed strategy metadata and loader allowlists with code/parameter drift rejection."}, {"id": "HFP-P16-T02", "title": "Add explicit backend selection and normalized result projection behind the existing facade."}, {"id": "HFP-P16-T03", "title": "Prove settlement-aware sell-before-buy staging and declared fixed-point rounding against independent cash cases."}]
+    verification: Buy-and-hold and multi-asset rebalance golden cases through the actual OpenBB facade and worker.
+    estimate: {size: L, rationale: Strategy semantics cash availability and result compatibility must be reconciled}
+  - id: HFP-P17
+    kind: pbi
+    parent: HFP-F08
+    title: Preserve independent validation and complete trial accounting
+    outcome: Statistical conclusions retain the full experiment population across isolated worker folds and retries.
+    requirements: [BT-03]
+    primary_for: []
+    source_refs: [SPEC#BT-03, PLAN#3.3]
+    depends_on: [HFP-P16]
+    acceptance: ["Given sweeps and folds split across workers, retained trial IDs return matrices and exclusions reproduce qualified DSR/PBO/CPCV results.", "Given worker retries failed trials or changed data, deduplication and provenance prevent understated multiple-testing penalties."]
+    tasks: [{"id": "HFP-P17-T01", "title": "Normalize fold returns and trial lineage while preserving all evaluated configurations and exclusions."}, {"id": "HFP-P17-T02", "title": "Qualify statistical bridges against independent matrices rather than legacy engine agreement."}, {"id": "HFP-P17-T03", "title": "Benchmark realistic bounded jobs using existing test infrastructure and document material modeling differences."}]
+    verification: Independent fold/sweep golden matrices and controlled failed-worker retries with known trial counts.
+    estimate: {size: L, rationale: Statistical qualification needs complete experiment semantics not only a count field}
+  - id: HFP-P18
+    kind: pbi
+    parent: HFP-F08
+    title: Cut over qualified simulation and paper consumers
+    outcome: Accepted consumers use one simulation authority with explicit rollback and preserved paper approvals.
+    requirements: [BT-03, PF-08, PF-17]
+    primary_for: [BT-03]
+    source_refs: [SPEC#9.1, PLAN#3.3]
+    depends_on: [HFP-P17, HFP-P04]
+    acceptance: ["Given qualified cases, each consumer records the chosen backend and preserves distinct paper ledgers and operation IDs.", "Given a rollback or unsupported feature, no silent fallback duplicate effect or unapproved brokerage capability appears."]
+    tasks: [{"id": "HFP-P18-T01", "title": "Inventory consumer semantics and qualify the TechTrade case alongside the independent portfolio cases."}, {"id": "HFP-P18-T02", "title": "Implement reviewed capability-by-capability selection and operator-controlled rollback using existing approvals."}, {"id": "HFP-P18-T03", "title": "Retire only redundant migrated simulator paths while retaining historical replay and benchmark-justified screening."}]
+    verification: Consumer cutover/replay matrix with approval mismatch duplicate delivery and rollback fixtures.
+    estimate: {size: L, rationale: Migration correctness spans callers historical evidence and paper effects}
+
+  - id: HFP-P19
+    kind: pbi
+    parent: HFP-F09
+    title: Accept versioned household inputs in an isolated private store
+    outcome: Owner supplies and confirms required facts before personalized computation is admitted.
+    requirements: [PF-01, PF-18]
+    primary_for: [PF-01]
+    source_refs: [SPEC#PF-01, PLAN#4, PLAN#5]
+    depends_on: [HFP-P02, HFP-P06, PRIVATE-APPROVAL]
+    acceptance: ["Given confirmed synthetic household inputs, accepted snapshots retain units ownership evidence and completeness state.", "Given missing facts stale versions or unauthorized principals, recommendations block without exposing raw facts or extending the market schema."]
+    tasks: [{"id": "HFP-P19-T01", "title": "Implement private snapshot schemas and readiness with missing-fact and version-conflict cases."}, {"id": "HFP-P19-T02", "title": "Qualify the separate encrypted store and key/restore permissions without redirecting existing imports."}, {"id": "HFP-P19-T03", "title": "Provide authenticated intake/review that exposes only opaque references to Hermes."}]
+    verification: Synthetic intake-to-readiness journey and denied cross-principal reads on the actual private service.
+    estimate: {size: L, rationale: New private authority and consent boundary require independent qualification}
+  - id: HFP-P20
+    kind: pbi
+    parent: HFP-F09
+    title: Reconcile household balance sheet and cash flow
+    outcome: Owner sees accepted assets liabilities and cash movements with discrepancies separated from income.
+    requirements: [PF-02, PF-13]
+    primary_for: [PF-02]
+    source_refs: [SPEC#PF-02, PLAN#HouseholdSnapshot]
+    depends_on: [HFP-P19]
+    acceptance: ["Given synthetic transfers debt and account snapshots, balance and cash-flow totals reconcile without double-counting transfers.", "Given unknown balances stale membership or missing liabilities, the artifact shows incompleteness rather than a false consolidated net worth."]
+    tasks: [{"id": "HFP-P20-T01", "title": "Implement normalized account/cashflow facts with transfer and currency-unit tests."}, {"id": "HFP-P20-T02", "title": "Produce deterministic reconciliation and discrepancy artifacts from accepted snapshots."}, {"id": "HFP-P20-T03", "title": "Render authorized household views with exact values kept outside model context."}]
+    verification: Independent synthetic balance-sheet/cash-flow reconciliation through the private UI.
+    estimate: {size: M, rationale: Bounded accounting reconciliation reuses accepted private snapshot contracts}
+  - id: HFP-P21
+    kind: pbi
+    parent: HFP-F10
+    phase: "3"
+    title: Qualify the initial federal annual-tax subset
+    outcome: Qualified federal scenarios return reproducible liabilities deltas and explicit unsupported features.
+    requirements: [PF-09]
+    primary_for: []
+    source_refs: [SPEC#8.2, PLAN#TaxScenario, RESEARCH#8]
+    depends_on: [HFP-P19, TAX-YEAR]
+    acceptance: ["Given the selected year and supported wages interest dividends gains and deduction inputs, results match independent fixtures and prescribed rounding.", "Given unsupported forms expired law manifests or engine gaps, the service blocks the claimed result instead of returning zero tax."]
+    tasks: [{"id": "HFP-P21-T01", "title": "Pin the statutory manifest and isolated PolicyEngine adapter with source-conflict and coverage tests."}, {"id": "HFP-P21-T02", "title": "Qualify the initial income deduction credit payroll and estimated-tax subset against independent expected cases."}, {"id": "HFP-P21-T03", "title": "Return opaque comparison artifacts and explicit unsupported treatment without raw tax facts in prompts."}]
+    verification: Year-specific federal boundary fixtures and direct private-service scenario comparison.
+    estimate: {size: L, rationale: Year-specific tax correctness requires independent authority and engine qualification}
+  - id: HFP-P22
+    kind: pbi
+    parent: HFP-F10
+    phase: "3"
+    title: Qualify federal-to-California tax comparisons
+    outcome: California differences and payment rules remain explicit rather than inheriting federal treatment.
+    requirements: [PF-09, PF-10]
+    primary_for: [PF-09]
+    source_refs: [SPEC#8.3, RESEARCH#T11, RESEARCH#T12]
+    depends_on: [HFP-P21]
+    acceptance: ["Given qualified California cases, state basis HSA treatment installments income thresholds and covered payroll rules use the selected year's authorities.", "Given an unsupported residency case missing issuer allocation or unverified authority, coverage is unknown/blocked rather than applying blanket exemption."]
+    tasks: [{"id": "HFP-P22-T01", "title": "Implement qualified federal-to-state adjustment and separate basis/carryforward contracts."}, {"id": "HFP-P22-T02", "title": "Test installment equality thresholds SDI coverage surtax and mortgage/fund-income exceptions against year-specific references."}, {"id": "HFP-P22-T03", "title": "Publish combined federal/CA scenario evidence with independent rounding and unsupported-case checks."}]
+    verification: Federal/CA golden comparisons including threshold equality wrong tax-year and missing Treasury-income allocation cases.
+    estimate: {size: L, rationale: State nonconformity and qualified authority coverage are correctness-heavy}
+  - id: HFP-P23
+    kind: pbi
+    parent: HFP-F10
+    phase: "5"
+    title: Expose jurisdiction coverage and one selected residency pilot
+    outcome: Owner can compare only certified state/year/residency subsets while all other jurisdictions remain honestly classified.
+    requirements: [PF-10]
+    primary_for: [PF-10]
+    source_refs: [SPEC#8.4, PLAN#JurisdictionCoverage]
+    depends_on: [HFP-P22, STATE-PILOT]
+    acceptance: ["Given a selected pilot and qualified residency facts, its bounded comparison cites effective rules and support dimensions.", "Given any unqualified state feature expired certification or missing workday evidence, the 51-jurisdiction matrix does not advertise support or zero liability."]
+    tasks: [{"id": "HFP-P23-T01", "title": "Implement multidimensional jurisdiction coverage and expiry with deny-on-unknown behavior."}, {"id": "HFP-P23-T02", "title": "Qualify one owner-selected pilot's declared residency/income cases and source timeline."}, {"id": "HFP-P23-T03", "title": "Render comparison limits and a repeatable qualification template without claiming all-state completion."}]
+    verification: One explicitly selected pilot's boundary fixtures plus unsupported and expired entries across the coverage matrix.
+    estimate: {size: L, rationale: Pilot scope cannot be finalized until the owner selects its jurisdiction and cases}
+  - id: HFP-P24
+    kind: pbi
+    parent: HFP-F11
+    title: Integrate the private Paperless document vault
+    outcome: Authorized originals and versions remain encrypted outside Git with controlled intake and recovery.
+    requirements: [PF-21, PF-24]
+    primary_for: [PF-21]
+    source_refs: [SPEC#W10, PLAN#11.2]
+    depends_on: [HFP-P19]
+    acceptance: ["Given authorized synthetic tax PDFs, originals hashes versions and ACLs survive ingestion and restore.", "Given malformed archives encrypted uploads or unapproved remote processing, intake isolates or blocks without logging content or passwords."]
+    tasks: [{"id": "HFP-P24-T01", "title": "Qualify Paperless storage/encryption and bounded intake using synthetic documents only."}, {"id": "HFP-P24-T02", "title": "Implement original/version identity corrected/amended relationships and private evidence references."}, {"id": "HFP-P24-T03", "title": "Verify encrypted backup/restore and parser isolation without enabling hosted OCR or generic administration tools."}]
+    verification: Real local synthetic upload/version/restore journey on the selected Paperless adapter.
+    estimate: {size: L, rationale: Multi-service deployment and document isolation are unqualified}
+  - id: HFP-P25
+    kind: pbi
+    parent: HFP-F11
+    title: Review extracted fields before accepting financial facts
+    outcome: Candidate OCR values become tax inputs only after review and deterministic validation with source lineage.
+    requirements: [PF-23, PF-21]
+    primary_for: [PF-23]
+    source_refs: [SPEC#PF-23, PLAN#11.2, PLAN#11.3]
+    depends_on: [HFP-P24]
+    acceptance: ["Given a reviewed synthetic form, accepted facts retain document version page/form-line units and correction decisions.", "Given low-confidence OCR conflicting versions or changed year layouts, no candidate silently becomes a calculation input."]
+    tasks: [{"id": "HFP-P25-T01", "title": "Integrate bounded Docling extraction and preserve page/table/region mappings."}, {"id": "HFP-P25-T02", "title": "Implement review acceptance and supersession with conflicting-field and OCR-error fixtures."}, {"id": "HFP-P25-T03", "title": "Reconcile accepted cross-document facts through deterministic services and surface unsupported extraction."}]
+    verification: Synthetic return/W-2 comparison including OCR error corrected upload and cited accepted facts.
+    estimate: {size: L, rationale: Document interpretation and year-specific field semantics require reviewable evidence}
+  - id: HFP-P26
+    kind: pbi
+    parent: HFP-F11
+    title: Deliver authorized exact search and qualify optional semantics
+    outcome: Owner finds document evidence within allowed year/form/version scope with supported citations and abstention.
+    requirements: [PF-22, PF-24]
+    primary_for: [PF-22]
+    source_refs: [SPEC#PF-22, PLAN#11.3, RESEARCH#S29]
+    depends_on: [HFP-P25]
+    acceptance: ["Given exact queries and conceptual benchmark cases, scope filters apply before ranking and results cite supporting document versions/pages.", "Given unauthorized wrong-year absent-answer or denied semantic-index cases, no private snippet leaks and unsupported answers abstain."]
+    tasks: [{"id": "HFP-P26-T01", "title": "Implement exact field/text search through the authorized evidence adapter with pre-retrieval ACL tests."}, {"id": "HFP-P26-T02", "title": "Compare an isolated local semantic candidate against the frozen exact-search benchmark without enabling it by default."}, {"id": "HFP-P26-T03", "title": "Gate Qdrant activation on separate OPTIONAL-SEMANTIC approval and prove snippets bypass model context."}]
+    verification: Held-out synthetic retrieval suite with exact-only baseline, wrong-year near matches and unauthorized documents.
+    estimate: {size: L, rationale: Retrieval quality must improve without weakening scope and privacy boundaries}
+
+  - id: HFP-P27
+    kind: pbi
+    parent: HFP-F12
+    title: Reconcile lot basis and RSU/ESPP compensation events
+    outcome: Broker basis payroll income and adjusted federal/state basis agree before realized-gain scenarios.
+    requirements: [PF-11]
+    primary_for: [PF-11]
+    source_refs: [SPEC#PF-11, PLAN#TaxLot, RESEARCH#R15]
+    depends_on: [HFP-P22, HFP-P25]
+    acceptance: ["Given synthetic acquisitions disposals RSU vests and ESPP cases, wages and gain basis reconcile without double taxation.", "Given missing basis supplemental evidence or incompatible date/precision, the service retains unknowns instead of assuming zero basis."]
+    tasks: [{"id": "HFP-P27-T01", "title": "Implement decimal investment-event and tax-lot records with federal/state basis and evidence separation."}, {"id": "HFP-P27-T02", "title": "Qualify RSU/ESPP treatment and Form 8949 A-F categories using relevant payroll and plan evidence."}, {"id": "HFP-P27-T03", "title": "Reject unjustified float conversion and unresolved basis while producing a deterministic reconciliation artifact."}]
+    verification: Independent synthetic lot and compensation fixtures including partial disposals missing basis and state differences.
+    estimate: {size: L, rationale: Basis reconstruction and compensation timing require independent domain tests}
+  - id: HFP-P28
+    kind: pbi
+    parent: HFP-F12
+    title: Apply bounded household wash-sale and lot constraints
+    outcome: Proposed disposals disclose qualified replacement-account timing constraints without a new proactive trading product.
+    requirements: [PF-07, PF-11]
+    primary_for: []
+    source_refs: [SPEC#W3, SPEC#8.2, RESEARCH#T01]
+    depends_on: [HFP-P27]
+    acceptance: ["Given supported synthetic household transactions, before/after window and relevant account cases produce independently expected lot findings.", "Given unknown related-account activity or substantially-identical treatment, the candidate is blocked/uncertain rather than declared safe."]
+    tasks: [{"id": "HFP-P28-T01", "title": "Qualify supported wash-sale timing and replacement-account adjustments against official cases."}, {"id": "HFP-P28-T02", "title": "Expose narrow lot-constraint findings for opaque candidate IDs without raw lot dumps."}, {"id": "HFP-P28-T03", "title": "Test incomplete household/DRIP evidence and preserve explicit unsupported identity judgments."}]
+    verification: Synthetic household timing and account-type boundary suite through the lot-constraint API.
+    estimate: {size: L, rationale: Cross-account evidence and tax treatment require bounded explicit support}
+  - id: HFP-P29
+    kind: pbi
+    parent: HFP-F12
+    title: Compare tax-aware portfolio alternatives
+    outcome: Owner sees do-nothing contribution-first and sale-funded candidates with tax cash and risk trade-offs.
+    requirements: [PF-07, PF-06]
+    primary_for: [PF-07]
+    source_refs: [SPEC#W3, PLAN#planning.compare_portfolio_candidates]
+    depends_on: [HFP-P12, HFP-P28]
+    acceptance: ["Given qualified policy and snapshots, candidate comparisons retain account feasibility federal/state deltas cash bridge and approved objectives.", "Given incomplete lots unsupported tax treatment or no approved trade-off objective, no fabricated optimal portfolio or live order is produced."]
+    tasks: [{"id": "HFP-P29-T01", "title": "Join existing what-if candidate IDs to private lot/tax constraints without duplicating optimization engines."}, {"id": "HFP-P29-T02", "title": "Calculate qualified incremental taxes fees and cash feasibility with a do-nothing comparator."}, {"id": "HFP-P29-T03", "title": "Render non-dominated alternatives and limitations without leaking exact private results to models."}]
+    verification: Independent synthetic contribution-only and sale-funded comparison cases in the authenticated UI.
+    estimate: {size: L, rationale: Analytics and private tax services must share consistent scenario identity}
+  - id: HFP-P30
+    kind: pbi
+    parent: HFP-F13
+    title: Qualify bounded retirement and conversion scenarios
+    outcome: Retirement alternatives disclose assumptions units solver bounds and independently checked annual tax.
+    requirements: [PF-12]
+    primary_for: [PF-12]
+    source_refs: [SPEC#PF-12, PLAN#RetirementScenario, RESEARCH#S06]
+    depends_on: [HFP-P22, HFP-P20]
+    acceptance: ["Given supported synthetic account buckets and income assumptions, the isolated Owl adapter returns reproducible bounded scenarios with annual-tax checks.", "Given unsupported IRA basis RMD/benefit cases arbitrary files or solver timeout, it blocks or returns partial evidence instead of inventing a plan."]
+    tasks: [{"id": "HFP-P30-T01", "title": "Map accepted facts to a narrow isolated Owl adapter with explicit time units and overrides."}, {"id": "HFP-P30-T02", "title": "Qualify withdrawals conversions and supported benefit/RMD cases against independent annual-tax references."}, {"id": "HFP-P30-T03", "title": "Enforce solver resource limits and safe artifact projection without exposing native file/admin operations."}]
+    verification: Synthetic retirement scenarios with known annual reconciliations infeasible inputs and solver interruption.
+    estimate: {size: L, rationale: Long-horizon simplifications and annual tax contracts need independent validation}
+  - id: HFP-P31
+    kind: pbi
+    parent: HFP-F13
+    title: Compare household reserve debt and goal scenarios
+    outcome: Owner evaluates liquidity debt education purchases and charitable goals under declared constraints.
+    requirements: [PF-13]
+    primary_for: [PF-13]
+    source_refs: [SPEC#W9, SPEC#PF-13, RESEARCH#R15]
+    depends_on: [HFP-P20, HFP-P22]
+    acceptance: ["Given supported synthetic goals and cash flows, emergency reserves debt amortization and bounded goal alternatives reconcile to accepted inputs.", "Given specialist property charitable or education tax questions outside coverage, the service refers/blocks rather than extrapolating generic formulas."]
+    tasks: [{"id": "HFP-P31-T01", "title": "Reuse and qualify mortgage/debt arithmetic with extra-principal and unit/rounding cases."}, {"id": "HFP-P31-T02", "title": "Implement constrained reserve and goal comparisons using accepted household cash flows."}, {"id": "HFP-P31-T03", "title": "Attach applicable tax coverage limits and side-by-side evidence without treating optional budget apps as required."}]
+    verification: Independent amortization/reserve cases and missing-fact/specialist-case UI outcomes.
+    estimate: {size: M, rationale: Reuses existing utility arithmetic with explicit goal and qualification bounds}
+
+  - id: HFP-P32
+    kind: pbi
+    parent: HFP-F14
+    title: Schedule bounded briefings and deadline reminders
+    outcome: Owner receives useful evidence-ready notifications under shared timezone privacy and provider policy.
+    requirements: [PF-14, PF-20]
+    primary_for: [PF-14]
+    source_refs: [SPEC#W1, SPEC#PF-14, PLAN#9]
+    depends_on: [HFP-P10, HFP-P22, HFP-P04]
+    acceptance: ["Given approved schedules, reminders use the Pacific gateway correct source dates and local counts-only delivery.", "Given quiet hours stale inputs disallowed TradingView automation or repeated unchanged failures, notifications defer/block/deduplicate without creating another scheduler."]
+    tasks: [{"id": "HFP-P32-T01", "title": "Define approved briefing/deadline manifests with time-zone conversion and policy checks."}, {"id": "HFP-P32-T02", "title": "Implement changed-state/materiality notification routing using run artifacts and separate delivery receipts."}, {"id": "HFP-P32-T03", "title": "Prove restart quiet-hour and stale-evidence behavior without enabling external messaging connectors."}]
+    verification: Synthetic scheduled briefing/deadline replay through the one gateway across DST and repeated-failure cases.
+    estimate: {size: M, rationale: Reuses established orchestration but adds schedule-specific evidence policy}
+  - id: HFP-P33
+    kind: pbi
+    parent: HFP-F14
+    title: Export an authorized private decision and CPA package
+    outcome: Owner can review deterministic calculations sources unresolved questions and exclusions in a bounded local export.
+    requirements: [PF-19, PF-18]
+    primary_for: [PF-19]
+    source_refs: [SPEC#PF-19, PLAN#planning.prepare_review_package]
+    depends_on: [HFP-P22, HFP-P25, HFP-P06]
+    acceptance: ["Given authorized run and evidence IDs, the export contains consistent calculation tables citations versions and unresolved questions.", "Given unauthorized destinations revoked evidence formula injection or changed approval arguments, export is rejected without copying private data elsewhere."]
+    tasks: [{"id": "HFP-P33-T01", "title": "Compose qualified calculation/evidence views through existing artifact writers."}, {"id": "HFP-P33-T02", "title": "Bind export destination scope retention and one-use approval with traversal and formula-injection rejection."}, {"id": "HFP-P33-T03", "title": "Reconcile exported totals and citations to accepted inputs and enforce revocation behavior."}]
+    verification: Synthetic CPA package generation and local opening with exact expected contents and denied export cases.
+    estimate: {size: M, rationale: Existing artifact mechanisms need private export policy and reconciliation}
+  - id: HFP-P34
+    kind: pbi
+    parent: HFP-F15
+    title: Qualify resource admission backup and failure recovery
+    outcome: Native services and on-demand workers recover within explicit limits without hosted fallbacks or data loss.
+    requirements: [PF-17, PF-18, PF-26]
+    primary_for: []
+    source_refs: [SPEC#13, PLAN#12, CRON#11]
+    depends_on: [HFP-P06, HFP-P08, HFP-P15, HFP-P24, HFP-P30]
+    acceptance: ["Given representative synthetic concurrent workloads, RAM/VRAM admission on-demand unloading and recovery stay within measured budgets.", "Given worker death disk pressure key revocation or restore, stale/partial states remain explicit and private routes never fall back to hosted services."]
+    tasks: [{"id": "HFP-P34-T01", "title": "Measure and enforce resident/on-demand resource admission without assuming all models fit concurrently."}, {"id": "HFP-P34-T02", "title": "Prove scoped cancellation worker death and browser/gateway restart recovery under synthetic load."}, {"id": "HFP-P34-T03", "title": "Demonstrate encrypted restore/key separation and retained independent backup ownership without stopping production services."}]
+    verification: Approved test-only fault matrix and measured resource evidence on the selected local deployment.
+    estimate: {size: L, rationale: Whole-machine resource and recovery interactions require real deployed seams}
+  - id: HFP-P35
+    kind: pbi
+    parent: HFP-F15
+    title: Certify the selected capability and privacy release matrix
+    outcome: Product claims reflect independent acceptance across all selected workflows rather than documentation counts.
+    requirements: [PF-03, PF-04, PF-18, PF-20, PF-27]
+    primary_for: [PF-03]
+    source_refs: [SPEC#13, RESEARCH#3, RESEARCH#5]
+    depends_on: [HFP-P09, HFP-P13, HFP-P14, HFP-P23, HFP-P29, HFP-P31, HFP-P32, HFP-P33, HFP-P34, HFP-P36, HFP-P37, HFP-P38]
+    acceptance: ["Given the selected scope, all 36 notebook files have dispositions and all 25 main capabilities pass independent service acceptance; controlled Hermes repeats report all failures.", "Given uncovered docs unsupported jurisdictions privacy leaks or failed showcase journeys, the release matrix blocks the corresponding claim rather than marking the whole product ready."]
+    tasks: [{"id": "HFP-P35-T01", "title": "Join requirement source capability tool policy UX and independent-test evidence into one qualification register."}, {"id": "HFP-P35-T02", "title": "Run the proposed 25-case/two-repeat Hermes suite with explicit reliability targets and notebook-free acceptance."}, {"id": "HFP-P35-T03", "title": "Publish limitations and unresolved gates through existing CI/reporting without introducing a second test framework."}]
+    verification: Source-to-capability matrix plus independent deterministic oracles, controlled 50-run reliability results and 100 percent showcase evidence.
+    estimate: {size: L, rationale: End-to-end qualification aggregates many independently delivered capabilities}
+
+  - id: HFP-P36
+    kind: pbi
+    parent: HFP-F12
+    title: Qualify ISO AMT and compensation sourcing extensions
+    outcome: Supported exercise/disposition scenarios preserve ordinary income AMT credit and state sourcing evidence.
+    requirements: [PF-11, PF-09]
+    primary_for: []
+    source_refs: [SPEC#8.2, SPEC#8.3, RESEARCH#T09]
+    depends_on: [HFP-P27, TAX-YEAR]
+    acceptance: ["Given qualified synthetic ISO cases and workday/residency evidence, bargain-element timing credit carryforward and state differences reconcile.", "Given unsupported AMT recovery or missing sourcing facts, the scenario blocks rather than promising an optimal AMT-free exercise amount."]
+    tasks: [{"id": "HFP-P36-T01", "title": "Qualify supported ISO exercise/disposition timing and separate ordinary/capital/AMT facts."}, {"id": "HFP-P36-T02", "title": "Implement bounded Form 8801 carryforward reconciliation using qualified annual engines and independent cases."}, {"id": "HFP-P36-T03", "title": "Add compensation sourcing evidence and missing-workday/residency rejection without adopting unselected PF-30 product scope."}]
+    verification: Officially grounded synthetic ISO/AMT and sourcing boundary suite for the selected year.
+    estimate: {size: L, rationale: Multi-year credit and sourcing correctness cannot be inferred from basic lot arithmetic}
+  - id: HFP-P37
+    kind: pbi
+    parent: HFP-F11
+    title: Enforce private document revocation deletion and restore
+    outcome: Revoked document evidence becomes inaccessible across originals indexes caches and dependent exports.
+    requirements: [PF-24, PF-21, PF-22]
+    primary_for: [PF-24]
+    source_refs: [SPEC#PF-24, PLAN#11.4]
+    depends_on: [HFP-P26]
+    acceptance: ["Given authorized revocation/deletion, all derived evidence and artifacts honor the same tombstone and permission state.", "Given backup restore or a stale semantic cache, private material is not served before tombstones and ACLs are reconciled."]
+    tasks: [{"id": "HFP-P37-T01", "title": "Propagate revocation across extraction accepted facts retrieval and artifact references with denial tests."}, {"id": "HFP-P37-T02", "title": "Apply explicit retention/hold and backup tombstone semantics without deleting market history."}, {"id": "HFP-P37-T03", "title": "Prove restore and stale-index behavior with synthetic documents and local-only model/embedding boundaries."}]
+    verification: Synthetic end-to-end revoke/delete/restore including dependent artifacts and an optional-index test double.
+    estimate: {size: L, rationale: Multiple derived stores and backups must share lifecycle semantics}
+  - id: HFP-P38
+    kind: pbi
+    parent: HFP-F06
+    title: Build scoped public knowledge and source-grounded Q&A
+    outcome: Hermes can explain approved documentation and official references with authority revision and supersession visible.
+    requirements: [PF-15, PF-04]
+    primary_for: [PF-15]
+    source_refs: [SPEC#PF-15, PLAN#11.1, RESEARCH#5]
+    depends_on: [HFP-P03, HFP-P02]
+    acceptance: ["Given approved public reference material, answers cite the correct source section revision and authority and distinguish proposed from implemented content.", "Given private files notebook outputs injected instructions or absent evidence, ingestion excludes them and answers abstain without overriding tool policy."]
+    tasks: [{"id": "HFP-P38-T01", "title": "Implement an allowlisted public-source register and explicit document status/supersession metadata."}, {"id": "HFP-P38-T02", "title": "Provide bounded exact retrieval and source-grounded synthesis through the same Hermes coordinator."}, {"id": "HFP-P38-T03", "title": "Test prompt-injection ignored instructions private-path exclusion and unavailable-evidence abstention."}]
+    verification: Frozen public/synthetic document corpus with wrong-revision near matches injection fixtures and missing answers.
+    estimate: {size: M, rationale: Scoped retrieval reuses policy and evidence contracts without requiring another application}
