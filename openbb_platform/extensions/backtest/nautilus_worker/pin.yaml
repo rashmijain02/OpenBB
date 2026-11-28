@@ -1,0 +1,32 @@
+# Nautilus runtime pin (#1355, lead decisions L1/L2/L8). Metadata only: nothing here installs anything.
+# Wheels and images are never committed or distributed (LGPL-3.0-or-later).
+schema_version: 1
+version: "1.231.0"            # latest stable; 2.0.0rc* are prereleases and forbidden
+source_tag: v1.231.0
+source_commit: d3e1685e979925d7b0ffacd1b3f442547686e18f
+python_tag: cp312
+python_minor: "3.12"
+license_spdx: LGPL-3.0-or-later
+license_file_sha256: ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c
+selected_runtime: native
+env:
+  venv: OPENBB_NAUTILUS_VENV    # worker venv dir, outside the repo
+  image: OPENBB_NAUTILUS_IMAGE  # local image reference by digest, never pushed
+excluded_extras: [ib, betfair, polymarket, docker]
+runtimes:
+  native:
+    platform_tag: win_amd64
+    wheel_filename: nautilus_trader-1.231.0-cp312-cp312-win_amd64.whl
+    wheel_sha256: 0697f51e9143f9d8d040f75d2e6a45218003cc34f7ea5b0eb2f9cda6935427de
+    precision_mode: standard
+    high_precision: false
+    fixed_precision: 9
+    lock: requirements-win_amd64-cp312.lock
+  docker:
+    platform_tag: manylinux_2_35_x86_64
+    wheel_filename: nautilus_trader-1.231.0-cp312-cp312-manylinux_2_35_x86_64.whl
+    wheel_sha256: 8c438e95c275a13df0c0ddb7012c462708b5e99ff3612e36a1b7bd49ab39c216
+    precision_mode: high
+    high_precision: true
+    fixed_precision: 16
+    lock: requirements-linux_x86_64-cp312.lock

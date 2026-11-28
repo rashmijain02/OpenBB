@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "openbb-nautilus-worker"
+version = "0.1.0"
+description = "Isolated NautilusTrader worker (stdio, signed frames). Installed only in the worker venv."
+authors = ["OpenBB Team <hello@openbb.co>"]
+license = "AGPL-3.0-only"
+packages = [{ include = "openbb_nautilus_worker" }]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+# Exact pin; no extras (ib / betfair / polymarket / docker are excluded).
+nautilus_trader = "1.231.0"
+pydantic = ">=2,<3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

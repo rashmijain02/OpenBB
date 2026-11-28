@@ -1,0 +1,14 @@
+{
+  "nautilus_version": "1.231.0",
+  "python_version": "3.12.11",
+  "python_tag": "cp312",
+  "wheel_tag": "cp312-cp312-manylinux_2_35_x86_64",
+  "platform_tag": "manylinux_2_35_x86_64",
+  "high_precision": true,
+  "fixed_precision": 16,
+  "module_origin_in_prefix": true,
+  "wheel_sha256": "8c438e95c275a13df0c0ddb7012c462708b5e99ff3612e36a1b7bd49ab39c216",
+  "license_files": [
+    {"name": "LICENSE", "sha256": "ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c"}
+  ]
+}

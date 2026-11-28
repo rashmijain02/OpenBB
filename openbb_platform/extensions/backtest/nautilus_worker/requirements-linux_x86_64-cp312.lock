@@ -1,0 +1,4 @@
+# Hash-locked: pip install --require-hashes --no-deps -r this-file (manylinux_2_35_x86_64, cp312).
+# Transitive pins are added with hashes at T01-L via pip-compile --generate-hashes.
+nautilus_trader==1.231.0 \
+    --hash=sha256:8c438e95c275a13df0c0ddb7012c462708b5e99ff3612e36a1b7bd49ab39c216
