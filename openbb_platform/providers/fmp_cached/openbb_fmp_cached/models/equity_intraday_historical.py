@@ -38,6 +38,12 @@ from openbb_fmp.models.equity_intraday_historical import (
 from openbb_fmp.utils.definitions import AvailableExchanges
 
 from openbb_fmp_cached.utils.database import execute_many, execute_query, init_database
+from openbb_fmp_cached.utils.session_calendar import (
+    classify_symbol,
+    forex_is_closed,
+    forex_last_open_bar_start,
+    forex_next_open,
+)
 
 logger = logging.getLogger(__name__)
 _NON_US_SUFFIXES = tuple(
@@ -259,6 +265,8 @@ def _translate_credentials(
 
 def _analyze_intraday_cache(
     query: FMPCachedEquityIntradayHistoricalQueryParams,
+    *,
+    now: datetime | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Return (cached_rows, has_gap).
 
@@ -267,6 +275,10 @@ def _analyze_intraday_cache(
     of time (holidays, half-days, mid-session halts) — the equity_historical
     pattern uses the same "refetch full range on any gap" heuristic for
     non-daily intervals.
+
+    Crypto (24x7) and forex (24x5) symbols are checked against a continuous
+    bar grid instead of NYSE sessions (#1304). ``now`` only bounds that
+    check so bars that cannot exist yet are not demanded.
     """
     sql = """
     SELECT symbol, interval_type, ts,
@@ -334,9 +346,19 @@ def _analyze_intraday_cache(
         )
     if not cached:
         return [], True
+    interval_delta = _interval_delta(query.interval)
+    asset_class = classify_symbol(query.symbol)
+    if asset_class != "equity":
+        return cached, has_invalid or _has_continuous_gap(
+            cached,
+            start=start,
+            end=end_exclusive - timedelta(seconds=1),
+            delta=interval_delta,
+            asset_class=asset_class,
+            now=now or datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None),
+        )
     # Coverage check — earliest & latest cached bar bracket the requested range.
     first_ts, last_ts = cached[0]["date"], cached[-1]["date"]
-    interval_delta = _interval_delta(query.interval)
     expected_start = _align_session_bound(
         start,
         interval_delta,
@@ -410,7 +432,7 @@ def _upsert_intraday_rows(
         if isinstance(ts, str):
             # FMP returns "YYYY-MM-DD HH:MM:SS" for intraday.
             ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-        is_extended = _is_extended_row(r, ts=ts)
+        is_extended = _is_extended_row(r, ts=ts, symbol=symbol)
         params_list.append(
             (
                 symbol,
@@ -444,7 +466,10 @@ def _is_extended_row(
     row: dict[str, Any],
     *,
     ts: datetime | None = None,
+    symbol: str | None = None,
 ) -> bool:
+    if classify_symbol(symbol or row.get("symbol")) != "equity":
+        return False  # 24h assets have no regular/extended session split
     explicit = row.get("is_extended")
     if explicit is not None:
         return bool(explicit)
@@ -464,7 +489,9 @@ def _filter_fresh_rows(
     filtered = (
         rows
         if query.extended_hours
-        else [row for row in rows if not _is_extended_row(row)]
+        else [
+            row for row in rows if not _is_extended_row(row, symbol=str(query.symbol))
+        ]
     )
     start = _local_naive(query.start_date)
     end = _local_naive(query.end_date)
@@ -519,6 +546,44 @@ def _align_session_bound(
     if ceiling and remainder:
         steps += 1
     return origin + steps * interval
+
+
+def _floor_to_grid(value: datetime, delta: timedelta) -> datetime:
+    midnight = datetime.combine(value.date(), time())
+    return midnight + ((value - midnight) // delta) * delta
+
+
+def _has_continuous_gap(
+    rows: list[dict[str, Any]],
+    *,
+    start: datetime,
+    end: datetime,
+    delta: timedelta,
+    asset_class: str,
+    now: datetime,
+) -> bool:
+    """Gap check for 24h assets: bars every ``delta`` while the market is open.
+
+    Crypto is open continuously. Forex skips the weekly closure (Friday 17:00
+    to Sunday 17:00 New York time). The grid is anchored at midnight, like the
+    bars FMP returns, and never demands bars that start after ``now``.
+    """
+    forex = asset_class == "forex"
+    first_start = start if not forex else forex_next_open(start)
+    midnight = datetime.combine(first_start.date(), time())
+    expected_first = midnight + -(-(first_start - midnight) // delta) * delta
+    last_start = end if not forex else forex_last_open_bar_start(end, delta)
+    expected_last = min(_floor_to_grid(last_start, delta), _floor_to_grid(now, delta))
+    timestamps = [row["date"] for row in rows]
+    if timestamps[0] > expected_first or timestamps[-1] < expected_last:
+        return True
+    for current, following in zip(timestamps, timestamps[1:]):
+        expected_next = current + delta
+        if forex and forex_is_closed(expected_next):
+            expected_next = forex_next_open(expected_next)
+        if following > expected_next:
+            return True
+    return False
 
 
 def _has_session_gap(
@@ -614,15 +679,16 @@ def _invalidate_same_session_tail(
     if not isinstance(tail_ts, datetime):
         return
     current = now or datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None)
-    if tail_ts.date() != current.date():
-        return  # Prior-session bar; leave immutable.
-    _, market_close = _us_session_bounds(tail_ts.date())
-    session_close = time(20) if tail.get("is_extended") else market_close
-    if (
-        tail_ts.time() >= session_close
-        or tail_ts + _interval_delta(interval) <= current
-    ):
-        return
+    if tail_ts + _interval_delta(interval) <= current:
+        return  # Bar already finished.
+    if classify_symbol(symbol) == "equity":
+        if tail_ts.date() != current.date():
+            return  # Prior-session bar; leave immutable.
+        _, market_close = _us_session_bounds(tail_ts.date())
+        session_close = time(20) if tail.get("is_extended") else market_close
+        if tail_ts.time() >= session_close:
+            return
+    # 24h assets have no session close: any unfinished bar may still extend.
     sql = """
     UPDATE equity_intraday_historical
     SET is_valid = FALSE
