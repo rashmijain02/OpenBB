@@ -2,7 +2,8 @@
 
 Usage: ``python -m openbb_agents.hermes_integration.web.web_probe --scenario security``
 or ``--scenario journey`` (T02: preview -> approve via the sidecar -> start -> worker ->
-outcome card over temp stores; see :mod:`.journey`).
+outcome card over temp stores; see :mod:`.journey`) or ``--scenario reconnect`` (T03:
+the sidecar restarts mid-run and the new one reads the same run; one run, one job).
 Starts the real sidecar on an ephemeral ``127.0.0.1`` port with a synthetic token in a
 temp dir, sends the rejection matrix with raw HTTP (so ``Host`` is the probe's), and
 reports each case's status and code. Never contacts WebUI, Hermes or any other port.
@@ -228,17 +229,19 @@ def _render_text(report: dict[str, Any]) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point; returns the process exit code."""
     parser = argparse.ArgumentParser(prog="web_probe", description=__doc__)
-    parser.add_argument("--scenario", choices=["security", "journey"], required=True)
+    parser.add_argument(
+        "--scenario", choices=["security", "journey", "reconnect"], required=True
+    )
     parser.add_argument("--format", choices=["json", "text"], default="json")
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 3
-    if args.scenario == "journey":
+    if args.scenario in ("journey", "reconnect"):
         # pylint: disable=import-outside-toplevel
-        from .journey import run_journey
+        from .journey import run_journey, run_reconnect
 
-        report = run_journey()
+        report = run_journey() if args.scenario == "journey" else run_reconnect()
         lines = [f"{key}: {value}" for key, value in report.items()]
         text = (
             json.dumps(report, indent=2) if args.format == "json" else "\n".join(lines)

@@ -58,3 +58,48 @@ def test_web_probe_journey_real_path(capsys):
     )
     assert report["outcome"] == "succeeded" and report["artifacts_sha_ok"]
     assert (report["provider_calls"], report["egress_refused"]) == (0, 0)
+
+
+def test_web_probe_reconnect(capsys):
+    """T03 real path: the sidecar restarts mid-run; the new one reads the same run."""
+    pytest.importorskip("openbb_portfolio_intel")
+    assert web_probe.main(["--scenario", "reconnect", "--format", "json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["restarts"] == 1 and len(report["run_ids"]) == 1
+    assert report["outcome_before"] == "waiting_job"
+    assert report["outcome_after"] == "succeeded"
+    assert report["restart_replay_of"] is True
+    assert (report["runs"], report["jobs"], report["job_status"]) == (
+        1,
+        1,
+        ["succeeded"],
+    )
+    assert report["agent_modules"] == [] and report["provider_calls"] == 0
+
+
+def test_web_journey_live_refuses_without_owner_config(capsys, tmp_path):
+    """``--stack live`` runs nothing; without owner config it refuses (exit 2)."""
+    from openbb_agents.hermes_integration.web import web_journey
+
+    assert web_journey.main(["--stack", "live"]) == 2
+    out = capsys.readouterr().out
+    assert out.startswith("refused:") and "L6b" in out
+    missing = tmp_path / "absent.json"
+    assert web_journey.main(["--stack", "live", "--owner-config", str(missing)]) == 2
+    capsys.readouterr()
+    config = tmp_path / "owner.json"
+    config.write_text("{}", encoding="utf-8")
+    assert web_journey.main(["--stack", "live", "--owner-config", str(config)]) == 0
+    assert "nothing is run here" in capsys.readouterr().out
+    assert web_journey.main(["--stack", "nope"]) == 3
+
+
+def test_web_journey_local_without_webui_is_unavailable_not_pass(
+    capsys, monkeypatch
+):
+    """A missing prerequisite exits 4 with a reason, never 0."""
+    from openbb_agents.hermes_integration.web import web_journey
+
+    monkeypatch.delenv("HFP_WEBUI_DIR", raising=False)
+    assert web_journey.main(["--stack", "local"]) == 4
+    assert json.loads(capsys.readouterr().out)["unavailable"] == "HFP_WEBUI_DIR unset"

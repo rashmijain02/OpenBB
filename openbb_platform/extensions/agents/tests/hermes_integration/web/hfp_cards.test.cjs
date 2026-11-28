@@ -81,7 +81,7 @@ test("run polling stops at a terminal outcome and never posts", async () => {
     stop = H.pollRun(H.createClient(fetch), RUN, (res) => {
       seen.push(res.data.outcome);
       if (res.data.outcome === "partial") { setTimeout(resolve, 20); }
-    }, { interval: 1, setTimeout: (f) => setTimeout(f, 1) });
+    }, { setTimeout: (f) => setTimeout(f, 1) });
   });
   stop();
   assert.deepEqual(seen, ["running", "partial"]);
@@ -124,4 +124,108 @@ test("starter pre-fills the composer and does not send", () => {
   listeners.click();
   assert.equal(composer.value, "Preview it");
   assert.deepEqual(events, ["input"]);
+});
+
+async function flush() {
+  for (let i = 0; i < 5; i += 1) { await new Promise((r) => setImmediate(r)); }
+}
+
+function fakeDoc() {
+  return {
+    createElement: (tag) => ({
+      tag, children: [], attrs: {}, textContent: "",
+      appendChild(c) { this.children.push(c); },
+      setAttribute(k, v) { this.attrs[k] = v; },
+      addEventListener() {},
+    }),
+  };
+}
+
+function fakeStorage(initial) {
+  const data = { ...initial };
+  return {
+    data,
+    get: (k, d) => (Object.prototype.hasOwnProperty.call(data, k) ? data[k] : d),
+    set: (k, v) => { data[k] = v; return true; },
+    remove: (k) => { delete data[k]; return true; },
+  };
+}
+
+test("poll backoff 2 s -> 10 s, resets on change and after reconnect, stops at terminal", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const running = { status: 200, body: { outcome: "running" } };
+  const fetch = fakeFetch([
+    running, running, running, running, running,
+    new Error("ECONNREFUSED 127.0.0.1"), new Error("ECONNREFUSED 127.0.0.1"),
+    running,
+    { status: 200, body: { outcome: "succeeded" } },
+  ]);
+  const seen = [];
+  H.pollRun(H.createClient(fetch), RUN, (res) => seen.push(res.ok ? res.data.outcome : res.code));
+  await flush();
+  assert.equal(fetch.calls.length, 1);
+  // unchanged: 2, 4, 8, 10, 10 s; unreachable resets to 2, then 4; reconnect resets to 2.
+  for (const ms of [2000, 4000, 8000, 10000, 10000, 2000, 4000, 2000]) {
+    const before = fetch.calls.length;
+    t.mock.timers.tick(ms - 1);
+    await flush();
+    assert.equal(fetch.calls.length, before, `no request before ${ms} ms`);
+    t.mock.timers.tick(1);
+    await flush();
+    assert.equal(fetch.calls.length, before + 1, `request after ${ms} ms`);
+  }
+  assert.deepEqual(seen.slice(-4), ["sidecar_unreachable", "sidecar_unreachable", "running", "succeeded"]);
+  t.mock.timers.tick(60000);
+  await flush();
+  assert.equal(fetch.calls.length, 9, "polling stopped at the terminal outcome");
+  assert.ok(fetch.calls.every((c) => c.init.method === "GET"));
+});
+
+test("run_unavailable stops polling", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const fetch = fakeFetch([{ status: 404, body: { error: "run_unavailable" } }]);
+  H.pollRun(H.createClient(fetch), RUN, () => {});
+  await flush();
+  t.mock.timers.tick(60000);
+  await flush();
+  assert.equal(fetch.calls.length, 1);
+});
+
+test("test_resume_polls_existing_run_never_posts", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const storage = fakeStorage({ last_run_id: RUN });
+  const fetch = fakeFetch([
+    { status: 200, body: { run_id: RUN, outcome: "waiting_job", state: "unavailable", code: "worker_unavailable" } },
+    { status: 200, body: { run_id: RUN, outcome: "succeeded", state: "available" } },
+  ]);
+  const doc = fakeDoc();
+  const target = doc.createElement("div");
+  const stop = H.resumeRun(doc, target, H.createClient(fetch), { storage });
+  assert.equal(typeof stop, "function");
+  await flush();
+  assert.equal(target.children[0].attrs["data-hfp-code"], "worker_unavailable");
+  t.mock.timers.tick(2000);
+  await flush();
+  const card = target.children[target.children.length - 1];
+  assert.equal(card.attrs["data-hfp-run"], RUN);
+  assert.equal(card.attrs["data-hfp-outcome"], "succeeded");
+  assert.deepEqual(fetch.calls.map((c) => [c.init.method, c.url]), [
+    ["GET", H.PROXY_PREFIX + "/runs/" + RUN], ["GET", H.PROXY_PREFIX + "/runs/" + RUN],
+  ]);
+  assert.equal(storage.data.last_run_id, undefined, "a terminal run is forgotten");
+  const none = fakeFetch([{ status: 200, body: {} }]);
+  assert.equal(H.resumeRun(doc, target, H.createClient(none), { storage }), null);
+  assert.equal(H.resumeRun(doc, target, H.createClient(none), { storage: fakeStorage({ last_run_id: "../x" }) }), null);
+  assert.equal(none.calls.length, 0);
+});
+
+test("a mounted run is remembered for resume until it is terminal", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const storage = fakeStorage({});
+  const fetch = fakeFetch([{ status: 200, body: { run_id: RUN, outcome: "running" } }]);
+  const doc = fakeDoc();
+  const stop = H.mountRun(doc, doc.createElement("div"), H.createClient(fetch), RUN, { storage });
+  await flush();
+  stop();
+  assert.equal(H.lastRun(storage), RUN);
 });

@@ -8,6 +8,8 @@ non-loopback and live ports, so a run makes zero provider calls.
 
 ``run_journey`` drives preview -> approve (through the real loopback sidecar, twice)
 -> start (twice) -> worker -> outcome card and reports SQLite row counts.
+``run_reconnect`` (T03) stops the sidecar mid-run, lets the worker run the job with
+no sidecar at all, starts a new sidecar and reads the same run back from it.
 """
 
 from __future__ import annotations
@@ -18,7 +20,9 @@ import json
 import os
 import secrets
 import sqlite3
+import sys
 import tempfile
+import threading
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,12 +42,15 @@ from openbb_mcp_server.story_adapters.story_job_kinds import get_job_definitions
 
 from ..egress_guard import egress_guard
 from .backend import StoryBackend
+from .cards import TERMINAL_OUTCOMES
 from .security import TOKEN_HEADER
 from .sidecar import LoopbackSidecar
 
 PRINCIPAL = "hermes#00000000000000a5"
 WORKFLOW_ID = "synthetic.basket_xray"
 _SEAMS = ("_nport_rows", "_search_ticker", "_profile_sector")
+# A model client or agent loop in this process would be a second agent loop.
+_AGENT_MODULES = ("litellm", "openai", "run_agent", "hermes_cli")
 
 
 @dataclass
@@ -257,5 +264,84 @@ def run_journey() -> dict[str, Any]:  # pylint: disable=too-many-locals
         and report["artifacts_sha_ok"]
         and report["provider_calls"] == 0
         and report["egress_refused"] == 0
+    )
+    return report
+
+
+@contextlib.contextmanager
+def _token_file(root: Path) -> Iterator[tuple[str, Path]]:
+    token = secrets.token_urlsafe(32)
+    path = root / "state" / "sidecar-auth" / "openbb-hfp.token"
+    path.parent.mkdir(parents=True)
+    path.write_text(token, encoding="utf-8")
+    yield token, path
+
+
+def run_reconnect() -> dict[str, Any]:  # pylint: disable=too-many-locals
+    """Approve and start, restart the sidecar mid-run, read the same run back."""
+    with tempfile.TemporaryDirectory(
+        prefix="hfp-reconnect-", ignore_cleanup_errors=True
+    ) as tmp:
+        root = Path(tmp)
+        with synthetic_stack(root) as stack, _token_file(root) as (token, path):
+            with LoopbackSidecar(
+                principal=PRINCIPAL, token_file=path, backend=stack.backend
+            ) as first:
+                plan_id = stack.story.post(
+                    "/api/v1/story/plans", json={"workflow_id": WORKFLOW_ID}
+                ).json()["plan_id"]
+                _, card = _call(first.port, token, "GET", f"/plans/{plan_id}")
+                body = {
+                    "plan_sha256": card["plan_sha256"],
+                    "approval_nonce": card["approval_nonce"],
+                }
+                _call(first.port, token, "POST", f"/plans/{plan_id}/approve", body)
+                start = stack.story.post(
+                    f"/api/v1/story/plans/{plan_id}/start", json={}
+                )
+                run_id = start.json()["run_id"]
+                _, before = _call(first.port, token, "GET", f"/runs/{run_id}")
+            # The sidecar is gone (a WebUI restart or a closed tab); the job runs.
+            ran: list[object] = []
+            worker = threading.Thread(
+                target=lambda: ran.append(stack.worker.run_once())
+            )
+            worker.start()
+            with LoopbackSidecar(
+                principal=PRINCIPAL, token_file=path, backend=stack.backend
+            ) as second:
+                _, during = _call(second.port, token, "GET", f"/runs/{run_id}")
+                worker.join(timeout=180)
+                _, after = _call(second.port, token, "GET", f"/runs/{run_id}")
+            # A re-issued start after the reconnect is the same logical operation.
+            again = stack.story.post(f"/api/v1/story/plans/{plan_id}/start", json={})
+            runs = stack.rows(stack.store, "SELECT run_id FROM story_runs")
+            jobs = stack.rows(stack.jobs_db, "SELECT status FROM job_run")
+            calls = list(stack.provider_calls)
+    report = {
+        "scenario": "reconnect",
+        "restarts": 1,
+        "run_ids": sorted({c.get("run_id") for c in (before, during, after)} - {None}),
+        "outcome_before": before.get("outcome"),
+        "outcome_after": after.get("outcome"),
+        "worker_ran": bool(ran and ran[0]),
+        "restart_replay_of": again.json().get("replay_of") == run_id,
+        "runs": len(runs),
+        "jobs": len(jobs),
+        "job_status": [s for (s,) in jobs],
+        "agent_modules": [m for m in _AGENT_MODULES if m in sys.modules],
+        "provider_calls": len(calls),
+    }
+    report["ok"] = (
+        report["run_ids"] == [run_id]
+        and report["outcome_before"] not in TERMINAL_OUTCOMES
+        and report["outcome_after"] == "succeeded"
+        and report["worker_ran"]
+        and report["restart_replay_of"]
+        and report["runs"] == 1
+        and report["jobs"] == 1
+        and report["job_status"] == ["succeeded"]
+        and not report["agent_modules"]
+        and report["provider_calls"] == 0
     )
     return report
