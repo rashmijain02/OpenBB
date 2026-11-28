@@ -157,7 +157,11 @@ def test_real_worker_entrypoint_without_nautilus_reports_module_origin():
         capture_output=True,
         timeout=60,
         check=False,
-        env={**os.environ, "PYTHONPATH": root},
+        # Minimal env: the worker refuses credential-shaped variables (T03).
+        env={
+            **{k: os.environ[k] for k in ("SYSTEMROOT", "PATH") if k in os.environ},
+            "PYTHONPATH": root,
+        },
     )
     lines = proc.stdout.splitlines()
     assert proc.returncode == 0, proc.stderr.decode()[:300]

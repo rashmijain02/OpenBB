@@ -117,7 +117,8 @@ def nautilus_writer(  # pylint: disable=too-many-locals
     return str(nautilus_trader.__version__)
 
 
-def _data_root(env: Mapping[str, str]) -> Path:
+def data_root(env: Mapping[str, str]) -> Path:
+    """Return the absolute data root from ``OPENBB_NAUTILUS_DATA_ROOT``."""
     raw = env.get(DATA_ROOT_ENV)
     if not raw or not Path(raw).is_absolute():
         raise ProtocolError(ErrorCode.CONFIG, f"{DATA_ROOT_ENV} must be absolute")
@@ -136,7 +137,7 @@ def build_catalog(
         req = BuildCatalogRequest.model_validate(body)
     except ValidationError as exc:
         raise ProtocolError(ErrorCode.SCHEMA, "bad build_catalog request") from exc
-    root = _data_root(os.environ if env is None else env)
+    root = data_root(os.environ if env is None else env)
     if fixed_precision is None:
         fixed_precision = runtime_fixed_precision()
     manifest = ds.admit_dataset(root / "datasets", req.dataset_id, fixed_precision)
