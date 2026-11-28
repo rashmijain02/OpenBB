@@ -44,6 +44,20 @@ KNOWN_SCOPES: frozenset[str] = frozenset(
     }
 )
 
+# Fields an evidence projection may carry (#1339 T03). Each is opaque,
+# coded or bucketed by ``projection.project``; raw values have no field.
+EVIDENCE_PROJECTION_FIELDS: frozenset[str] = frozenset(
+    {
+        "run_id",
+        "artifact_id",
+        "capability_status",
+        "finding_codes",
+        "metric_refs",
+        "aggregate_buckets",
+        "as_of",
+    }
+)
+
 Reason = Literal[
     "granted",
     "unknown_principal",
@@ -193,7 +207,7 @@ HERMES_FINANCE_POLICY = PolicyGate(
                 principal="hermes_runtime",
                 operation="evidence_projection_read",
                 scope="evidence.projection",
-                fields=frozenset({"metric_ref", "as_of"}),
+                fields=EVIDENCE_PROJECTION_FIELDS,
             ),
         }
     )
