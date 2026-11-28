@@ -19,6 +19,7 @@ Demonstrates the user-visible robustness gate: WFO folds + PBO + Deflated Sharpe
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,11 @@ def main(
     absent — the example degrades to a skip notice rather than a crash so it can
     be smoke-tested on a bare install.
     """
-    from openbb import obb  # noqa: PLC0415
+    from openbb import obb as _obb  # noqa: PLC0415
+
+    # The ``techtrade`` namespace is attached at runtime by the extension, so it is
+    # not in OpenBB's static ``obb`` type; type it as Any (no behaviour change).
+    obb: Any = _obb
 
     # 1. Build a single-symbol plan.
     plan_kwargs = {"symbols": [symbol], "preset": preset, "risk": risk}
