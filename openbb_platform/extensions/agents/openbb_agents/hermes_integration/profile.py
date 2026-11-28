@@ -49,6 +49,8 @@ class FinanceRuntimeProfile(_Strict):
         None  # pinned hash of the admitted MCP tool catalog
     )
     private_alias_allowlist: list[str] = Field(default_factory=list)
+    # Loopback base URLs of allowlisted local inference runtimes (#1338-T03).
+    local_backends: list[str] = Field(default_factory=list)
     skills_roots: list[str] = Field(default_factory=list)
 
 

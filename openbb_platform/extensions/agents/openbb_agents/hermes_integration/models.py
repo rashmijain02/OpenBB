@@ -88,6 +88,47 @@ class EdgeReport(BaseModel):
         return self.level is not None and self.level >= HealthLevel.CALLABLE
 
 
+class BackendKind(str, Enum):
+    """Where an alias's requests go. Anything not proven local is hosted."""
+
+    LOCAL = "local"
+    HOSTED = "hosted"
+
+
+class SecretRef(BaseModel):
+    """A secret-shaped setting: env var name when referenced, never the value."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    presence: Presence = Presence.ABSENT
+    env_name: str | None = None
+    inline: bool = False  # True when a literal value sits in the YAML
+
+
+class AliasReport(BaseModel):
+    """Per-alias line of the preflight report."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    kind: BackendKind
+    providers: list[str | None]
+    reasons: list[str] = Field(default_factory=list)
+
+
+class GatewayReport(BaseModel):
+    """Gateway section of the preflight report. Holds no secret values."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    aliases: list[AliasReport]
+    local: int
+    hosted: int
+    private_route: str  # "ADMITTED" or "BLOCKED"
+    reasons: list[str]
+    secrets: dict[str, SecretRef] = Field(default_factory=dict)
+
+
 class PreflightReport(BaseModel):
     """Aggregate preflight result. Exit 0 only when ``qualified``."""
 
@@ -95,6 +136,7 @@ class PreflightReport(BaseModel):
 
     components: list[ComponentReport]
     edges: list[EdgeReport] = Field(default_factory=list)
+    gateway: GatewayReport | None = None
     failed_layers: list[FailedLayer]
     failed_layer: FailedLayer | None
     qualified: bool

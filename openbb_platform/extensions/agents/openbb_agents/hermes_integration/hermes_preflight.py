@@ -16,11 +16,12 @@ from typing import Any
 
 import yaml
 
-from . import handshake, hermes_config, provenance
+from . import handshake, hermes_config, litellm_config, provenance
 from .models import (
     ComponentReport,
     EdgeReport,
     FailedLayer,
+    GatewayReport,
     HealthLevel,
     PreflightReport,
 )
@@ -196,12 +197,52 @@ def _check_route(
     return [cfg, route], facts
 
 
+def _check_gateway(
+    profile: FinanceRuntimeProfile, config: Path | None
+) -> tuple[list[ComponentReport], GatewayReport | None]:
+    """Classify proxy aliases; the private route needs a local, isolated alias."""
+    if config is None:
+        return [], None
+    try:
+        facts = litellm_config.read_gateway_facts(config, profile)
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        return [
+            ComponentReport(
+                name="litellm_config",
+                failed_layer=FailedLayer.CONFIG,
+                detail=f"config_unreadable: {type(exc).__name__}",
+            )
+        ], None
+    verdict = litellm_config.evaluate_gateway(facts, profile)
+    report = litellm_config.gateway_report(facts, verdict)
+    cfg = ComponentReport(
+        name="litellm_config",
+        level=HealthLevel.CONFIGURED,
+        presence={k: v.presence for k, v in facts.secrets.items()},
+    )
+    counts = f"local={report.local} hosted={report.hosted}"
+    if verdict.blocked:
+        route = ComponentReport(
+            name="litellm_routes",
+            failed_layer=FailedLayer.ROUTE,
+            detail=f"private_route=BLOCKED {counts}: " + ",".join(verdict.reasons),
+        )
+    else:
+        route = ComponentReport(
+            name="litellm_routes",
+            level=HealthLevel.ADMITTED,
+            detail=f"private_route=ADMITTED {counts}",
+        )
+    return [cfg, route], report
+
+
 def run_preflight(
     profile: FinanceRuntimeProfile,
     *,
     env: Mapping[str, str] | None = None,
     openbb_settings: Path | None = None,
     hermes_config_path: Path | None = None,
+    litellm_config_path: Path | None = None,
     probe: str = "none",
     mcp_tools: Sequence[Mapping[str, Any]] | None = None,
     mcp_http_url: str | None = None,
@@ -212,12 +253,14 @@ def run_preflight(
     """Run all checks. ``probe="loopback"`` adds the handshake edges. Never executes Hermes."""
     env = os.environ if env is None else env
     route_components, facts = _check_route(profile, hermes_config_path)
+    gateway_components, gateway = _check_gateway(profile, litellm_config_path)
     components = [
         _check_checkout("hermes_agent", profile.hermes_agent, env),
         _check_webui(profile, env),
         _check_abi(profile, env),
         _check_database(profile, openbb_settings, env),
         *route_components,
+        *gateway_components,
     ]
     edges: list[EdgeReport] = []
     if probe == "loopback":
@@ -239,6 +282,7 @@ def run_preflight(
     return PreflightReport(
         components=components,
         edges=edges,
+        gateway=gateway,
         failed_layers=layers,
         failed_layer=layers[0] if layers else None,
         qualified=qualified,
@@ -272,6 +316,12 @@ def _render_text(report: PreflightReport) -> str:
             f"failed_layer={edge.failed_layer.value if edge.failed_layer else '-'}"
             + (f" detail={edge.detail}" if edge.detail else "")
         )
+    if report.gateway is not None:
+        for alias in report.gateway.aliases:
+            lines.append(
+                f"alias {alias.name} kind={alias.kind.value}"
+                + (f" reasons={','.join(alias.reasons)}" if alias.reasons else "")
+            )
     layer = report.failed_layer.value if report.failed_layer else "-"
     lines.append(f"qualified={report.qualified} failed_layer={layer}")
     return "\n".join(lines)
@@ -283,6 +333,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--profile", required=True, type=Path)
     parser.add_argument("--openbb-settings", type=Path, default=None)
     parser.add_argument("--hermes-config", type=Path, default=None)
+    parser.add_argument("--litellm-config", type=Path, default=None)
     parser.add_argument("--mcp-tools", type=Path, default=None, help="JSON tool list")
     parser.add_argument("--mcp-http-url", default=None)
     parser.add_argument("--backend-url", default=None)
@@ -311,6 +362,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         profile,
         openbb_settings=args.openbb_settings,
         hermes_config_path=args.hermes_config,
+        litellm_config_path=args.litellm_config,
         probe=args.probe,
         mcp_tools=tools,
         mcp_http_url=args.mcp_http_url,

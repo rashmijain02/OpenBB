@@ -1,0 +1,23 @@
+# Synthetic unsafe shape (#1338-T03): the finance-private alias is local, but
+# router_settings.fallbacks sends it to a hosted alias when the local backend fails.
+# PORT_LOCAL / PORT_HOSTED are substituted by tests (PORT_HOSTED is a loopback
+# stand-in for a hosted provider). Key names verified against litellm 1.106.6.
+model_list:
+  - model_name: finance-private
+    litellm_params:
+      model: openai/local-finance-model
+      api_base: http://127.0.0.1:PORT_LOCAL/v1
+      api_key: os.environ/SYNTHETIC_LOCAL_RUNTIME_KEY_ENV
+  - model_name: hosted-a
+    litellm_params:
+      model: openai/hosted-model-a
+      api_base: http://127.0.0.1:PORT_HOSTED/v1
+      api_key: os.environ/SYNTHETIC_HOSTED_KEY_ENV
+litellm_settings:
+  turn_off_message_logging: true
+router_settings:
+  num_retries: 0
+  fallbacks:
+    - finance-private: [hosted-a]
+general_settings:
+  master_key: os.environ/SYNTHETIC_MASTER_KEY_ENV

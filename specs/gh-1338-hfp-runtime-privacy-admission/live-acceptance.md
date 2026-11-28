@@ -1,6 +1,6 @@
 # Live acceptance steps (owner-run)
 
-Status: partial. Only the section for #1338 T02 (step L2) is written so far. L1, L3, L4 and L5 stay in
+Status: partial. Sections for #1338 T02 (step L2) and T03 (step L3) are written. L1, L4 and L5 stay in
 `plan.md` section 4 until their code lands. Nothing here is executed by agents.
 
 ## L2: #1338 T02, Hermes/WebUI and provider handshake matrix
@@ -38,3 +38,56 @@ Notes for the owner, from what the code does today:
   `database` component.
 - Pin the MCP catalog by setting `mcp_catalog_sha256` in the owner profile and passing `--mcp-tools <json list>`
   (tool descriptors with name, description, inputSchema). A drift reports `failed_layer=schema`.
+
+## L3: #1338 T03, bind LiteLLM aliases to a verified local backend; refused-backend proof
+
+Code-only parts (proxy YAML reader, alias classifier, route policy, preflight wiring) are tested in
+`openbb_platform/extensions/agents/tests/hermes_integration/test_litellm_routes.py`. The in-process proof
+(`-m requires_agents`) runs real litellm 1.106.6 `Router` code in an ephemeral interpreter outside the repo
+(decision O5) against test-owned loopback servers: for refused, timed-out and rate-limited local backends it
+raises, the loopback hosted stand-in receives zero requests, there are zero non-loopback lookups or connects,
+and no sentinel appears in INFO-level logs or the exception. The same harness proves the opposite for the
+config the classifier rejects (router `fallbacks` to a hosted alias does reach the hosted stand-in).
+
+Today's result against the existing proxy config (code-only real path): 6 aliases, all `hosted`
+(`github_copilot`), 0 `local`, `private_route=BLOCKED` (`no_private_alias_allowlisted`, `no_local_alias`,
+`message_logging_not_disabled`), `failed_layer=route` among others, `master_key` and `database_url` present
+as env references. That is the correct fail-closed outcome until O3 and O4.
+
+```text
+Live acceptance for #1338 (HFP-P01 LiteLLM binding) - normal (non-elevated) pwsh 7 window, planned restart window
+Preconditions: PR A merged; O3 runtime chosen and listening on 127.0.0.1:<LOCAL_RUNTIME_PORT> only;
+  no agent session is using the proxy during the restart (it serves the lead's session).
+1. Back up the proxy YAML; apply specs/gh-1338-hfp-runtime-privacy-admission/proposed-claude-proxy.diff by hand
+   (fill the placeholders; no secret values in the YAML, env references only).
+2. Owner profile: private_alias_allowlist: [finance-private]; local_backends: ["http://127.0.0.1:<LOCAL_RUNTIME_PORT>"];
+   gateway_key_env: <NAME of the env var holding the scoped finance key>.
+3. hermes_preflight --profile <owner profile> --litellm-config <proxy yaml> --probe none --format text
+                                    Expect: litellm_routes private_route=ADMITTED local=1 hosted=6; alias finance-private kind=local
+4. Restart the proxy (litellm-copilot-start). Start it WITHOUT --detailed_debug and with LITELLM_LOG unset or INFO:
+   at DEBUG, litellm 1.106.6 logs the prompt even with turn_off_message_logging (proved in-process).
+5. Create a scoped virtual key limited to models: [finance-private] (no hosted alias in its model list); store it
+   in the secret store under the name from step 2. Never paste it into chat or a file in the repo.
+6. With a synthetic sentinel prompt only: request-level fallback check. Send one chat request with the scoped key,
+   model finance-private, and body field "fallbacks": ["<a hosted alias>"] while the local runtime is stopped.
+                                    Expect: an error; no hosted request. (In-process, a caller-supplied fallbacks
+                                    kwarg DOES reach a hosted alias, so the key's model scope is the control here.)
+7. Local runtime running: hermes_preflight ... --hermes-config <qual-home>\config.yaml --probe loopback --backend-url http://127.0.0.1:<LOCAL_RUNTIME_PORT>
+                                    Expect: hermes_litellm callable (finance-private listed); litellm_backend callable
+8. Stop the local runtime; re-run step 7.
+                                    Expect: litellm_backend unavailable (failed_layer=backend); exit 2
+9. Owner-only, count-only query on the proxy's request history for the sentinel string used in steps 6-8.
+                                    Expect: 0 rows containing it, and no rows for a hosted model in the window.
+                                    Agents never read that history.
+Cleanup: leave the binding in place if steps 3-9 match; otherwise restore the backup and restart.
+Report back: exit codes, the step 3 and 7/8 preflight text output, the count from step 9, and any Expect line that did not match.
+```
+
+Notes for the owner:
+
+- `turn_off_message_logging` and `set_verbose` are global in litellm 1.106.6, so step 1 also stops message
+  logging for the Copilot aliases.
+- `store_prompts_in_spend_logs: false` keeps prompts out of the Postgres request history; the preflight blocks
+  an explicit `true`.
+- The preflight cannot see CLI flags or env vars of the running proxy (`--detailed_debug`, `LITELLM_LOG`), so
+  step 4 is a manual check.

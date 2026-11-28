@@ -1,0 +1,41 @@
+# Proposed change to the existing LiteLLM proxy config (#1338-T03, owner decision O4).
+# Agents produced this diff only; the owner applies it in a planned restart window (live step L3).
+# Placeholders: <LOCAL_RUNTIME_PORT> (the O3 runtime, loopback only), <LOCAL_MODEL_ID>,
+# <LOCAL_RUNTIME_KEY_ENV> (env var NAME; omit api_key if the runtime has no key).
+# No values are included. Existing env-var references (master_key, database_url) are unchanged.
+# Setting names verified against litellm 1.106.6 (the proxy venv's runtime), not the 1.109.0 checkout.
+# After applying, also set the OpenBB owner profile:
+#   private_alias_allowlist: [finance-private]
+#   local_backends: ["http://127.0.0.1:<LOCAL_RUNTIME_PORT>"]
+# and verify: hermes_preflight --profile <owner profile> --litellm-config <proxy yaml> --probe none
+#   -> litellm_routes private_route=ADMITTED local=1 hosted=6
+--- a/claude-proxy.yaml
++++ b/claude-proxy.yaml
+@@ model_list (append after the last github_copilot/* entry) @@
+   - model_name: claude-sonnet-5.5
+     litellm_params:
+       model: github_copilot/claude-sonnet-5.5
++  # Finance-private alias: local inference only. Never add a second deployment
++  # with a hosted model under this name, and never name a hosted wildcard that
++  # matches it (the preflight blocks both).
++  - model_name: finance-private
++    litellm_params:
++      model: openai/<LOCAL_MODEL_ID>
++      api_base: http://127.0.0.1:<LOCAL_RUNTIME_PORT>/v1
++      api_key: os.environ/<LOCAL_RUNTIME_KEY_ENV>
++
++# Global in litellm 1.106.6 (module attributes): this also turns off message
++# logging for the existing Copilot aliases. No fallbacks, no callbacks, no verbose.
++litellm_settings:
++  turn_off_message_logging: true
++  set_verbose: false
++
++# Router-level: no fallbacks of any kind. num_retries is optional (retries stay inside
++# a model group, so they are safe while finance-private has only local deployments).
++router_settings:
++  num_retries: 0
+ general_settings:
+   master_key: os.environ/<existing name, unchanged>
+   database_url: os.environ/<existing name, unchanged>
++  store_prompts_in_spend_logs: false
+   trusted_proxy_ranges: []
