@@ -255,20 +255,26 @@ def _check_skills(
 
 def _check_gateway(
     profile: FinanceRuntimeProfile, config: Path | None
-) -> tuple[list[ComponentReport], GatewayReport | None]:
+) -> tuple[
+    list[ComponentReport], GatewayReport | None, litellm_config.GatewayFacts | None
+]:
     """Classify proxy aliases; the private route needs a local, isolated alias."""
     if config is None:
-        return [], None
+        return [], None, None
     try:
         facts = litellm_config.read_gateway_facts(config, profile)
     except _CONFIG_ERRORS as exc:
-        return [
-            ComponentReport(
-                name="litellm_config",
-                failed_layer=FailedLayer.CONFIG,
-                detail=_config_error(exc),
-            )
-        ], None
+        return (
+            [
+                ComponentReport(
+                    name="litellm_config",
+                    failed_layer=FailedLayer.CONFIG,
+                    detail=_config_error(exc),
+                )
+            ],
+            None,
+            None,
+        )
     verdict = litellm_config.evaluate_gateway(facts, profile)
     report = litellm_config.gateway_report(facts, verdict)
     cfg = ComponentReport(
@@ -276,7 +282,8 @@ def _check_gateway(
         level=HealthLevel.CONFIGURED,
         presence={k: v.presence for k, v in facts.secrets.items()},
     )
-    counts = f"local={report.local} hosted={report.hosted}"
+    selectable = len(litellm_config.select_private_aliases(facts, profile))
+    counts = f"local={report.local} hosted={report.hosted} selectable={selectable}"
     if verdict.blocked:
         route = ComponentReport(
             name="litellm_routes",
@@ -289,7 +296,7 @@ def _check_gateway(
             level=HealthLevel.ADMITTED,
             detail=f"private_route=ADMITTED {counts}",
         )
-    return [cfg, route], report
+    return [cfg, route], report, facts
 
 
 @dataclass(frozen=True)
@@ -321,7 +328,9 @@ def run_preflight(
     # Like ``DatabaseConfig``: no flag means the per-user settings file.
     settings = opts.openbb_settings or provenance.default_settings_path()
     route_components, facts = _check_route(profile, opts.hermes_config_path)
-    gateway_components, gateway = _check_gateway(profile, opts.litellm_config_path)
+    gateway_components, gateway, gateway_facts = _check_gateway(
+        profile, opts.litellm_config_path
+    )
     components = [
         _check_checkout("hermes_agent", profile.hermes_agent, env),
         _check_webui(profile, env),
@@ -349,6 +358,7 @@ def run_preflight(
                 mcp_http_url=opts.mcp_http_url,
                 backend_base_url=opts.backend_base_url,
                 timeout=opts.timeout,
+                gateway_facts=gateway_facts,
             ),
         )
     failed = {c.failed_layer for c in components if c.failed_layer is not None}

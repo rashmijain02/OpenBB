@@ -15,15 +15,29 @@ import threading
 import urllib.request
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
-from openbb_agents.hermes_integration import access, projection
+import yaml
+from openbb_agents.hermes_integration import (
+    access,
+    handshake,
+    hermes_config,
+    litellm_config,
+    projection,
+)
 from openbb_agents.hermes_integration.access import (
     HERMES_FINANCE_POLICY,
     Capability,
     PolicyGate,
 )
 from openbb_agents.hermes_integration.egress_guard import EgressRefused, egress_guard
+from openbb_agents.hermes_integration.hermes_preflight import (
+    PreflightOptions,
+    main,
+    run_preflight,
+)
+from openbb_agents.hermes_integration.profile import load_profile
 from openbb_agents.hermes_integration.projection import (
     EvidenceProjection,
     ProjectionDenied,
@@ -31,7 +45,7 @@ from openbb_agents.hermes_integration.projection import (
     scan_text,
 )
 
-from .conftest import SENTINELS
+from .conftest import FIXTURES, SENTINELS
 
 ALL_FIELDS = sorted(access.EVIDENCE_PROJECTION_FIELDS)
 
@@ -355,3 +369,275 @@ def test_policy_probe_evaluate_uses_the_scanner(leak):
     ok, summary = policy_probe._evaluate(calls, audit + leak)
     assert ok is False and summary["scan_hits"]
     assert leak not in json.dumps(summary)
+
+
+# --- local-only routing (#1339-T03 part B) -------------------------------------------
+# Hermes side: memory, user profile and shared metrics; LiteLLM side: the private
+# alias selector. All configs are synthetic fixtures.
+
+HERMES_FX = FIXTURES / "hermes"
+LITELLM_FX = FIXTURES / "litellm"
+PROFILE_FX = FIXTURES / "profiles" / "synthetic-ok.yaml"
+PRIVATE = "finance-private"
+LOCAL_PORT = 8080
+_DROP = object()
+
+
+def _route_profile(tmp_path: Path, allow=(PRIVATE,)):
+    data = yaml.safe_load(PROFILE_FX.read_text(encoding="utf-8"))
+    data["private_alias_allowlist"] = list(allow)
+    data["local_backends"] = [f"http://127.0.0.1:{LOCAL_PORT}"]
+    out = tmp_path / "profile.yaml"
+    out.write_text(yaml.safe_dump(data), encoding="utf-8")
+    return load_profile(out), out
+
+
+def _hermes_verdict(tmp_path: Path, mutate=None, name="config-finance-safe.yaml"):
+    data = yaml.safe_load((HERMES_FX / name).read_text(encoding="utf-8"))
+    if mutate is not None:
+        mutate(data)
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(yaml.safe_dump(data), encoding="utf-8")
+    profile, _ = _route_profile(tmp_path)
+    return hermes_config.evaluate_route(hermes_config.read_route_facts(cfg), profile)
+
+
+def _memory(**values):
+    def mutate(data):
+        for key, value in values.items():
+            if value is _DROP:
+                data["memory"].pop(key, None)
+            else:
+                data["memory"][key] = value
+
+    return mutate
+
+
+def test_finance_safe_fixture_admits_the_route_with_memory_off(tmp_path):
+    verdict = _hermes_verdict(tmp_path)
+    assert verdict.blocked is False, verdict.reasons
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reasons"),
+    [
+        (_memory(memory_enabled=True), {"memory_enabled_not_false"}),
+        (_memory(memory_enabled=_DROP), {"memory_enabled_not_false"}),
+        (_memory(memory_enabled="false"), {"memory_enabled_not_false"}),
+        (_memory(user_profile_enabled=True), {"user_profile_enabled_not_false"}),
+        (_memory(user_profile_enabled=_DROP), {"user_profile_enabled_not_false"}),
+        (_memory(user_profile_enabled=0), {"user_profile_enabled_not_false"}),
+        (
+            lambda d: d.pop("memory"),  # upstream default: both on
+            {"memory_enabled_not_false", "user_profile_enabled_not_false"},
+        ),
+        (
+            lambda d: d.__setitem__("memory", "off"),
+            {"memory_enabled_not_false", "user_profile_enabled_not_false"},
+        ),
+    ],
+)
+def test_route_policy_blocks_hermes_memory_or_user_profile_enabled(
+    tmp_path, mutate, reasons
+):
+    verdict = _hermes_verdict(tmp_path, mutate)
+    assert verdict.blocked and reasons <= set(verdict.reasons), verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "metrics",
+    [{"enabled": True}, {"enabled": True, "send": True}, {"send": True}],
+)
+def test_route_policy_blocks_shared_metrics_enabled(tmp_path, metrics):
+    def mutate(data):
+        data["telemetry"]["shared_metrics"] = metrics
+
+    verdict = _hermes_verdict(tmp_path, mutate)
+    assert verdict.blocked and "telemetry_enabled" in verdict.reasons
+
+
+def test_memory_keys_are_consumed_keys():
+    # The seam-contract test pins every consumed key in the upstream-trimmed fixture.
+    assert {"memory.memory_enabled", "memory.user_profile_enabled"} <= set(
+        hermes_config.CONSUMED_KEYS
+    )
+
+
+def test_hosted_fallback_config_blocks_the_route_naming_the_fallback(tmp_path):
+    verdict = _hermes_verdict(tmp_path, name="config-fallback-hosted.yaml")
+    assert verdict.blocked and "fallback_providers_set" in verdict.reasons
+
+
+# LiteLLM side: which aliases the private operation may use.
+
+
+def _gateway(tmp_path: Path, name="finance-local.yaml", mutate=None):
+    text = (LITELLM_FX / name).read_text(encoding="utf-8")
+    text = text.replace("PORT_LOCAL", str(LOCAL_PORT)).replace("PORT_HOSTED", "8081")
+    data = yaml.safe_load(text)
+    if mutate is not None:
+        mutate(data)
+    cfg = tmp_path / f"proxy-{name}"
+    cfg.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    profile, _ = _route_profile(tmp_path)
+    return litellm_config.read_gateway_facts(cfg, profile), profile
+
+
+def _local_entry(name):
+    return {
+        "model_name": name,
+        "litellm_params": {
+            "model": "openai/local-other",
+            "api_base": f"http://127.0.0.1:{LOCAL_PORT}/v1",
+        },
+    }
+
+
+def test_private_selector_admits_the_local_allowlisted_served_alias(tmp_path):
+    facts, profile = _gateway(tmp_path)
+    assert litellm_config.select_private_aliases(facts, profile) == (PRIVATE,)
+    assert litellm_config.select_private_aliases(
+        facts, profile, served={PRIVATE, "hosted-a"}
+    ) == (PRIVATE,)
+
+
+def test_private_selector_excludes_local_aliases_outside_the_allowlist(tmp_path):
+    facts, profile = _gateway(
+        tmp_path, mutate=lambda d: d["model_list"].append(_local_entry("scratch"))
+    )
+    assert litellm_config.select_private_aliases(facts, profile) == (PRIVATE,)
+
+
+def test_private_selector_excludes_aliases_the_gateway_does_not_serve(tmp_path):
+    facts, profile = _gateway(tmp_path)
+    assert litellm_config.select_private_aliases(facts, profile, served=set()) == ()
+    assert (
+        litellm_config.select_private_aliases(facts, profile, served={"hosted-a"})
+        == ()
+    )
+
+
+def _hosted_member(data):
+    data["model_list"].append(
+        {"model_name": PRIVATE, "litellm_params": {"model": "github_copilot/x"}}
+    )
+
+
+def _hosted_wildcard(data):
+    data["model_list"].append(
+        {"model_name": "finance-*", "litellm_params": {"model": "github_copilot/x"}}
+    )
+
+
+def _logging_on(data):
+    data["litellm_settings"]["turn_off_message_logging"] = False
+
+
+@pytest.mark.parametrize(
+    ("name", "mutate"),
+    [
+        ("finance-local.yaml", _hosted_member),  # group with a hosted member
+        ("finance-local.yaml", _hosted_wildcard),  # captured by a hosted group
+        ("local-with-hosted-fallback.yaml", None),  # hosted fallback target
+        ("finance-local.yaml", _logging_on),  # gateway itself not admitted
+        ("existing-shape-hosted-only.yaml", None),  # alias is hosted
+    ],
+)
+def test_private_selector_is_empty_unless_the_gateway_is_local_only(
+    tmp_path, name, mutate
+):
+    facts, profile = _gateway(tmp_path, name=name, mutate=mutate)
+    assert litellm_config.select_private_aliases(facts, profile) == ()
+    assert (
+        litellm_config.select_private_aliases(facts, profile, served={PRIVATE}) == ()
+    )
+
+
+class _Served(handshake.LoopbackTransport):
+    """Gateway stand-in whose scoped key serves only the private alias."""
+
+    def http_get(self, host, port, path, headers, timeout):
+        body = json.dumps({"data": [{"id": PRIVATE}]}).encode()
+        return handshake.ProbeResult(kind="ok", status=200, body=body)
+
+
+def test_gateway_edge_blocks_a_served_alias_that_is_not_local_only(tmp_path):
+    hosted, profile = _gateway(tmp_path, name="local-with-hosted-fallback.yaml")
+    local, _ = _gateway(tmp_path)
+    cfg = tmp_path / "hermes.yaml"
+    cfg.write_text(
+        (HERMES_FX / "config-finance-safe.yaml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    facts = hermes_config.read_route_facts(cfg)
+
+    def edge(gw):
+        return handshake.probe_gateway(
+            profile, facts, {}, _Served(), 1.0, gateway_facts=gw
+        )
+
+    blocked = edge(hosted)
+    assert blocked.failed_layer is not None and blocked.failed_layer.value == "route"
+    assert blocked.detail == "private_alias_not_local_only"
+    assert edge(local).detail == "private_alias_served"
+    assert edge(None).detail == "private_alias_served"  # no proxy config: unchanged
+
+
+def _preflight(tmp_path, capsys, hermes, litellm=None):
+    _, profile_path = _route_profile(tmp_path)
+    argv = ["--profile", str(profile_path), "--hermes-config", str(hermes)]
+    if litellm is not None:
+        argv += ["--litellm-config", str(litellm)]
+    code = main([*argv, "--format", "json"])
+    report = json.loads(capsys.readouterr().out)
+    return code, {c["name"]: c for c in report["components"]}, report
+
+
+def test_preflight_hosted_fallback_config_fails_the_route_layer(tmp_path, capsys):
+    code, comps, report = _preflight(
+        tmp_path, capsys, HERMES_FX / "config-fallback-hosted.yaml"
+    )
+    assert code == 2 and "route" in report["failed_layers"]
+    assert comps["route"]["failed_layer"] == "route"
+    assert "fallback_providers_set" in comps["route"]["detail"]
+
+
+def test_preflight_reports_the_selectable_private_aliases(tmp_path, capsys):
+    text = (LITELLM_FX / "finance-local.yaml").read_text(encoding="utf-8")
+    proxy = tmp_path / "proxy.yaml"
+    proxy.write_text(text.replace("PORT_LOCAL", str(LOCAL_PORT)), encoding="utf-8")
+    _, comps, _ = _preflight(
+        tmp_path, capsys, HERMES_FX / "config-finance-safe.yaml", proxy
+    )
+    assert comps["route"]["failed_layer"] is None, comps["route"]
+    assert comps["litellm_routes"]["detail"].startswith("private_route=ADMITTED")
+    assert "selectable=1" in comps["litellm_routes"]["detail"]
+
+
+def test_preflight_probe_passes_the_proxy_config_to_the_gateway_edge(tmp_path):
+    # The transport answers every HTTP probe with the private alias only and
+    # refuses every TCP connect, so no real service is contacted.
+    class _Offline(_Served):
+        def tcp_connect(self, host, port, timeout):
+            return handshake.ProbeResult(kind="refused")
+
+    text = (LITELLM_FX / "local-with-hosted-fallback.yaml").read_text(encoding="utf-8")
+    proxy = tmp_path / "proxy.yaml"
+    proxy.write_text(
+        text.replace("PORT_LOCAL", str(LOCAL_PORT)).replace("PORT_HOSTED", "8081"),
+        encoding="utf-8",
+    )
+    profile, _ = _route_profile(tmp_path)
+    report = run_preflight(
+        profile,
+        PreflightOptions(
+            openbb_settings=FIXTURES / "settings" / "synthetic-user_settings.json",
+            hermes_config_path=HERMES_FX / "config-finance-safe.yaml",
+            litellm_config_path=proxy,
+            probe="loopback",
+        ),
+        env={},
+        transport=_Offline(),
+    )
+    edge = next(e for e in report.edges if e.name == "hermes_litellm")
+    assert edge.detail == "private_alias_not_local_only", edge

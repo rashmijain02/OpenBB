@@ -32,6 +32,7 @@ auth:
   adopt_external_logins: true
 memory:
   memory_enabled: true
+  user_profile_enabled: true
 telemetry:
   shared_metrics:
     enabled: false

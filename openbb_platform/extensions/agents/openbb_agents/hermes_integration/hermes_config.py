@@ -30,7 +30,12 @@ CONSUMED_KEYS = (
     "delegation.fallback_providers",
     "auxiliary",
     "auth.adopt_external_logins",
+    "memory.memory_enabled",
+    "memory.user_profile_enabled",
 )
+# Built-in memory and the user profile persist conversation content in the Hermes
+# home and inject it into later prompts; upstream defaults both to on (truthy read).
+MEMORY_SWITCHES = ("memory_enabled", "user_profile_enabled")
 
 # Fail-closed allowlists derived from Hermes ``DEFAULT_CONFIG`` at the pin
 # (rashmijain02/hermes-agent 710fa8a, ``hermes_cli/config_defaults.py``). A
@@ -625,6 +630,12 @@ def _scan_misc(loaded: dict[str, Any]) -> list[str]:
         issues.append("smart_model_routing_not_disabled")
     if _set(_get(loaded, "memory.provider")):  # external memory providers are hosted
         issues.append("memory_provider_set")
+    # Memory switches default on at the pin: only an explicit ``false`` turns them off.
+    issues += [
+        f"{switch}_not_false"
+        for switch in MEMORY_SWITCHES
+        if _get(loaded, f"memory.{switch}") is not False
+    ]
     # Absent flags keep the pinned default (``False``); any other value counts as on.
     telemetry = loaded.get("telemetry")
     metrics = telemetry.get("shared_metrics") if isinstance(telemetry, dict) else None

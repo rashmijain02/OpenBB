@@ -21,6 +21,7 @@ from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 from .hermes_config import RouteFacts, evaluate_route, is_loopback_host
+from .litellm_config import GatewayFacts, select_private_aliases
 from .models import EdgeReport, EdgeStatus, FailedLayer, HealthLevel, Presence
 from .profile import FinanceRuntimeProfile
 from .provenance import load_credentials
@@ -149,8 +150,14 @@ def probe_gateway(
     env: Mapping[str, str],
     transport: Transport,
     timeout: float,
+    *,
+    gateway_facts: GatewayFacts | None = None,
 ) -> EdgeReport:
-    """Hermes to LiteLLM: one probe of the profile gateway, only if the route is admitted."""
+    """Hermes to LiteLLM: one probe of the profile gateway, only if the route is admitted.
+
+    With the proxy config (``gateway_facts``), the served default alias must also be
+    one the local-only selector admits.
+    """
     name = "hermes_litellm"
     if facts is None:
         return _not_evaluated(name, "no_hermes_config")
@@ -207,6 +214,17 @@ def probe_gateway(
             level=HealthLevel.AUTHENTICATED,
             failed_layer=FailedLayer.AUTH,
             detail="gateway_key_not_scoped",
+            presence=presence,
+        )
+    if gateway_facts is not None and facts.model_default not in select_private_aliases(
+        gateway_facts, profile, served
+    ):
+        return EdgeReport(
+            name=name,
+            status=EdgeStatus.BLOCKED,
+            level=HealthLevel.AUTHENTICATED,
+            failed_layer=FailedLayer.ROUTE,
+            detail="private_alias_not_local_only",
             presence=presence,
         )
     return EdgeReport(
@@ -432,6 +450,7 @@ class HandshakeOptions:
     mcp_http_url: str | None = None
     backend_base_url: str | None = None
     timeout: float = 5.0
+    gateway_facts: GatewayFacts | None = None  # LiteLLM proxy config, when supplied
 
 
 def run_handshake(
@@ -446,7 +465,9 @@ def run_handshake(
     opts = options or HandshakeOptions()
     timeout = opts.timeout
     transport = transport or LoopbackTransport()
-    gateway = probe_gateway(profile, facts, env, transport, timeout)
+    gateway = probe_gateway(
+        profile, facts, env, transport, timeout, gateway_facts=opts.gateway_facts
+    )
     edges = [
         check_webui(profile, env, transport, timeout),
         gateway,
