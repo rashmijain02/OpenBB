@@ -371,3 +371,24 @@ def test_replace_dir_os_error_is_dataset_error(tmp_path, monkeypatch):
     monkeypatch.setattr(ds.shutil, "rmtree", locked)
     err = _reason(ds.replace_dir, tmp_path / "tmp", tmp_path / "dest")
     assert (err.reason, err.code) == ("replace_failed", ErrorCode.PROCESS)
+
+
+def test_build_catalog_uses_verified_bytes_not_a_swapped_file(tmp_path, monkeypatch):
+    """SECURITY-1: bars swapped after admission never reach the catalog writer."""
+    ds_id = _make_dataset(tmp_path / "datasets")
+    real = ds.load_dataset
+    bars_path = tmp_path / "datasets" / ds_id / ds.BARS_FILE
+
+    def load_then_swap(*args, **kwargs):
+        out = real(*args, **kwargs)
+        pq.write_table(_bars(close0=99999), bars_path)
+        return out
+
+    monkeypatch.setattr(ds, "load_dataset", load_then_swap)
+    writer = _FakeWriter()
+    cb.build_catalog(
+        {"dataset_id": ds_id}, env=_env(tmp_path), writer=writer, fixed_precision=9
+    )
+    part = tmp_path / "catalogs" / ds_id / "data" / "bar" / "part-0.json"
+    closes = [b[2] for b in json.loads(part.read_bytes())["bars"]]
+    assert closes == [20300, 10175]

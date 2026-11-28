@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+import pyarrow as pa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from . import dataset as ds
@@ -69,11 +70,15 @@ _ALLOWED_KEYS = frozenset(RunRequest.model_fields)
 
 @dataclass(frozen=True)
 class Admitted:
-    """An admitted run: the request, the verified manifest and its directory."""
+    """An admitted run: request, verified manifest, directory and bars.
+
+    bars is parsed from the verified bytes and is never re-read from disk.
+    """
 
     request: RunRequest
     manifest: ds.Manifest
     dataset_dir: Path
+    bars: pa.Table
 
 
 def _reject(code: ErrorCode, reason: str, message: str) -> ds.DatasetError:
@@ -152,9 +157,12 @@ def admit_run(req: RunRequest, datasets_root: Path, fixed_precision: int) -> Adm
     path = ds.resolve_dataset_dir(root, req.dataset_id)
     if path.resolve().parent != root.resolve():
         raise _reject(ErrorCode.SCHEMA, "link_rejected", "dataset escapes the root")
-    manifest = ds.admit_dataset(root, req.dataset_id, fixed_precision)
+    admitted = ds.load_dataset(root, req.dataset_id, fixed_precision)
+    manifest = admitted.manifest
     if req.strategy == "buy_and_hold" and len(manifest.instruments) != 1:
         raise _reject(
             ErrorCode.SCHEMA, "bad_request", "buy_and_hold needs exactly one symbol"
         )
-    return Admitted(request=req, manifest=manifest, dataset_dir=path)
+    return Admitted(
+        request=req, manifest=manifest, dataset_dir=path, bars=admitted.bars
+    )

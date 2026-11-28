@@ -17,6 +17,7 @@ import json
 import os
 import re
 import shutil
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
@@ -274,12 +275,36 @@ def check_precision(manifest: Manifest, fixed_precision: int) -> None:
             )
 
 
+@dataclass(frozen=True)
+class AdmittedDataset:
+    """A verified dataset: its manifest and the tables parsed from verified bytes."""
+
+    manifest: Manifest
+    bars: pa.Table
+    actions: pa.Table
+
+
+def _read_verified(path: Path, name: str, manifest: Manifest) -> pa.Table:
+    """Read ``name`` once, check those bytes' sha256, parse them from memory."""
+    data = (path / name).read_bytes()
+    if sha256_hex(data) != manifest.files[name]:
+        raise _reject(ErrorCode.SCHEMA, "file_hash_mismatch", f"{name} hash")
+    return pq.read_table(pa.BufferReader(data))
+
+
 def admit_dataset(root: Path, ds_id: str, fixed_precision: int) -> Manifest:
-    """Verify a dataset end to end and return its manifest.
+    """Verify a dataset end to end and return its manifest (see :func:`load_dataset`)."""
+    return load_dataset(root, ds_id, fixed_precision).manifest
+
+
+def load_dataset(root: Path, ds_id: str, fixed_precision: int) -> AdmittedDataset:
+    """Verify a dataset end to end; return the manifest and the verified tables.
 
     Checks: id shape and location, no links, manifest schema, id == digest of the
     manifest identity, every file's sha256, every table's content digest, and
-    declared precision against ``fixed_precision``.
+    declared precision against ``fixed_precision``. Each data file is read once
+    and the tables are parsed from the verified bytes, so callers never re-read
+    a file that could have been swapped after admission.
     """
     path = resolve_dataset_dir(root, ds_id)
     for name in (MANIFEST_NAME, *DATA_FILES):
@@ -296,11 +321,8 @@ def admit_dataset(root: Path, ds_id: str, fixed_precision: int) -> Manifest:
         raise _reject(ErrorCode.SCHEMA, "dataset_id_mismatch", "id != manifest")
     if sorted(manifest.files) != sorted(DATA_FILES):
         raise _reject(ErrorCode.SCHEMA, "bad_manifest", "unexpected file list")
-    for name in DATA_FILES:
-        if sha256_hex((path / name).read_bytes()) != manifest.files[name]:
-            raise _reject(ErrorCode.SCHEMA, "file_hash_mismatch", f"{name} hash")
-    bars = pq.read_table(path / BARS_FILE)
-    actions = pq.read_table(path / ACTIONS_FILE)
+    bars = _read_verified(path, BARS_FILE, manifest)
+    actions = _read_verified(path, ACTIONS_FILE, manifest)
     if not bars.schema.equals(BARS_SCHEMA) or not actions.schema.equals(ACTIONS_SCHEMA):
         raise _reject(ErrorCode.SCHEMA, "bad_schema", "table schema differs")
     if (
@@ -309,4 +331,4 @@ def admit_dataset(root: Path, ds_id: str, fixed_precision: int) -> Manifest:
     ):
         raise _reject(ErrorCode.SCHEMA, "content_digest_mismatch", "content digest")
     check_precision(manifest, fixed_precision)
-    return manifest
+    return AdmittedDataset(manifest=manifest, bars=bars, actions=actions)

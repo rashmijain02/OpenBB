@@ -19,12 +19,9 @@ from dataclasses import dataclass, field
 from decimal import ROUND_FLOOR, Decimal
 from typing import Any
 
-import pyarrow.parquet as pq
-
 from . import (
     admission,
     catalog_build,
-    dataset as ds,
     guards,
 )
 from .protocol import ErrorCode, ProtocolError
@@ -125,7 +122,7 @@ def _load_spec(adm: admission.Admitted) -> RunSpec:
     rows = sorted(
         (
             r
-            for r in pq.read_table(adm.dataset_dir / ds.BARS_FILE).to_pylist()
+            for r in adm.bars.to_pylist()
             if r["symbol"] == inst.symbol
         ),
         key=lambda r: r["ts_event"],

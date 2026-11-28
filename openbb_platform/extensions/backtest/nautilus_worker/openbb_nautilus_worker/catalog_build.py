@@ -18,7 +18,6 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-import pyarrow.parquet as pq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from . import dataset as ds
@@ -140,8 +139,8 @@ def build_catalog(
     root = data_root(os.environ if env is None else env)
     if fixed_precision is None:
         fixed_precision = runtime_fixed_precision()
-    manifest = ds.admit_dataset(root / "datasets", req.dataset_id, fixed_precision)
-    bars = pq.read_table(root / "datasets" / req.dataset_id / ds.BARS_FILE)
+    admitted = ds.load_dataset(root / "datasets", req.dataset_id, fixed_precision)
+    manifest, bars = admitted.manifest, admitted.bars
 
     catalogs = root / "catalogs"
     catalogs.mkdir(parents=True, exist_ok=True)

@@ -134,3 +134,46 @@ def test_buy_and_hold_independent_case(tmp_path, make_dataset, oracle):
     assert rep["cash"] == oracle["expected"]["cash"]
     assert rep["equity"] == oracle["expected"]["equity"]
     assert rep["engine"]["name"] == "nautilus_trader.BacktestEngine"
+
+
+def _swap_bars_after(monkeypatch, module, attr, dataset_dir_of):
+    """Wrap ``module.attr`` so ``bars.parquet`` is replaced right after it returns."""
+    # pylint: disable=import-outside-toplevel
+    import pyarrow.parquet as pq
+    from openbb_nautilus_worker import dataset as ds
+
+    real = getattr(module, attr)
+
+    def wrapped(*args, **kwargs):
+        out = real(*args, **kwargs)
+        path = dataset_dir_of(args) / ds.BARS_FILE
+        table = pq.read_table(path)
+        doubled = table.set_column(
+            table.schema.get_field_index("close"),
+            "close",
+            [[c * 2 for c in table.column("close").to_pylist()]],
+        )
+        pq.write_table(doubled, path)
+        return out
+
+    monkeypatch.setattr(module, attr, wrapped)
+
+
+def test_bars_swapped_after_admission_do_not_change_the_run(
+    tmp_path, make_dataset, oracle, monkeypatch
+):
+    """SECURITY-1: the run uses the verified bytes, not a re-read of the file."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_nautilus_worker import admission
+
+    ds_id, env, body = _setup(tmp_path, make_dataset)
+    _swap_bars_after(
+        monkeypatch,
+        admission,
+        "admit_run",
+        lambda _args: tmp_path / "datasets" / ds_id,
+    )
+    rep = _run(body, env, oracle=oracle)
+    exp = oracle["expected"]
+    assert (rep["quantity"], rep["cash"]) == (exp["quantity"], exp["cash"])
+    assert rep["final_equity"] == exp["final_equity"]
