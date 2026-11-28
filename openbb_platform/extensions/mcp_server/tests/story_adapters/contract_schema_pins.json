@@ -1,5 +1,5 @@
 {
-  "_comment": "Input-schema sha256 (tool_input_schema_sha256) of every story_* MCP tool in the portfolio-ops profile, captured from origin/portfolio @ 1f9d16208 before #1341 (story_run_cancel was added by #1341 T02, additive). story_run_create is excluded: it gains the optional binding input (#1341 D7).",
+  "_comment": "Input-schema sha256 (tool_input_schema_sha256) of every story_* MCP tool in the portfolio-ops profile, captured from origin/portfolio @ 1f9d16208 before #1341 (story_run_cancel was added by #1341 T02 and story_run_outcome by T03, both additive). story_run_create is excluded: it gains the optional binding input (#1341 D7).",
   "captured_from": "origin/portfolio@1f9d16208",
   "profile": "portfolio-ops",
   "tools": {
@@ -39,6 +39,7 @@
     "story_run_checkpoint": "f4788a8a81d670ab781587bb0fc37650b31b2fe43a7dd8e5e71664104a8ae46c",
     "story_run_get": "f42cab437be1dec517e3866869434365019de79211a3088cb114a54c6cdfc2f6",
     "story_run_cancel": "f42cab437be1dec517e3866869434365019de79211a3088cb114a54c6cdfc2f6",
+    "story_run_outcome": "f42cab437be1dec517e3866869434365019de79211a3088cb114a54c6cdfc2f6",
     "story_single_name_analysis": "2dab836a6e6ce98317a94eff49998b00bdce0379c8a8dfbaa34afaf3f055b937",
     "story_whatif_diff": "8e660482cd91b0d5b12ed484228c8d39085c8484f6bbdff065f2ac446587fe99"
   }

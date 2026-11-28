@@ -24,6 +24,7 @@ that says so. Every route is bound to the server's one principal.
 from __future__ import annotations
 
 import copy
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -35,7 +36,14 @@ from openbb_core.app.jobs.registry import UnknownJobDefinitionError
 from openbb_core.app.service.job_service import JobService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
+from openbb_mcp_server.story_adapters import run_outcome
+from openbb_mcp_server.story_adapters.artifacts import (
+    ArtifactConflict,
+    ArtifactExpired,
+    ArtifactNotFound,
+    ArtifactStore,
+    default_artifact_root,
+)
 from openbb_mcp_server.story_adapters.paper import withdraw_pending_requests
 from openbb_mcp_server.story_adapters.receipts import (
     Receipt,
@@ -46,11 +54,21 @@ from openbb_mcp_server.story_adapters.receipts import (
 )
 from openbb_mcp_server.story_adapters.registry import (
     RunStore,
+    StoryCatalog,
     WorkflowCatalog,
+    default_manifest_dir,
     default_store_path,
     default_workflow_dir,
     ensure_run_open,
     ensure_workflow_current,
+)
+from openbb_mcp_server.story_adapters.run_outcome import (
+    JobFact,
+    RunOutcome,
+    derive_outcome,
+    read_request_facts,
+    read_submissions,
+    stage_optional,
 )
 from openbb_mcp_server.story_adapters.story_job_kinds import (
     OPERATION_ID,
@@ -196,9 +214,12 @@ def build_router(  # pylint: disable=too-many-statements
     ledger: SubmissionLedger,
     principal: str,
     workflows: WorkflowCatalog | None = None,
+    artifacts: ArtifactStore | None = None,
 ) -> APIRouter:
     """Return the story job routes bound to one principal."""
     workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
+    artifact_store = artifacts or ArtifactStore(default_artifact_root(), ledger.db_path)
+    stories = StoryCatalog(default_manifest_dir())
     router = APIRouter(prefix="/api/v1/story/runs", tags=["story"])
     dedupe_prefix = f"story:{ArtifactStore.principal_key(principal)}:"
     receipts = ReceiptLedger(ledger.db_path)
@@ -532,6 +553,68 @@ def build_router(  # pylint: disable=too-many-statements
             requests=RequestCancel(**counts),
         )
 
+    def _artifacts_valid(record) -> bool:
+        cited = {
+            artifact_id
+            for provenance in record.provenance.values()
+            for artifact_id in provenance.artifact_ids
+        }
+        for artifact_id in sorted(cited):
+            try:
+                artifact_store.read(principal, record.run_id, artifact_id)
+            except (ArtifactNotFound, ArtifactExpired, ArtifactConflict, ValueError):
+                return False
+        return True
+
+    @router.get(
+        "/{run_id}/outcome",
+        operation_id="story_run_outcome",
+        openapi_extra={"mcp_config": {"name": "story_run_outcome"}},
+    )
+    def story_run_outcome(
+        run_id: str,
+        service: Annotated[JobService, Depends(get_authenticated_job_service)],
+    ) -> RunOutcome:
+        """Report what a run amounts to, from durable records only.
+
+        Read-only. ``partial`` is never success; an apply that never reported
+        back reads ``partial`` with ``uncertain`` set; a changed workflow reads
+        ``blocked`` (start a new run).
+        """
+        record = _owned_run(run_id)
+        workflow_id = workflow_catalog.parse_id(record.story_id)
+        document = (
+            workflow_catalog.get(workflow_id)
+            if workflow_id is not None
+            else stories.get(record.story_id)
+        )
+        try:
+            ensure_workflow_current(record, workflow_catalog)
+            current = True
+        except HTTPException:
+            current = False
+        jobs: list[JobFact] = []
+        with sqlite3.connect(ledger.db_path, timeout=30) as connection:
+            submissions = read_submissions(connection, principal, run_id)
+            requests = read_request_facts(connection, principal, run_id)
+        for stage_id, job_id in submissions:
+            job_status = None
+            if job_id is not None:
+                try:
+                    job_status = service.get_run(job_id).status
+                except KeyError:
+                    job_status = None
+            jobs.append(JobFact(stage_id, job_status))
+        return derive_outcome(
+            record,
+            optional=stage_optional(document),
+            workflow_current=current,
+            jobs=jobs,
+            requests=requests,
+            artifacts_valid=_artifacts_valid(record),
+            now=run_outcome.utc_now(),
+        )
+
     return router
 
 
@@ -541,6 +624,7 @@ def compose_story_jobs_app(
     principal: str,
     store_path: Path | None = None,
     workflow_dir: Path | None = None,
+    artifact_root: Path | None = None,
 ) -> FastAPI:
     """Add the story job routes, bound to ``principal``, to an isolated app copy."""
     if not principal:
@@ -558,6 +642,10 @@ def compose_story_jobs_app(
             principal,
             WorkflowCatalog(
                 workflow_dir if workflow_dir is not None else default_workflow_dir()
+            ),
+            ArtifactStore(
+                artifact_root if artifact_root is not None else default_artifact_root(),
+                db_path,
             ),
         )
     )

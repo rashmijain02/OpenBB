@@ -393,6 +393,16 @@ class PaperStore:
                 " result TEXT, error TEXT, created_at TEXT NOT NULL,"
                 " UNIQUE (principal, operation_id));"
             )
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(story_paper_requests)")
+            }
+            # #1341: nullable, so older rows and outstanding approvals stay valid.
+            for column in ("superseded_reason", "applying_at"):
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE story_paper_requests ADD COLUMN {column} TEXT"
+                    )
             self._ready = True
         try:
             yield connection
@@ -586,6 +596,12 @@ def _request_view(row: sqlite3.Row) -> dict[str, Any]:
             "status",
         )
     }
+    if (
+        view["status"] == "pending"
+        and datetime.fromisoformat(row["expires_at"]) <= _now()
+    ):
+        # Derived, never stored: a new prepare and a new decision are needed.
+        view["status"] = "expired"
     view["arguments"] = json.loads(row["arguments"])
     view["result"] = json.loads(row["result"]) if row["result"] else None
     view["error"] = row["error"]
@@ -695,6 +711,15 @@ def build_router(  # pylint: disable=too-many-statements
             ensure_workflow_current(record, workflow_catalog)
             ensure_run_open(record)
         return record
+
+    def _supersede(request_id: str, reason: str) -> None:
+        """Mark a pending request superseded; its approval can never apply."""
+        with store.connect() as connection:
+            connection.execute(
+                "UPDATE story_paper_requests SET status = 'superseded',"
+                " superseded_reason = ? WHERE request_id = ? AND status = 'pending'",
+                (reason, request_id),
+            )
 
     def _owned_sandbox(sandbox_id: str) -> sqlite3.Row:
         row = store.sandbox(principal, sandbox_id)
@@ -886,8 +911,15 @@ def build_router(  # pylint: disable=too-many-statements
             )
         if datetime.fromisoformat(row["expires_at"]) <= _now():
             raise HTTPException(status.HTTP_410_GONE, "The approval has expired.")
-        run = _owned_run(row["run_id"], mutating=True)
+        run = _owned_run(row["run_id"])
+        try:
+            ensure_workflow_current(run, workflow_catalog)
+        except HTTPException:
+            _supersede(request_id, "workflow_changed")
+            raise
+        ensure_run_open(run)
         if run.manifest_version != row["manifest_version"]:
+            _supersede(request_id, "manifest_changed")
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 "The run's manifest changed since approval; approve again.",
@@ -895,9 +927,9 @@ def build_router(  # pylint: disable=too-many-statements
         sandbox = _owned_sandbox(row["sandbox_id"])
         with store.connect() as connection:
             claimed = connection.execute(
-                "UPDATE story_paper_requests SET status = 'applying'"
+                "UPDATE story_paper_requests SET status = 'applying', applying_at = ?"
                 " WHERE request_id = ? AND status = 'pending'",
-                (request_id,),
+                (_now().isoformat(), request_id),
             ).rowcount
         if claimed != 1:
             raise HTTPException(

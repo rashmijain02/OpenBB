@@ -747,8 +747,8 @@ def test_the_worker_discovers_the_kinds_through_the_entry_point():
     }
 
 
-def test_the_job_routes_are_five_mcp_tools(tmp_path):
-    """Submit, list, get, cancel and run cancel; each uses the authenticated service."""
+def test_the_job_routes_are_six_mcp_tools(tmp_path):
+    """Submit, list, get, cancel, run cancel and run outcome (#1341 T03, additive)."""
     app = compose_story_jobs_app(
         FastAPI(), principal="alice", store_path=tmp_path / "r.sqlite"
     )
@@ -759,6 +759,7 @@ def test_the_job_routes_are_five_mcp_tools(tmp_path):
         "story_job_get",
         "story_job_cancel",
         "story_run_cancel",
+        "story_run_outcome",
     }
     assert not (tmp_path / "r.sqlite").exists()
     with pytest.raises(ValueError):
