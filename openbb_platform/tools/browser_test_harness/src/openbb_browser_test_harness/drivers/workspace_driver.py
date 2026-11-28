@@ -123,7 +123,12 @@ def _read_managed_credentials(path: Path) -> tuple[str, str]:
         ) from exc
     email = payload.get("Email") if isinstance(payload, dict) else None
     password = payload.get("Password") if isinstance(payload, dict) else None
-    if not isinstance(email, str) or not email or not isinstance(password, str) or not password:
+    if (
+        not isinstance(email, str)
+        or not email
+        or not isinstance(password, str)
+        or not password
+    ):
         raise WorkspaceDriverError(
             "The managed credential file for local Workspace has an invalid shape."
         )
@@ -327,9 +332,7 @@ class WorkspaceDriver:
         target_url = self.workspace_url
         if self._resolved_backend_url:
             sep = "&" if "?" in target_url else "?"
-            target_url = (
-                f"{target_url}{sep}backend_url={self._resolved_backend_url}"
-            )
+            target_url = f"{target_url}{sep}backend_url={self._resolved_backend_url}"
         await self._page.goto(target_url, wait_until="load")
         if _is_local_workspace_url(self.workspace_url):
             _require_local_workspace_origin(self._page.url)

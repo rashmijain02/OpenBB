@@ -56,9 +56,7 @@ class Step:
     endpoint: str | None = None  # e.g. "pi/xray/sector"
     params: dict[str, str] = field(default_factory=dict)
     expected_status: int = 200
-    expected_shape_fixture: str | None = (
-        None  # path under fixtures/expected_responses/
-    )
+    expected_shape_fixture: str | None = None  # path under fixtures/expected_responses/
 
     # Cross-cutting
     screenshot_name: str | None = None  # if None, derived from id
