@@ -25,7 +25,7 @@ Invariants:
   its disabled push URL.
 - Authority (D6): claims, heartbeats, board Status and commits on your own feature branch are
   allowed. Ask each time before push, PR creation, merge, or closing issues by hand. Profile
-  selection grants nothing beyond that. Never merge; the owner does.
+  selection grants nothing beyond that. Never merge; the owner does (in the lead-delegated profile the Claude Code lead merges per `.claude/skills/openbb-dev-cycle/SKILL.md` §3).
 - No issue, no work. Pair every reference as `#NN (title)`. Never use beads, local task ledgers
   or scratch task files as tracking.
 - Use `.venv_portfolio\Scripts\python.exe`. Keep credentials, brokerage data, notebook sandbox

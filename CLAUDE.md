@@ -26,10 +26,12 @@ Development follows **Dev Strategy v4** (`docs/dev-strategy.md`, approved by the
 2026-11-20). Plan and ship in GitHub Copilot CLI with Spec Kit (`openbb-spec`, `openbb-issues`,
 `openbb-ship`); execute in Claude Code with Superpowers (`openbb-execute`). Specs live in
 `specs/gh-<NN>-<slug>/`; principles in `.specify/memory/constitution.md`. Small fixes and tricky
-bugs have shorter routes; `openbb-dev-cycle` routes to the right one.
+bugs have shorter routes; `openbb-dev-cycle` (`.claude/skills/openbb-dev-cycle/SKILL.md`, canonical)
+routes to the right one.
 
 **Roles (D9).** The **owner** is Rashmi Jain (`rashmijain02`). The owner approves specs (gate
-G1), merges PRs, and alone requests promotion PRs. Reviewers are named by function: code reviewer,
+G1), merges PRs (or delegates merges into `portfolio` to a lead, D15), and alone requests
+promotion PRs. Reviewers are named by function: code reviewer,
 security reviewer, privacy reviewer.
 
 **Model policy by role (D1).** Name the model explicitly on every dispatch that accepts one. If it
@@ -47,6 +49,10 @@ documents.
 `pi_claim.py`, set board fields, commit on your own feature branch, create up to 3 issues. Ask
 each time before: `git push`, `gh pr create`, `gh pr merge`, closing issues by hand, or creating
 more than 3 issues. Never merge locally into `portfolio`, `portfolio_validations` or `develop`.
+This is the default, owner-interactive profile; the lead-delegated profile (D15) and the
+lead/subagent operating model (D14, `docs/dev-cycle/STATE.md`) are applied by the canonical
+`.claude/skills/openbb-dev-cycle/SKILL.md`, which also holds routes, gates and environment traps.
+D1 is per tool and overrides model clauses in any skill copy (D13).
 
 ## Workspace override — Portfolio Validation checkout
 
