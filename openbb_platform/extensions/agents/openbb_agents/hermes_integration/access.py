@@ -240,8 +240,9 @@ class ToolGate:
                     fields=binding.fields,
                 )
             )
-        logger.log(
-            logging.INFO if decision.allowed else logging.WARNING,
+        # Allows and denials both log at WARNING: the server runs at WARNING,
+        # so an INFO allow would never reach the audit trail.
+        logger.warning(
             "policy_decision principal=%s tool=%s operation=%s allowed=%s reason=%s",
             self.principal if self.principal in PRINCIPALS else "<unknown>",
             name if binding is not None else "<unbound>",

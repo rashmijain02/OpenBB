@@ -333,6 +333,33 @@ def test_audit_line_is_structural_only(caplog):
     assert not any(value in joined for value in SENTINELS.values())
 
 
+def test_allow_decisions_are_audited_at_the_server_log_level(caplog):
+    """The server logs at WARNING, so an allow must be WARNING to be audited."""
+    binding = access.TOOL_BINDINGS["get_positions"]
+    wide = access.PolicyGate(
+        grants=frozenset(
+            {
+                access.Capability(
+                    principal="hermes_runtime",
+                    operation=binding.operation,
+                    scope=binding.scope,
+                    fields=binding.fields,
+                )
+            }
+        )
+    )
+    gate = access.ToolGate(policy=wide, principal="hermes_runtime")
+    with caplog.at_level(logging.WARNING, logger="openbb_agents.hermes_integration.access"):
+        assert gate.decide_tool("get_positions", {}).allowed
+    allows = [
+        r
+        for r in caplog.records
+        if r.name == "openbb_agents.hermes_integration.access"
+        and "allowed=true reason=granted" in r.getMessage()
+    ]
+    assert len(allows) == 1 and allows[0].levelno >= logging.WARNING
+
+
 @pytest.mark.parametrize("module", ["access", "policy_probe"])
 def test_t01_modules_avoid_forbidden_imports(module):
     """No hosted-fallback config, LiteLLM, ADK or Hermes imports (plan §2)."""
