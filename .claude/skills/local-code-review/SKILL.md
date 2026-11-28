@@ -73,7 +73,7 @@ issue creation, commits, pushes, PR comments, or merges.
 - Handle evidence that fits a direct review directly. Do not create an agent
   per file or review angle. Delegate only when caller rules require it or a
   bounded task genuinely needs separate context. Any execution model must be
-  the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1), named explicitly on any dispatch; report BLOCKED if no suitable model is available.
+  the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1; default tiers in `docs/dev-cycle/model-selection.md`: Sonnet, Opus for high-risk work), named explicitly on any dispatch; report BLOCKED if no suitable model is available.
 
 ## Return an actionable local report
 

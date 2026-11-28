@@ -37,21 +37,10 @@ on every dispatch; if none is suitable, stop and report. Never pin a model famil
 requirement; concrete names are examples only. A model clause inside any skill copy (including the
 user-level `local-*-review` skills) is never a reason to report BLOCKED.
 
-### Model selection in Claude Code (suggested defaults, not pins)
+### Model selection
 
-D1 governs: pick the best available model for the task and name it on every dispatch. For Claude Code skills, start from these defaults and revisit them as models change:
-
-| Tier | Use for |
-|---|---|
-| Haiku (fast, low cost) | Read-only search and inventory, grep sweeps, link/format checks, summarising logs or CI output, board/issue hygiene, mechanical edits with exact instructions |
-| Sonnet (default) | Most well-specified issue work: bounded TDD implementation, docs/skill rewrites, PR review-comment fixes, test writing, reviews of small/medium diffs, local CI evidence |
-| Opus (escalation) | Design/specs (Phase 1), ambiguous requirements, cross-cutting or high-risk changes (security, auth, data migration/retention, concurrency, brokerage or personal data), tricky-bug root cause, security review of sensitive diffs, final review of large batches |
-| Newer models | Trial on low-risk tasks against the current tier; promote only with evidence |
-
-- Start at the lowest tier that fits; escalate one tier when a subagent stalls, needs a second retry, or review finds correctness issues.
-- For high-risk changes the reviewer's tier is at least the implementer's; for routine docs, Sonnet reviewing Sonnet is fine.
-- If a brief will not fit the 100K context budget, split the issue rather than escalating to Opus.
-- Set reasoning effort per dispatch: low for mechanical work, high for design and security.
+Sonnet is the default for well-specified work; escalate to Opus for design, ambiguous or high-risk work, tricky root causes and security or large-batch reviews.
+Canonical guidance: [`docs/dev-cycle/model-selection.md`](../../../docs/dev-cycle/model-selection.md).
 
 ## 3. Authority profiles
 

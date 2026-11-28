@@ -31,6 +31,8 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 **2. Dispatch code reviewer subagent:**
 
+Model: choose per `docs/dev-cycle/model-selection.md` (Sonnet default; Opus for design or high-risk work); name it on every dispatch.
+
 Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
 
 **Placeholders:**

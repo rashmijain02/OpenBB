@@ -72,7 +72,7 @@ collection, network operations, deletion, or publication.
   uncertain material risks explicit and block a clean verdict when unresolved.
 - Review directly when evidence fits one context. Delegate only when caller
   rules require it or substantial separate context is necessary, with an
-  an explicitly named model (the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1)) and bounded read-only scope.
+  an explicitly named model (the best available model suited to the scope's complexity, ambiguity and risk (see `docs/dev-strategy.md` D1; default tiers in `docs/dev-cycle/model-selection.md`: Sonnet, Opus for high-risk work)) and bounded read-only scope.
   Report BLOCKED if no suitable model is available. Do not launch an agent per data category.
 
 ## Report only redacted, actionable facts
