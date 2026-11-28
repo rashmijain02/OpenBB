@@ -492,7 +492,7 @@ def build_router(  # pylint: disable=too-many-statements
         if receipt.operation_id == request.name:
             return None
         if receipt.outcome_ref is None:
-            claimed = datetime.fromisoformat(receipt.updated_at)
+            claimed = datetime.fromisoformat(receipt.claimed_at)
             if _now() - claimed < CLAIM_STALE or not receipts.supersede(
                 principal,
                 logical_key,

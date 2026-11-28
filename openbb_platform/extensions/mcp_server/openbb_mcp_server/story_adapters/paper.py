@@ -846,7 +846,13 @@ def build_router(  # pylint: disable=too-many-statements
             connection.execute("BEGIN IMMEDIATE")
             try:
                 replay = _prepare_locked(
-                    connection, run, sandbox, sandbox_id, request, arguments, digest
+                    connection,
+                    run,
+                    sandbox,
+                    sandbox_id=sandbox_id,
+                    request=request,
+                    arguments=arguments,
+                    digest=digest,
                 )
                 connection.execute("COMMIT")
             except BaseException:
@@ -860,6 +866,7 @@ def build_router(  # pylint: disable=too-many-statements
         connection: sqlite3.Connection,
         run,
         sandbox: sqlite3.Row,
+        *,
         sandbox_id: str,
         request: Prepare,
         arguments: dict[str, Any],

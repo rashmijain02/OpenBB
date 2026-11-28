@@ -570,6 +570,96 @@ def test_concurrent_artifact_reissue_is_one_artifact(env, monkeypatch):
     assert retry.json()["ref"]["artifact_id"] == first.json()["ref"]["artifact_id"]
 
 
+def _crash_first_artifact_write(env, monkeypatch):
+    """Claim the logical key, then die before the artifact lands."""
+    from openbb_mcp_server.story_adapters import artifacts as artifacts_module
+
+    real_write = artifacts_module.ArtifactStore.write
+
+    def dying(self, *args, **kwargs):
+        raise RuntimeError("writer died")
+
+    run_id = env.new_run()
+    monkeypatch.setattr(artifacts_module.ArtifactStore, "write", dying)
+    with pytest.raises(RuntimeError):
+        env.table(run_id)
+    monkeypatch.setattr(artifacts_module.ArtifactStore, "write", real_write)
+    return run_id, artifacts_module
+
+
+def test_stale_artifact_claim_is_taken_over_by_a_reissue(env, monkeypatch):
+    """A claim older than CLAIM_STALE is taken over even after many deliveries."""
+    from openbb_mcp_server.story_adapters import receipts as receipts_module
+
+    run_id, artifacts_module = _crash_first_artifact_write(env, monkeypatch)
+    retry_body = {**TABLE, "name": "positions-retry"}
+    # A re-issue inside the window keeps bumping deliveries/updated_at.
+    early = env.table(run_id, retry_body)
+    assert early.status_code == 409, early.text
+    assert "outcome_uncertain" in early.json()["detail"]
+    first_claim = env.count("SELECT claimed_at FROM story_receipts")
+    # One shared clock: the delivery stamps updated_at with the same late time.
+    late = timedelta(seconds=1) + artifacts_module.CLAIM_STALE
+    real_now = artifacts_module._now
+    monkeypatch.setattr(artifacts_module, "_now", lambda: real_now() + late)
+
+    def late_iso():
+        return (real_now() + late).isoformat()
+
+    monkeypatch.setattr(receipts_module, "_now", late_iso)
+    retry = env.table(run_id, retry_body)
+    assert retry.status_code == 200, retry.text
+    assert len(list(env.root.rglob("*.csv"))) == 1
+    assert env.count("SELECT COUNT(*) FROM story_receipts") == 1
+    assert env.count("SELECT claimed_at FROM story_receipts") > first_claim
+
+
+def test_fresh_artifact_claim_stays_uncertain(env, monkeypatch):
+    """Inside the window a re-issue under another name is 409, never a takeover."""
+    run_id, _ = _crash_first_artifact_write(env, monkeypatch)
+    for _ in range(2):
+        retry = env.table(run_id, {**TABLE, "name": "positions-retry"})
+        assert retry.status_code == 409, retry.text
+        assert "outcome_uncertain" in retry.json()["detail"]
+    assert not list(env.root.rglob("*.csv"))
+
+
+def test_artifact_claim_age_ignores_delivery_bumps(env, monkeypatch):
+    """Re-deliveries refresh updated_at but never the claim's age."""
+    run_id, _ = _crash_first_artifact_write(env, monkeypatch)
+    with sqlite3.connect(env.store) as connection:
+        connection.execute(
+            "UPDATE story_receipts SET claimed_at = '2000-01-01T00:00:00+00:00'"
+        )
+    retry = env.table(run_id, {**TABLE, "name": "positions-retry"})
+    assert retry.status_code == 200, retry.text
+    assert env.count("SELECT updated_at > claimed_at FROM story_receipts") == 1
+
+
+def test_receipts_table_gains_claimed_at_on_an_old_store(tmp_path):
+    """An older ``story_receipts`` table without the column is migrated in place."""
+    from openbb_mcp_server.story_adapters.receipts import ReceiptLedger
+
+    db = tmp_path / "old.sqlite"
+    with sqlite3.connect(db) as connection:
+        connection.execute(
+            "CREATE TABLE story_receipts (principal TEXT NOT NULL,"
+            " logical_key TEXT NOT NULL, tool TEXT NOT NULL, run_id TEXT NOT NULL,"
+            " workflow_ref TEXT NOT NULL, stage_id TEXT, args_sha256 TEXT NOT NULL,"
+            " operation_id TEXT NOT NULL, outcome_ref TEXT, state TEXT NOT NULL,"
+            " deliveries INTEGER NOT NULL, created_at TEXT NOT NULL,"
+            " updated_at TEXT NOT NULL, UNIQUE (principal, logical_key))"
+        )
+        connection.execute(
+            "INSERT INTO story_receipts VALUES ('alice', 'k', 't', 'r', 'w', NULL,"
+            " 'a', 'op', NULL, 'claimed', 1, '2026-01-01T00:00:00+00:00',"
+            " '2026-01-02T00:00:00+00:00')"
+        )
+    receipt = ReceiptLedger(db).get("alice", "k")
+    assert receipt is not None
+    assert receipt.claimed_at == "2026-01-01T00:00:00+00:00"
+
+
 def test_reprepare_after_expiry_supersedes_old_and_run_completes(env):
     """The expired owner is superseded; applying R2 lets the run succeed."""
     run_id = env.new_run()

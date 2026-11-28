@@ -15,6 +15,7 @@ Hermes-bound runs (``RunRecord.binding``), so legacy runs keep their semantics.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import sqlite3
@@ -81,6 +82,7 @@ class Receipt:  # pylint: disable=too-many-instance-attributes
     deliveries: int
     created_at: str
     updated_at: str
+    claimed_at: str
 
 
 def _now() -> str:
@@ -93,7 +95,7 @@ class ReceiptLedger:
     _COLUMNS = (
         "principal, logical_key, tool, run_id, workflow_ref, stage_id,"
         " args_sha256, operation_id, outcome_ref, state, deliveries,"
-        " created_at, updated_at"
+        " created_at, updated_at, claimed_at"
     )
 
     def __init__(self, db_path: Path):
@@ -123,7 +125,23 @@ class ReceiptLedger:
             " args_sha256 TEXT NOT NULL, operation_id TEXT NOT NULL,"
             " outcome_ref TEXT, state TEXT NOT NULL,"
             " deliveries INTEGER NOT NULL, created_at TEXT NOT NULL,"
-            " updated_at TEXT NOT NULL, UNIQUE (principal, logical_key))"
+            " updated_at TEXT NOT NULL, claimed_at TEXT,"
+            " UNIQUE (principal, logical_key))"
+        )
+        columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(story_receipts)")
+        }
+        if "claimed_at" not in columns:
+            # #1341: additive. ``claimed_at`` is when the current owner claimed the
+            # key; deliveries leave it alone, so staleness is measurable.
+            # A concurrent opener may add it first.
+            with contextlib.suppress(sqlite3.OperationalError):
+                connection.execute(
+                    "ALTER TABLE story_receipts ADD COLUMN claimed_at TEXT"
+                )
+        connection.execute(
+            "UPDATE story_receipts SET claimed_at = created_at"
+            " WHERE claimed_at IS NULL"
         )
         self._ready = True
 
@@ -198,7 +216,7 @@ class ReceiptLedger:
         now = _now()
         connection.execute(
             f"INSERT INTO story_receipts ({self._COLUMNS})"  # noqa: S608
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'claimed', 0, ?, ?)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'claimed', 0, ?, ?, ?)"
             " ON CONFLICT (principal, logical_key) DO NOTHING",
             (
                 principal,
@@ -209,6 +227,7 @@ class ReceiptLedger:
                 stage_id,
                 args_sha256,
                 operation_id,
+                now,
                 now,
                 now,
             ),
@@ -294,13 +313,15 @@ class ReceiptLedger:
         operation_id: str,
     ) -> bool:
         """``supersede`` on the caller's connection (compare-and-set)."""
+        now = _now()
         cursor = connection.execute(
             "UPDATE story_receipts SET operation_id = ?, outcome_ref = NULL,"
-            " state = 'claimed', updated_at = ? WHERE principal = ?"
-            " AND logical_key = ? AND operation_id = ?",
+            " state = 'claimed', updated_at = ?, claimed_at = ?"
+            " WHERE principal = ? AND logical_key = ? AND operation_id = ?",
             (
                 operation_id,
-                _now(),
+                now,
+                now,
                 principal,
                 logical_key,
                 previous_operation_id,
