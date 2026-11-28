@@ -2,19 +2,24 @@
 
 Bounds (#1355 T03): the child gets a minimal environment (never the parent's
 credentials), a memory limit (Windows Job Object / POSIX ``RLIMIT_AS`` /
-``docker --memory``), and a per-call deadline after which the whole process
-tree is killed. ``run`` requests are screened with the worker's own admission
-module before they are sent (fail fast; the worker re-checks).
+``docker --memory``, default 4096 MiB), and a per-call deadline after which the
+whole process tree is killed (and, for Docker, ``docker kill <name>``: killing
+the ``docker`` CLI alone would leave the container running). The Docker
+container is hardened (named, cpu/pids/memory limits, read-only data mount).
+``run`` requests are screened with the worker's own admission module before they
+are sent (fail fast; the worker re-checks).
 """
 
 from __future__ import annotations
 
+import contextlib
+import enum
 import os
 import queue
 import secrets
 import subprocess
 import threading
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +51,31 @@ CHILD_ENV_NAMES = (
 )
 # Grace after the request's own deadline: the worker's watchdog fires first.
 DEADLINE_GRACE_SECONDS = 10.0
+DEFAULT_MEMORY_MB = 4096
+DEFAULT_MEMORY_BYTES = DEFAULT_MEMORY_MB * 1024 * 1024
+DEFAULT_CPUS = 2
+PIDS_LIMIT = 256
+CONTAINER_PREFIX = "hfp-nautilus-"
+CONTAINER_DATA_ROOT = "/data"
+DOCKER_KILL_TIMEOUT = 15.0
+
+
+class _Default(enum.Enum):
+    """Marker: ``memory_bytes`` was not given (use the runtime default)."""
+
+    UNSET = 0
+
+
+UNSET = _Default.UNSET
+
+
+def docker_container_name(command: Sequence[str]) -> str | None:
+    """Return the ``--name`` of a ``docker run`` command, else ``None``."""
+    is_run = len(command) > 2 and command[1] == "run"
+    if is_run and Path(command[0]).stem.lower() == "docker" and "--name" in command:
+        idx = command.index("--name") + 1
+        return command[idx] if idx < len(command) else None
+    return None
 
 
 def worker_env(env: Mapping[str, str]) -> dict[str, str]:
@@ -54,14 +84,22 @@ def worker_env(env: Mapping[str, str]) -> dict[str, str]:
     return {name: upper[name] for name in CHILD_ENV_NAMES if name in upper}
 
 
-def worker_command(
+def worker_command(  # pylint: disable=too-many-arguments
     runtime: str,
     env: Mapping[str, str],
     pin: NautilusPin | None = None,
     *,
     memory_mb: int | None = None,
+    cpus: float = DEFAULT_CPUS,
+    build_catalog: bool = False,
 ) -> list[str]:
-    """Build the spawn command from environment variables named in the pin."""
+    """Build the spawn command from environment variables named in the pin.
+
+    Docker: random ``--name`` (so a deadline can ``docker kill`` it), memory /
+    cpu / pids limits, ``--tmpfs /tmp``, and the data root mounted read-only at
+    ``/data``. ``build_catalog`` additionally mounts only ``<root>/catalogs``
+    writable (the one place the worker writes).
+    """
     pin = pin or load_pin()
     if runtime == "native":
         venv = env.get(pin.env.venv)
@@ -73,17 +111,34 @@ def worker_command(
         image = env.get(pin.env.image)
         if not image:
             raise ProtocolError(ErrorCode.CONFIG, f"{pin.env.image} is not set")
+        mounts: list[str] = []
+        root = env.get(DATA_ROOT_ENV)
+        if root:
+            if not Path(root).is_absolute():
+                raise ProtocolError(
+                    ErrorCode.CONFIG, f"{DATA_ROOT_ENV} must be absolute"
+                )
+            mounts = ["-v", f"{root}:{CONTAINER_DATA_ROOT}:ro"]
+            if build_catalog:
+                mounts += [
+                    *("-v", f"{Path(root, 'catalogs')}:{CONTAINER_DATA_ROOT}/catalogs"),
+                ]
+            mounts += ["-e", f"{DATA_ROOT_ENV}={CONTAINER_DATA_ROOT}"]
         return [
             *("docker", "run", "--rm", "-i"),
+            *("--name", CONTAINER_PREFIX + secrets.token_hex(8)),
             *("--network", "none", "--read-only", "--cap-drop", "ALL"),
             *("--security-opt", "no-new-privileges"),
-            *(("--memory", f"{memory_mb}m") if memory_mb else ()),
+            *("--memory", f"{memory_mb or DEFAULT_MEMORY_MB}m"),
+            *("--cpus", f"{cpus:g}", "--pids-limit", str(PIDS_LIMIT)),
+            *("--tmpfs", "/tmp"),  # noqa: S108
+            *mounts,
             image,
         ]
     raise ProtocolError(ErrorCode.CONFIG, "unknown runtime")
 
 
-class WorkerClient:
+class WorkerClient:  # pylint: disable=too-many-instance-attributes
     """One worker process. The signing key goes over stdin only (not argv/env)."""
 
     def __init__(
@@ -92,11 +147,18 @@ class WorkerClient:
         *,
         timeout: float = 30.0,
         env: Mapping[str, str] | None = None,
-        memory_bytes: int | None = None,
+        memory_bytes: int | None | _Default = UNSET,
+        container_name: str | None = None,
     ):
         self._command = list(command)
+        derived = docker_container_name(self._command)
+        self._container = container_name or derived
+        self._docker = command[0] if derived and not container_name else "docker"
         self._timeout = timeout
         self._env = dict(env) if env is not None else worker_env(os.environ)
+        # Docker bounds memory with ``--memory``; the Job Object covers a native child.
+        if isinstance(memory_bytes, _Default):
+            memory_bytes = None if derived else DEFAULT_MEMORY_BYTES
         self._memory = memory_bytes
         self._bounds: ProcessBounds | None = None
         self.sent_requests = 0
@@ -218,6 +280,8 @@ class WorkerClient:
         proc, self._proc = self._proc, None
         bounds, self._bounds = self._bounds, None
         try:
+            if proc is not None and self._container and proc.poll() is None:
+                self._docker_kill()
             if proc is not None and bounds is not None:
                 bounds.kill_tree(proc)
             elif proc is not None:
@@ -229,6 +293,21 @@ class WorkerClient:
                 bounds.close()
             if proc is not None and proc.stdout:
                 proc.stdout.close()
+
+    def _docker_kill(self) -> None:
+        """Kill the container by name; the ``docker`` CLI dying does not stop it."""
+        if self._container is None:
+            return
+        # best effort: the CLI process is killed next regardless
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(  # noqa: S603
+                [self._docker, "kill", self._container],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=DOCKER_KILL_TIMEOUT,
+                check=False,
+            )
 
     def close(self) -> None:
         """Shut the worker down; kill its tree if it does not exit promptly."""

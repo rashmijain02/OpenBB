@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import time
+from ctypes import wintypes
 from pathlib import Path
 
 import pytest
@@ -180,3 +181,198 @@ def test_docker_command_carries_memory_bound(monkeypatch):
     cmd = client_mod.worker_command("docker", os.environ, memory_mb=2048)
     assert cmd[cmd.index("--memory") + 1] == "2048m"
     assert cmd[cmd.index("--network") + 1] == "none"
+
+
+# --- CODE-3: docker hardening, container kill, native suspended-start -------
+
+IMAGE = "img@sha256:" + "0" * 64
+WINDOWS_ONLY = pytest.mark.skipif(os.name != "nt", reason="Job Object semantics")
+
+
+def _docker_env(monkeypatch, data_root):
+    monkeypatch.setenv("OPENBB_NAUTILUS_IMAGE", IMAGE)
+    monkeypatch.setenv("OPENBB_NAUTILUS_DATA_ROOT", str(data_root))
+    monkeypatch.setattr(client_mod.secrets, "token_hex", lambda _n=None: "ab" * 8)
+
+
+def test_docker_command_exact_argv_is_hardened(monkeypatch, tmp_path):
+    _docker_env(monkeypatch, tmp_path)
+    cmd = client_mod.worker_command("docker", os.environ)
+    assert cmd == [
+        *("docker", "run", "--rm", "-i", "--name", "hfp-nautilus-" + "ab" * 8),
+        *("--network", "none", "--read-only", "--cap-drop", "ALL"),
+        *("--security-opt", "no-new-privileges"),
+        *("--memory", "4096m", "--cpus", "2", "--pids-limit", "256"),
+        *("--tmpfs", "/tmp"),  # noqa: S108
+        *("-v", f"{tmp_path}:/data:ro"),
+        *("-e", "OPENBB_NAUTILUS_DATA_ROOT=/data"),
+        IMAGE,
+    ]
+
+
+def test_docker_command_overrides_and_catalog_build_mount(monkeypatch, tmp_path):
+    _docker_env(monkeypatch, tmp_path)
+    cmd = client_mod.worker_command(
+        "docker", os.environ, memory_mb=1024, cpus=1.5, build_catalog=True
+    )
+    assert cmd[cmd.index("--memory") + 1] == "1024m"
+    assert cmd[cmd.index("--cpus") + 1] == "1.5"
+    mounts = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
+    assert mounts == [
+        f"{tmp_path}:/data:ro",
+        f"{tmp_path / 'catalogs'}:/data/catalogs",  # only catalogs/ is writable
+    ]
+
+
+def test_docker_command_names_are_random_per_call(monkeypatch):
+    monkeypatch.setenv("OPENBB_NAUTILUS_IMAGE", IMAGE)
+    monkeypatch.delenv("OPENBB_NAUTILUS_DATA_ROOT", raising=False)
+    names = {client_mod.worker_command("docker", os.environ)[5] for _ in range(3)}
+    assert len(names) == 3 and all(n.startswith("hfp-nautilus-") for n in names)
+
+
+def test_deadline_kill_runs_docker_kill_with_the_container_name(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(
+        client_mod.subprocess,
+        "run",
+        lambda argv, **kw: calls.append((argv, kw)),
+    )
+    cmd = [sys.executable, FAKE, FACTS, "--hang-spawn", str(tmp_path / "x.pid")]
+    with (
+        client_mod.WorkerClient(
+            cmd, timeout=3, container_name="hfp-nautilus-feedface"
+        ) as wc,
+        pytest.raises(ProtocolError) as info,
+    ):
+        wc.describe()
+    assert "deadline" in info.value.message
+    assert [a for a, _ in calls] == [["docker", "kill", "hfp-nautilus-feedface"]]
+    assert 0 < calls[0][1]["timeout"] <= 30  # bounded
+
+
+def test_container_name_is_taken_from_the_docker_command(monkeypatch, tmp_path):
+    _docker_env(monkeypatch, tmp_path)
+    cmd = client_mod.worker_command("docker", os.environ)
+    assert client_mod.docker_container_name(cmd) == "hfp-nautilus-" + "ab" * 8
+    assert client_mod.docker_container_name([sys.executable, FAKE]) is None
+
+
+def test_clean_shutdown_does_not_docker_kill(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        client_mod.subprocess, "run", lambda argv, **kw: calls.append(argv)
+    )
+    cmd = [sys.executable, FAKE, FACTS]
+    with client_mod.WorkerClient(cmd, timeout=30, container_name="hfp-nautilus-x"):
+        pass
+    assert calls == []
+
+
+def test_native_default_memory_limit_is_4096_mib():
+    assert client_mod.DEFAULT_MEMORY_BYTES == 4096 * MIB
+    wc = client_mod.WorkerClient([sys.executable, FAKE, FACTS])
+    assert wc._memory == 4096 * MIB  # pylint: disable=protected-access
+    assert (
+        client_mod.WorkerClient([sys.executable, "x"], memory_bytes=None)._memory
+        is None  # pylint: disable=protected-access
+    )
+    docker = client_mod.WorkerClient(["docker", "run", "--name", "n", "img"])
+    assert docker._memory is None  # pylint: disable=protected-access
+
+
+def _slow_attach(monkeypatch, seconds=1.5):
+    real = bounds.ProcessBounds.attach
+
+    def attach(self, proc):
+        time.sleep(seconds)  # a child that is not suspended runs during this
+        real(self, proc)
+
+    monkeypatch.setattr(bounds.ProcessBounds, "attach", attach)
+
+
+@WINDOWS_ONLY
+def test_native_child_is_in_the_job_before_it_runs(monkeypatch, tmp_path):
+    _slow_attach(monkeypatch)
+    report = tmp_path / "start.txt"
+    cmd = [
+        *(sys.executable, FAKE, FACTS),
+        *("--alloc-at-start", str(300 * MIB), "--start-report", str(report)),
+    ]
+    with client_mod.WorkerClient(cmd, timeout=60, memory_bytes=160 * MIB) as wc:
+        assert wc.describe().nautilus_version
+    # the 160 MiB job limit was already live when the child's first line ran
+    assert report.read_text(encoding="utf-8") == "limited"
+
+
+@WINDOWS_ONLY
+def test_failed_resume_terminates_the_job_and_raises(monkeypatch):
+    spawned = []
+    real_popen = subprocess.Popen
+
+    def spy(*a, **kw):
+        proc = real_popen(*a, **kw)
+        spawned.append(proc)
+        return proc
+
+    def boom(self, _proc):
+        raise OSError(5, "ResumeThread failed")
+
+    monkeypatch.setattr(client_mod.subprocess, "Popen", spy)
+    monkeypatch.setattr(bounds.ProcessBounds, "_resume_main_thread", boom)
+    # bounds level: attach itself terminates the job (no client cleanup involved)
+    pb = bounds.ProcessBounds(memory_bytes=None)
+    proc = spy(
+        [sys.executable, "-c", "import time; time.sleep(60)"],
+        stdin=subprocess.PIPE,
+        **pb.popen_kwargs(),
+    )
+    with pytest.raises(OSError, match="ResumeThread"):
+        pb.attach(proc)
+    for _ in range(50):
+        if proc.poll() is not None:
+            break
+        time.sleep(0.1)
+    assert proc.poll() is not None, "suspended child survived a failed resume"
+    pb.close()
+    # client level: the failure surfaces as a PROCESS error, child dead
+    with pytest.raises(ProtocolError) as info:
+        client_mod.WorkerClient([sys.executable, FAKE, FACTS]).__enter__()
+    assert info.value.code is ErrorCode.PROCESS
+    assert all(p.poll() is not None for p in spawned)
+
+
+class _FailingResume:
+    """kernel32 proxy whose ``ResumeThread`` reports failure (0xFFFFFFFF)."""
+
+    def __init__(self, real):
+        self._real = real
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    @staticmethod
+    def ResumeThread(_handle):  # noqa: N802
+        return 0xFFFFFFFF
+
+
+@WINDOWS_ONLY
+def test_resume_thread_failure_value_is_detected_and_job_terminated():
+    pb = bounds.ProcessBounds(memory_bytes=None)
+    assert (
+        pb._k32.ResumeThread.restype is wintypes.DWORD
+    )  # pylint: disable=protected-access
+    pb._k32 = _FailingResume(pb._k32)  # pylint: disable=protected-access
+    proc = subprocess.Popen(  # noqa: S603
+        [sys.executable, "-c", "import time; time.sleep(60)"],
+        stdin=subprocess.PIPE,
+        **pb.popen_kwargs(),
+    )
+    with pytest.raises(OSError, match="ResumeThread"):
+        pb.attach(proc)
+    for _ in range(50):
+        if proc.poll() is not None:
+            break
+        time.sleep(0.1)
+    assert proc.poll() is not None
+    pb.close()

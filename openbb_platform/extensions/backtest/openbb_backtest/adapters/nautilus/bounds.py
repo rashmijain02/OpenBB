@@ -20,6 +20,10 @@ from typing import Any
 _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
 _LIMIT_JOB_MEMORY = 0x200
 _LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+_CREATE_SUSPENDED = 0x00000004
+_TH32CS_SNAPTHREAD = 0x00000004
+_THREAD_SUSPEND_RESUME = 0x0002
+_RESUME_FAILED = 0xFFFFFFFF
 
 
 class _BasicLimits(ctypes.Structure):  # pylint: disable=too-few-public-methods
@@ -61,6 +65,18 @@ class _ExtendedLimits(ctypes.Structure):  # pylint: disable=too-few-public-metho
     ]
 
 
+class _ThreadEntry(ctypes.Structure):  # pylint: disable=too-few-public-methods
+    _fields_ = [
+        ("dwSize", wintypes.DWORD),
+        ("cntUsage", wintypes.DWORD),
+        ("th32ThreadID", wintypes.DWORD),
+        ("th32OwnerProcessID", wintypes.DWORD),
+        ("tpBasePri", wintypes.LONG),
+        ("tpDeltaPri", wintypes.LONG),
+        ("dwFlags", wintypes.DWORD),
+    ]
+
+
 def _kernel32() -> Any:
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     k32.CreateJobObjectW.restype = wintypes.HANDLE
@@ -78,6 +94,16 @@ def _kernel32() -> Any:
     k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
     k32.CloseHandle.restype = wintypes.BOOL
     k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k32.Thread32First.restype = wintypes.BOOL
+    k32.Thread32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry)]
+    k32.Thread32Next.restype = wintypes.BOOL
+    k32.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry)]
+    k32.OpenThread.restype = wintypes.HANDLE
+    k32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.ResumeThread.restype = wintypes.DWORD  # 0xFFFFFFFF on failure
+    k32.ResumeThread.argtypes = [wintypes.HANDLE]
     return k32
 
 
@@ -92,6 +118,7 @@ class ProcessBounds:
         self._memory = memory_bytes
         self._job: Any = None
         self._k32: Any = None
+        self._suspended = False
         if os.name == "nt":
             self._k32 = _kernel32()
             job = self._k32.CreateJobObjectW(None, None)
@@ -113,9 +140,15 @@ class ProcessBounds:
                 raise _os_error("SetInformationJobObject")
 
     def popen_kwargs(self) -> dict[str, Any]:
-        """Extra ``Popen`` arguments (POSIX: own process group + ``RLIMIT_AS``)."""
+        """Extra ``Popen`` arguments.
+
+        Windows: ``CREATE_SUSPENDED``, so the child runs no code until
+        :meth:`attach` has put it in the job. POSIX: own process group +
+        ``RLIMIT_AS``.
+        """
         if os.name == "nt":
-            return {}
+            self._suspended = True
+            return {"creationflags": _CREATE_SUSPENDED}
         memory = self._memory
 
         def limit() -> None:  # pragma: no cover - runs in the POSIX child
@@ -127,11 +160,54 @@ class ProcessBounds:
         return {"start_new_session": True, "preexec_fn": limit}
 
     def attach(self, proc: subprocess.Popen) -> None:
-        """Put ``proc`` (and its future children) into the job."""
-        if self._job is not None:
-            handle = int(proc._handle)  # type: ignore[attr-defined]  # pylint: disable=protected-access
+        """Put ``proc`` (and its future children) into the job, then let it run.
+
+        A child started with :meth:`popen_kwargs` is suspended until it is in the
+        job. If assignment or resume fails the job is terminated (killing the
+        still-suspended child) and the error is raised.
+        """
+        if self._job is None:
+            return
+        handle = int(proc._handle)  # type: ignore[attr-defined]  # pylint: disable=protected-access
+        try:
             if not self._k32.AssignProcessToJobObject(self._job, handle):
                 raise _os_error("AssignProcessToJobObject")
+            if self._suspended:
+                self._resume_main_thread(proc.pid)
+        except OSError:
+            self._k32.TerminateJobObject(self._job, 1)
+            raise
+
+    def _resume_main_thread(self, pid: int) -> None:
+        """Resume the (only) thread of the suspended process ``pid``."""
+        k32 = self._k32
+        snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPTHREAD, 0)
+        if snap in (None, ctypes.c_void_p(-1).value):
+            raise _os_error("CreateToolhelp32Snapshot")
+        try:
+            entry = _ThreadEntry()
+            # pylint: disable-next=invalid-name,attribute-defined-outside-init
+            entry.dwSize = ctypes.sizeof(entry)
+            more = k32.Thread32First(snap, ctypes.byref(entry))
+            while more:
+                if entry.th32OwnerProcessID == pid:
+                    self._resume_thread(entry.th32ThreadID)
+                    return
+                more = k32.Thread32Next(snap, ctypes.byref(entry))
+        finally:
+            k32.CloseHandle(snap)
+        raise OSError(0, "no thread found for the suspended worker")
+
+    def _resume_thread(self, thread_id: int) -> None:
+        k32 = self._k32
+        thread = k32.OpenThread(_THREAD_SUSPEND_RESUME, False, thread_id)
+        if not thread:
+            raise _os_error("OpenThread")
+        try:
+            if k32.ResumeThread(thread) == _RESUME_FAILED:
+                raise _os_error("ResumeThread")
+        finally:
+            k32.CloseHandle(thread)
 
     def kill_tree(self, proc: subprocess.Popen) -> None:
         """Kill ``proc`` and every descendant."""

@@ -1,7 +1,7 @@
 """Fake worker speaking the signed stdio protocol with canned ``describe`` facts.
 
 Usage: fake_worker.py FACTS_JSON [--bad-mac] [--error CODE]
-    [--hang-spawn PIDFILE] [--alloc BYTES]
+    [--hang-spawn PIDFILE] [--alloc BYTES] [--alloc-at-start BYTES --start-report FILE]
 
 ``--hang-spawn`` starts a sleeping grandchild, writes its pid and hangs on
 ``describe`` (process-tree deadline test); ``--alloc`` allocates on ``describe``
@@ -38,6 +38,15 @@ def main() -> int:
     forced_error = (
         sys.argv[sys.argv.index("--error") + 1] if "--error" in sys.argv else None
     )
+
+    at_start = _arg("--alloc-at-start")  # BYTES: probe whether the job limit is live
+    if at_start:
+        try:
+            _held = bytearray(int(at_start))
+            verdict = "unlimited"
+        except MemoryError:
+            verdict = "limited"
+        pathlib.Path(_arg("--start-report")).write_text(verdict, encoding="utf-8")
 
     hang_pidfile = _arg("--hang-spawn")
     alloc = _arg("--alloc")
