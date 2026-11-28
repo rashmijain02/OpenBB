@@ -1,8 +1,8 @@
-"""Build a plan, then call ``obb.techtrade.validate`` to score its robustness.
+r"""Build a plan, then call ``obb.techtrade.validate`` to score its robustness.
 
 Live run:
 
-    .venv_win\\Scripts\\python.exe -m openbb_techtrade.examples.validate_a_plan
+    .venv_win\Scripts\python.exe -m openbb_techtrade.examples.validate_a_plan
 
 Requires the ``[validation]`` extra:
 
