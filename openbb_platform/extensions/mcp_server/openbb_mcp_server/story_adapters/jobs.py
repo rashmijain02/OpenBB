@@ -398,6 +398,15 @@ def build_router(  # pylint: disable=too-many-statements
         if job.job_name != request.kind or job.params != params:
             raise _conflict(f"Operation '{operation_id}' belongs to a different job.")
         ledger.attach_job(principal, operation_id, job.run_id)
+        latest = runs.get(principal, run_id)
+        if latest is not None and latest.cancel_requested_at is not None:
+            # story_run_cancel ran between the open check and the enqueue and
+            # could not see this job yet: cancel it here (#1341).
+            try:
+                service.cancel(job.run_id)
+            except ValueError:
+                pass  # a worker claimed it; the worker refuses a cancelled run
+            ensure_run_open(latest)
         if run.binding is not None:
             receipts.record_outcome(
                 principal,

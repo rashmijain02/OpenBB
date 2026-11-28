@@ -630,3 +630,48 @@ def test_reprepare_after_failure_lets_the_run_succeed(env):
     assert env.apply(second["request_id"]).status_code == 200
     _checkpoint_all(env, run_id)
     assert _outcome(env, run_id)["outcome"] == "succeeded"
+
+
+# --- Submit vs cancel (#1341 CODE-3) ----------------------------------------
+
+
+def _request_cancel(env, run_id):
+    from openbb_mcp_server.story_adapters.registry import RunStore
+
+    assert RunStore(env.store).request_cancel("alice", run_id) is not None
+
+
+def test_worker_refuses_a_job_of_a_cancelled_run(env):
+    """A job claimed after its run was cancelled runs nothing and writes nothing."""
+    run_id = env.new_run()
+    job = env.submit(run_id, "op-first")
+    _request_cancel(env, run_id)
+    outcome = env.worker.run_once()
+    assert outcome.run_id == job.job_id
+    assert outcome.status != "succeeded"
+    error = env.service.get_run(job.job_id).error_message or ""
+    assert "run_cancelled" in error
+    assert not list(env.root.rglob("*.json"))
+    body = _outcome(env, run_id)
+    assert body["outcome"] == "cancelled"
+
+
+def test_submit_racing_a_cancel_leaves_no_queued_job(env, monkeypatch):
+    """A cancel landing between the open check and enqueue cancels the job."""
+    run_id = env.new_run()
+    real = env.service.enqueue
+
+    def enqueue(*args, **kwargs):
+        job = real(*args, **kwargs)
+        _request_cancel(env, run_id)
+        return job
+
+    monkeypatch.setattr(env.service, "enqueue", enqueue)
+    response = env.submit(run_id, "op-first", raw=True)
+    assert response.status_code == 409, response.text
+    assert "run_cancelled" in response.json()["detail"]
+    statuses = [
+        row[0]
+        for row in sqlite3.connect(env.jobs_db).execute("SELECT status FROM job_run")
+    ]
+    assert statuses == ["cancelled"]
