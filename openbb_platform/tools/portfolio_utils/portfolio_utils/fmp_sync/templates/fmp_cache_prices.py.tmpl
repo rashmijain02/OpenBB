@@ -1,32 +1,113 @@
-"""fmp_cache_prices no-agent wrapper (#1344-T03). Rendered file: do not edit.
+"""fmp_cache_prices no-agent wrapper (#1344). Rendered file: do not edit.
 
 Rendered by portfolio_utils.fmp_sync.render. It takes no arguments or paths from
 the cron job: every value below is baked in at render time and guarded by two
-SHA-256 checks (this file and the deployment map). Raw output of the warm goes to
-the null device; at most one counts-only line is printed, only when the recorded
-state changed.
+SHA-256 checks (this file and the deployment map).
+
+Process model: this file is stdlib-only and runs under whatever interpreter
+Hermes uses. It never imports the sync code. It starts the pinned venv python
+as an isolated child (``-I``, clean allowlisted environment, no inherited
+PYTHONPATH) running ``portfolio_utils.fmp_sync prices --execute --receipt``.
+On Windows the child is created suspended and placed in a Job Object with
+KILL_ON_JOB_CLOSE before it runs, so killing this wrapper (or the deadline)
+also kills the venv launcher and its python child and releases the target
+lock. Elsewhere the child gets its own process group. Only the child's single
+outcome line is relayed, after validation; raw output never reaches cron.
 """
 
-import hashlib
-import os
+# isort: skip_file
+# pylint: disable=wrong-import-position
 import sys
-import uuid
-from pathlib import Path
+
+# Nothing beyond sys/os (both loaded at interpreter start-up) is imported until
+# the script directory, the working directory and every inherited PYTHONPATH
+# entry are removed from sys.path: a module planted next to this file or on a
+# Hermes-provided PYTHONPATH must never load.
+import os  # noqa: E402
+
+
+def _norm(path):
+    return os.path.normcase(os.path.abspath(path or os.curdir))
+
+
+def _scrub_sys_path():
+    drop = {_norm(os.path.dirname(os.path.abspath(__file__))), _norm(os.getcwd())}
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if entry:
+            drop.add(_norm(entry))
+    sys.path[:] = [p for p in sys.path if p and _norm(p) not in drop]
+
+
+_scrub_sys_path()
+
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import re  # noqa: E402
+import subprocess  # noqa: E402
 
 WRAPPER_VERSION = @@VERSION@@
 SELF_SHA256 = "@@SELF_SHA256@@"
 MAP_PATH = @@MAP_PATH@@
 MAP_SHA256 = @@MAP_SHA256@@
 STATE_ROOT = @@STATE_ROOT@@
-SYNC_PYTHON = @@SYNC_PYTHON@@
+CHILD_PYTHON = @@CHILD_PYTHON@@
 SOURCE_PATHS = @@SOURCE_PATHS@@
-SITE_PACKAGES = @@SITE_PACKAGES@@
+TARGET_CLASS = @@TARGET_CLASS@@
+DEADLINE_S = @@DEADLINE_S@@
 RUN_MODE = @@MODE@@
 GENERIC_FAILURE = "fmp_cache_prices: integrity check failed"
 INTERNAL_FAILURE = "fmp_cache_prices: internal error"
+DEADLINE_FAILURE = "fmp_cache_prices: deadline exceeded"
 EXIT_INTEGRITY = 3
 EXIT_INTERNAL = 4
+EXIT_DEADLINE = 5
+BUSINESS_EXITS = (0, 10, 20, 30, 40)
 _ZERO = "0" * 64
+_ENV_KEEP = (
+    "SYSTEMROOT",
+    "WINDIR",
+    "SYSTEMDRIVE",
+    "COMSPEC",
+    "PATHEXT",
+    "PATH",
+    "TEMP",
+    "TMP",
+    "USERPROFILE",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "HOME",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "PROGRAMDATA",
+    "USERNAME",
+    "USERDOMAIN",
+    "COMPUTERNAME",
+    "NUMBER_OF_PROCESSORS",
+    "PROCESSOR_ARCHITECTURE",
+    "OS",
+    "TZ",
+    "LANG",
+    "LC_ALL",
+)
+_LINE_KEYS = {
+    "op",
+    "mode",
+    "run_id",
+    "outcome",
+    "exit",
+    "data_status",
+    "failed_layer",
+    "findings",
+    "counts",
+    "sent",
+}
+_SHORT_KEYS = {"op", "outcome", "findings"}
+_CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,96}$")
+_OUTCOME = re.compile(r"^[A-Z_]{2,40}$")
+_BOOT = (
+    "import runpy, sys; sys.path[0:0] = {paths}; "
+    "runpy.run_module('portfolio_utils.fmp_sync', run_name='__main__', alter_sys=True)"
+)
 
 
 def _normalized(data):
@@ -54,52 +135,251 @@ def _map_ok():
         return False
 
 
-def _say(fd, text):
-    os.write(fd, (text + "\n").encode("utf-8"))
+def _say(text):
+    os.write(1, (text + "\n").encode("utf-8"))
 
 
-def _run():
-    from portfolio_utils.fmp_sync import dispatcher, locking, state
-    from portfolio_utils.fmp_sync.admission import load_map
+def _child_env():
+    env = {k: os.environ[k] for k in _ENV_KEEP if k in os.environ}
+    env["FMP_SYNC_STATE_ROOT"] = STATE_ROOT
+    return env
 
-    dmap = load_map(MAP_PATH)
-    root = locking.validate_state_root(Path(STATE_ROOT))
-    run_id = uuid.uuid4().hex
-    state.record_start(root, run_id, RUN_MODE)
-    outcome = dispatcher.run_prices(
-        dmap, mode=RUN_MODE, requested_class=dmap.target_class, run_id=run_id
+
+def _child_argv():
+    boot = _BOOT.format(paths=json.dumps(list(SOURCE_PATHS)))
+    return [
+        CHILD_PYTHON,
+        "-I",
+        "-c",
+        boot,
+        "prices",
+        "--" + RUN_MODE.replace("_", "-"),
+        "--receipt",
+        "--map",
+        MAP_PATH,
+        "--target-class",
+        TARGET_CLASS,
+    ]
+
+
+def valid_line(line):
+    """Return True for exactly one counts-only outcome line (both CLI shapes)."""
+    if not line or len(line) > 512 or "\n" in line or "\r" in line:
+        return False
+    try:
+        data = json.loads(line)
+    except ValueError:
+        return False
+    if not isinstance(data, dict) or set(data) not in (_LINE_KEYS, _SHORT_KEYS):
+        return False
+    findings = data.get("findings")
+    if not isinstance(findings, list) or not all(
+        isinstance(item, str) and _CODE.match(item) for item in findings
+    ):
+        return False
+    outcome = data.get("outcome")
+    if not isinstance(outcome, str) or not _OUTCOME.match(outcome):
+        return False
+    if set(data) == _LINE_KEYS:
+        if data["exit"] not in BUSINESS_EXITS or not isinstance(data["counts"], dict):
+            return False
+        if not all(isinstance(v, int) for v in data["counts"].values()):
+            return False
+        if not isinstance(data["sent"], int):
+            return False
+    return data.get("op") == "prices"
+
+
+# ------------------------------------------------------------------ Windows job
+
+
+class _WinJob:
+    """Job Object with KILL_ON_JOB_CLOSE; the child joins it before it runs."""
+
+    def __init__(self):
+        import ctypes  # pylint: disable=import-outside-toplevel
+        from ctypes import wintypes  # pylint: disable=import-outside-toplevel
+
+        k32 = self.k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+        ]
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        k32.OpenThread.restype = wintypes.HANDLE
+        k32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.ResumeThread.argtypes = [wintypes.HANDLE]
+        self.job = k32.CreateJobObjectW(None, None)  # not inheritable
+        if not self.job:
+            raise OSError("CreateJobObjectW failed")
+
+        class _Basic(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _Extended(ctypes.Structure):
+            _fields_ = [
+                ("Basic", _Basic),
+                ("IoInfo", ctypes.c_uint64 * 6),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        info = _Extended()
+        info.Basic.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(
+            self.job, 9, ctypes.byref(info), ctypes.sizeof(info)
+        ):
+            raise OSError("SetInformationJobObject failed")
+
+    def adopt(self, proc):
+        """Assign the suspended child to the job, then resume its threads."""
+        handle = int(proc._handle)  # pylint: disable=protected-access
+        if not self.k32.AssignProcessToJobObject(self.job, handle):
+            raise OSError("AssignProcessToJobObject failed")
+        import ctypes  # pylint: disable=import-outside-toplevel
+        from ctypes import wintypes as wt  # pylint: disable=import-outside-toplevel
+
+        class _Thread(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wt.DWORD),
+                ("cntUsage", wt.DWORD),
+                ("th32ThreadID", wt.DWORD),
+                ("th32OwnerProcessID", wt.DWORD),
+                ("tpBasePri", wt.LONG),
+                ("tpDeltaPri", wt.LONG),
+                ("dwFlags", wt.DWORD),
+            ]
+
+        snap = self.k32.CreateToolhelp32Snapshot(0x4, 0)  # TH32CS_SNAPTHREAD
+        if snap in (None, wt.HANDLE(-1).value):
+            raise OSError("CreateToolhelp32Snapshot failed")
+        resumed = 0
+        try:
+            entry = _Thread(dwSize=ctypes.sizeof(_Thread))
+            more = self.k32.Thread32First(snap, ctypes.byref(entry))
+            while more:
+                if entry.th32OwnerProcessID == proc.pid:
+                    thread = self.k32.OpenThread(0x0002, False, entry.th32ThreadID)
+                    if thread:
+                        if self.k32.ResumeThread(thread) != 0xFFFFFFFF:
+                            resumed += 1
+                        self.k32.CloseHandle(thread)
+                more = self.k32.Thread32Next(snap, ctypes.byref(entry))
+        finally:
+            self.k32.CloseHandle(snap)
+        if not resumed:
+            raise OSError("child thread not resumed")
+
+    def kill(self):
+        self.k32.TerminateJobObject(self.job, 1)
+
+    def close(self):
+        self.k32.CloseHandle(self.job)
+
+
+def _spawn():
+    """Start the child; return (process, killer). The child is in the job/group."""
+    common = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.DEVNULL,
+        "env": _child_env(),
+        "cwd": os.path.dirname(os.path.abspath(STATE_ROOT)) or None,
+        "close_fds": True,
+    }
+    if sys.platform == "win32":
+        job = _WinJob()
+        flags = 0x00000004 | 0x08000000  # CREATE_SUSPENDED | CREATE_NO_WINDOW
+        try:
+            # pylint: disable-next=consider-using-with
+            proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
+                _child_argv(), creationflags=flags, **common
+            )
+        except BaseException:
+            job.close()
+            raise
+        try:
+            job.adopt(proc)
+        except BaseException:
+            proc.kill()
+            proc.wait()
+            job.close()
+            raise
+        return proc, job
+    # pylint: disable-next=consider-using-with
+    proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
+        _child_argv(), start_new_session=True, **common
     )
-    receipt = state.record_end(root, outcome)
-    line = receipt.outcome.to_line() if receipt.emit else ""
-    return line, (0 if receipt.persisted else receipt.outcome.exit_code)
+    return proc, None
+
+
+def _kill(proc, job):
+    if job is not None:
+        job.kill()
+    else:
+        import signal  # pylint: disable=import-outside-toplevel
+
+        try:
+            getattr(os, "killpg")(proc.pid, getattr(signal, "SIGKILL"))
+        except OSError:
+            proc.kill()
+
+
+def _relay(proc, job):
+    try:
+        out, _ = proc.communicate(timeout=DEADLINE_S)
+    except subprocess.TimeoutExpired:
+        _kill(proc, job)
+        proc.communicate()
+        return DEADLINE_FAILURE, EXIT_DEADLINE
+    lines = (out or b"")[:4096].decode("utf-8", "replace").splitlines()
+    lines = [line for line in lines if line.strip()]
+    code = proc.returncode
+    if code not in BUSINESS_EXITS or len(lines) > 1:
+        return INTERNAL_FAILURE, EXIT_INTERNAL
+    if not lines:
+        return ("", 0) if code == 0 else (INTERNAL_FAILURE, EXIT_INTERNAL)
+    if not valid_line(lines[0]):
+        return INTERNAL_FAILURE, EXIT_INTERNAL
+    return lines[0], code
 
 
 def main():
-    if not (_self_ok() and _map_ok()):
-        _say(1, GENERIC_FAILURE)
+    """Verify, run the isolated child, relay its outcome line; return the exit code."""
+    if not (_self_ok() and _map_ok()) or not os.path.isfile(CHILD_PYTHON):
+        _say(GENERIC_FAILURE)
         return EXIT_INTEGRITY
-    if ".".join(map(str, sys.version_info[:2])) != SYNC_PYTHON:
-        _say(1, GENERIC_FAILURE)
-        return EXIT_INTEGRITY
-    real_out = os.dup(1)
-    null_fd = os.open(os.devnull, os.O_WRONLY)
-    os.dup2(null_fd, 1)
-    os.dup2(null_fd, 2)
-    sys.stdout = sys.stderr = open(os.devnull, "w", encoding="utf-8")
-    line, code = "", EXIT_INTERNAL
+    job = None
     try:
-        os.environ["FMP_SYNC_STATE_ROOT"] = STATE_ROOT
-        for path in SOURCE_PATHS:
-            if path not in sys.path:
-                sys.path.insert(0, path)
-        for path in SITE_PACKAGES:
-            if os.path.isdir(path) and path not in sys.path:
-                sys.path.append(path)
-        line, code = _run()
+        proc, job = _spawn()
+        line, code = _relay(proc, job)
     except BaseException:  # noqa: BLE001 - nothing may leak from here
         line, code = INTERNAL_FAILURE, EXIT_INTERNAL
+    finally:
+        if job is not None:
+            job.close()  # KILL_ON_JOB_CLOSE: nothing outlives the wrapper
     if line:
-        _say(real_out, line)
+        _say(line)
     return code
 
 

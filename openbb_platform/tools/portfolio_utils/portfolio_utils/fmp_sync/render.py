@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 from portfolio_utils.fmp_sync import locking
 from portfolio_utils.fmp_sync.admission import DeploymentMap, load_map
 
-WRAPPER_VERSION = 1
+WRAPPER_VERSION = 2
 WRAPPER_NAME = "fmp_cache_prices.py"
 JOB_NAME = "fmp-cache-prices"
 SCHEDULE = "30 15 * * 1-5"
@@ -39,6 +39,10 @@ HERMES_TZ = "America/Los_Angeles"
 MARKET_TZ = "America/New_York"
 MARKET_TIME = (18, 30)  # Eastern wall-clock the schedule must land on
 RUN_MODE = "execute"
+# Hard wall-clock limit the wrapper enforces on its child (job object / process
+# group kill). Above the dispatcher's cooperative deadline so a healthy run ends
+# itself first, and well under Hermes' default 3600 s script timeout.
+WRAPPER_DEADLINE_S = locking.DEFAULT_DEADLINE_S + 120.0
 TEMPLATE = Path(__file__).resolve().parent / "templates" / "fmp_cache_prices.py.tmpl"
 _ZERO = "0" * 64
 # Windows/DST-sensitive instants: the days around both 2027 US transitions.
@@ -59,7 +63,7 @@ class PlanResult:
     status: str  # NEW | UNCHANGED | UPDATE | DRIFT
     content_sha256: str
     command: str
-    base_interpreter: str
+    child_python: str
     sync_python: str
 
 
@@ -143,27 +147,24 @@ def _cfg(venv: Path) -> dict[str, str]:
     return values
 
 
-def resolve_base_interpreter(venv: Path) -> tuple[str, str]:
-    """Return (base interpreter, ``major.minor``) from ``pyvenv.cfg``.
+def resolve_child_python(venv: Path) -> tuple[str, str]:
+    """Return (venv python, ``major.minor`` from ``pyvenv.cfg``).
 
-    The venv launcher on Windows spawns a second process; killing it would not
-    release the lock, so the wrapper targets the base interpreter.
+    The wrapper runs the venv's own python so ``sys.executable`` stays inside
+    the pinned venv (admission requires it). On Windows that is the venv
+    launcher, which starts the base python as a second process; the wrapper's
+    job object (KILL_ON_JOB_CLOSE) contains both, so killing the wrapper kills
+    the pair and releases the lock.
     """
-    cfg = _cfg(Path(venv))
-    home = Path(cfg.get("home", ""))
-    for name in ("python.exe", "python3", "python"):
-        if (home / name).is_file():
-            version = cfg.get("version_info") or cfg.get("version") or ""
-            minor = ".".join(version.split(".")[:2])
-            return str(home / name), minor
-    raise RenderError("base interpreter not found from pyvenv.cfg")
-
-
-def _site_packages(venv: Path) -> list[str]:
-    return [
-        str(venv / "Lib" / "site-packages"),
-        *(str(p) for p in sorted((venv / "lib").glob("python*/site-packages"))),
-    ]
+    venv = Path(venv)
+    cfg = _cfg(venv)
+    version = cfg.get("version_info") or cfg.get("version") or ""
+    minor = ".".join(version.split(".")[:2])
+    for rel in (("Scripts", "python.exe"), ("bin", "python3"), ("bin", "python")):
+        candidate = venv.joinpath(*rel)
+        if candidate.is_file():
+            return str(candidate), minor
+    raise RenderError("venv python not found")
 
 
 def render_wrapper(map_path: Path) -> str:
@@ -175,11 +176,10 @@ def render_wrapper(map_path: Path) -> str:
     if problems:
         raise RenderError("schedule does not land on the market time through DST")
     root = effective_state_root(map_path)
-    base, minor = resolve_base_interpreter(Path(dmap.interpreter))
+    child, minor = resolve_child_python(Path(dmap.interpreter))
     sync_python = dmap.sync_python or minor
     if not sync_python or (minor and sync_python != minor):
         raise RenderError("sync python version unknown or inconsistent with the venv")
-    del base
     source = Path(dmap.source_root)
     tokens = {
         "VERSION": str(WRAPPER_VERSION),
@@ -189,14 +189,15 @@ def render_wrapper(map_path: Path) -> str:
             hashlib.sha256(Path(map_path).read_bytes()).hexdigest()
         ),
         "STATE_ROOT": json.dumps(str(root)),
-        "SYNC_PYTHON": json.dumps(sync_python),
+        "CHILD_PYTHON": json.dumps(child),
+        "TARGET_CLASS": json.dumps(dmap.target_class),
+        "DEADLINE_S": repr(float(WRAPPER_DEADLINE_S)),
         "SOURCE_PATHS": json.dumps(
             [
                 str(source / "openbb_platform" / "tools" / "portfolio_utils"),
                 str(source / "openbb_platform" / "extensions" / "agents"),
             ]
         ),
-        "SITE_PACKAGES": json.dumps(_site_packages(Path(dmap.interpreter))),
         "MODE": json.dumps(RUN_MODE),
     }
     text = TEMPLATE.read_text("utf-8").replace("\r\n", "\n")
@@ -219,8 +220,7 @@ def verify_self_hash(text: str) -> bool:
     return hashlib.sha256(blanked.encode("utf-8")).hexdigest() == embedded
 
 
-def _command(base_interpreter: str) -> str:
-    del base_interpreter
+def _command() -> str:
     return "\n".join(
         [
             "# UNVERIFIED: every hermes cron create flag below is a PLACEHOLDER.",
@@ -241,7 +241,7 @@ def plan(map_path: Path, hermes_home: Path) -> PlanResult:
     """Compare the rendered wrapper with the installed one; write nothing."""
     text = render_wrapper(map_path)
     dmap = _load(map_path)
-    base, minor = resolve_base_interpreter(Path(dmap.interpreter))
+    child, minor = resolve_child_python(Path(dmap.interpreter))
     target = Path(hermes_home) / "scripts" / WRAPPER_NAME
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
     if not target.exists():
@@ -254,7 +254,7 @@ def plan(map_path: Path, hermes_home: Path) -> PlanResult:
             status = "UPDATE"
         else:
             status = "DRIFT"
-    return PlanResult(status, digest, _command(base), base, dmap.sync_python or minor)
+    return PlanResult(status, digest, _command(), child, dmap.sync_python or minor)
 
 
 def apply_files(map_path: Path, hermes_home: Path) -> PlanResult:

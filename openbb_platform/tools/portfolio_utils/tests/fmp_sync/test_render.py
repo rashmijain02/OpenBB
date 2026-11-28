@@ -37,6 +37,8 @@ def rig(tmp_path):
     )
     (tmp_path / "base").mkdir()
     (tmp_path / "base" / "python.exe").write_text("x", encoding="utf-8")
+    (venv / "Scripts").mkdir()
+    (venv / "Scripts" / "python.exe").write_text("x", encoding="utf-8")
     data = dict(MAP, source_root=str(tmp_path / "src"), interpreter=str(venv))
     map_path = tmp_path / "map.json"
 
@@ -91,7 +93,13 @@ def test_wrapper_has_no_params_or_paths_from_cron(rig):
     attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     assert "argv" not in attrs and "parse_args" not in attrs
     assert "getenv" not in attrs
-    assert "subprocess" not in names
+    del names
+    consts = [
+        n.value
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Constant) and isinstance(n.value, str)
+    ]
+    assert not any(c.strip().lower().startswith("hermes") for c in consts)
     assert "register" not in text.lower()
 
 
@@ -150,8 +158,15 @@ def test_state_root_must_match_manual_default(rig):
     _plan(rig)
 
 
-def test_base_interpreter_resolved_from_pyvenv_cfg(rig):
+def test_child_python_is_the_venv_python(rig):
+    """The wrapper runs the venv's own python (never the pyvenv.cfg base)."""
     result = _plan(rig)
-    assert result.base_interpreter.endswith("python.exe")
-    assert "base" in result.base_interpreter
+    venv = rig["tmp"] / "venv"
+    assert result.child_python == str(venv / "Scripts" / "python.exe")
     assert result.sync_python == "3.12"
+    text = render.render_wrapper(rig["map"])
+    assert json.dumps(result.child_python) in text
+    assert "base" not in result.child_python
+    (venv / "Scripts" / "python.exe").unlink()
+    with pytest.raises(render.RenderError, match="venv python"):
+        _plan(rig)
