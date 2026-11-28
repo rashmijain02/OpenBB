@@ -231,7 +231,8 @@ Goal: §3.4, §3.5, §3.7 and the basket x-ray workflow. Files:
 
 Mutations: remove the `story_plans.run_id UNIQUE` lookup → the start-twice test sees 2 runs; skip the nonce hash check
 → the bad-nonce test fails. Real path: `web_probe --scenario journey --format json` → exit 0, `plan: approved→started`,
-`runs: 1`, `jobs: 1`, `outcome: succeeded`, `artifacts: 3 (sha ok)`, `duplicates: {approve: 2→1, start: 2→1}`.
+`runs: 1`, `jobs: 1`, `outcome: succeeded`, `artifacts: 4 (sha ok)` (the 3 evidence tables plus the `story.workflow_run`
+job's own result artifact, which every story job writes), `duplicates: {approve: 2→1, start: 2→1}`.
 
 ### T03: disconnect/reconnect without restart or a second agent loop (CODE-ONLY + LIVE L6b)
 
@@ -243,7 +244,10 @@ Goal: §3.8. Files: `hfp.js` (poll/backoff/resume from `ext.storage` last card i
 | no restart / no second loop | `test_extension_never_calls_chat_start` (static scan of `hfp.js` plus a runtime fetch spy); `test_sidecar_imports_no_llm_or_hermes` (`sys.modules` after import: no `litellm`, `openai`, `run_agent`, `hermes_cli`); `test_workflow_run_kind_has_no_model_client`; `test_webui_restart_does_not_cancel_run` (probe: kill and restart the sidecar and a fake WebUI session; `story_run_outcome` unchanged) |
 | session ≠ run lifetime | `test_logout_or_expired_session_leaves_run_running` (tier B: clear cookies → login again → same run) |
 
-Real path: `web_probe --scenario reconnect` → exit 0, `restarts: 1`, `runs: 1`, `jobs: 1`, `chat_starts: 0`.
+Real path: `web_probe --scenario reconnect` → exit 0, `restarts: 1`, `runs: 1`, `jobs: 1`, `agent_modules: []` (no
+browser in the probe; `chat_starts: 0` is counted from the page's request log by `web_journey --stack local` and tier
+B `test_browser_reconnect.py`, where the job is held queued by not starting the worker until after the reload and the
+offline spell).
 **L6b (LIVE, owner, real browser journey)** in `<qual-home>` after L2-L5 and #1341 T04: `web_journey --stack live`
 (Edge): select `synthetic.basket_xray` → Preview (Send) → plan card → Approve (double-click) → Start (Send) → close the
 tab mid-run, reopen, log in (expect same `run_id`, no new chat turn in the WebUI run journal) → cross-origin attempt
@@ -282,3 +286,13 @@ code/security/privacy reviews on the PR diff vs `portfolio` (security mandatory:
 - **W4:** starter prompts pre-fill the chat box and never auto-send.
 - **W5:** a loopback-only sidecar listener behind WebUI is accepted, with its port chosen after a conflict check. No service is installed.
 - **W6:** no WebUI-fork code change is required for P05. WEBUI-OWNER is not needed beyond configuration, the consent click and the extension-directory ACE/hash pin, which are owner LIVE steps. The two optional fork items stay out of scope.
+- **T03 resume (lead):** on resume the runner recomputes every reused pure-math stage (`_PURE_TOOLS`: effective
+  positions, concentration, construction targets) instead of trusting a cached intermediate result; a recomputed hash
+  that differs from the checkpoint fails the stage (`resume_output_mismatch`). Side-effecting stages (artifact tables,
+  checkpoints) are never repeated; a re-issued start returns the existing ids (`replay_of`).
+- **Plan-read nonce (lead, accepted):** every `GET /plans/<id>` of a pending plan mints a fresh single-use approval
+  nonce and replaces the stored hash, so the latest read wins and an older tab's Approve gets `bad_nonce` (403) until
+  that card is re-read. Run polling reads `/runs/<id>` only and never churns the nonce.
+- **`worker_unavailable` (T03):** a run card reads it while the run is not terminal, a job has been `queued` for more
+  than 60 s, and no worker heartbeat is that recent (a busy worker still beats). The card keeps polling. The clock is
+  injectable (`StoryBackend(clock=...)`).
