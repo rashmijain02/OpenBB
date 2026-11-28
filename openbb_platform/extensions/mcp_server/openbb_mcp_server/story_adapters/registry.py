@@ -9,6 +9,10 @@ Routes under ``/api/v1/story``:
   optimistic concurrency. A checkpoint names the state version it read; a
   stale version is a ``409`` and changes nothing.
 
+``POST /runs`` takes an optional Hermes ``binding`` (#1341): one Hermes start
+or cron fire is bound to exactly one run, so a repeated create with the same
+binding key returns that run instead of starting another.
+
 Run state is JSON only and size-bounded. Nothing here reads arbitrary files or
 deserializes notebook pickle state. The principal is bound when the routes are
 composed: an MCP server has one effective credential, so every call it serves
@@ -37,6 +41,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from openbb_mcp_server.utils.schema_digest import canonical_json_sha256
 
 MAX_STATE_BYTES = 64 * 1024
+# Same shape as a story job ``operation_id`` (``story_job_kinds.OPERATION_ID``).
+BINDING_KEY = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
 _ID = Annotated[str, Field(min_length=1, max_length=200)]
 ProviderMode = Literal["fixture", "recorded", "live"]
 StageStatus = Literal[
@@ -69,6 +75,21 @@ class Provenance(BaseModel):
     source_story: str | None = Field(default=None, max_length=100)
 
 
+class RunBinding(BaseModel):
+    """Which Hermes start or cron fire a run belongs to (#1341).
+
+    ``binding_key`` is a hash derived by the OpenBB Hermes plugin from the
+    Hermes session and tool-call IDs (``hs-``) or the cron job, execution and
+    workflow (``hc-``); raw Hermes identifiers never reach the server.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    harness: Literal["hermes"]
+    binding_key: Annotated[str, Field(pattern=BINDING_KEY)]
+    origin: Literal["interactive", "cron"]
+
+
 class RunCreate(BaseModel):
     """Request to start a run of one story."""
 
@@ -76,6 +97,7 @@ class RunCreate(BaseModel):
 
     story_id: str
     provider_mode: ProviderMode = "fixture"
+    binding: RunBinding | None = None
 
 
 class Checkpoint(BaseModel):
@@ -106,10 +128,15 @@ class RunRecord(BaseModel):
     provenance: dict[str, Provenance]
     created_at: datetime
     updated_at: datetime
+    binding: RunBinding | None = None
 
 
 class StaleCheckpoint(Exception):
     """The checkpoint was computed from an older state version."""
+
+
+class BindingConflict(Exception):
+    """A binding key already names a run of another story or provider mode."""
 
 
 class StoryCatalog:
@@ -356,6 +383,12 @@ class RunStore:
                 " run_id TEXT PRIMARY KEY, principal TEXT NOT NULL,"
                 " version INTEGER NOT NULL, record TEXT NOT NULL)"
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS story_run_bindings ("
+                " principal TEXT NOT NULL, binding_key TEXT NOT NULL,"
+                " run_id TEXT NOT NULL, created_at TEXT NOT NULL,"
+                " PRIMARY KEY (principal, binding_key))"
+            )
             self._ready = True
         try:
             yield connection
@@ -363,14 +396,68 @@ class RunStore:
             connection.close()
 
     def create(self, principal: str, record: RunRecord) -> RunRecord:
-        """Persist a new run for ``principal``."""
+        """Persist a new run for ``principal``.
+
+        A bound run (``record.binding``) is created at most once per binding
+        key: the binding and the run are written in one transaction, and a
+        repeat returns the run already bound. A binding key that names a run
+        of another story or provider mode raises ``BindingConflict``.
+        """
         with self._connect() as connection:
-            connection.execute(
-                "INSERT INTO story_runs (run_id, principal, version, record)"
-                " VALUES (?, ?, ?, ?)",
-                (record.run_id, principal, 0, record.model_dump_json()),
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                existing = (
+                    self._bound_run(connection, principal, record)
+                    if record.binding is not None
+                    else None
+                )
+                if existing is None:
+                    connection.execute(
+                        "INSERT INTO story_runs (run_id, principal, version, record)"
+                        " VALUES (?, ?, ?, ?)",
+                        (record.run_id, principal, 0, record.model_dump_json()),
+                    )
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+        if existing is None:
+            return record
+        if (
+            existing.story_id != record.story_id
+            or existing.provider_mode != record.provider_mode
+        ):
+            raise BindingConflict(
+                "binding_conflict: this binding key already names a run of"
+                f" {existing.story_id} ({existing.provider_mode})."
             )
-        return record
+        return existing
+
+    @staticmethod
+    def _bound_run(
+        connection: sqlite3.Connection, principal: str, record: RunRecord
+    ) -> RunRecord | None:
+        """Return the run this binding already names, else bind ``record``."""
+        assert record.binding is not None  # noqa: S101  # caller checked
+        row = connection.execute(
+            "SELECT r.record FROM story_run_bindings b"
+            " JOIN story_runs r ON r.run_id = b.run_id AND r.principal = b.principal"
+            " WHERE b.principal = ? AND b.binding_key = ?",
+            (principal, record.binding.binding_key),
+        ).fetchone()
+        if row is not None:
+            return RunRecord.model_validate_json(row[0])
+        connection.execute(
+            "INSERT INTO story_run_bindings (principal, binding_key, run_id,"
+            " created_at) VALUES (?, ?, ?, ?)",
+            (
+                principal,
+                record.binding.binding_key,
+                record.run_id,
+                record.created_at.isoformat(),
+            ),
+        )
+        return None
 
     def get(self, principal: str, run_id: str) -> RunRecord | None:
         """Return the run only if ``principal`` owns it."""
@@ -514,7 +601,10 @@ def build_router(
         openapi_extra={"mcp_config": {"name": "story_run_create"}},
     )
     def story_run_create(request: RunCreate) -> RunRecord:
-        """Start a run of one story; state begins empty at version 0."""
+        """Start a run of one story; state begins empty at version 0.
+
+        With a Hermes ``binding``, a repeat returns the run already bound.
+        """
         manifest = _manifest(request.story_id)
         workflow_id = workflows.parse_id(request.story_id)
         now = _now()
@@ -536,8 +626,12 @@ def build_router(
             provenance={},
             created_at=now,
             updated_at=now,
+            binding=request.binding,
         )
-        return store.create(principal, record)
+        try:
+            return store.create(principal, record)
+        except BindingConflict as error:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
 
     def _owned_run(run_id: str) -> RunRecord:
         record = store.get(principal, run_id)

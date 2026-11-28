@@ -58,6 +58,7 @@ def _pins() -> dict[str, str]:
 
 
 def test_fixture_covers_every_paper_job_and_artifact_tool():
+    """Fixture covers every paper job and artifact tool."""
     pins = _pins()
     for prefix, minimum in (
         ("story_paper_", 8),
@@ -70,6 +71,7 @@ def test_fixture_covers_every_paper_job_and_artifact_tool():
 
 @pytest.mark.parametrize("tool", sorted(_pins()))
 def test_story_tool_input_schema_is_unchanged(live_digests, tool):
+    """Story tool input schema is unchanged."""
     assert live_digests.get(tool) == _pins()[tool], (
         f"{tool} input schema changed; Portfolio/TechTrade contracts must be"
         " preserved (#1341)"
@@ -77,4 +79,20 @@ def test_story_tool_input_schema_is_unchanged(live_digests, tool):
 
 
 def test_no_story_tool_disappeared(live_digests):
+    """No story tool disappeared."""
     assert set(_pins()) <= set(live_digests)
+
+
+def test_story_run_create_matches_the_reviewed_workflow_pin(live_digests):
+    """D7: the re-pinned workflow names the live ``story_run_create`` schema."""
+    shipped = (
+        Path(__file__).resolve().parents[3]
+        / "agents"
+        / "openbb_agents"
+        / "hermes_integration"
+        / "workflows"
+        / "synthetic.concentration_review.workflow.json"
+    )
+    document = json.loads(shipped.read_text("utf-8"))
+    pin = document["capabilities"]["platform:story_run_create"]["schema_sha256"]
+    assert live_digests["story_run_create"] == pin

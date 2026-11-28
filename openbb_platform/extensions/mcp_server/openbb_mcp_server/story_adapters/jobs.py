@@ -8,6 +8,9 @@ Routes under ``/api/v1/story/runs/{run_id}/jobs``:
   payload or run is a ``409``.
 - ``GET`` (list and by job ID): status, result highlights, the result
   artifact's ref and any terminal error.
+- On a Hermes-bound run (#1341), a model that re-issues the same submission
+  under a new operation ID gets the first job back (``replay_of`` names the
+  operation that owns it) unless that job failed or was cancelled.
 - ``POST /{job_id}/cancel``: ``cancelled`` for a queued job, ``too_late``
   once a worker has claimed it (the worker never interrupts a handler), and
   ``already_finished`` for a terminal one.
@@ -33,6 +36,12 @@ from openbb_core.app.service.job_service import JobService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
+from openbb_mcp_server.story_adapters.receipts import (
+    Receipt,
+    ReceiptLedger,
+    logical_operation_key,
+    run_workflow_ref,
+)
 from openbb_mcp_server.story_adapters.registry import (
     RunStore,
     WorkflowCatalog,
@@ -54,6 +63,8 @@ from openbb_mcp_server.story_adapters.story_job_kinds import (
 MAX_ACTIVE_JOBS = 4
 _ACTIVE = {"queued", "running"}
 _TERMINAL = {"succeeded", "succeeded_with_warnings", "failed", "cancelled"}
+# A logical submission whose job ended like this may be submitted again.
+_RETRYABLE = {"failed", "cancelled"}
 
 
 class JobSubmit(BaseModel):
@@ -94,6 +105,7 @@ class StoryJob(BaseModel):
     result: dict[str, Any] | None
     warnings: list[str]
     error: JobError | None
+    replay_of: str | None = None
 
 
 class CancelOutcome(BaseModel):
@@ -105,9 +117,12 @@ class CancelOutcome(BaseModel):
     job: StoryJob
 
 
-def _view(submission: Submission, run: JobRun) -> StoryJob:
+def _view(
+    submission: Submission, run: JobRun, replay_of: str | None = None
+) -> StoryJob:
     failed = run.status == "failed"
     return StoryJob(
+        replay_of=replay_of,
         job_id=run.run_id,
         operation_id=submission.operation_id,
         run_id=submission.run_id,
@@ -140,6 +155,7 @@ def build_router(  # pylint: disable=too-many-statements
     workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story/runs", tags=["story"])
     dedupe_prefix = f"story:{ArtifactStore.principal_key(principal)}:"
+    receipts = ReceiptLedger(ledger.db_path)
 
     def _owned_run(run_id: str, *, mutating: bool = False):
         record = runs.get(principal, run_id)
@@ -170,6 +186,57 @@ def build_router(  # pylint: disable=too-many-statements
 
     def _conflict(detail: str) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, detail)
+
+    def _job_key(run, stage_id: str | None, digest: str) -> str:
+        return logical_operation_key(
+            tool="story_job_submit",
+            run_id=run.run_id,
+            workflow_ref=run_workflow_ref(run),
+            stage_id=stage_id,
+            args_sha256=digest,
+        )
+
+    def _logical_owner(
+        service: JobService, run, request: JobSubmit, digest: str
+    ) -> tuple[str, str | None]:
+        """Return the operation that owns this logical submission on a bound run.
+
+        The first delivery owns it. A later delivery under another operation ID
+        is pointed at the owner (``replay_of``) unless the owner's job failed or
+        was cancelled; then this delivery takes the operation over.
+        """
+        logical_key = _job_key(run, request.stage_id, digest)
+        receipt: Receipt | None = receipts.claim(
+            principal,
+            logical_key,
+            tool="story_job_submit",
+            run_id=run.run_id,
+            workflow_ref=run_workflow_ref(run),
+            stage_id=request.stage_id,
+            args_sha256=digest,
+            operation_id=request.operation_id,
+        )
+        while receipt is not None and receipt.operation_id != request.operation_id:
+            owner = ledger.get(principal, receipt.operation_id)
+            if owner is None or owner.job_id is None:
+                # The owner crashed before its job was recorded: the core
+                # dedupe key under the owner's operation ID finds or makes it.
+                return receipt.operation_id, receipt.operation_id
+            try:
+                ended = service.get_run(owner.job_id).status in _RETRYABLE
+            except KeyError:
+                ended = True
+            if not ended:
+                return receipt.operation_id, receipt.operation_id
+            if receipts.supersede(
+                principal,
+                logical_key,
+                previous_operation_id=receipt.operation_id,
+                operation_id=request.operation_id,
+            ):
+                break
+            receipt = receipts.get(principal, logical_key)
+        return request.operation_id, None
 
     @router.post(
         "/{run_id}/jobs",
@@ -205,7 +272,11 @@ def build_router(  # pylint: disable=too-many-statements
                 ),
             ) from error
         digest = payload_digest(run_id, request.kind, request.stage_id, payload)
-        existing = ledger.get(principal, request.operation_id)
+        operation_id, replay_of = request.operation_id, None
+        existing = ledger.get(principal, operation_id)
+        if run.binding is not None and (existing is None or existing.digest == digest):
+            operation_id, replay_of = _logical_owner(service, run, request, digest)
+            existing = ledger.get(principal, operation_id)
         if existing is None and _active_jobs(service) >= MAX_ACTIVE_JOBS:
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
@@ -214,7 +285,7 @@ def build_router(  # pylint: disable=too-many-statements
         submission = existing or ledger.record(
             Submission(
                 principal=principal,
-                operation_id=request.operation_id,
+                operation_id=operation_id,
                 run_id=run_id,
                 kind=request.kind,
                 stage_id=request.stage_id,
@@ -225,13 +296,12 @@ def build_router(  # pylint: disable=too-many-statements
         )
         if submission.digest != digest:
             raise _conflict(
-                f"Operation '{request.operation_id}' was already used for a"
-                " different job."
+                f"Operation '{operation_id}' was already used for a" " different job."
             )
         params = StoryJobParams(
             principal=principal,
             run_id=run_id,
-            operation_id=request.operation_id,
+            operation_id=operation_id,
             stage_id=request.stage_id,
             payload=payload,
         ).model_dump(mode="json")
@@ -242,7 +312,7 @@ def build_router(  # pylint: disable=too-many-statements
             job = service.enqueue(
                 request.kind,
                 params,
-                idempotency_key=dedupe_prefix + request.operation_id,
+                idempotency_key=dedupe_prefix + operation_id,
             )
         except UnknownJobDefinitionError as error:
             raise HTTPException(
@@ -258,11 +328,17 @@ def build_router(  # pylint: disable=too-many-statements
                 ),
             ) from error
         if job.job_name != request.kind or job.params != params:
-            raise _conflict(
-                f"Operation '{request.operation_id}' belongs to a different job."
+            raise _conflict(f"Operation '{operation_id}' belongs to a different job.")
+        ledger.attach_job(principal, operation_id, job.run_id)
+        if run.binding is not None:
+            receipts.record_outcome(
+                principal,
+                _job_key(run, request.stage_id, digest),
+                operation_id=operation_id,
+                outcome_ref=job.run_id,
+                state="submitted",
             )
-        ledger.attach_job(principal, request.operation_id, job.run_id)
-        return _view(submission, job)
+        return _view(submission, job, replay_of)
 
     @router.get(
         "/{run_id}/jobs",

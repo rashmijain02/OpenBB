@@ -114,15 +114,17 @@ def test_workflow_run_survives_missing_story_manifest_dir(tmp_path, workflow_dir
 def test_catalog_lists_stories_and_workflows_and_input_schema_is_unchanged(
     tmp_path, workflow_dir
 ):
-    """Both kinds of runs are exposed; ``RunCreate`` keeps its pinned input shape."""
+    """Both kinds of runs are exposed; ``RunCreate`` keeps its pinned input shape.
+
+    #1341 (D7) adds only the optional Hermes ``binding``.
+    """
     client = _client(tmp_path / "runs.sqlite", workflow_dir)
     ids = [row["story_id"] for row in client.get("/api/v1/story/catalog").json()]
     assert WORKFLOW_ID in ids and "portfolio/03" in ids
     assert len(ids) == 26
-    assert set(RunCreate.model_json_schema()["properties"]) == {
-        "story_id",
-        "provider_mode",
-    }
+    schema = RunCreate.model_json_schema()
+    assert set(schema["properties"]) == {"story_id", "provider_mode", "binding"}
+    assert schema["required"] == ["story_id"]
     described = client.get("/api/v1/story/describe", params={"story_id": WORKFLOW_ID})
     assert described.status_code == 200
     assert described.json()["workflow_id"] == "synthetic.concentration_review"

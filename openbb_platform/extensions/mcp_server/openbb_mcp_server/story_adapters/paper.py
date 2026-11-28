@@ -57,6 +57,13 @@ from pydantic import (
 )
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
+from openbb_mcp_server.story_adapters.receipts import (
+    Receipt,
+    ReceiptLedger,
+    args_digest,
+    logical_operation_key,
+    run_workflow_ref,
+)
 from openbb_mcp_server.story_adapters.registry import (
     RunStore,
     WorkflowCatalog,
@@ -569,6 +576,62 @@ def build_router(  # pylint: disable=too-many-statements
     workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
     authenticated = [Depends(AuthService().auth_hook)]
+    receipts = ReceiptLedger(store.db_path)
+
+    def _live(row: sqlite3.Row) -> bool:
+        """Return whether a re-issued prepare should get this request back."""
+        if row["status"] in ("applying", "applied"):
+            return True
+        return row["status"] == "pending" and (
+            datetime.fromisoformat(row["expires_at"]) > _now()
+        )
+
+    def _logical_replay(
+        run, request: Prepare, sandbox_id: str, digest: str
+    ) -> tuple[str, sqlite3.Row | None]:
+        """On a bound run, return the live request a re-issued prepare made.
+
+        Returns ``(logical_key, row)``; ``row`` is ``None`` when this delivery
+        owns the logical operation and should create a request. An expired,
+        failed or missing owner hands the operation to this delivery, so the
+        human is asked again with a new request and nonce.
+        """
+        args_sha256 = args_digest(digest, sandbox_id)
+        logical_key = logical_operation_key(
+            tool="story_paper_prepare",
+            run_id=run.run_id,
+            workflow_ref=run_workflow_ref(run),
+            stage_id=None,
+            args_sha256=args_sha256,
+        )
+        receipt: Receipt | None = receipts.claim(
+            principal,
+            logical_key,
+            tool="story_paper_prepare",
+            run_id=run.run_id,
+            workflow_ref=run_workflow_ref(run),
+            stage_id=None,
+            args_sha256=args_sha256,
+            operation_id=request.operation_id,
+        )
+        while receipt is not None and receipt.operation_id != request.operation_id:
+            with store.connect() as connection:
+                owner = connection.execute(
+                    "SELECT * FROM story_paper_requests"
+                    " WHERE principal = ? AND operation_id = ?",
+                    (principal, receipt.operation_id),
+                ).fetchone()
+            if owner is not None and _live(owner):
+                return logical_key, owner
+            if receipts.supersede(
+                principal,
+                logical_key,
+                previous_operation_id=receipt.operation_id,
+                operation_id=request.operation_id,
+            ):
+                break
+            receipt = receipts.get(principal, logical_key)
+        return logical_key, None
 
     def _route(method: str, path: str, name: str):
         return getattr(router, method)(
@@ -694,6 +757,14 @@ def build_router(  # pylint: disable=too-many-statements
                         " for a different action.",
                     )
                 return _request_view(existing)
+            logical_key = None
+            if run.binding is not None:
+                logical_key, owner = _logical_replay(run, request, sandbox_id, digest)
+                if owner is not None:
+                    return {
+                        **_request_view(owner),
+                        "replay_of": owner["operation_id"],
+                    }
             request_id = uuid.uuid4().hex
             now = _now()
             connection.execute(
@@ -716,6 +787,14 @@ def build_router(  # pylint: disable=too-many-statements
                     "pending",
                     now.isoformat(),
                 ),
+            )
+        if logical_key is not None:
+            receipts.record_outcome(
+                principal,
+                logical_key,
+                operation_id=request.operation_id,
+                outcome_ref=request_id,
+                state="prepared",
             )
         return _request_view(store.request(request_id, principal))
 
