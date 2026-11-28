@@ -154,6 +154,20 @@ def run_worker(
             return 0 if json.loads(out).get("ok") else guards.EXIT_AUTH
 
 
+def isolate_protocol_stdout() -> Any:
+    """Reserve fd 1 for protocol frames; send every other stdout write to stderr.
+
+    Returns a binary stream on a private duplicate of fd 1. Afterwards fd 1
+    and ``sys.stdout`` point at stderr (the client discards it), so prints
+    from Python, native code, Rust or pyarrow can never corrupt a frame.
+    """
+    sys.stdout.flush()
+    proto_fd = os.dup(1)
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    return os.fdopen(proto_fd, "wb", buffering=0)
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -166,7 +180,7 @@ def main(
     args = ap.parse_args(argv)
     return run_worker(
         FdLines(sys.stdin.fileno()),
-        sys.stdout.buffer,
+        isolate_protocol_stdout(),
         env=dict(os.environ),
         idle_seconds=args.idle_seconds,
         engine=engine,

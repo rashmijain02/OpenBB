@@ -121,3 +121,21 @@ def test_probe_run_unknown_dataset_exits_2_with_layer(tmp_path, monkeypatch, cap
     code, rep = _main(capsys, "--run", "buy_and_hold", "--dataset", "f" * 64)
     assert code == 2
     assert rep["passed"] is False and rep["failed_layer"] == "schema"
+
+
+def test_probe_run_survives_engine_stdout_and_fd1_writes(tmp_path, monkeypatch, capsys):
+    """Engine prints and ``os.write(1, ...)`` cannot corrupt protocol frames."""
+    oracle = _oracle()
+    monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path / "data"))
+    ds_id = _export_oracle(tmp_path)
+    noisy = json.dumps([sys.executable, FAKE_RUN, "--noisy"])
+    code = probe.main(
+        [
+            *("--runtime", "native", "--worker-command-json", noisy),
+            *("--format", "json", "--run", "buy_and_hold", "--dataset", ds_id),
+            *("--cash", oracle["initial_cash"]),
+        ]
+    )
+    rep = json.loads(capsys.readouterr().out)
+    assert code == 0, rep
+    assert rep["report"]["final_equity"] == oracle["expected"]["final_equity"]
