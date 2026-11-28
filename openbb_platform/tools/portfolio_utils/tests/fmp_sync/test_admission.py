@@ -481,7 +481,8 @@ def test_dotenv_supplying_absent_keys_is_not_drift(world, tmp_path):
         "DB_PASSWORD=SYNTHETIC-SENTINEL\nFMP_API_KEY=SYNTHETIC-KEY\n",
         encoding="utf-8",
     )
-    env: dict[str, str] = {}
+    # The real cron child shape: a stripped env that always carries the state root.
+    env: dict[str, str] = {"FMP_SYNC_STATE_ROOT": str(tmp_path / "state")}
     conn = FakeConn(DISPOSABLE_DB)
     result = _admit(
         world,
@@ -492,9 +493,69 @@ def test_dotenv_supplying_absent_keys_is_not_drift(world, tmp_path):
         connect_fn=lambda: conn,
         map=_no_settings(tmp_path),
     )
+    assert "DOTENV_DRIFT" not in result.findings
     assert result.admitted, result
     assert conn.sql == ["SELECT DATABASE()"]
     assert "SENTINEL" not in repr(result)
+
+
+def test_dotenv_not_repeating_an_unrelated_present_db_key_is_not_drift(world, tmp_path):
+    """A present DB_* key the .env does not repeat is not an override."""
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(f"DB_NAME={DISPOSABLE_DB}\n", encoding="utf-8")
+    env = {"DB_PORT": "3306", "DB_NAME": DISPOSABLE_DB}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        map=_no_settings(tmp_path),
+    )
+    assert "DOTENV_DRIFT" not in result.findings
+    assert result.admitted, result
+
+
+def test_dotenv_newly_supplying_cached_api_key_is_allowed(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(
+        f"FMP_CACHED_API_KEY=SYNTHETIC-KEY\nDB_NAME={DISPOSABLE_DB}\n",
+        encoding="utf-8",
+    )
+    env = {"DB_NAME": DISPOSABLE_DB}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        map=_no_settings(tmp_path),
+    )
+    assert "DOTENV_TRANSPORT_KEY" not in result.findings
+    assert "DOTENV_DRIFT" not in result.findings
+    assert result.admitted, result
+
+
+def test_dotenv_overriding_present_cached_api_key_is_drift(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text("FMP_CACHED_API_KEY=SYNTHETIC-NEW\n", encoding="utf-8")
+    result = _admit(
+        world,
+        env={"FMP_CACHED_API_KEY": "SYNTHETIC-OLD"},
+        dotenv_path=dotenv,
+        import_warmer_fn=lambda: None,
+    )
+    assert "DOTENV_DRIFT" in result.findings
+    assert "SYNTHETIC" not in repr(result)
+
+
+def test_import_overriding_present_cached_api_key_is_drift(world):
+    env = {"FMP_CACHED_API_KEY": "SYNTHETIC-OLD"}
+    result = _admit(
+        world,
+        env=env,
+        import_warmer_fn=lambda: env.update({"FMP_CACHED_API_KEY": "SYNTHETIC-NEW"}),
+    )
+    assert "DOTENV_DRIFT" in result.findings
+    assert "SYNTHETIC" not in repr(result)
 
 
 _TRANSPORT_KEYS = [
@@ -509,6 +570,7 @@ _TRANSPORT_KEYS = [
     "REQUESTS_CA_BUNDLE",
     "CURL_CA_BUNDLE",
     "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
     "FMP_SYNC_STATE_ROOT",
 ]
 
@@ -516,7 +578,9 @@ _TRANSPORT_KEYS = [
 @pytest.mark.parametrize("key", _TRANSPORT_KEYS)
 def test_dotenv_file_newly_supplying_transport_key_is_blocked(world, tmp_path, key):
     dotenv = tmp_path / "warmer.env"
-    dotenv.write_text(f"{key}=SYNTHETIC-VALUE\nDB_NAME={DISPOSABLE_DB}\n", encoding="utf-8")
+    dotenv.write_text(
+        f"{key}=SYNTHETIC-VALUE\nDB_NAME={DISPOSABLE_DB}\n", encoding="utf-8"
+    )
     imported: list[bool] = []
     result = _admit(
         world,
@@ -570,7 +634,6 @@ def test_dotenv_overriding_present_transport_key_stays_drift(world, tmp_path):
     )
     assert "DOTENV_DRIFT" in result.findings
     assert "DOTENV_TRANSPORT_KEY" not in result.findings
-
 
 
 def test_dotenv_overriding_present_key_is_drift(world, tmp_path):

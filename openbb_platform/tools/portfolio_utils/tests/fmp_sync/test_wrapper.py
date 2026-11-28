@@ -639,3 +639,28 @@ def test_second_ctrl_break_kills_without_waiting_for_grace(
         assert _lock_freed(root)
     finally:
         _cleanup(proc, holder_pid)
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows console control event")
+def test_signal_during_deadline_grace_kills_at_once(
+    real, child_env, python_exe, monkeypatch
+):
+    """The deadline cancel is the first stop: one external signal is the second."""
+    monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", 4.0)
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 60.0)
+    flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    proc, holder_pid, root = _start_holding_wrapper(real, child_env, python_exe, flags)
+    try:
+        started = time.monotonic()
+        time.sleep(7.0)  # past the deadline, inside the grace
+        try:
+            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+        except OSError:
+            pytest.skip("no shared console to deliver the control event")
+        out, _ = proc.communicate(timeout=45)
+        assert time.monotonic() - started < 30, "waited for the full grace"
+        assert proc.returncode == 5
+        assert out.strip() == "fmp_cache_prices: killed after grace"
+        assert _lock_freed(root)
+    finally:
+        _cleanup(proc, holder_pid)

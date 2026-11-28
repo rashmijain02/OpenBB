@@ -58,7 +58,8 @@ WARMER_MODULE = "portfolio_utils.fetch_position_history"
 ORIGIN_MODULES = ("portfolio_utils", "openbb_fmp_cached", "openbb_agents")
 _DB_ENV_PREFIXES = ("DB_", "MYSQL_", "FMP_CACHE_")
 # Transport and state keys a warmer import or .env must not change either.
-# FMP_API_KEY is compared by presence + SHA-256 only (see _db_env).
+# FMP_API_KEY / FMP_CACHED_API_KEY are compared by presence + SHA-256 only (see
+# _db_env); FMP_CACHED_API_KEY escapes the FMP_CACHE_ prefix, so it is listed.
 _DRIFT_KEYS = frozenset(
     {
         "HTTPS_PROXY",
@@ -68,13 +69,15 @@ _DRIFT_KEYS = frozenset(
         "REQUESTS_CA_BUNDLE",
         "CURL_CA_BUNDLE",
         "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
         "FMP_API_KEY",
+        "FMP_CACHED_API_KEY",
         "FMP_SYNC_STATE_ROOT",
     }
 )
 # Transport-trust and state-location keys a ``.env`` may never newly supply
-# (FMP_API_KEY is excluded: a ``.env`` may legitimately provide it).
-_TRANSPORT_KEYS = _DRIFT_KEYS - {"FMP_API_KEY"}
+# (the FMP keys are excluded: a ``.env`` may legitimately provide them).
+_TRANSPORT_KEYS = _DRIFT_KEYS - {"FMP_API_KEY", "FMP_CACHED_API_KEY"}
 _AUTO_CREATE = "FMP_CACHE_AUTO_CREATE_DB"
 EXIT_ADMITTED = 0
 EXIT_POLICY = 40
@@ -318,7 +321,9 @@ def _check_config(  # pylint: disable=too-many-arguments
         # Keys the .env only supplies are allowed; the unsafe flags are judged on
         # the merged view and the resolved target is checked after loading.
         _check_flags({**env, **loaded}, config)
-        if _overridden(before, _db_env(loaded)):
+        # Compare only keys both sides hold: the .env need not repeat every key the
+        # cron child already carries (e.g. FMP_SYNC_STATE_ROOT).
+        if any(k in before and before[k] != v for k, v in _db_env(loaded).items()):
             raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_DRIFT")
         if _newly_transport(before, loaded):
             raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_TRANSPORT_KEY")

@@ -561,7 +561,9 @@ def _supervise(proc, job, run_id):
     up to GRACE_S. A child that ends in time has its validated outcome line
     (normally CANCELLED, with run file and end receipt written) relayed. A
     child still running after GRACE_S, or a second stop request, gets the job
-    terminated: KILLED_FAILURE, EXIT_KILLED.
+    terminated: KILLED_FAILURE, EXIT_KILLED. The deadline cancel counts as the
+    first stop, so any external signal during its grace is the second stop and
+    kills at once (``stops`` is 0 then, so one signal exceeds it).
     """
     import threading  # pylint: disable=import-outside-toplevel
     import time  # pylint: disable=import-outside-toplevel
