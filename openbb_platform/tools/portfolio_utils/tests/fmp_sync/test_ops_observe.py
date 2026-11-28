@@ -315,3 +315,159 @@ def test_ops_group_is_opt_in_and_dry_run_has_no_db(tmp_path):
     assert by["ops.binlog"].state is CheckState.NOT_EVALUATED
     plain = readiness.evaluate([], now=NOW, dry_run=True)
     assert not any(c.check_id.startswith("ops.") for c in plain.checks)
+
+
+# --- #1345 fix: network paths are refused without any access; sample hygiene ---
+
+
+def _forbid_io(monkeypatch):
+    """Fail the test the moment anything lists a directory or asks for disk usage."""
+
+    def boom(*_a, **_k):
+        raise AssertionError("network/untrusted path was accessed")
+
+    monkeypatch.setattr(os, "scandir", boom)
+    monkeypatch.setattr(ops_observe.shutil, "disk_usage", boom)
+    return boom
+
+
+_BS = chr(92)
+_UNC = (_BS * 2 + "fileserver" + _BS + "share" + _BS + "ops", "//fileserver/share/ops")
+
+
+@pytest.mark.parametrize("unc", _UNC)
+def test_network_paths_are_refused_unavailable_without_access(monkeypatch, tmp_path, unc):
+    boom = _forbid_io(monkeypatch)
+    # ``resolve()`` on a UNC path can itself open an SMB connection: it must not run.
+    monkeypatch.setattr(ops_observe.locking, "_resolve", boom)
+    policy = ops_observe.OpsPolicy(
+        backup_dir=unc,
+        binlog_dir=unc,
+        volumes=[unc],
+        data_volume=unc,
+    )
+    got = _by_id(
+        ops_observe.evaluate(
+            policy, now=NOW, disk_usage_fn=boom, state_root=tmp_path / "st"
+        )
+    )
+    for check_id in ("ops.disk", "ops.backup", "ops.binlog"):
+        assert got[check_id].state is CheckState.UNAVAILABLE, check_id
+        assert got[check_id].reason_code.endswith("NETWORK_PATH_REFUSED"), check_id
+    assert not (tmp_path / "st").exists()  # nothing recorded for a refused source
+    assert ops_observe.data_volume_critical(policy, boom) is False
+
+
+def test_mixed_volumes_report_refusal_not_ok(monkeypatch, tmp_path):
+    monkeypatch.setattr(os, "scandir", lambda *_a, **_k: pytest.fail("scandir"))
+    calls: list[str] = []
+
+    def usage(path):
+        calls.append(path)
+        return Usage(100 * GIB, 50 * GIB, 50 * GIB)
+
+    policy = ops_observe.OpsPolicy(volumes=[str(tmp_path), _UNC[0]])
+    disk = ops_observe.disk_check(policy, usage)
+    assert (disk.state, disk.reason_code) == (
+        CheckState.UNAVAILABLE,
+        "DISK_NETWORK_PATH_REFUSED",
+    )
+    assert calls == [str(tmp_path)]  # the local volume is still measured
+
+
+@pytest.mark.skipif(os.name != "nt", reason="NTFS junctions are Windows-only")
+def test_junction_resolving_to_network_is_refused(monkeypatch, tmp_path):
+    import subprocess  # pylint: disable=import-outside-toplevel
+
+    target = tmp_path / "real"
+    target.mkdir()
+    link = tmp_path / "link"
+    made = subprocess.run(  # noqa: S603
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],  # noqa: S607
+        capture_output=True,
+        check=False,
+    )
+    if made.returncode != 0:
+        pytest.skip("cannot create a junction here")
+    real_resolve = ops_observe.locking._resolve  # pylint: disable=protected-access
+
+    def resolve(path):
+        if Path(path) == link:  # the junction now points at a share
+            return Path(_UNC[0])
+        return real_resolve(path)
+
+    monkeypatch.setattr(ops_observe.locking, "_resolve", resolve)
+    boom = _forbid_io(monkeypatch)
+    policy = ops_observe.OpsPolicy(backup_dir=str(link), volumes=[str(link)])
+    got = _by_id(ops_observe.evaluate(policy, now=NOW, disk_usage_fn=boom))
+    assert got["ops.backup"].reason_code == "BACKUP_NETWORK_PATH_REFUSED"
+    assert got["ops.disk"].reason_code == "DISK_NETWORK_PATH_REFUSED"
+
+
+def test_symlinked_backup_is_not_a_regular_file(tmp_path):
+    real = _file(tmp_path / "elsewhere" / "real.sql.gz", 10, timedelta(hours=1))
+    link = tmp_path / "bk" / "latest.sql.gz"
+    link.parent.mkdir(parents=True)
+    try:
+        link.symlink_to(real)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    got = _eval(_policy(tmp_path))["ops.backup"]
+    assert got.reason_code == "BACKUP_MISSING"  # the link is not counted
+    assert got.counts["candidates"] == 0
+
+
+def test_binlog_future_dated_sample_is_clock_skew_and_rerecords(tmp_path):
+    root = tmp_path / "st"
+    _sample(root, 10, timedelta(hours=-3))  # sampled "in the future"
+    got = _eval(_binlogs(tmp_path, GIB), state_root=root)["ops.binlog"]
+    assert (got.state, got.reason_code) == (CheckState.UNKNOWN, "CLOCK_SKEW")
+    saved = json.loads((root / "ops" / "binlog.json").read_text("utf-8"))
+    assert saved["total_bytes"] == GIB
+    assert datetime.fromisoformat(saved["sample_utc"]) == NOW
+
+
+def test_binlog_ancient_sample_is_too_old_and_rerecords(tmp_path):
+    root = tmp_path / "st"
+    _sample(root, 10, timedelta(days=8))
+    got = _eval(_binlogs(tmp_path, GIB), state_root=root)["ops.binlog"]
+    assert (got.state, got.reason_code) == (CheckState.UNKNOWN, "SAMPLE_TOO_OLD")
+    saved = json.loads((root / "ops" / "binlog.json").read_text("utf-8"))
+    assert saved["total_bytes"] == GIB
+
+
+def test_binlog_six_day_sample_is_still_judged(tmp_path):
+    root = tmp_path / "st"
+    _sample(root, 0, timedelta(days=6))
+    got = _eval(_binlogs(tmp_path, 100), state_root=root)["ops.binlog"]
+    assert got.reason_code == "BINLOG_GROWTH_OK"
+
+
+def test_scan_never_follows_symlinks(monkeypatch, tmp_path):
+    """Symlink-free proof: ``is_file``/``stat`` must be asked not to follow links."""
+    seen: dict[str, object] = {}
+
+    class _Entry:
+        name = "latest.sql.gz"
+
+        @staticmethod
+        def is_file(*, follow_symlinks=True):
+            seen["is_file"] = follow_symlinks
+            return follow_symlinks  # a link to a file: a file only if followed
+
+        @staticmethod
+        def stat(*, follow_symlinks=True):
+            seen["stat"] = follow_symlinks
+            return os.stat_result((0o100644, 0, 0, 1, 0, 0, 5, 0, 0, 0))
+
+    class _Dir:
+        def __enter__(self):
+            return iter([_Entry()])
+
+        def __exit__(self, *_exc):
+            return False
+
+    monkeypatch.setattr(os, "scandir", lambda *_a, **_k: _Dir())
+    got = _eval(_policy(tmp_path))["ops.backup"]
+    assert seen["is_file"] is False
+    assert got.counts["candidates"] == 0

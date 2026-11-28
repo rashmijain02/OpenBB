@@ -15,13 +15,13 @@ import json
 import os
 import shutil
 from collections.abc import Callable, Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from portfolio_utils.fmp_sync import state
+from portfolio_utils.fmp_sync import locking, state
 from portfolio_utils.fmp_sync.checks import CheckResult, CheckState
 
 GIB = 1024**3
@@ -35,6 +35,31 @@ OPS_CHECKS = (
 SAMPLE_NAME = "binlog.json"
 _MAX_ENTRIES = 20000
 _ERR_PRIVILEGE = 1227
+MAX_SAMPLE_AGE = timedelta(days=7)
+
+
+class _NetworkPath(Exception):
+    """A configured path is (or resolves to) a network location; never touched."""
+
+
+def _local_path(raw: str) -> str:
+    """Return ``raw`` once proven local, else raise :class:`_NetworkPath`.
+
+    The network checks run before and after ``abspath``/``resolve()`` (the same
+    guard as the state root): a junction, symlink or ``subst`` drive can point a
+    local-looking path at a share, and nothing may touch the share first.
+    """
+    try:
+        # pylint: disable=protected-access
+        locking._reject_network(Path(raw))
+        absolute = Path(os.path.abspath(raw))
+        locking._reject_network(absolute)
+        locking._reject_network(locking._resolve(absolute))
+    except locking.LockRootRejected as exc:
+        raise _NetworkPath from exc
+    except (OSError, ValueError, RuntimeError) as exc:  # unresolvable: refuse
+        raise _NetworkPath from exc
+    return raw
 
 
 class OpsPolicy(BaseModel):
@@ -80,6 +105,7 @@ def _volume_state(policy: OpsPolicy, usage: Any) -> tuple[CheckState, str]:
 
 _SEVERITY = (
     CheckState.CRITICAL,
+    CheckState.UNAVAILABLE,
     CheckState.UNKNOWN,
     CheckState.WARN,
     CheckState.OK,
@@ -94,7 +120,10 @@ def disk_check(policy: OpsPolicy, disk_usage_fn: Callable[[str], Any]) -> CheckR
     counts = {"volumes": len(policy.volumes), "warn": 0, "critical": 0, "unknown": 0}
     for volume in policy.volumes:
         try:
-            got = _volume_state(policy, disk_usage_fn(volume))
+            got = _volume_state(policy, disk_usage_fn(_local_path(volume)))
+        except _NetworkPath:
+            got = (CheckState.UNAVAILABLE, "DISK_NETWORK_PATH_REFUSED")
+            counts["refused"] = counts.get("refused", 0) + 1
         except (OSError, ValueError, AttributeError, TypeError):
             got = (CheckState.UNKNOWN, "DISK_UNREADABLE")
         key = {
@@ -117,8 +146,9 @@ def data_volume_critical(
     if volume is None:
         return False
     try:
-        return _volume_state(policy, disk_usage_fn(volume))[0] is CheckState.CRITICAL
-    except (OSError, ValueError, AttributeError, TypeError):
+        usage = disk_usage_fn(_local_path(volume))
+        return _volume_state(policy, usage)[0] is CheckState.CRITICAL
+    except (_NetworkPath, OSError, ValueError, AttributeError, TypeError):
         return False
 
 
@@ -126,15 +156,22 @@ def data_volume_critical(
 
 
 def _scan(directory: str, pattern: str) -> list[tuple[str, os.stat_result]] | None:
-    """(name, stat) of regular files matching ``pattern``; ``None`` if unreadable."""
+    """(name, stat) of regular files matching ``pattern``; ``None`` if unreadable.
+
+    Raises :class:`_NetworkPath` for a network location (nothing is listed).
+    Symlinks are not regular files here and are never followed.
+    """
     out: list[tuple[str, os.stat_result]] = []
+    local = _local_path(directory)
     try:
-        with os.scandir(directory) as entries:
+        with os.scandir(local) as entries:
             for seen, entry in enumerate(entries, start=1):
                 if seen > _MAX_ENTRIES:
                     return None
-                if fnmatch.fnmatch(entry.name, pattern) and entry.is_file():
-                    out.append((entry.name, entry.stat()))
+                if fnmatch.fnmatch(entry.name, pattern) and entry.is_file(
+                    follow_symlinks=False
+                ):
+                    out.append((entry.name, entry.stat(follow_symlinks=False)))
     except OSError:
         return None
     return out
@@ -144,7 +181,12 @@ def backup_check(policy: OpsPolicy, now: datetime) -> CheckResult:
     """Newest stable backup: missing, empty, stale or fresh (metadata only)."""
     if not policy.backup_dir:
         return _check("ops.backup", CheckState.NOT_EVALUATED, "BACKUP_NOT_CONFIGURED")
-    files = _scan(policy.backup_dir, policy.backup_glob)
+    try:
+        files = _scan(policy.backup_dir, policy.backup_glob)
+    except _NetworkPath:
+        return _check(
+            "ops.backup", CheckState.UNAVAILABLE, "BACKUP_NETWORK_PATH_REFUSED"
+        )
     if files is None:
         return _check("ops.backup", CheckState.UNKNOWN, "BACKUP_DIR_UNREADABLE")
     now_ts = now.timestamp()
@@ -202,7 +244,12 @@ def binlog_check(
     """Binlog growth per day from directory sizes against the prior sample."""
     if not policy.binlog_dir:
         return _check("ops.binlog", CheckState.NOT_EVALUATED, "BINLOG_NOT_CONFIGURED")
-    files = _scan(policy.binlog_dir, policy.binlog_glob)
+    try:
+        files = _scan(policy.binlog_dir, policy.binlog_glob)
+    except _NetworkPath:
+        return _check(
+            "ops.binlog", CheckState.UNAVAILABLE, "BINLOG_NETWORK_PATH_REFUSED"
+        )
     if files is None:
         return _check("ops.binlog", CheckState.UNKNOWN, "BINLOG_DIR_UNREADABLE")
     total = sum(st.st_size for _name, st in files)
@@ -218,6 +265,12 @@ def binlog_check(
         return _check("ops.binlog", CheckState.UNKNOWN, "FIRST_SAMPLE", counts=counts)
     when, before = prior
     elapsed = (now - when).total_seconds()
+    if elapsed < 0 or elapsed > MAX_SAMPLE_AGE.total_seconds():
+        # Future-dated (the clock moved or the file is forged) or too stale to
+        # mean a daily rate: never judged, always re-baselined.
+        record()
+        code = "CLOCK_SKEW" if elapsed < 0 else "SAMPLE_TOO_OLD"
+        return _check("ops.binlog", CheckState.UNKNOWN, code, counts=counts)
     if elapsed < policy.binlog_min_interval_minutes * 60:
         return _check(
             "ops.binlog", CheckState.UNKNOWN, "SAMPLE_TOO_SOON", counts=counts
