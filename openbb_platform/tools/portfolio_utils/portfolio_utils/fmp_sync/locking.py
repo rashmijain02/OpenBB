@@ -264,7 +264,9 @@ def _overdue(owner: dict | None, deadline_s: float) -> bool:
 
 def _held_by_this_thread() -> _Held | None:
     me = threading.get_ident()
-    return next((h for h in _HELD.values() if h.thread_id == me), None)
+    with _REGISTRY_LOCK:
+        held = list(_HELD.values())
+    return next((h for h in held if h.thread_id == me), None)
 
 
 @contextlib.contextmanager
@@ -317,11 +319,13 @@ def target_lock(
         if not _write_owner(path, owner):
             findings_list.append(OWNER_WRITE_FAILED)
         held.findings = tuple(findings_list)
-        _HELD[key] = held
+        with _REGISTRY_LOCK:
+            _HELD[key] = held
         try:
             yield LockHandle(target, path, held.run_id, False, held.findings)
         finally:
-            _HELD.pop(key, None)
+            with _REGISTRY_LOCK:
+                _HELD.pop(key, None)
             owner["ended_utc"] = _utcnow().isoformat()
             _write_owner(path, owner)
             _os_unlock(fd)
