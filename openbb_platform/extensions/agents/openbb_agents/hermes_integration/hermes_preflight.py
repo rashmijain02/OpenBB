@@ -284,6 +284,9 @@ def _check_gateway(
     )
     selectable = len(litellm_config.select_private_aliases(facts, profile))
     counts = f"local={report.local} hosted={report.hosted} selectable={selectable}"
+    # The gateway key's {"disable_fallbacks": true} metadata lives in the proxy
+    # database, not in the config file, so it can never be verified here.
+    counts += " disable_fallbacks: unverified"
     if verdict.blocked:
         route = ComponentReport(
             name="litellm_routes",

@@ -450,6 +450,75 @@ def test_egress_guard_allows_loopback_and_restores_on_exit():
     ) == before
 
 
+def _patched_state():
+    return (
+        socket.getaddrinfo,
+        socket.gethostbyname,
+        socket.gethostbyname_ex,
+        socket.socket.connect,
+        socket.socket.connect_ex,
+        socket.socket.sendto,
+        getattr(socket.socket, "sendmsg", None),
+    )
+
+
+def test_egress_guard_refuses_legacy_lookups_and_datagram_sends():
+    with egress_guard(refuse_live_ports=True) as attempts:
+        with pytest.raises(socket.gaierror):
+            socket.gethostbyname("example.invalid")
+        with pytest.raises(socket.gaierror):
+            socket.gethostbyname_ex("example.invalid")
+        assert socket.gethostbyname("127.0.0.1") == "127.0.0.1"
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            with pytest.raises(EgressRefused):
+                sock.sendto(b"x", ("192.0.2.10", 9))
+            with pytest.raises(EgressRefused):
+                sock.sendto(b"x", 0, ("198.51.100.7", 9))
+            with pytest.raises(EgressRefused):
+                sock.sendto(b"x", ("127.0.0.1", 4000))
+            if hasattr(socket.socket, "sendmsg"):
+                with pytest.raises(EgressRefused):
+                    sock.sendmsg([b"x"], [], 0, ("192.0.2.11", 9))
+        finally:
+            sock.close()
+    expected = [
+        "dns:example.invalid",
+        "dns:example.invalid",
+        "send:192.0.2.10",
+        "send:198.51.100.7",
+        "send:127.0.0.1:4000",
+    ]
+    if hasattr(socket.socket, "sendmsg"):
+        expected.append("send:192.0.2.11")
+    assert attempts == expected
+
+
+def test_egress_guard_overlapping_uses_restore_the_originals():
+    """Out-of-order exits keep the guard on until the last one, then restore."""
+    before = _patched_state()
+    outer = egress_guard()
+    inner = egress_guard(refuse_live_ports=True)
+    outer_attempts = outer.__enter__()
+    inner_attempts = inner.__enter__()
+    outer.__exit__(None, None, None)  # the first guard leaves while one is active
+    assert _patched_state() != before
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        with pytest.raises(EgressRefused):
+            sock.connect(("192.0.2.10", 9))
+    finally:
+        sock.close()
+    inner.__exit__(None, None, None)
+    assert _patched_state() == before
+    assert outer_attempts == [] and inner_attempts == ["connect:192.0.2.10"]
+    with egress_guard() as a, egress_guard() as b:
+        with pytest.raises(socket.gaierror):
+            socket.getaddrinfo("example.invalid", 443)
+    assert a == b == ["dns:example.invalid"]
+    assert _patched_state() == before
+
+
 # --- loopback "model" ---------------------------------------------------------------
 
 
@@ -805,6 +874,7 @@ def test_preflight_reports_the_selectable_private_aliases(tmp_path, capsys):
     assert comps["route"]["failed_layer"] is None, comps["route"]
     assert comps["litellm_routes"]["detail"].startswith("private_route=ADMITTED")
     assert "selectable=1" in comps["litellm_routes"]["detail"]
+    assert "disable_fallbacks: unverified" in comps["litellm_routes"]["detail"]
 
 
 def test_preflight_probe_passes_the_proxy_config_to_the_gateway_edge(tmp_path):
