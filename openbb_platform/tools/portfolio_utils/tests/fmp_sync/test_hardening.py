@@ -228,7 +228,7 @@ def test_drive_type_checked_after_resolve(monkeypatch, tmp_path):
     "key", ["HTTPS_PROXY", "HTTP_PROXY", "REQUESTS_CA_BUNDLE", "FMP_SYNC_STATE_ROOT"]
 )
 def test_import_drift_of_transport_and_state_keys(world, key):  # noqa: F811
-    env: dict[str, str] = {}
+    env = {key: "before"}
     result = _admit(world, env=env, import_warmer_fn=lambda: env.update({key: "x"}))
     assert "DOTENV_DRIFT" in result.findings
 
@@ -237,7 +237,9 @@ def test_import_drift_of_transport_and_state_keys(world, key):  # noqa: F811
 def test_dotenv_file_drift_of_transport_keys(world, tmp_path, key):  # noqa: F811
     dotenv = tmp_path / "warmer.env"
     dotenv.write_text(f"{key}=http://127.0.0.1:9\n", encoding="utf-8")
-    result = _admit(world, env={}, dotenv_path=dotenv, import_warmer_fn=lambda: None)
+    result = _admit(
+        world, env={key: "before"}, dotenv_path=dotenv, import_warmer_fn=lambda: None
+    )
     assert "DOTENV_DRIFT" in result.findings
 
 
@@ -263,7 +265,7 @@ def test_lock_status_never_contends_for_the_byte_lock(
 )
 def test_import_drift_of_tls_proxy_and_key_settings(world, key):  # noqa: F811
     """A warmer import that sets TLS / proxy / FMP-key settings is drift."""
-    env: dict[str, str] = {}
+    env = {key: "before"}
     result = _admit(world, env=env, import_warmer_fn=lambda: env.update({key: "x"}))
     assert "DOTENV_DRIFT" in result.findings
 

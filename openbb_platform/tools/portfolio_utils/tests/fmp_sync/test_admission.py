@@ -453,3 +453,138 @@ def test_sync_python_replaces_profile_python_check(world):
     Path(legacy.profile_path).write_text(yaml.safe_dump(profile), encoding="utf-8")
     blocked = admit(legacy, mode="dry_run", **kwargs)
     assert "PYTHON_PIN_MISMATCH" in blocked.findings
+
+
+# ---------------------------------------------- .env supplies keys vs overrides
+
+
+def _dotenv_loader(env, dotenv):
+    """Mimic the warmer's ``load_dotenv(override=True)`` on the injected env."""
+
+    def _load():
+        from dotenv import dotenv_values  # pylint: disable=import-outside-toplevel
+
+        env.update({k: v or "" for k, v in dotenv_values(dotenv).items()})
+
+    return _load
+
+
+def _no_settings(tmp_path):
+    return {"settings_path": str(tmp_path / "absent-settings.json")}
+
+
+def test_dotenv_supplying_absent_keys_is_not_drift(world, tmp_path):
+    """Stripped cron env + .env supplying DB_*/FMP_API_KEY: reaches the DB identity check."""
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(
+        f"DB_HOST=127.0.0.1\nDB_NAME={DISPOSABLE_DB}\nDB_USER=u\n"
+        "DB_PASSWORD=SYNTHETIC-SENTINEL\nFMP_API_KEY=SYNTHETIC-KEY\n",
+        encoding="utf-8",
+    )
+    env: dict[str, str] = {}
+    conn = FakeConn(DISPOSABLE_DB)
+    result = _admit(
+        world,
+        mode="execute",
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        connect_fn=lambda: conn,
+        map=_no_settings(tmp_path),
+    )
+    assert result.admitted, result
+    assert conn.sql == ["SELECT DATABASE()"]
+    assert "SENTINEL" not in repr(result)
+
+
+def test_dotenv_overriding_present_key_is_drift(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text("DB_NAME=openbb_fmp_cache_test\n", encoding="utf-8")
+    env = {"DB_NAME": DISPOSABLE_DB}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+    )
+    assert "DOTENV_DRIFT" in result.findings
+
+
+def test_dotenv_equal_to_present_value_is_not_drift(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(f"DB_NAME={DISPOSABLE_DB}\n", encoding="utf-8")
+    env = {"DB_NAME": DISPOSABLE_DB}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        map=_no_settings(tmp_path),
+    )
+    assert result.admitted, result
+
+
+def test_dotenv_supplied_old_copy_is_blocked_by_target_check(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text("DB_HOST=127.0.0.1\nDB_NAME=openbb_fmp_cache\n", encoding="utf-8")
+    env: dict[str, str] = {}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        map=_no_settings(tmp_path),
+    )
+    assert "DOTENV_DRIFT" not in result.findings
+    assert result.failed_layer == FailedLayer.DATABASE.value
+    assert "RESOLVED_DATABASE_LEGACY_DEFAULT" in result.findings
+
+
+@pytest.mark.parametrize(
+    "line,finding",
+    [
+        ("FMP_CACHE_AUTO_CREATE_DB=true", "AUTO_CREATE_DB_ENABLED"),
+        ("FMP_CACHE_TEST_MODE=true", "TEST_MODE_ENV"),
+    ],
+)
+def test_dotenv_supplied_unsafe_flags_still_block(world, tmp_path, line, finding):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(line + "\n", encoding="utf-8")
+    env: dict[str, str] = {}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+    )
+    assert finding in result.findings
+
+
+def test_dotenv_unsafe_flag_blocks_before_the_warmer_import(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text("FMP_CACHE_AUTO_CREATE_DB=true\n", encoding="utf-8")
+    imported: list[bool] = []
+    result = _admit(
+        world,
+        env={},
+        dotenv_path=dotenv,
+        import_warmer_fn=lambda: imported.append(True),
+    )
+    assert "AUTO_CREATE_DB_ENABLED" in result.findings
+    assert imported == []
+
+
+def test_import_that_sets_unsafe_flag_blocks(world):
+    env: dict[str, str] = {}
+    result = _admit(
+        world,
+        env=env,
+        import_warmer_fn=lambda: env.update({"FMP_CACHE_TEST_MODE": "true"}),
+    )
+    assert "TEST_MODE_ENV" in result.findings
+
+
+def test_import_that_removes_a_present_key_is_drift(world):
+    env = {"DB_NAME": DISPOSABLE_DB}
+    result = _admit(world, env=env, import_warmer_fn=lambda: env.pop("DB_NAME"))
+    assert "DOTENV_DRIFT" in result.findings

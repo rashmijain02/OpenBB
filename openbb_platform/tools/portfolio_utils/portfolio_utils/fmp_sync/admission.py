@@ -277,10 +277,7 @@ def _check_origins(dmap, layers, module_origin_fn, git_facts_fn) -> None:
         )
 
 
-def _check_config(  # pylint: disable=too-many-arguments
-    dmap, layers, env, *, before, dotenv_path, import_warmer_fn
-) -> None:
-    config = layers.CONFIG.value
+def _check_flags(env: Mapping[str, str], config: str) -> None:
     if env.get("FMP_CACHE_TEST_MODE", "false").strip().lower() not in (
         "",
         "false",
@@ -289,11 +286,31 @@ def _check_config(  # pylint: disable=too-many-arguments
         raise _Blocked("BLOCKED_CONFIG", config, "TEST_MODE_ENV")
     if env.get(_AUTO_CREATE, "false").strip().lower() != "false":
         raise _Blocked("BLOCKED_CONFIG", config, "AUTO_CREATE_DB_ENABLED")
+
+
+def _overridden(before: Mapping[str, str], after: Mapping[str, str]) -> bool:
+    """Drift = a key present before whose hash changed or vanished (an override).
+
+    Keys that only appear afterwards were supplied by ``.env`` (the cron child
+    starts from a stripped environment); the resolved target is enforced
+    separately by the database layer.
+    """
+    return any(after.get(k) != v for k, v in before.items())
+
+
+def _check_config(  # pylint: disable=too-many-arguments
+    dmap, layers, env, *, before, dotenv_path, import_warmer_fn
+) -> None:
+    config = layers.CONFIG.value
+    _check_flags(env, config)
     if dotenv_path is not None and Path(dotenv_path).is_file():
         from dotenv import dotenv_values  # pylint: disable=import-outside-toplevel
 
-        would_set = _db_env({k: v or "" for k, v in dotenv_values(dotenv_path).items()})
-        if any(before.get(k) != v for k, v in would_set.items()):
+        loaded = {k: v or "" for k, v in dotenv_values(dotenv_path).items()}
+        # Keys the .env only supplies are allowed; the unsafe flags are judged on
+        # the merged view and the resolved target is checked after loading.
+        _check_flags({**env, **loaded}, config)
+        if _overridden(before, _db_env(loaded)):
             raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_DRIFT")
     try:
         import_warmer_fn()
@@ -301,8 +318,9 @@ def _check_config(  # pylint: disable=too-many-arguments
         raise _Blocked(
             "BLOCKED_MODULE_ORIGIN", layers.MODULE_ORIGIN.value, "WARMER_IMPORT_FAILED"
         ) from exc
-    if _db_env(env) != before:
+    if _overridden(before, _db_env(env)):
         raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_DRIFT")
+    _check_flags(env, config)
     # pylint: disable-next=import-outside-toplevel
     from openbb_fmp_cached.utils.database import safe_identifier
 
