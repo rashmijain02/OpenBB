@@ -260,6 +260,8 @@ def _malformed(document: dict, case: str) -> dict:
         broken["stages"] = []
     elif case == "bool_schema_version":
         broken["schema_version"] = True
+    elif case == "float_schema_version":
+        broken["schema_version"] = 1.0
     elif case == "bad_workflow_id":
         broken["workflow_id"] = "../Escape"
     elif case == "capabilities_not_object":
@@ -278,6 +280,7 @@ def _malformed(document: dict, case: str) -> dict:
         "stage_not_object",
         "empty_stages",
         "bool_schema_version",
+        "float_schema_version",
         "bad_workflow_id",
         "capabilities_not_object",
     ],

@@ -211,9 +211,13 @@ def _structural_problem(document: Any) -> str | None:
     """
     if not isinstance(document, dict):
         return "document is not an object"
-    if type(document.get("schema_version")) is not int or (
-        document["schema_version"] != 1
+    schema_version = document.get("schema_version")
+    if (
+        isinstance(schema_version, bool)
+        or not isinstance(schema_version, int)
+        or schema_version != 1
     ):
+        # ``True == 1`` and ``1.0 == 1``: only the int 1 is accepted.
         return "unsupported schema_version"
     workflow_id = document.get("workflow_id")
     if not isinstance(workflow_id, str) or not _WORKFLOW_ID.match(workflow_id):
