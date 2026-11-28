@@ -123,3 +123,12 @@ def test_unsafe_bind_is_refused_before_the_store_is_opened(monkeypatch):
         cli.main(["--transport", "http", "--host", "0.0.0.0", "--store", "none"]) == 2
     )
     assert opened == []
+
+
+def test_bad_allowed_origin_is_refused_before_the_store_is_opened(monkeypatch):
+    opened = []
+    monkeypatch.setattr(cli, "load_fmp_key", lambda: "k" * 32)
+    monkeypatch.setattr(cli, "build_upstream", lambda *a: opened.append(a))
+    args = ["--transport", "http", "--allow-origin", "*", "--store", "none"]
+    assert cli.main(args) == 2
+    assert opened == []

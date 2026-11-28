@@ -248,3 +248,60 @@ def test_http_app_closes_the_upstream_client_on_shutdown():
     with TestClient(build_http_app(Closable(), token="", port=8011), base_url=BASE):
         pass
     assert closed == [True]
+
+
+# --- /code-review (high) round 9: Workspace (browser) origins --------------------
+
+WORKSPACE = "https://pro.openbb.co"
+
+
+def test_configured_workspace_origin_is_accepted_with_cors_headers():
+    app = build_http_app(_Up(), token="", port=8011, allowed_origins=[WORKSPACE])
+    with TestClient(app, base_url=BASE) as client:
+        headers = dict(HEADERS, Origin=WORKSPACE)
+        resp = client.post("/mcp", content=json.dumps(INIT), headers=headers)
+        assert resp.status_code == 200
+        assert resp.headers["access-control-allow-origin"] == WORKSPACE
+        assert "mcp-session-id" in resp.headers["access-control-expose-headers"].lower()
+        evil = dict(HEADERS, Origin="https://evil.example")
+        assert (
+            client.post("/mcp", content=json.dumps(INIT), headers=evil).status_code
+            == 403
+        )
+
+
+def test_preflight_passes_bearer_auth_but_requests_still_need_the_token():
+    token = "t" * 32
+    app = build_http_app(_Up(), token=token, port=8011, allowed_origins=[WORKSPACE])
+    with TestClient(app, base_url=BASE) as client:
+        pre = client.options(
+            "/mcp",
+            headers={
+                "Origin": WORKSPACE,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type,mcp-session-id",
+            },
+        )
+        assert pre.status_code == 200
+        assert pre.headers["access-control-allow-origin"] == WORKSPACE
+        headers = dict(HEADERS, Origin=WORKSPACE)
+        assert (
+            client.post("/mcp", content=json.dumps(INIT), headers=headers).status_code
+            == 401
+        )
+
+
+def test_no_cors_headers_without_configured_origins():
+    with TestClient(
+        build_http_app(_Up(), token="", port=8011), base_url=BASE
+    ) as client:
+        resp = _post(client, INIT)
+        assert "access-control-allow-origin" not in resp.headers
+
+
+@pytest.mark.parametrize(
+    "origin", ["*", "pro.openbb.co", "https://pro.openbb.co/", "javascript://x"]
+)
+def test_wildcard_and_malformed_origins_are_refused(origin):
+    with pytest.raises(ValueError):
+        build_http_app(_Up(), token="", port=8011, allowed_origins=[origin])

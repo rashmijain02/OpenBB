@@ -75,9 +75,20 @@ Register `http://127.0.0.1:8011/mcp` as a **separate** MCP server. Do not add it
 Portfolio MCP profiles: its tool names (`quote`, `search`, `news`, …) are FMP's, and the
 Portfolio MCP inventory and Workspace contract checks do not cover it.
 
+Workspace calls the server from the browser, so its origin must be allowed explicitly.
+Otherwise the DNS-rebinding check refuses it and the browser gets no CORS headers:
+
+```bash
+python -m openbb_fmp_cached_mcp --transport http --allow-origin https://pro.openbb.co
+```
+
+`--allow-origin` can be repeated, and `FMP_CACHED_MCP_ALLOWED_ORIGINS` (comma-separated) is the
+default. Each value must be an exact `http(s)://host[:port]`; `*` is refused. Preflights are
+answered before the bearer-token check, but every real request still needs the token.
+
 ## 4. Provenance
 
-Every result carries `result._meta["openbb/provenance"] = {state, source, asOf, reason?}`. The
+Every result that reached FMP or the store carries `result._meta["openbb/provenance"] = {state, source, asOf, reason?}`. The
 `state` values come from the #1269 `DataState` vocabulary:
 
 | state | Meaning |

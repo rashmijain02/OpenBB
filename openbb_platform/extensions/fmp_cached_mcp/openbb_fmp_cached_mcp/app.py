@@ -16,11 +16,13 @@ from __future__ import annotations
 import contextlib
 import hmac
 import ipaddress
-from collections.abc import AsyncIterator
+import re
+from collections.abc import AsyncIterator, Sequence
 
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -61,6 +63,32 @@ def check_bind(host: str, token: str) -> None:
         )
 
 
+_ORIGIN = re.compile(
+    r"https?://[A-Za-z0-9.\-]+(:[0-9]{1,5})?|https?://\[[0-9A-Fa-f:.]+\](:[0-9]{1,5})?"
+)
+_CORS_HEADERS = [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "Last-Event-ID",
+    "Mcp-Protocol-Version",
+    "Mcp-Session-Id",
+]
+
+
+def check_origins(origins: Sequence[str]) -> list[str]:
+    """Validate browser origins (e.g. Workspace) allowed to call the server.
+
+    Each must be an exact ``http(s)://host[:port]``; wildcards are refused.
+    """
+    bad = [o for o in origins if not _ORIGIN.fullmatch(o)]
+    if bad:
+        raise ValueError(
+            f"invalid allowed origin {bad[0]!r}: use scheme://host[:port], no '*'"
+        )
+    return list(origins)
+
+
 class BearerAuth:
     """ASGI middleware requiring ``Authorization: Bearer <token>``."""
 
@@ -84,8 +112,13 @@ class BearerAuth:
             await send({"type": "websocket.close", "code": 1008})
 
 
-def loopback_security(port: int, host: str = DEFAULT_HOST) -> TransportSecuritySettings:
-    """Host/Origin allow-lists for a loopback bind (DNS-rebinding protection)."""
+def loopback_security(
+    port: int, host: str = DEFAULT_HOST, origins: Sequence[str] = ()
+) -> TransportSecuritySettings:
+    """Host/Origin allow-lists for a loopback bind (DNS-rebinding protection).
+
+    ``origins`` adds browser origins, such as a Workspace front end.
+    """
     names = list(LOOPBACK_NAMES)
     bound = f"[{host.strip('[]')}]" if ":" in host else host
     if bound not in names:
@@ -93,7 +126,7 @@ def loopback_security(port: int, host: str = DEFAULT_HOST) -> TransportSecurityS
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=[f"{name}:{port}" for name in names],
-        allowed_origins=[f"http://{name}:{port}" for name in names],
+        allowed_origins=[f"http://{name}:{port}" for name in names] + list(origins),
     )
 
 
@@ -116,9 +149,16 @@ def build_http_app(
     token: str = "",
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    allowed_origins: Sequence[str] = (),
 ) -> ASGIApp:
-    """Streamable-HTTP app serving the parity server at ``/mcp``."""
-    security = loopback_security(port, host) if is_loopback(host) else None
+    """Streamable-HTTP app serving the parity server at ``/mcp``.
+
+    ``allowed_origins`` lets a browser client (OpenBB Workspace) connect: they
+    join the DNS-rebinding allow-list and get CORS headers. CORS preflights are
+    answered before ``BearerAuth``; every real request still needs the token.
+    """
+    origins = check_origins(allowed_origins)
+    security = loopback_security(port, host, origins) if is_loopback(host) else None
     manager = StreamableHTTPSessionManager(
         app=build_server(upstream), json_response=True, security_settings=security
     )
@@ -138,4 +178,14 @@ def build_http_app(
         routes=[Route("/mcp", endpoint=_SessionEndpoint(manager), methods=None)],
         lifespan=lifespan,
     )
-    return BearerAuth(app, token) if token else app
+    if token:
+        app = BearerAuth(app, token)
+    if origins:
+        app = CORSMiddleware(
+            app,
+            allow_origins=origins,
+            allow_methods=["GET", "POST", "DELETE"],
+            allow_headers=_CORS_HEADERS,
+            expose_headers=["Mcp-Session-Id"],
+        )
+    return app

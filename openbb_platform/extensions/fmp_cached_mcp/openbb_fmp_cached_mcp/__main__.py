@@ -23,6 +23,7 @@ from openbb_fmp_cached_mcp.app import (
     BindError,
     build_http_app,
     check_bind,
+    check_origins,
 )
 from openbb_fmp_cached_mcp.server import build_server
 from openbb_fmp_cached_mcp.service import StoreBackedUpstream
@@ -106,6 +107,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--store", default=os.environ.get("FMP_CACHED_MCP_STORE", "auto")
     )
+    parser.add_argument(
+        "--allow-origin",
+        action="append",
+        default=None,
+        help="browser origin allowed to call the HTTP server, e.g. Workspace "
+        "(repeatable; default: FMP_CACHED_MCP_ALLOWED_ORIGINS, comma-separated)",
+    )
     args = parser.parse_args(argv)
     if not valid_store_spec(args.store):
         parser.error("--store must be auto, mysql, none or sqlite:PATH (non-empty)")
@@ -120,10 +128,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     token = os.environ.get("FMP_CACHED_MCP_TOKEN", "")
+    origins = args.allow_origin or [
+        o.strip()
+        for o in os.environ.get("FMP_CACHED_MCP_ALLOWED_ORIGINS", "").split(",")
+        if o.strip()
+    ]
     if args.transport == "http":
         try:  # refuse an unsafe bind before touching the store or the network
             check_bind(args.host, token)
-        except BindError as exc:
+            check_origins(origins)
+        except (BindError, ValueError) as exc:
             sys.stderr.write(f"error: {exc}\n")
             return 2
     try:
@@ -143,7 +157,13 @@ def main(argv: list[str] | None = None) -> int:
             "serving on loopback without a bearer token; set FMP_CACHED_MCP_TOKEN "
             "to require one"
         )
-    app = build_http_app(upstream, token=token, host=args.host, port=args.port)
+    app = build_http_app(
+        upstream,
+        token=token,
+        host=args.host,
+        port=args.port,
+        allowed_origins=origins,
+    )
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
 
