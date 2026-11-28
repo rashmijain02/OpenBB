@@ -129,15 +129,12 @@ Do not modify the command or add additional flags.
 * **Narrow bridge with cliffs on both sides**: There's only one safe way forward. Provide specific guardrails and exact instructions (low freedom). Example: database migrations that must run in exact sequence.
 * **Open field with no hazards**: Many paths lead to success. Give general direction and trust the agent to find the best route (high freedom). Example: code reviews where context determines the best approach.
 
-### Test with the repository execution model
+### Test with the models the skill will run on
 
 Skills act as additions to models, so effectiveness depends on the underlying
-model. This repository permits only `gpt-5.6-sol` for agent execution, so test
-every Skill with that exact model.
-
-Do not use another model as a compatibility check or fallback. If
-`gpt-5.6-sol` is unavailable, report the blocked evaluation rather than
-substituting another model.
+model. Test each Skill with the model(s) it will actually run on, selected per
+the model policy in `docs/dev-strategy.md` (D1). If no suitable model is
+available, report the blocked evaluation rather than silently substituting.
 
 ## Skill structure
 
@@ -1127,7 +1124,7 @@ Before sharing a Skill, verify:
 ### Testing
 
 * [ ] At least three evaluations created
-* [ ] Tested with `gpt-5.6-sol`
+* [ ] Tested with the model(s) the skill will run on (see D1)
 * [ ] Tested with real usage scenarios
 * [ ] Team feedback incorporated (if applicable)
 

@@ -31,12 +31,27 @@ If a `specs/gh-<NN>-<slug>/handoff.md` already exists, the work is ready to ship
 
 ## 2. Models (per tool)
 
-Canonical: D1 and D13 in `docs/dev-strategy.md`. In short: **Copilot CLI uses GPT-family models;
-Claude Code uses Claude models** (main agent Opus; subagents `opus` / `sonnet`, `haiku` for
-read-only search). Name the model on every dispatch; if it is unavailable, stop and report. The
-tool you are running in decides the family. A model clause inside any skill copy (including the
-user-level `local-*-review` skills) applies only when that skill runs in its own tool family; it is
-never a reason to report BLOCKED in the other tool.
+Canonical: D1 in `docs/dev-strategy.md`. In short: use the best available model suited to the
+task (complexity, ambiguity, risk), in whichever tool you are running. Name the model explicitly
+on every dispatch; if none is suitable, stop and report. Never pin a model family or ID as a
+requirement; concrete names are examples only. A model clause inside any skill copy (including the
+user-level `local-*-review` skills) is never a reason to report BLOCKED.
+
+### Model selection in Claude Code (suggested defaults, not pins)
+
+D1 governs: pick the best available model for the task and name it on every dispatch. For Claude Code skills, start from these defaults and revisit them as models change:
+
+| Tier | Use for |
+|---|---|
+| Haiku (fast, low cost) | Read-only search and inventory, grep sweeps, link/format checks, summarising logs or CI output, board/issue hygiene, mechanical edits with exact instructions |
+| Sonnet (default) | Most well-specified issue work: bounded TDD implementation, docs/skill rewrites, PR review-comment fixes, test writing, reviews of small/medium diffs, local CI evidence |
+| Opus (escalation) | Design/specs (Phase 1), ambiguous requirements, cross-cutting or high-risk changes (security, auth, data migration/retention, concurrency, brokerage or personal data), tricky-bug root cause, security review of sensitive diffs, final review of large batches |
+| Newer models | Trial on low-risk tasks against the current tier; promote only with evidence |
+
+- Start at the lowest tier that fits; escalate one tier when a subagent stalls, needs a second retry, or review finds correctness issues.
+- For high-risk changes the reviewer's tier is at least the implementer's; for routine docs, Sonnet reviewing Sonnet is fine.
+- If a brief will not fit the 100K context budget, split the issue rather than escalating to Opus.
+- Set reasoning effort per dispatch: low for mechanical work, high for design and security.
 
 ## 3. Authority profiles
 
@@ -69,7 +84,7 @@ alone do not pass a gate.
 | PowerShell (`deploy/windows/**`) | Pester under **pwsh 7 with Pester 4.10.1**: `pwsh -NoProfile -Command "Import-Module Pester -RequiredVersion 4.10.1; Invoke-Pester deploy/windows/tests -EnableExit"`. Windows PowerShell 5.1 ships Pester 3.4 and is not a valid runner. |
 | .NET (`services/windows/**`) | `dotnet test services/windows/OpenBB.ServiceHost/tests/OpenBB.ServiceHost.Tests` (builds the test child too) |
 | Anything needing admin/UAC or a real service/browser | Live acceptance, human in the loop (template below) |
-| Every PR before merge | Local code, security and privacy reviews (`local-code-review`, `local-security-review`, `local-privacy-review`; in Claude Code `/code-review` and `/security-review` cover the first two) on the PR diff vs its base; every finding fixed or filed |
+| Every PR before merge | Local code, security and privacy reviews (`local-code-review`, `local-security-review`, `local-privacy-review`, canonical at `.claude/skills/<name>/SKILL.md`; in Claude Code `/code-review` and `/security-review` cover the first two) on the PR diff vs its base; every finding fixed or filed |
 | Every batch before merge | Local CI: `scripts/local_ci.py --merged-with origin/portfolio` (OM8). Until `scripts/local_ci.py` is on `portfolio`, the lead runs, locally, every GitHub Actions job the PR's changed files would trigger (commands from `.github/workflows/*.yml`), posts the evidence in a PR comment, and names in that comment any job that cannot be reproduced (never counted as passed). No merge without that evidence. |
 
 No CI workflow runs the Pester or .NET suites (STATE.md gap G4), so they are mandatory locally when

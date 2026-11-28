@@ -13,7 +13,7 @@ You run Phase 3 of the relay in `docs/dev-strategy.md`. Input: a feature branch 
 `specs/gh-NN-slug/handoff.md` (or, on the small-fix route, a `fix/<topic>-gh-NN` branch). Output:
 a fork-internal PR with green CI and every finding resolved, merged by the owner.
 
-Model (D1): GPT family, named explicitly on every dispatch. If unavailable, stop.
+Model (D1): best available for the task, named explicitly on every dispatch. If none is suitable, stop.
 
 Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
 `$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`.

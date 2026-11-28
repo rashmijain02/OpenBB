@@ -5,7 +5,7 @@ Use this template when dispatching an implementer subagent.
 ```
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
-  model: gpt-5.6-sol
+  model: <best available model for this task per D1>
   prompt: |
     You are implementing Task N: [task name]
 

@@ -1,6 +1,6 @@
 # Subagent Recommendations
 
-Subagents are specialized `gpt-5.6-sol` instances that run in parallel, each
+Subagents are specialized model instances that run in parallel, each
 with their own context window and tool access. They're ideal for focused
 reviews, analysis, or generation tasks.
 
@@ -18,7 +18,7 @@ reviews, analysis, or generation tasks.
 | Team wants consistent review | Quality focus |
 
 **Value**: Runs code review in parallel while you continue working
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Grep, Glob, Bash
 
 ---
@@ -34,7 +34,7 @@ reviews, analysis, or generation tasks.
 | API keys in code | Environment variable patterns |
 
 **Value**: Catches OWASP vulnerabilities, auth issues, data exposure
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Grep, Glob (read-only for safety)
 
 ---
@@ -49,7 +49,7 @@ reviews, analysis, or generation tasks.
 | Testing framework configured | jest, pytest, vitest in deps |
 
 **Value**: Generates tests matching project conventions
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Write, Grep, Glob
 
 ---
@@ -67,7 +67,7 @@ reviews, analysis, or generation tasks.
 | Undocumented APIs | Routes without docs |
 
 **Value**: Generates OpenAPI specs, endpoint documentation
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Write, Grep, Glob
 
 ---
@@ -83,7 +83,7 @@ reviews, analysis, or generation tasks.
 | Complex algorithms | Nested loops, recursion |
 
 **Value**: Finds N+1 queries, O(n²) algorithms, memory leaks
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Grep, Glob, Bash
 
 ---
@@ -98,7 +98,7 @@ reviews, analysis, or generation tasks.
 | User-facing UI | Not just API project |
 
 **Value**: Catches accessibility issues, UX problems, responsive design gaps
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Grep, Glob
 
 ---
@@ -115,7 +115,7 @@ reviews, analysis, or generation tasks.
 | Major version behind | Significant version gaps |
 
 **Value**: Updates dependencies incrementally with testing
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Write, Bash, Grep
 
 ---
@@ -130,7 +130,7 @@ reviews, analysis, or generation tasks.
 | Refactoring planned | Architectural changes |
 
 **Value**: Plans and executes migrations incrementally
-**Model**: `gpt-5.6-sol`
+**Model**: best available for the task (see D1); name it explicitly
 **Tools**: Read, Write, Grep, Glob, Bash
 
 ---
@@ -166,8 +166,9 @@ Subagents go in `.claude/agents/`:
 
 ## Model Selection Guide
 
-Use `gpt-5.6-sol` for every recommended subagent. Specify the full model ID
-explicitly; do not use aliases or substitute another model.
+Per D1 in `docs/dev-strategy.md`, pick the best available model for each subagent's task
+(complexity, ambiguity, risk). Name the model explicitly on every dispatch; if none is
+suitable, stop and report.
 
 ---
 

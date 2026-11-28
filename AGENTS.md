@@ -19,11 +19,12 @@ Specs live in `specs/gh-<NN>-<slug>/`; principles in `.specify/memory/constituti
 
 ## Model policy (D1)
 
-Name the model explicitly on every dispatch that accepts one; if it is unavailable, stop and
-report. Never fall back to another model family.
+Use the best available model for the task, name it explicitly on every dispatch that accepts
+one, and stop and report if none is suitable; never pin a model family. Canonical wording:
+`docs/dev-strategy.md` D1.
 
-- **Copilot CLI** (Phases 1 and 3, small fixes): GPT family, chosen by task complexity.
-- **Claude Code** (Phase 2, tricky bugs and refactors): Claude models only.
+- **Copilot CLI**: Phases 1 and 3, small fixes.
+- **Claude Code**: Phase 2, tricky bugs and refactors.
 
 This governs execution agents, not models the product deploys, trains, evaluates or documents.
 
