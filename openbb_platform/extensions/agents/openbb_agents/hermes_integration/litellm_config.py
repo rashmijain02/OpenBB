@@ -23,7 +23,7 @@ from urllib.parse import urlsplit
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from .hermes_config import RouteVerdict, is_loopback_host
+from .hermes_config import RouteVerdict, is_loopback_host, safe_label
 from .models import (
     AliasReport,
     BackendKind,
@@ -46,6 +46,67 @@ CALLBACK_KEYS = (
     "service_callback",
 )
 SECRET_KEYS = ("master_key", "database_url")
+
+# Fail-closed allowlists, each name verified against litellm 1.106.6 (``Router``
+# arguments, ``litellm`` module attributes, ``general_settings.get`` reads in
+# ``litellm/proxy``, ``LiteLLM_Params`` fields). A key outside them blocks the
+# private route as ``unvetted_key:<section>.<key>``.
+TOP_LEVEL_VETTED = frozenset(
+    {"model_list", "litellm_settings", "router_settings", "general_settings", "include"}
+)
+ROUTER_SETTINGS_VETTED = frozenset(
+    {
+        *FALLBACK_KEYS,
+        "num_retries",
+        "routing_strategy",
+        "routing_strategy_args",
+        "timeout",
+        "stream_timeout",
+        "retry_after",
+        "allowed_fails",
+        "cooldown_time",
+        "disable_cooldowns",
+        "enable_pre_call_checks",
+        "max_fallbacks",
+        "redis_host",
+        "redis_port",
+        "redis_password",
+        "model_group_alias",  # policed: any value blocks
+        "routing_groups",  # policed: any value blocks
+    }
+)
+LITELLM_SETTINGS_VETTED = frozenset(
+    {
+        *FALLBACK_KEYS,
+        *CALLBACK_KEYS,
+        "num_retries",
+        "turn_off_message_logging",
+        "set_verbose",
+        "drop_params",
+        "modify_params",
+        "model_alias_map",  # policed: any value blocks
+    }
+)
+GENERAL_SETTINGS_VETTED = frozenset(
+    {
+        *SECRET_KEYS,
+        "store_prompts_in_spend_logs",
+        "allow_client_side_credentials",  # policed: true blocks
+        "store_model_in_db",  # policed: true blocks
+        "trusted_proxy_ranges",  # client-IP trust for auth, not routing
+        "disable_spend_logs",
+        "disable_master_key_return",
+        "database_connection_timeout",
+        "proxy_batch_write_at",
+        "background_health_checks",
+        "health_check_interval",
+    }
+)
+MODEL_ENTRY_VETTED = frozenset({"model_name", "litellm_params", "model_info"})
+LITELLM_PARAMS_VETTED = frozenset(
+    {"model", "api_base", "api_key", "rpm", "tpm", "timeout", "stream_timeout"}
+)
+CLIENTSIDE_PARAMS = "configurable_clientside_auth_params"
 
 # Dotted keys the reader consumes; a seam-contract test pins them against the
 # fixtures and, under the O5 interpreter, against litellm 1.106.6 itself.
@@ -82,6 +143,7 @@ class Deployment(BaseModel):
     api_key: SecretRef = SecretRef()
     kind: BackendKind
     reasons: list[str] = Field(default_factory=list)
+    clientside_auth_params: bool = False  # callers may override api_base/api_key
 
 
 class AliasFacts(BaseModel):
@@ -108,6 +170,9 @@ class GatewayFacts(BaseModel):
     set_verbose: bool | None = None
     store_prompts_in_spend_logs: bool | None = None
     secrets: dict[str, SecretRef] = Field(default_factory=dict)
+    # Fail-closed findings: setting names only, never values.
+    unvetted_keys: list[str] = Field(default_factory=list)
+    config_issues: list[str] = Field(default_factory=list)
 
 
 def _secret(value: Any) -> SecretRef:
@@ -146,8 +211,10 @@ def _norm_host(host: str) -> str:
 
 
 def _classify(
-    params: dict[str, Any], profile: FinanceRuntimeProfile | None
+    entry: dict[str, Any], profile: FinanceRuntimeProfile | None
 ) -> Deployment:
+    raw = entry.get("litellm_params")
+    params: dict[str, Any] = raw if isinstance(raw, dict) else {}
     model = params.get("model")
     provider = (
         model.split("/", 1)[0] if isinstance(model, str) and "/" in model else None
@@ -171,6 +238,13 @@ def _classify(
             profile
         ):
             reasons.append("api_base_not_allowlisted_local_runtime")
+    # Unknown keys (``base_url``, ``api_version``...) can redirect a request.
+    unknown = [k for k in entry if k not in MODEL_ENTRY_VETTED]
+    unknown += [
+        k for k in params if k not in LITELLM_PARAMS_VETTED and k != CLIENTSIDE_PARAMS
+    ]
+    if unknown:
+        reasons.append("unvetted_params")
     return Deployment(
         provider=provider,
         api_host=host,
@@ -178,6 +252,7 @@ def _classify(
         api_key=_secret(params.get("api_key")),
         kind=BackendKind.HOSTED if reasons else BackendKind.LOCAL,
         reasons=reasons,
+        clientside_auth_params=bool(params.get(CLIENTSIDE_PARAMS)),
     )
 
 
@@ -210,9 +285,7 @@ def read_gateway_facts(
         if not isinstance(entry, dict):
             continue
         name = str(entry.get("model_name"))
-        params = entry.get("litellm_params")
-        params = params if isinstance(params, dict) else {}
-        groups.setdefault(name, []).append(_classify(params, profile))
+        groups.setdefault(name, []).append(_classify(entry, profile))
     aliases = []
     for name, deps in groups.items():
         reasons = sorted({r for d in deps for r in d.reasons})
@@ -259,7 +332,51 @@ def read_gateway_facts(
         set_verbose=lset.get("set_verbose") is True,
         store_prompts_in_spend_logs=sp if isinstance(sp, bool) else None,
         secrets={k: _secret(gen.get(k)) for k in SECRET_KEYS},
+        unvetted_keys=_unvetted(loaded),
+        config_issues=_config_issues(loaded),
     )
+
+
+def _section(loaded: dict[str, Any], name: str) -> dict[str, Any]:
+    block = loaded.get(name)
+    return block if isinstance(block, dict) else {}
+
+
+def _unvetted(loaded: dict[str, Any]) -> list[str]:
+    """Names of settings outside the allowlists, as ``section.key``."""
+    out = [safe_label(k) for k in loaded if str(k) not in TOP_LEVEL_VETTED]
+    for name, vetted in (
+        ("router_settings", ROUTER_SETTINGS_VETTED),
+        ("litellm_settings", LITELLM_SETTINGS_VETTED),
+        ("general_settings", GENERAL_SETTINGS_VETTED),
+    ):
+        if loaded.get(name) is not None and not isinstance(loaded.get(name), dict):
+            out.append(name)
+        out += [
+            f"{name}.{safe_label(k)}"
+            for k in _section(loaded, name)
+            if str(k) not in vetted
+        ]
+    return out
+
+
+def _config_issues(loaded: dict[str, Any]) -> list[str]:
+    """List settings that re-route or widen who can route, whatever the aliases."""
+    router = _section(loaded, "router_settings")
+    lset = _section(loaded, "litellm_settings")
+    gen = _section(loaded, "general_settings")
+    checks = (
+        (router.get("model_group_alias"), "model_group_alias_set"),
+        (router.get("routing_groups"), "routing_groups_set"),
+        (lset.get("model_alias_map"), "model_alias_map_set"),
+        (loaded.get("include"), "include_set"),
+        (
+            gen.get("allow_client_side_credentials") is True,
+            "client_side_credentials_allowed",
+        ),
+        (gen.get("store_model_in_db") is True, "models_stored_in_db"),
+    )
+    return [reason for value, reason in checks if value]
 
 
 def evaluate_gateway(
@@ -280,6 +397,12 @@ def evaluate_gateway(
             reasons.append(f"alias_{name}_missing")
         elif alias.kind is not BackendKind.LOCAL:
             reasons.append(f"alias_{name}_hosted")
+            if any(d.kind is BackendKind.LOCAL for d in alias.deployments):
+                reasons.append(f"alias_{name}_group_has_hosted_deployment")
+        if alias is not None and any(
+            d.clientside_auth_params for d in alias.deployments
+        ):
+            reasons.append(f"alias_{name}_clientside_auth_params")
         # A wildcard route that is hosted can capture a private alias name.
         for other in facts.aliases:
             if (
@@ -304,6 +427,8 @@ def evaluate_gateway(
         reasons.append("verbose_logging_enabled")
     if facts.store_prompts_in_spend_logs is True:
         reasons.append("prompts_stored_in_spend_logs")
+    reasons += facts.config_issues
+    reasons += [f"unvetted_key:{key}" for key in facts.unvetted_keys]
     reasons = list(dict.fromkeys(reasons))
     return RouteVerdict(blocked=bool(reasons), reasons=reasons)
 

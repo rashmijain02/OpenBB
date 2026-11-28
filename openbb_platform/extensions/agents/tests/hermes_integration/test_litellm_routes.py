@@ -264,6 +264,128 @@ def test_empty_allowlist_blocks_even_with_local_alias(tmp_path):
     assert "no_private_alias_allowlisted" in verdict.reasons
 
 
+# --- fail-closed gateway policy (#1338 SECURITY-2, CODE-2) ------------------------------
+
+
+def _with(path, value):
+    def mutate(cfg):
+        node = cfg
+        *head, last = path.split(".")
+        for part in head:
+            node = (
+                node[int(part)] if isinstance(node, list) else node.setdefault(part, {})
+            )
+        node[last] = value
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (
+            _with("router_settings.model_group_alias", {ALIAS: "hosted-a"}),
+            "model_group_alias_set",
+        ),
+        (
+            _with("litellm_settings.model_alias_map", {ALIAS: "hosted-a"}),
+            "model_alias_map_set",
+        ),
+        (
+            _with("router_settings.routing_groups", [{"name": "g"}]),
+            "routing_groups_set",
+        ),
+        (_with("include", ["more.yaml"]), "include_set"),
+        (
+            _with("general_settings.allow_client_side_credentials", True),
+            "client_side_credentials_allowed",
+        ),
+        (_with("general_settings.store_model_in_db", True), "models_stored_in_db"),
+        (
+            _with(
+                "model_list.0.litellm_params.configurable_clientside_auth_params",
+                ["api_base"],
+            ),
+            f"alias_{ALIAS}_clientside_auth_params",
+        ),
+        (
+            _with("model_list.0.litellm_params.base_url", "https://h.invalid"),
+            f"alias_{ALIAS}_hosted",
+        ),
+        (
+            _with("router_settings.brand_new_router_key", 1),
+            "unvetted_key:router_settings.brand_new_router_key",
+        ),
+        (_with("litellm_settings.cache", True), "unvetted_key:litellm_settings.cache"),
+        (
+            _with("general_settings.pass_through_endpoints", [{}]),
+            "unvetted_key:general_settings.pass_through_endpoints",
+        ),
+        (
+            _with("environment_variables", {"X": "y"}),
+            "unvetted_key:environment_variables",
+        ),
+        (_with("guardrails", [{}]), "unvetted_key:guardrails"),
+    ],
+)
+def test_gateway_policy_blocks_every_unread_routing_key(tmp_path, mutate, reason):
+    cfg = _local_cfg()
+    mutate(cfg)
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_private_alias_group_with_hosted_deployment_names_the_group(tmp_path):
+    cfg = _local_cfg()
+    cfg["model_list"].append(
+        {"model_name": ALIAS, "litellm_params": {"model": "github_copilot/x"}}
+    )
+    _, verdict = _verdict(tmp_path, cfg)
+    assert f"alias_{ALIAS}_group_has_hosted_deployment" in verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        _with("general_settings.allow_client_side_credentials", False),
+        _with("general_settings.store_model_in_db", False),
+        _with("include", []),
+        _with("router_settings.routing_strategy", "simple-shuffle"),
+        _with("general_settings.trusted_proxy_ranges", []),
+        _with(
+            "model_list.1.litellm_params.configurable_clientside_auth_params",
+            ["api_key"],
+        ),
+    ],
+)
+def test_gateway_policy_admits_vetted_settings(tmp_path, mutate):
+    cfg = _local_cfg()
+    mutate(cfg)
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked is False, verdict.reasons
+
+
+@pytest.mark.requires_agents
+def test_gateway_allowlists_are_real_settings_in_litellm_1_106_6(litellm_mod):
+    root = Path(litellm_mod.__file__).parent
+    router_args = set(litellm_mod.Router.get_valid_args())
+    proxy_src = "".join(
+        p.read_text(encoding="utf-8") for p in (root / "proxy").rglob("*.py")
+    )
+    for key in (*litellm_config.ROUTER_SETTINGS_VETTED, "model_group_alias"):
+        assert key in router_args, key
+    assert "routing_groups" in proxy_src
+    for key in (*litellm_config.LITELLM_SETTINGS_VETTED, "model_alias_map"):
+        assert hasattr(litellm_mod, key), key
+    for key in litellm_config.GENERAL_SETTINGS_VETTED:
+        assert f'"{key}"' in proxy_src, key
+    assert "`include`" in proxy_src
+    params = (root / "types" / "router.py").read_text(encoding="utf-8")
+    for key in litellm_config.LITELLM_PARAMS_VETTED:
+        assert f"{key}:" in params, key
+    assert "configurable_clientside_auth_params:" in params
+
+
 # --- secrets ----------------------------------------------------------------------------
 
 

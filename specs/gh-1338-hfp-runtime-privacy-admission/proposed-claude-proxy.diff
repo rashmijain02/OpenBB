@@ -3,6 +3,8 @@
 # Placeholders: <LOCAL_RUNTIME_PORT> (the O3 runtime, loopback only), <LOCAL_MODEL_ID>,
 # <LOCAL_RUNTIME_KEY_ENV> (env var NAME; omit api_key if the runtime has no key).
 # No values are included. Existing env-var references (master_key, database_url) are unchanged.
+# Do not add model_group_alias, model_alias_map, routing_groups, include, callbacks or any
+# setting outside the preflight allowlists (litellm_config.py): each blocks the private route.
 # Setting names verified against litellm 1.106.6 (the proxy venv's runtime), not the 1.109.0 checkout.
 # After applying, also set the OpenBB owner profile:
 #   private_alias_allowlist: [finance-private]
@@ -38,4 +40,9 @@
    master_key: os.environ/<existing name, unchanged>
    database_url: os.environ/<existing name, unchanged>
 +  store_prompts_in_spend_logs: false
++  # Explicit: callers may not send their own api_base/api_key (a client-side
++  # credential can point finance-private at a hosted endpoint). Keep models in
++  # this YAML only; the preflight cannot see models stored in the database.
++  allow_client_side_credentials: false
++  store_model_in_db: false
    trusted_proxy_ranges: []

@@ -66,8 +66,12 @@ Preconditions: PR A merged; O3 runtime chosen and listening on 127.0.0.1:<LOCAL_
                                     Expect: litellm_routes private_route=ADMITTED local=1 hosted=6; alias finance-private kind=local
 4. Restart the proxy (litellm-copilot-start). Start it WITHOUT --detailed_debug and with LITELLM_LOG unset or INFO:
    at DEBUG, litellm 1.106.6 logs the prompt even with turn_off_message_logging (proved in-process).
-5. Create a scoped virtual key limited to models: [finance-private] (no hosted alias in its model list); store it
-   in the secret store under the name from step 2. Never paste it into chat or a file in the repo.
+5. Create a scoped virtual key limited to models: [finance-private] (no hosted alias in its model list) and
+   metadata {"disable_fallbacks": true} (litellm 1.106.6 copies that key metadata onto every request, so a
+   caller-supplied "fallbacks" body field is not honoured); store it in the secret store under the name from
+   step 2. Never paste it into chat or a file in the repo.
+   Also confirm in the admin UI or /model/info (owner-run) that no model is stored in the database
+   (store_model_in_db is false) and that the YAML has no `include:` section: the preflight reads only this YAML.
 6. With a synthetic sentinel prompt only: request-level fallback check. Send one chat request with the scoped key,
    model finance-private, and body field "fallbacks": ["<a hosted alias>"] while the local runtime is stopped.
                                     Expect: an error; no hosted request. (In-process, a caller-supplied fallbacks
