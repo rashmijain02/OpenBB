@@ -512,8 +512,7 @@ def test_private_selector_excludes_aliases_the_gateway_does_not_serve(tmp_path):
     facts, profile = _gateway(tmp_path)
     assert litellm_config.select_private_aliases(facts, profile, served=set()) == ()
     assert (
-        litellm_config.select_private_aliases(facts, profile, served={"hosted-a"})
-        == ()
+        litellm_config.select_private_aliases(facts, profile, served={"hosted-a"}) == ()
     )
 
 
@@ -548,9 +547,7 @@ def test_private_selector_is_empty_unless_the_gateway_is_local_only(
 ):
     facts, profile = _gateway(tmp_path, name=name, mutate=mutate)
     assert litellm_config.select_private_aliases(facts, profile) == ()
-    assert (
-        litellm_config.select_private_aliases(facts, profile, served={PRIVATE}) == ()
-    )
+    assert litellm_config.select_private_aliases(facts, profile, served={PRIVATE}) == ()
 
 
 class _Served(handshake.LoopbackTransport):
@@ -641,3 +638,57 @@ def test_preflight_probe_passes_the_proxy_config_to_the_gateway_edge(tmp_path):
     )
     edge = next(e for e in report.edges if e.name == "hermes_litellm")
     assert edge.detail == "private_alias_not_local_only", edge
+
+
+# --- memory switches under Hermes YAML semantics and the managed overlay ------------
+
+
+def _safe_cfg(tmp_path: Path) -> Path:
+    cfg = tmp_path / "config.yaml"
+    text = (HERMES_FX / "config-finance-safe.yaml").read_text(encoding="utf-8")
+    cfg.write_text(text, encoding="utf-8")
+    return cfg
+
+
+def _managed_memory(tmp_path: Path, text: str) -> Path:
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "config.yaml").write_text(text, encoding="utf-8")
+    return managed / "config.yaml"
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("memory:\n  memory_enabled: y\n", "memory_enabled_not_false"),
+        ("memory:\n  user_profile_enabled: Y\n", "user_profile_enabled_not_false"),
+        ("memory:\n  memory_enabled: 'false'\n", "memory_enabled_not_false"),
+        ("memory: on\n", "memory_enabled_not_false"),
+    ],
+)
+def test_managed_overlay_cannot_turn_memory_on_unseen(tmp_path, text, reason):
+    profile, _ = _route_profile(tmp_path)
+    facts = hermes_config.read_route_facts(
+        _safe_cfg(tmp_path), _managed_memory(tmp_path, text)
+    )
+    verdict = hermes_config.evaluate_route(facts, profile)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_memory_n_is_yaml11_false_as_in_hermes(tmp_path):
+    profile, _ = _route_profile(tmp_path)
+    text = "memory:\n  memory_enabled: n\n  user_profile_enabled: N\n"
+    facts = hermes_config.read_route_facts(
+        _safe_cfg(tmp_path), _managed_memory(tmp_path, text)
+    )
+    verdict = hermes_config.evaluate_route(facts, profile)
+    memory = {"memory_enabled_not_false", "user_profile_enabled_not_false"}
+    assert not memory & set(verdict.reasons), verdict.reasons
+
+
+def test_duplicate_memory_key_is_refused(tmp_path):
+    text = "memory:\n  memory_enabled: false\n  memory_enabled: true\n"
+    with pytest.raises(hermes_config.ConfigDuplicateKeyError):
+        hermes_config.read_route_facts(
+            _safe_cfg(tmp_path), _managed_memory(tmp_path, text)
+        )

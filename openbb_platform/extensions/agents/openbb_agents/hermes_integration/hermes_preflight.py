@@ -239,7 +239,7 @@ def _check_skills(
         facts = hermes_config.read_skill_facts(
             config, hermes_config.managed_config_path()
         )
-    except (OSError, ValueError, yaml.YAMLError):
+    except _CONFIG_ERRORS:
         return blocked("hermes_config_unreadable")
     verdict = skills_admission.evaluate_skills(
         facts, profile.admitted_skills, skills_root, quarantine=quarantine

@@ -600,3 +600,109 @@ def test_cli_skills_read_managed_scope_config(tmp_path, capsys, monkeypatch):
         code, comp, _, _ = _skills_component(argv, capsys)
     assert code == 2 and comp["failed_layer"] == "skills", comp
     assert "curator" in comp["detail"], comp
+
+
+# --- one loader: Hermes YAML semantics for skill keys (#1338 x #1339) ---------------
+
+
+def _managed_text(tmp_path: Path, text: str) -> Path:
+    managed = tmp_path / "managed-raw"
+    managed.mkdir()
+    (managed / "config.yaml").write_text(text, encoding="utf-8")
+    return managed
+
+
+_ALL_ON_YAML11 = (
+    "curator:\n  enabled: y\n"
+    "skills:\n  inline_shell: Y\n  project_discovery: yes\n"
+    "auxiliary:\n  background_review:\n    enabled: on\n"
+)
+
+
+def test_managed_overlay_yaml11_y_turns_every_skill_switch_on(tmp_path):
+    home = _home(tmp_path)
+    managed = _managed_text(tmp_path, _ALL_ON_YAML11) / "config.yaml"
+    facts = hermes_config.read_skill_facts(_safe_config(tmp_path), managed=managed)
+    assert facts.curator_enabled is True and facts.inline_shell is True
+    assert facts.project_discovery is True and facts.background_review_enabled
+    with read_only(home / "skills"):
+        reasons = skills_admission.evaluate_skills(
+            facts, _manifest(home), home / "skills"
+        ).reasons
+    assert {
+        "curator_enabled",
+        "inline_shell_enabled",
+        "project_discovery_enabled",
+        "background_review_enabled",
+    } <= set(reasons), reasons
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("y", True), ("n", False)])
+def test_user_config_yaml11_y_and_n_follow_hermes_booleans(tmp_path, raw, expected):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(f"curator:\n  enabled: {raw}\n", encoding="utf-8")
+    assert hermes_config.read_skill_facts(cfg).curator_enabled is expected
+
+
+@pytest.mark.parametrize("value", ["'false'", "0", "null", "[]"])
+def test_skill_switch_other_than_explicit_false_counts_as_on(tmp_path, value):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(f"curator:\n  enabled: {value}\n", encoding="utf-8")
+    facts = hermes_config.read_skill_facts(cfg)
+    reasons = skills_admission.evaluate_skills(facts, {}, tmp_path).reasons
+    assert "curator_enabled" in reasons, reasons
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "curator:\n  enabled: false\n  enabled: true\n",
+        "base: &b {enabled: true}\ncurator:\n  <<: *b\n  <<: *b\n",
+    ],
+)
+def test_duplicate_skill_key_is_refused_in_user_and_managed(tmp_path, text):
+    cfg = tmp_path / "dup.yaml"
+    cfg.write_text(text, encoding="utf-8")
+    with pytest.raises(hermes_config.ConfigDuplicateKeyError):
+        hermes_config.read_skill_facts(cfg)
+    managed = _managed_text(tmp_path, text) / "config.yaml"
+    with pytest.raises(hermes_config.ConfigDuplicateKeyError):
+        hermes_config.read_skill_facts(_safe_config(tmp_path), managed=managed)
+
+
+def _cli_skills_argv(tmp_path, home):
+    return [
+        "--profile",
+        str(_cli_profile(tmp_path, _manifest(home))),
+        "--hermes-config",
+        str(_safe_config(tmp_path)),
+        "--skills-root",
+        str(home / "skills"),
+    ]
+
+
+def test_cli_skills_block_on_duplicate_key_in_managed_scope(
+    tmp_path, capsys, monkeypatch
+):
+    home = _home(tmp_path)
+    managed = _managed_text(tmp_path, "curator:\n  enabled: false\n  enabled: y\n")
+    monkeypatch.setenv("HERMES_MANAGED_DIR", str(managed))
+    with read_only(home / "skills"):
+        code, comp, _, _ = _skills_component(_cli_skills_argv(tmp_path, home), capsys)
+    assert code == 2 and comp["failed_layer"] == "skills", comp
+    assert "hermes_config_unreadable" in comp["detail"], comp
+
+
+def test_cli_skills_treat_recursion_error_as_config_error(
+    tmp_path, capsys, monkeypatch
+):
+    home = _home(tmp_path)
+
+    def deep(*_args, **_kwargs):
+        raise RecursionError("synthetic")
+
+    monkeypatch.setattr(hermes_config, "read_skill_facts", deep)
+    with read_only(home / "skills"):
+        code, comp, _, _ = _skills_component(_cli_skills_argv(tmp_path, home), capsys)
+    assert code == 2 and comp["failed_layer"] == "skills", comp
+    assert "hermes_config_unreadable" in comp["detail"], comp
