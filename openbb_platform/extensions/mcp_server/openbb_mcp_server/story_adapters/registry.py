@@ -472,6 +472,14 @@ class RunStore:
         )
         return None
 
+    def owner(self, run_id: str) -> str | None:
+        """Return the principal that owns ``run_id`` (worker-side checks only)."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT principal FROM story_runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return row[0] if row else None
+
     def get(self, principal: str, run_id: str) -> RunRecord | None:
         """Return the run only if ``principal`` owns it."""
         with self._connect() as connection:

@@ -184,6 +184,14 @@ class PlanStore:
             ).fetchone()
         return self._plan(row) if row is not None else None
 
+    def by_run(self, run_id: str) -> Plan | None:
+        """Return the plan whose one run is ``run_id`` (worker-side checks)."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM story_plans WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return self._plan(row) if row is not None else None
+
     def preview(
         self, principal: str, workflow_id: str, document: dict[str, Any], digest: str
     ) -> Plan:

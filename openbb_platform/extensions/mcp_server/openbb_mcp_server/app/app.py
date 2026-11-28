@@ -881,6 +881,8 @@ def create_mcp_server(
     fastapi_app: FastAPI,
     httpx_kwargs: dict | None = None,
     auth: Any | None = None,
+    *,
+    owner_principal: str | None = None,
 ) -> FastMCP:
     """Create and configure the FastMCP server from a FastAPI app instance.
 
@@ -896,6 +898,10 @@ def create_mcp_server(
         The authentication provider to use for the server.
         Should be a valid FastMCP.server.auth.AuthProvider instance,
         or an object accepted by the `auth` parameter of FastMCP initialization.
+    owner_principal: str | None
+        In-process only: the recorded owner a jobs worker acts for (#1342).
+        It replaces the principal derived from ``auth`` (which must still be
+        effective token credentials); never set from a request.
 
     Returns
     -------
@@ -945,6 +951,12 @@ def create_mcp_server(
         if isinstance(auth_provider, TokenAuthProvider) and auth_provider.server_auth
         else None
     )
+    if owner_principal is not None:
+        if story_principal is None:
+            raise RuntimeError(
+                "owner_principal needs effective token credentials (#1342)."
+            )
+        story_principal = owner_principal
 
     source_app = _compose_profile_adapters(
         fastapi_app,

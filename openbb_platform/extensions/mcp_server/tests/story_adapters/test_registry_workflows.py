@@ -246,7 +246,10 @@ def test_shipped_workflow_loads_into_catalog():
     """Control for the refusal test: the shipped document is accepted."""
     catalog = WorkflowCatalog(SHIPPED)
     assert not catalog.refused
-    assert [s.story_id for s in catalog.summaries()] == [WORKFLOW_ID]
+    assert WORKFLOW_ID in [s.story_id for s in catalog.summaries()]
+    assert "workflow:synthetic.basket_xray" in {
+        s.story_id for s in catalog.summaries()
+    }  # #1342 T02
 
 
 def _malformed(document: dict, case: str) -> dict:
