@@ -12,8 +12,12 @@ Only the synthetic pure-math workflow is wired (CLAUDE.md Lead decision Q5).
 
 Resume (#1341): ``--resume RUN_ID`` reloads the run, refuses it when the
 admitted workflow digest differs from the run's (``blocked``: start a new run),
-skips every stage whose checkpoint holds ``succeeded`` and an
-``output_sha256`` (reported ``reused``) and runs the rest. A checkpoint whose
+reuses every stage whose checkpoint holds ``succeeded`` and an
+``output_sha256`` (reported ``reused``) and runs the rest. A reused pure-math
+stage (``_PURE_TOOLS``) is recomputed, never read from a cache, so later stages
+get its output; a recomputed hash that differs from the checkpoint fails the
+stage (``resume_output_mismatch``). A reused side-effecting stage (artifact
+writes, checkpoints) is never repeated (#1342 T03). A checkpoint whose
 reply was lost is reconciled by reading the run back, never rewritten. The run
 reports success only when the server's ``story_run_outcome`` says
 ``succeeded``. ``--crash-after STAGE`` (only with
@@ -80,6 +84,14 @@ SYNTHETIC_COMMODITY_TRUSTS: tuple[str, ...] = ("SYN-GLD",)
 _CHECKPOINT_TOOL = "story_run_checkpoint"
 _CREATE_TOOL = "story_run_create"
 _GET_TOOL = "story_run_get"
+# Deterministic engine reads with no side effect: recomputed on resume (#1342).
+_PURE_TOOLS = frozenset(
+    {
+        "story_basket_effective_positions",
+        "story_concentration",
+        "story_construction_targets",
+    }
+)
 _OUTCOME_TOOL = "story_run_outcome"
 FAULT_ENV = "OPENBB_HFP_FAULT_INJECTION"
 CRASH_EXIT = 75
@@ -112,6 +124,10 @@ class FastMcpInvoker:
         result = await self._client.call_tool(tool, dict(arguments))
         content = result.structured_content
         return content if content is not None else {"result": result.data}
+
+
+class ResumeOutputMismatch(Exception):
+    """A recomputed pure stage's output differs from its checkpointed hash."""
 
 
 @dataclass(frozen=True)
@@ -428,6 +444,34 @@ async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-loc
         pin = manifest.capabilities[stage.capabilities[0]]
         builder = _ARGUMENTS.get(pin.tool)
         recorded = _reused(run, stage.id) if resume_run_id else None
+        if recorded is not None and pin.tool in _PURE_TOOLS:
+            context = {
+                "inputs": inputs,
+                "stage": stage,
+                "outputs": outputs,
+                "stage_id": stage.id,
+                **state,
+            }
+            try:
+                if builder is None:
+                    raise LookupError("no argument binding for tool")
+                output = await invoker.call(pin.server, pin.tool, builder(context))
+                if canonical_json_sha256(output) != recorded:
+                    raise ResumeOutputMismatch(stage.id)
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                code = (
+                    "resume_output_mismatch"
+                    if isinstance(error, ResumeOutputMismatch)
+                    else type(error).__name__
+                )
+                results.append(
+                    StageResult(stage.id, "failed", pin.tool, error=code[:_MAX_ERROR])
+                )
+                results.extend(
+                    StageResult(s.id, "not_run") for s in stages[position + 1 :]
+                )
+                break
+            outputs[stage.id] = output
         if recorded is not None:
             evidence_id = f"{digest[:12]}:{stage.id}:{recorded[:12]}"
             hashes[stage.id] = recorded

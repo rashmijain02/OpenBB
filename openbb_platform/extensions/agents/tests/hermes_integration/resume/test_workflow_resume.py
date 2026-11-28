@@ -118,7 +118,11 @@ def _crashed_run(document):
 
 
 def test_resume_skips_checkpointed_stages(store):
-    """A restarted runner reuses concentration and runs only what is left."""
+    """A restarted runner reuses concentration and runs only what is left.
+
+    The reused pure-math stage is recomputed, not read from a cache, and its
+    checkpoint is not rewritten (#1342 T03 lead decision).
+    """
     document = json.loads(DOCUMENT.read_text("utf-8"))
     run_id = _crashed_run(document)
 
@@ -136,7 +140,7 @@ def test_resume_skips_checkpointed_stages(store):
         ("construction", False),
         ("checkpoint", False),
     ]
-    assert counting.calls["story_concentration"] == 0
+    assert counting.calls["story_concentration"] == 1  # recomputed
     assert counting.calls["story_construction_targets"] == 1
     assert counting.calls["story_run_create"] == 0
     assert result.outcome == "succeeded" and result.succeeded

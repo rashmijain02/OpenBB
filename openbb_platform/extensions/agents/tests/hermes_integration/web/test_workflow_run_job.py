@@ -263,3 +263,85 @@ def test_worker_cancelled_run_runs_nothing(stack):
     assert message.startswith("run_cancelled")
     assert set(_stage_status(stack, started["run_id"]).values()) == {"pending"}
     assert _artifacts(stack, started["run_id"]) == {}
+
+
+class _Crash(Exception):
+    """Simulated worker death after a durable checkpoint."""
+
+
+def _crash_mid_run(stack, started, stage) -> None:
+    """Run the plan's run as its owner and die once ``stage`` is checkpointed."""
+    from openbb_agents.hermes_integration import workflow_runner
+
+    document = json.loads(
+        (Path(default_workflow_dir()) / f"{WID}.workflow.json").read_text("utf-8")
+    )
+
+    def hook(_run_id, stage_id):
+        if stage_id == stage:
+            raise _Crash(stage_id)
+
+    with pytest.raises(_Crash):
+        asyncio.run(
+            workflow_runner._run_in_process(
+                document,
+                workflow_runner.synthetic_inputs(WID),
+                "portfolio-ops",
+                resume_run_id=started["run_id"],
+                after_stage=hook,
+                owner_principal=PRINCIPAL,
+            )
+        )
+
+
+def test_resume_after_crash_recomputes_math_and_never_rewrites_tables(stack):
+    """T03: a crashed run resumes; pure stages recompute, side effects stay once."""
+    started = _started(stack)
+    _crash_mid_run(stack, started, "effective_table")
+    status = _stage_status(stack, started["run_id"])
+    assert status["effective_table"] == "succeeded"
+    assert status["concentration_table"] == "pending"
+    first = _rows(
+        stack,
+        "SELECT artifact_id FROM story_artifacts WHERE run_id = ? AND name = ?",
+        started["run_id"],
+        "effective_table",
+    )
+    _run_ok(stack, started)  # the queued job resumes the same run
+    assert len(_rows(stack, "SELECT run_id FROM story_runs")) == 1
+    assert _stage_status(stack, started["run_id"]) == dict.fromkeys(STAGES, "succeeded")
+    tables = {
+        k: v
+        for k, v in _artifacts(stack, started["run_id"]).items()
+        if not k.startswith("story.workflow_run-")
+    }
+    assert tables == _expected_tables()
+    again = _rows(
+        stack,
+        "SELECT artifact_id FROM story_artifacts WHERE run_id = ? AND name = ?",
+        started["run_id"],
+        "effective_table",
+    )
+    assert again == first and len(first) == 1
+
+
+def test_resume_recomputed_hash_mismatch_fails_the_stage(stack, monkeypatch):
+    """A pure stage whose recomputation differs from its checkpoint fails closed."""
+    from openbb_agents.hermes_integration import workflow_runner
+
+    started = _started(stack)
+    _crash_mid_run(stack, started, "concentration")
+    original = workflow_runner._effective_args
+
+    def drifted(ctx):
+        args = original(ctx)
+        args["basket"] = args["basket"][:-1]
+        return args
+
+    monkeypatch.setitem(
+        workflow_runner._ARGUMENTS, "story_basket_effective_positions", drifted
+    )
+    assert stack["worker"].run_once().status == "failed"
+    _, message = _job_error(stack, started["job_id"])
+    assert "effective: resume_output_mismatch" in message
+    assert _artifacts(stack, started["run_id"]) == {}
