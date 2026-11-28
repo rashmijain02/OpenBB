@@ -41,14 +41,14 @@ PKG = Path(registry.__file__).resolve().parents[1]
 BAH, TWR = "buy_and_hold", "target_weight_rebalance"
 RECEIPTS: dict[tuple[str, str], dict[str, str]] = {
     (BAH, "1.0.0"): {
-        "code_sha256": "d11ec2d5bc48cf04bf33b85c6b0cd6ecabae13118409dd0450c144202e0028d1",
+        "code_sha256": "902955c7e28f4135e98ea453e6abc7baf836e76175f7329e6fdbe913cf136575",
         "param_schema_sha256": "2154e944794a16b4465e64b0798fa95c932eae6839f587c550c4ddd725dddc66",
-        "spec_sha256": "c08541e7d1398d15482f1f190c08e0b732f253ddc41536817d9f2c4cb30b260c",
+        "spec_sha256": "fb5ad1e5dd9877cf88eae922b4f626e6ceb5e4283d0d73d1afb9c836b36c0184",
     },
     (TWR, "1.0.0"): {
-        "code_sha256": "2e52e63b2b2e62a88a29dc96e737eb23a525d5f5dcf21cae3c48a633347f9f6e",
+        "code_sha256": "902955c7e28f4135e98ea453e6abc7baf836e76175f7329e6fdbe913cf136575",
         "param_schema_sha256": "611597da61879e314df15f3441e17d59c66bf04417f98ff499786b5fc98a3a3e",
-        "spec_sha256": "7d07d0ea95933afcfed00284d58acca2a59c8ef3b3ae0c76decfed29ed4f14ed",
+        "spec_sha256": "9eef1f20509a63e2a617678b826efc0465eb160544f9fe18aab7705af1a0de4f",
     },
 }
 
@@ -101,6 +101,36 @@ def test_pinned_code_hashes_match_sources():
         want = _independent_code_hash(PKG, entry.spec.code_files)
         assert registry.pin_for(sid, ver).code_sha256 == want
         assert registry.verify(sid, ver).code_sha256 == want
+
+
+def _local_imports(path: Path) -> set[str]:
+    """Return reviewed-package modules a source file imports (relative imports)."""
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.ImportFrom) and node.level == 1:
+            if node.module:
+                found.add(node.module)
+            else:
+                found.update(a.name for a in node.names)
+    return found
+
+
+def test_every_strategy_fingerprints_all_files_the_host_imports():
+    reviewed = PKG / "reviewed"
+    closure, todo = {"host"}, ["host"]
+    while todo:
+        for mod in _local_imports(reviewed / f"{todo.pop()}.py"):
+            if mod not in closure:
+                closure.add(mod)
+                todo.append(mod)
+    want = {f"reviewed/{m}.py" for m in closure}
+    assert "reviewed/target_weight_rebalance.py" in want
+    for (sid, ver), entry in registry.ALLOWLIST.items():
+        assert want <= set(entry.spec.code_files), (
+            sid,
+            ver,
+            sorted(want - set(entry.spec.code_files)),
+        )
 
 
 def test_code_hash_lf_normalised(tmp_path):
@@ -581,11 +611,16 @@ def test_run_v2_reviewed_execution_is_executable(tmp_path, make_dataset, executi
     env = {DATA_ROOT_ENV: str(tmp_path)}
     body = _v2(ds_id, params={"symbols": [manifest.symbols[0]]}, execution=execution)
     rep = runs.run(body, env=env, engine=_fill, fixed_precision=9)
-    assert rep["binding"]["execution_sha256"] == registry.run_binding(
-        registry.resolve(BAH, "1.0.0", {"symbols": [manifest.symbols[0]]}, execution),
-        ds_id,
-        "9.9",
-    )["execution_sha256"]
+    assert (
+        rep["binding"]["execution_sha256"]
+        == registry.run_binding(
+            registry.resolve(
+                BAH, "1.0.0", {"symbols": [manifest.symbols[0]]}, execution
+            ),
+            ds_id,
+            "9.9",
+        )["execution_sha256"]
+    )
 
 
 def test_run_v2_rebalance_is_executable(tmp_path, make_dataset):

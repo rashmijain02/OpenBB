@@ -22,6 +22,20 @@ ID_PATTERN = r"^[a-z][a-z0-9_]{0,47}$"
 SEMVER_PATTERN = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
 CODE_FILE_PATTERN = r"^[a-z0-9_]+(/[a-z0-9_]+)*\.py$"
 MAX_TAKER_BPS = Decimal(100)
+# Every file the strategy host imports (transitively) executes in a reviewed run,
+# so every strategy fingerprints all of them, not only the files it names itself.
+HOST_CODE_FILES = (
+    "reviewed/spec.py",
+    "reviewed/params.py",
+    "reviewed/hashing.py",
+    "reviewed/errors.py",
+    "reviewed/sizing.py",
+    "reviewed/staging.py",
+    "reviewed/booking.py",
+    "reviewed/host.py",
+    "reviewed/buy_and_hold.py",
+    "reviewed/target_weight_rebalance.py",
+)
 
 # Assumption names a spec declares support for, and a run selects one of each.
 ASSUMPTION_FIELDS = (

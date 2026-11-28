@@ -9,8 +9,8 @@ event (a synthetic open print for ``next_open``, the bar close for
 reports its fills. Settlement, staging and sizing live in the host, never in
 the engine (a Nautilus CASH account has no settlement concept).
 
-This module then repeats the plan independently from the reported fills
-(:func:`account`): every fill must equal a staged order at the event price with
+This module then replays the ledger independently of the engine, from the
+reported fills (:func:`account`): every fill must equal a staged order at the event price with
 the declared commission, the books never use unsettled cash, and the engine's
 own final cash must equal the ledger at cents, with no tolerance. A denied or
 rejected order is a loud ``process`` error, never a skipped trade. The default

@@ -13,7 +13,7 @@ from decimal import Decimal
 from . import sizing
 from .hashing import digest
 from .params import BuyAndHoldParams
-from .spec import StrategySpec, SupportedAssumptions
+from .spec import HOST_CODE_FILES, StrategySpec, SupportedAssumptions
 
 STRATEGY_ID = "buy_and_hold"
 VERSION = "1.0.0"
@@ -33,16 +33,7 @@ SUPPORTED = SupportedAssumptions(
     corporate_actions=("reject_if_present_in_window",),
 )
 
-CODE_FILES = (
-    "reviewed/buy_and_hold.py",
-    "reviewed/spec.py",
-    "reviewed/params.py",
-    "reviewed/hashing.py",
-    "reviewed/sizing.py",
-    "reviewed/staging.py",
-    "reviewed/booking.py",
-    "reviewed/host.py",
-)
+CODE_FILES = HOST_CODE_FILES
 
 
 def build_spec() -> StrategySpec:
