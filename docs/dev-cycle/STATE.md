@@ -24,7 +24,7 @@ applies them lives in the canonical skill
 
 | # | Gap | Resolution |
 |---|---|---|
-| G1 | User-level skills mandate GPT-only execution and "never a non-GPT fallback", so a Claude Code run reported the security review BLOCKED, although D1 assigns Phase 2 to Claude. | D13 in `docs/dev-strategy.md`: D1 is per tool and overrides model clauses in any skill copy. The canonical skill states it; the owner re-syncs the user-level copies. |
+| G1 | Resolved by the model-agnostic D1 policy (#1347). User-level skills mandated GPT-only execution and "never a non-GPT fallback", so a Claude Code run reported the security review BLOCKED, although D1 assigns Phase 2 to Claude. | D13 in `docs/dev-strategy.md`: D1 is model-agnostic and overrides model clauses in any skill copy. The canonical skill states it; the owner re-syncs the user-level copies. |
 | G2 | Overlapping entry points (`/openbb-dev-cycle` command, `openbb-execute`, `.github/skills/openbb-*`, user-level skill); none canonical for Claude-only routes. | `.claude/skills/openbb-dev-cycle/SKILL.md` is canonical; the others link to it. |
 | G3 | The owner's operating model was not in the repo. | OM1–OM9 below; D14 in `docs/dev-strategy.md`. |
 | G4 | No CI or workflow runs `deploy/windows` Pester tests or `services/windows` .NET tests. The Windows installer shipped with 5+ defects (#1311, Windows service install cannot reach a healthy state). | Gate checklist in the canonical skill requires them locally when those paths change. Adding them to local CI is follow-up work. |
@@ -43,7 +43,7 @@ Owner decision, 2026-11-27. These rules are canonical here; other documents link
 | OM3 | One subagent per issue. It handles that issue and its PR review comments, then is retired. The next issue gets a fresh subagent. |
 | OM4 | Token economy: each subagent's context stays at 100K tokens or less (tight briefs, file pointers, split oversized issues). |
 | OM5 | Group meaningful related issues into one branch and PR before running long CI (local CI, full suites, live acceptance), so expensive gates run once per batch. |
-| OM6 | Claude models are approved for Claude Code execution (D1). |
+| OM6 | Models are chosen per D1 (best available for the task, never pinned to a family). |
 | OM7 | The lead may merge into `portfolio` once the local code, security and privacy reviews and local CI are clean on the PR diff against `portfolio`. |
 | OM8 | Local CI (`scripts/local_ci.py --merged-with origin/portfolio`) is the permanent merge gate, not GitHub Actions. Local CI is always a merge gate: until it lands on `portfolio`, the lead runs, locally, every GitHub Actions job the PR's changed files would trigger (commands from `.github/workflows/*.yml`), posts the evidence in a PR comment, and names any job that cannot be reproduced (never counted as passed). No merge without that evidence. |
 | OM9 | Up to 2–3 implementer slots and 2–3 review slots run in parallel; the lead serializes merges. |

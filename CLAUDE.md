@@ -34,13 +34,15 @@ G1), merges PRs (or delegates merges into `portfolio` to a lead, D15), and alone
 promotion PRs. Reviewers are named by function: code reviewer,
 security reviewer, privacy reviewer.
 
-**Model policy by role (D1).** Name the model explicitly on every dispatch that accepts one. If it
-is unavailable, stop and report the blocker; never fall back to another model family.
+**Model policy by role (D1).** Use the best available model for the task (complexity, ambiguity,
+risk) and name it explicitly on every dispatch that accepts one. If no suitable model is
+available, stop and report the blocker; never silently degrade or pin a model family. Canonical
+wording: `docs/dev-strategy.md` D1.
 
-| Where | Phases | Models |
-|---|---|---|
-| GitHub Copilot CLI | Phase 1 (specify, plan, issues), Phase 3 (ship), small-fix route | GPT family, chosen by task complexity |
-| Claude Code | Phase 2 (execute), tricky-bug / refactor route | Claude: Opus main agent; Claude subagents (`opus`, `sonnet`; `haiku` for read-only search) |
+| Where | Phases |
+|---|---|
+| GitHub Copilot CLI | Phase 1 (specify, plan, issues), Phase 3 (ship), small-fix route |
+| Claude Code | Phase 2 (execute), tricky-bug / refactor route |
 
 This policy governs execution agents only, not models the product deploys, trains, evaluates or
 documents.
@@ -52,7 +54,7 @@ more than 3 issues. Never merge locally into `portfolio`, `portfolio_validations
 This is the default, owner-interactive profile; the lead-delegated profile (D15) and the
 lead/subagent operating model (D14, `docs/dev-cycle/STATE.md`) are applied by the canonical
 `.claude/skills/openbb-dev-cycle/SKILL.md`, which also holds routes, gates and environment traps.
-D1 is per tool and overrides model clauses in any skill copy (D13).
+D1 is model-agnostic and overrides model clauses in any skill copy (D13).
 
 ## Workspace override — Portfolio Validation checkout
 
