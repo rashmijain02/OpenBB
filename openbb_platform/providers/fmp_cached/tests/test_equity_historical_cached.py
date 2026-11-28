@@ -654,7 +654,7 @@ class TestMissingRangeDetection:
 
         # Positive assertion: the source MUST reference `holidays` in the
         # density numerator's `_is_trading_day` call.
-        good_pattern = re.compile(r"_is_trading_day\s*\(\s*d\s*,\s*holidays\s*\)")
+        good_pattern = re.compile(r"_is_trading_day\s*\(\s*d\s*,\s*holidays\s*[,)]")
         assert good_pattern.search(code), (
             "density numerator does not filter with `_is_trading_day(d, "
             "holidays)` — the symmetric-filter fix (PR #348 review) requires "

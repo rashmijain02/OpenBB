@@ -45,6 +45,10 @@ from openbb_core.provider.utils.errors import EmptyDataError
 from pydantic import Field, field_validator, model_validator
 
 from openbb_fmp_cached.utils.database import execute_many, execute_query, init_database
+from openbb_fmp_cached.utils.session_calendar import (
+    classify_symbol,
+    is_calendar_day_open,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -332,11 +336,17 @@ class FMPCachedEquityHistoricalFetcher(
                         # operators no way to identify which dates were
                         # missing OR distinguish real fetch failures from
                         # tolerable data holes.
+                        asset_class = classify_symbol(symbol)
                         trading_days_requested = _count_trading_days_in_range(
-                            single_query.start_date, single_query.end_date
+                            single_query.start_date,
+                            single_query.end_date,
+                            asset_class,
                         )
                         _log_partial_gap_severity(
-                            symbol, remaining_gaps, trading_days_requested
+                            symbol,
+                            remaining_gaps,
+                            trading_days_requested,
+                            asset_class,
                         )
 
                     # Always use complete_data from cache as it includes both previous cache + newly stored data
@@ -545,7 +555,11 @@ def _analyze_cache_gaps(
 
         # Detect gaps in the requested date range
         missing_ranges = _detect_missing_ranges(
-            query.start_date, query.end_date, cached_dates, query.interval
+            query.start_date,
+            query.end_date,
+            cached_dates,
+            query.interval,
+            classify_symbol(query.symbol),
         )
 
         _elapsed = _time.time() - _t0
@@ -631,6 +645,7 @@ def _log_partial_gap_severity(
     symbol: str,
     remaining_gaps: list[tuple[date, date]],
     trading_days_requested: int,
+    asset_class: str = "equity",
 ) -> None:
     """Log partial-fetch-completion gaps at severity matched to gap fraction (bd-lyzk).
 
@@ -707,7 +722,9 @@ def _log_partial_gap_severity(
         clipped_end = min(gap_end, today)
         if clipped_end < gap_start:
             continue  # entire gap is in the future — not a real miss
-        missing_days += _count_trading_days_in_range(gap_start, clipped_end)
+        missing_days += _count_trading_days_in_range(
+            gap_start, clipped_end, asset_class
+        )
 
     if missing_days == 0:
         # All gaps were in the future — treat as no-op silently. This
@@ -759,8 +776,18 @@ def _log_partial_gap_severity(
         )
 
 
-def _count_trading_days_in_range(start_date: date, end_date: date) -> int:
-    """Count US trading days (Mon-Fri, excluding basic holidays) in [start, end].
+def _count_trading_days_in_range(
+    start_date: date,
+    end_date: date,
+    asset_class: str = "equity",
+    *,
+    intraday: bool = False,
+) -> int:
+    """Count expected trading days in [start, end] for the asset class.
+
+    Equities use Mon-Fri minus the basic US holidays; crypto counts every
+    calendar day; forex counts Mon-Fri (plus Sunday when ``intraday``) minus
+    Dec 25 and Jan 1.
 
     Used by the intraday density guard in :func:`_detect_missing_ranges`
     to compute the denominator of the density fraction. Uses the same
@@ -772,14 +799,18 @@ def _count_trading_days_in_range(start_date: date, end_date: date) -> int:
     count = 0
     d = start_date
     while d <= end_date:
-        if _is_trading_day(d, holidays):
+        if _is_trading_day(d, holidays, asset_class, intraday=intraday):
             count += 1
         d += timedelta(days=1)
     return count
 
 
 def _detect_missing_ranges(
-    start_date: date, end_date: date, cached_dates: set[date], interval: str
+    start_date: date,
+    end_date: date,
+    cached_dates: set[date],
+    interval: str,
+    asset_class: str = "equity",
 ) -> list[tuple[date, date]]:
     """Detect missing date ranges based on interval and market days.
 
@@ -811,6 +842,10 @@ def _detect_missing_ranges(
     represented" check is the strongest per-day signal we can extract.
     Fine-grained per-timestamp density would need the raw bar list,
     which this function does not receive.
+
+    ``asset_class`` selects the calendar (#1304): ``equity`` (default) uses
+    NYSE weekdays minus US holidays; ``crypto`` is 24x7; ``forex`` is 24x5
+    with no holiday closures.
     """
 
     if interval != "1d":
@@ -818,15 +853,29 @@ def _detect_missing_ranges(
         if not cached_dates or len(cached_dates) == 0:
             return [(start_date, end_date)]
 
-        # Check if we have any data in range - be more conservative with intraday
+        # Check if we have any data in range - be more conservative with intraday.
+        # Edges are snapped to open days so a range that starts or ends in a
+        # closure (e.g. a Saturday) is not reported missing forever (#1304).
+        closed_holidays = _get_basic_market_holidays(start_date.year, end_date.year)
+        edge_start, edge_end = start_date, end_date
+        while edge_start <= edge_end and not _is_trading_day(
+            edge_start, closed_holidays, asset_class, intraday=True
+        ):
+            edge_start += timedelta(days=1)
+        while edge_end >= edge_start and not _is_trading_day(
+            edge_end, closed_holidays, asset_class, intraday=True
+        ):
+            edge_end -= timedelta(days=1)
+        if edge_start > edge_end:
+            return []  # whole range lies inside closures: nothing to fetch
         min_cached = min(cached_dates) if cached_dates else None
         max_cached = max(cached_dates) if cached_dates else None
 
         if (
             not min_cached
             or max_cached is None
-            or min_cached > start_date
-            or max_cached < end_date
+            or min_cached > edge_start
+            or max_cached < edge_end
         ):
             return [(start_date, end_date)]
 
@@ -843,7 +892,9 @@ def _detect_missing_ranges(
         # This catches the sparse-endpoints-only + weekly-samples class
         # of silent-data-loss where all the endpoint/gap checks pass but
         # the vast majority of the window has zero bars.
-        trading_days_in_range = _count_trading_days_in_range(start_date, end_date)
+        trading_days_in_range = _count_trading_days_in_range(
+            start_date, end_date, asset_class, intraday=True
+        )
         if trading_days_in_range > 0:
             # PR #348 silent-failure-hunter (P2): use the SAME holiday
             # set for numerator and denominator. Pre-review-fix the
@@ -858,7 +909,8 @@ def _detect_missing_ranges(
             cached_trading_days = sum(
                 1
                 for d in cached_dates
-                if start_date <= d <= end_date and _is_trading_day(d, holidays)
+                if start_date <= d <= end_date
+                and _is_trading_day(d, holidays, asset_class, intraday=True)
             )
             density = cached_trading_days / trading_days_in_range
             # 0.9 = at least 90% of trading days must have a cached bar.
@@ -892,7 +944,7 @@ def _detect_missing_ranges(
 
     while current_date <= end_date:
         # Skip weekends and basic holidays for daily data
-        if _is_trading_day(current_date, holidays):
+        if _is_trading_day(current_date, holidays, asset_class):
             if current_date not in cached_dates:
                 if range_start is None:
                     range_start = current_date
@@ -901,7 +953,7 @@ def _detect_missing_ranges(
                 range_end = current_date - timedelta(days=1)
                 # Make sure range_end is a valid trading day
                 while range_end >= range_start and not _is_trading_day(
-                    range_end, holidays
+                    range_end, holidays, asset_class
                 ):
                     range_end -= timedelta(days=1)
                 if range_end >= range_start:
@@ -914,7 +966,9 @@ def _detect_missing_ranges(
     if range_start is not None:
         range_end = end_date
         # Make sure range_end is a valid trading day
-        while range_end >= range_start and not _is_trading_day(range_end, holidays):
+        while range_end >= range_start and not _is_trading_day(
+            range_end, holidays, asset_class
+        ):
             range_end -= timedelta(days=1)
         if range_end >= range_start:
             missing_ranges.append((range_start, range_end))
@@ -922,8 +976,16 @@ def _detect_missing_ranges(
     return missing_ranges
 
 
-def _is_trading_day(check_date: date, holidays: set[date]) -> bool:
+def _is_trading_day(
+    check_date: date,
+    holidays: set[date],
+    asset_class: str = "equity",
+    *,
+    intraday: bool = False,
+) -> bool:
     """Check if a date is a trading day (not weekend or holiday)."""
+    if asset_class != "equity":
+        return is_calendar_day_open(check_date, asset_class, intraday=intraday)
     # Skip weekends
     if check_date.weekday() >= 5:  # Saturday=5, Sunday=6
         return False

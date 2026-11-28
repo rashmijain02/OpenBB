@@ -215,9 +215,9 @@ def test_invalid_utf8_byte_in_json_body_still_parses_with_replacement_char():
         arguments={"endpoint": "stock-news"},
         path="/news/stock",
         status=200,
-        body=b'[{"t":"caf\xe9"}]',
+        body=b'[{"t":"Ren\xe9e"}]',
     )
-    assert result.text == '[{"t":"caf\ufffd"}]'
+    assert result.text == '[{"t":"Ren\ufffde"}]'
 
 
 def test_leading_bom_is_stripped_before_json_parse():
