@@ -19,30 +19,39 @@ See ``docs/designs/backtest-design/09-api-surface.md`` §1–§2.
 # from __future__ import annotations  # removed: breaks FastAPI OBBject[X] resolution (#824)
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from openbb_core.app.model.example import PythonEx
 from openbb_core.app.model.obbject import OBBject
 from openbb_core.app.router import Router
 
+from openbb_backtest.errors import BackendSelectionError, UnsupportedSemanticsError
+
+# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
+# time because this file no longer uses `from __future__ import annotations`
+# — see #824 for the root cause.
+from openbb_backtest.interfaces import (
+    Broker,
+    DataFeed,
+    Engine,
+    Strategy,
+)  # noqa: F401, E402
 from openbb_backtest.models import (
     BacktestConfig,
     BacktestResult,
     ReconciliationReport,
+    RunProvenance,
     SweepPoint,
     SweepResult,
 )
 from openbb_backtest.router_helpers import (
     build_feed,
+    reject_nautilus_until_p17,
+    resolve_backend,
     resolve_engine,
     resolve_provider,
     sanitize_result,
 )
-
-# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
-# time because this file no longer uses `from __future__ import annotations`
-# — see #824 for the root cause.
-from openbb_backtest.interfaces import Broker, DataFeed, Engine, Strategy  # noqa: F401, E402
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +102,125 @@ def _build_broker(config: BacktestConfig) -> Broker:
     return RealisticBroker(config.commission, config.slippage)
 
 
+def _reviewed_only(name: str) -> bool:
+    """Return whether ``name`` is a reviewed strategy the legacy registry lacks.
+
+    Loads the built-in strategies and entry-point plugins first, exactly as the
+    legacy resolution that follows would.
+    """
+    # Lazy imports keep Nautilus optional (C0415 intended for this whole block).
+    # pylint: disable=import-outside-toplevel
+    # The adapter import puts the worker source dir on sys.path; it must precede
+    # the worker import below (a fresh process has no other path to the worker).
+    import openbb_backtest.adapters.nautilus  # noqa: F401  # pylint: disable=unused-import
+    from openbb_backtest.registry import list_strategies
+    from openbb_backtest.strategies import discovery
+
+    if not discovery._PLUGINS_LOADED:  # pylint: disable=protected-access
+        discovery.load_plugins()
+
+    try:
+        from openbb_nautilus_worker.reviewed import registry as reviewed
+    except ImportError:  # worker package absent: nothing is reviewed-only
+        return False
+    key = name.strip().lower()
+    ids = {pin.strategy_id for pin in reviewed.REVIEW_LEDGER}
+    return key in ids and key not in list_strategies()
+
+
+def _run_legacy(
+    config: BacktestConfig,
+    *,
+    engine: str,
+    strategy_params: dict[str, Any] | None,
+    provider: str | None,
+    feed: DataFeed | None,
+) -> BacktestResult:
+    """Run the pre-#1356 ``run`` body unchanged; return the unsanitized result."""
+    if _reviewed_only(config.strategy):
+        raise UnsupportedSemanticsError(
+            f"strategy '{config.strategy}' is reviewed-only: the legacy backend has"
+            " no whole-share/settled-cash semantics. Use backend='nautilus'.",
+            reason="reviewed_only_strategy",
+        )
+    provider_name = resolve_provider(provider)
+    strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
+    path_dependent = bool(getattr(strategy, "path_dependent", False))
+    # Precedence: explicit engine=<value> at the call site wins; when the
+    # caller leaves engine at its default "auto" sentinel, fall back to
+    # config.engine so the field is finally honored (bd-q7u5). Case-fold
+    # for the sentinel check because resolve_engine accepts "AUTO"/"Auto".
+    selected_engine = engine if engine.strip().lower() != "auto" else config.engine
+    engine_name = resolve_engine(selected_engine, path_dependent=path_dependent)
+    logger.debug(
+        "run: strategy=%s engine=%s provider=%s",
+        config.strategy,
+        engine_name,
+        provider_name,
+    )
+
+    feed = feed if feed is not None else _build_feed(config, provider_name)
+    broker = _build_broker(config)
+    return _engine_for(engine_name).run(strategy, config, feed, broker)
+
+
+def execute_run(  # pylint: disable=too-many-arguments
+    config: BacktestConfig,
+    *,
+    engine: str = "auto",
+    backend: str | None = None,
+    strategy_params: dict[str, Any] | None = None,
+    provider: str | None = None,
+    feed: DataFeed | None = None,
+    nautilus: Any = None,
+) -> BacktestResult:
+    """Shared ``run`` path for the route and the CLIs (#1356); sanitized result.
+
+    Backend precedence is parameter, then ``config.backend``, then the default
+    (``legacy``); the source is recorded in ``result.provenance``. ``legacy``
+    runs the unchanged engine path. ``nautilus`` runs a reviewed strategy on the
+    worker and never falls back to the legacy engines. ``nautilus`` (the
+    argument) is an optional
+    :class:`~openbb_backtest.adapters.nautilus.backend.NautilusOptions`.
+    """
+    backend_name, source = resolve_backend(backend, config)
+    if backend_name == "nautilus":
+        selected = engine if engine.strip().lower() != "auto" else config.engine
+        if (
+            selected.strip().lower() != "auto"
+            and resolve_engine(selected) == "vectorized"
+        ):
+            raise BackendSelectionError(
+                f"engine '{selected}' cannot run on backend 'nautilus' (the"
+                " vectorized engine is legacy-only); use engine='auto'.",
+                reason="engine_backend_conflict",
+            )
+        # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
+        from openbb_backtest.adapters.nautilus import backend as nautilus_backend
+
+        result = nautilus_backend.run(
+            config,
+            strategy_params=strategy_params,
+            backend_source=source,
+            options=nautilus,
+        )
+        return sanitize_result(result)
+    result = _run_legacy(
+        config,
+        engine=engine,
+        strategy_params=strategy_params,
+        provider=provider,
+        feed=feed,
+    )
+    provenance = RunProvenance(
+        backend="legacy",
+        backend_source=source,
+        engine=result.engine_used,
+        strategy_review="unreviewed",
+    )
+    return sanitize_result(result.model_copy(update={"provenance": provenance}))
+
+
 # --- commands ------------------------------------------------------------
 
 
@@ -122,6 +250,7 @@ async def run(
     engine: str = "auto",
     strategy_params: dict[str, Any] | None = None,
     provider: str | None = None,
+    backend: str | None = None,
 ) -> OBBject[BacktestResult]:
     """Run a single backtest and return its normalized result.
 
@@ -159,32 +288,25 @@ async def run(
         Keyword arguments forwarded to the strategy constructor.
     provider : str, optional
         Data provider name; defaults to the fork's ``fmp_cached``.
+    backend : str, optional
+        ``"legacy"`` or ``"nautilus"``. Precedence: this parameter, then
+        ``config.backend``, then the default ``legacy`` (#1356). ``nautilus``
+        runs reviewed strategies only and never falls back to ``legacy``.
 
     Returns
     -------
     OBBject[BacktestResult]
         The equity curve, trades and metrics — positions are sanitized away.
+        ``provenance`` records the backend and where the choice came from.
     """
-    provider_name = resolve_provider(provider)
-    strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
-    path_dependent = bool(getattr(strategy, "path_dependent", False))
-    # Precedence: explicit engine=<value> at the call site wins; when the
-    # caller leaves engine at its default "auto" sentinel, fall back to
-    # config.engine so the field is finally honored (bd-q7u5). Case-fold
-    # for the sentinel check because resolve_engine accepts "AUTO"/"Auto".
-    selected_engine = engine if engine.strip().lower() != "auto" else config.engine
-    engine_name = resolve_engine(selected_engine, path_dependent=path_dependent)
-    logger.debug(
-        "run: strategy=%s engine=%s provider=%s",
-        config.strategy,
-        engine_name,
-        provider_name,
+    result = execute_run(
+        config,
+        engine=engine,
+        backend=backend,
+        strategy_params=strategy_params,
+        provider=provider,
     )
-
-    feed = _build_feed(config, provider_name)
-    broker = _build_broker(config)
-    result = _engine_for(engine_name).run(strategy, config, feed, broker)
-    return OBBject(results=sanitize_result(result))
+    return OBBject(results=result)
 
 
 @router.command(
@@ -231,6 +353,7 @@ async def sweep(
     """
     from openbb_backtest.engine.vectorized import sweep as _engine_sweep
 
+    reject_nautilus_until_p17(config, "sweep")
     provider_name = resolve_provider(provider)
     feed = _build_feed(config, provider_name)
     factory = _strategy_factory(config.strategy)
@@ -297,6 +420,7 @@ def reconcile(
     """
     from openbb_backtest.engine.reconcile import reconcile as _engine_reconcile
 
+    reject_nautilus_until_p17(config, "reconcile")
     provider_name = resolve_provider(provider)
     strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
     feed = _build_feed(config, provider_name)

@@ -22,6 +22,12 @@ class BacktestSettings(BaseSettings):
     seed: int = 0
     export_dir: str = "Analysis/exports"
     bundle_root: str = ".openbb_backtest/bundles"
+    # #1356: ``legacy`` until the HFP-P18 cutover; ``nautilus`` only on request.
+    default_backend: str = "legacy"
+    # Worker runtime for ``backend="nautilus"`` (``native`` or ``docker``, see
+    # ``nautilus_worker/pin.yaml``). Unset means the backend is unavailable.
+    nautilus_runtime: str | None = None
+    nautilus_timeout_seconds: float = 120.0
 
 
 DEFAULT_SETTINGS = BacktestSettings()

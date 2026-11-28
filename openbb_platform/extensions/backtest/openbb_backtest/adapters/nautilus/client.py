@@ -267,9 +267,11 @@ class WorkerClient:  # pylint: disable=too-many-instance-attributes
     def run(self, body: dict[str, Any]) -> dict[str, Any]:
         """Screen a ``run`` request locally, then run it under its deadline."""
         req = admission.screen_request(body)
+        # Only the fields the caller set: a v2 body must not carry the v1
+        # ``fees`` default (the worker rejects it; fees come from execution).
         return self.call(
             "run",
-            req.model_dump(),
+            req.model_dump(mode="json", exclude_unset=True),
             timeout=req.deadline_seconds + DEADLINE_GRACE_SECONDS,
         )
 

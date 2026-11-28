@@ -112,7 +112,7 @@ def test_probe_run_buy_and_hold_matches_oracle(tmp_path, monkeypatch, capsys):
     assert run["equity"] == oracle["expected"]["equity"]
     assert run["final_equity"] == oracle["expected"]["final_equity"]
     assert run["fixed_precision"] == 9
-    assert run["engine"]["name"] == "fake-fill-at-close"
+    assert run["engine"]["name"] == "fake-event-replay"
 
 
 def test_probe_run_unknown_dataset_exits_2_with_layer(tmp_path, monkeypatch, capsys):

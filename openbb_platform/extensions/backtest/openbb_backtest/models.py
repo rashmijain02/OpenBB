@@ -14,9 +14,17 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from openbb_core.provider.abstract.data import Data
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 EngineName = Literal["vectorized", "event", "auto"]
+BackendName = Literal["legacy", "nautilus"]
+BackendSource = Literal["param", "config", "default"]
 Frequency = Literal["daily", "hourly", "minute"]
 Side = Literal["buy", "sell"]
 Verdict = Literal["robust", "fragile", "overfit"]
@@ -98,6 +106,10 @@ class Bar(Data):
     )
 
 
+#: Optional #1356 config fields omitted from dumps while unset.
+_NEW_OPTIONAL_FIELDS = ("backend", "strategy_version")
+
+
 class BacktestConfig(Data):
     """Top-level backtest configuration."""
 
@@ -118,6 +130,35 @@ class BacktestConfig(Data):
     )
     seed: int = Field(default=0, description="Seed for deterministic runs.")
     compute: ComputeConfig = Field(default_factory=ComputeConfig)
+    backend: BackendName | None = Field(
+        default=None,
+        description=(
+            "Execution backend; None uses the router parameter or the default"
+            " (legacy)."
+        ),
+    )
+    strategy_version: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Reviewed strategy version (nautilus backend only).",
+    )
+
+    @model_serializer(mode="wrap")
+    def _omit_unset_new_fields(  # type: ignore[no-untyped-def]
+        self, handler: SerializerFunctionWrapHandler
+    ):
+        """Leave the #1356 fields out while ``None`` (pre-#1356 dumps unchanged).
+
+        A dumped config feeds submission digests (``story.backtest``); an old
+        payload must keep its digest across the upgrade. Deliberately has no
+        return annotation: pydantic would otherwise replace the config's
+        serialization JSON schema with a bare ``object`` (OpenAPI/MCP contract).
+        """
+        data = handler(self)
+        for name in _NEW_OPTIONAL_FIELDS:
+            if data.get(name, 0) is None:
+                del data[name]
+        return data
 
     @model_validator(mode="after")
     def _check(self) -> BacktestConfig:
@@ -181,6 +222,53 @@ class PerformanceMetrics(Data):
     alpha: float | None = Field(default=None, description="Annualized alpha.")
 
 
+class RunProvenance(Data):
+    """How a result was produced: backend, its source and, for nautilus, bindings.
+
+    Legacy results fill the first four fields only. Nautilus results also bind
+    the reviewed strategy (spec, code, params, execution hashes), the dataset and
+    the engine that ran it (#1356).
+    """
+
+    backend: BackendName = Field(description="Backend that produced the result.")
+    backend_source: BackendSource = Field(
+        description="Where the backend choice came from."
+    )
+    engine: str = Field(description="Engine within the backend.")
+    strategy_review: Literal["unreviewed", "reviewed"] = Field(
+        description="Whether the strategy ran from the reviewed allowlist."
+    )
+    runtime: str | None = Field(default=None, description="Worker runtime.")
+    qualified: bool | None = Field(
+        default=None, description="Whether the runtime was qualified for this run."
+    )
+    engine_name: str | None = Field(default=None, description="Engine name.")
+    engine_version: str | None = Field(default=None, description="Engine version.")
+    worker_version: str | None = Field(default=None, description="Worker version.")
+    python_version: str | None = Field(default=None, description="Worker Python.")
+    wheel_tag: str | None = Field(default=None, description="Engine wheel tag.")
+    fixed_precision: int | None = Field(default=None, description="Fixed precision.")
+    dataset_id: str | None = Field(default=None, description="Neutral dataset id.")
+    bars_sha256: str | None = Field(default=None, description="Bars content hash.")
+    strategy_id: str | None = Field(default=None, description="Reviewed id.")
+    strategy_version: str | None = Field(default=None, description="Reviewed version.")
+    spec_sha256: str | None = Field(default=None, description="Spec hash.")
+    code_sha256: str | None = Field(default=None, description="Code hash.")
+    param_schema_sha256: str | None = Field(
+        default=None, description="Parameter schema hash."
+    )
+    params_sha256: str | None = Field(default=None, description="Params hash.")
+    execution_sha256: str | None = Field(default=None, description="Execution hash.")
+    binding_sha256: str | None = Field(default=None, description="Bound tuple hash.")
+    execution: dict[str, Any] | None = Field(
+        default=None, description="Execution assumptions applied."
+    )
+    booking_residual: str | None = Field(
+        default=None, description="Exact minus booked cash, when recorded."
+    )
+    warnings: list[str] = Field(default_factory=list, description="Run warnings.")
+
+
 class BacktestResult(Data):
     """Canonical backtest output produced by every engine."""
 
@@ -190,6 +278,9 @@ class BacktestResult(Data):
     metrics: PerformanceMetrics = Field(description="Performance metrics.")
     engine_used: str = Field(description="Engine that produced this result.")
     config: BacktestConfig = Field(description="Config echoed for reproducibility.")
+    provenance: RunProvenance | None = Field(
+        default=None, description="Backend provenance (#1356); None if not recorded."
+    )
 
 
 class SweepPoint(Data):
@@ -200,7 +291,9 @@ class SweepPoint(Data):
     ``metrics`` its :class:`PerformanceMetrics`.
     """
 
-    params: dict[str, Any] = Field(description="Strategy keyword arguments for the combo.")
+    params: dict[str, Any] = Field(
+        description="Strategy keyword arguments for the combo."
+    )
     metrics: PerformanceMetrics = Field(description="Metrics for this combo.")
 
 
@@ -271,7 +364,9 @@ class FactorReport(Data):
     """
 
     factor: str = Field(description="Evaluated factor name.")
-    periods: list[int] = Field(description="Forward return periods analysed (sessions).")
+    periods: list[int] = Field(
+        description="Forward return periods analysed (sessions)."
+    )
     quantiles: int = Field(description="Number of factor quantiles formed.")
     ic_mean: dict[str, float] = Field(description="Mean IC per forward period.")
     ic_std: dict[str, float] = Field(description="IC standard deviation per period.")
@@ -380,9 +475,7 @@ class TearSheet(Data):
     drawdown_periods: list[DrawdownPeriod] = Field(
         description="Ranked drawdown episodes."
     )
-    monthly_returns: list[MonthlyReturn] = Field(
-        description="Per-month total returns."
-    )
+    monthly_returns: list[MonthlyReturn] = Field(description="Per-month total returns.")
     html_path: str | None = Field(
         default=None, description="Path to the saved HTML artifact, if exported."
     )

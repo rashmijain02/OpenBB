@@ -29,13 +29,23 @@ See ``docs/designs/backtest-design/09-api-surface.md`` §1–§2 and
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
+# time because this file no longer uses `from __future__ import annotations`
+# — see #824 for the root cause.
+import pandas as pd  # noqa: F401, E402
 from openbb_core.app.model.example import PythonEx
 from openbb_core.app.model.obbject import OBBject
 from openbb_core.app.router import Router
 
 from openbb_backtest.errors import OptionalDependencyError
+from openbb_backtest.interfaces import (
+    Broker,
+    DataFeed,
+    Engine,
+    Strategy,
+)  # noqa: F401, E402
 from openbb_backtest.models import (
     BacktestConfig,
     FoldResult,
@@ -43,14 +53,12 @@ from openbb_backtest.models import (
     TearSheet,
     ValidationReport,
 )
-from openbb_backtest.router_helpers import build_feed, resolve_engine, resolve_provider
-
-# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
-# time because this file no longer uses `from __future__ import annotations`
-# — see #824 for the root cause.
-import pandas as pd  # noqa: F401, E402
-
-from openbb_backtest.interfaces import Broker, DataFeed, Engine, Strategy  # noqa: F401, E402
+from openbb_backtest.router_helpers import (
+    build_feed,
+    reject_nautilus_until_p17,
+    resolve_engine,
+    resolve_provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +242,10 @@ def _run_folds(
     # de-annualize the annualized OOS Sharpe by sqrt(sessions/yr) before deflating.
     per_obs_sharpe = oos_metrics.sharpe / math.sqrt(spy)
     dsr = deflated_sharpe(
-        per_obs_sharpe, n_trials=n_trials, skew=0.0, kurt=3.0,
+        per_obs_sharpe,
+        n_trials=n_trials,
+        skew=0.0,
+        kurt=3.0,
         n_obs=max(2, int(aggregate.shape[0])),
     )
     # MinBTL = 2*ln(n)/SR^2 is only defined for a positive (annualized) Sharpe;
@@ -275,9 +286,7 @@ def _pbo_from_folds(oos_curves: list[pd.Series]) -> float:
     n_groups = min(_PBO_MAX_GROUPS, min_len - (min_len % 2))
     if n_groups < 2:
         return 0.0
-    matrix = np.column_stack(
-        [c.to_numpy(dtype=float)[:min_len] for c in oos_curves]
-    )
+    matrix = np.column_stack([c.to_numpy(dtype=float)[:min_len] for c in oos_curves])
     return pbo(matrix, n_groups=n_groups)
 
 
@@ -368,6 +377,7 @@ async def validate(
     from openbb_backtest.validation import build_validation_report
 
     _check_method(method)
+    reject_nautilus_until_p17(config, "validate")
     provider_name = resolve_provider(provider)
     base_factory = _strategy_factory(config.strategy)
 
@@ -378,7 +388,9 @@ async def validate(
     broker = _build_broker(config)
     logger.debug(
         "validate: strategy=%s method=%s provider=%s",
-        config.strategy, method, provider_name,
+        config.strategy,
+        method,
+        provider_name,
     )
 
     outcome = _run_folds(factory, config, feed, broker, method=method)
@@ -455,6 +467,7 @@ async def tearsheet(
     """
     from openbb_backtest.analytics import build_tearsheet, to_returns
 
+    reject_nautilus_until_p17(config, "tearsheet")
     provider_name = resolve_provider(provider)
     strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
     engine_name = resolve_engine(
@@ -464,13 +477,18 @@ async def tearsheet(
     broker = _build_broker(config)
     logger.debug(
         "tearsheet: strategy=%s engine=%s export=%s",
-        config.strategy, engine_name, export,
+        config.strategy,
+        engine_name,
+        export,
     )
 
     result = _engine_for(engine_name).run(strategy, config, feed, broker)
     returns = to_returns(result.equity_curve)
     sheet = build_tearsheet(
-        returns, None, result.trades, _sessions_per_year(config),
+        returns,
+        None,
+        result.trades,
+        _sessions_per_year(config),
         rolling_window=rolling_window,
     )
     if export:

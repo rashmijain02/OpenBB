@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import fake_engine
 import pytest
 from openbb_nautilus_worker import guards, runs
 from openbb_nautilus_worker.catalog_build import DATA_ROOT_ENV
@@ -20,18 +21,8 @@ from openbb_nautilus_worker.protocol import ErrorCode, ProtocolError
 
 
 def fill_at_first_close(spec: runs.RunSpec) -> runs.EngineResult:
-    return runs.EngineResult(
-        name="fake-fill-at-close",
-        version="0",
-        fills=[
-            runs.Fill(
-                session=spec.sessions[0],
-                quantity=spec.order.quantity,
-                price=spec.closes[0],
-                commission=Decimal(0),
-            )
-        ],
-    )
+    """The event-replay fake: the alias fills at the first close."""
+    return fake_engine.replay(spec)
 
 
 def _setup(tmp_path, make_dataset):
@@ -58,7 +49,7 @@ def test_buy_and_hold_fake_engine_matches_oracle(tmp_path, make_dataset, oracle)
     assert rep["equity"] == exp["equity"]
     assert rep["final_equity"] == exp["final_equity"]
     assert rep["sessions"] == oracle["sessions"]
-    assert rep["engine"] == {"name": "fake-fill-at-close", "version": "0"}
+    assert rep["engine"] == {"name": "fake-event-replay", "version": "0"}
     assert rep["fixed_precision"] == 9 and rep["venue"] == "SIM"
     assert len(rep["bars_sha256"]) == 64
 
@@ -81,8 +72,14 @@ def test_engine_fill_quantity_mismatch_is_process(tmp_path, make_dataset, oracle
     def partial(spec):
         res = fill_at_first_close(spec)
         fill = res.fills[0]
-        half = runs.Fill(fill.session, fill.quantity // 2, fill.price, Decimal(0))
-        return runs.EngineResult(res.name, res.version, [half])
+        half = runs.Fill(
+            fill.session,
+            fill.quantity // 2,
+            fill.price,
+            Decimal(0),
+            fill.symbol,
+        )
+        return runs.EngineResult(res.name, res.version, [half], res.final_cash)
 
     with pytest.raises(ProtocolError) as info:
         _run(body, env, partial, oracle)
