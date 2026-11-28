@@ -1,0 +1,31 @@
+{
+  "notebook_path": "notebooks/portfolio/03-basket-xray-and-risk.ipynb",
+  "schema_version": 1,
+  "source_sha256": "72281aa1a6427b1a76a5492a89b1b1008c4413803bd617527f08a4b143c1e11c",
+  "stage_map": {
+    "concentration": {
+      "cells": [
+        17,
+        18
+      ],
+      "story_stage_id": "7-concentration-obb-portfolio-intel-risk-concent"
+    },
+    "construction": {
+      "cells": [
+        19,
+        20
+      ],
+      "story_stage_id": "8-portfolio-construction-turning-the-x-ray-into"
+    },
+    "effective": {
+      "cells": [
+        9,
+        10
+      ],
+      "story_stage_id": "3-the-x-ray-look-through-via-sec-n-port-obb-etf"
+    }
+  },
+  "story_id": "portfolio/03",
+  "workflow_id": "synthetic.basket_xray",
+  "workflow_manifest_sha256": "48f4b1403711269d051eaad4e8d5782b5ab33a1c32cbce495fe8f592c485878a"
+}

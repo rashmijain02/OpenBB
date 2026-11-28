@@ -901,3 +901,97 @@ def evaluate_route(facts: RouteFacts, profile: FinanceRuntimeProfile) -> RouteVe
     reasons += [f"unvetted_key:{key}" for key in facts.unvetted_keys]
     reasons = list(dict.fromkeys(reasons))
     return RouteVerdict(blocked=bool(reasons), reasons=reasons)
+
+
+# ---- finance-web toolset allowlist (#1342) ---------------------------------------------
+
+# Keys the toolset reader consumes. ``platform_toolsets.cli`` is what WebUI resolves
+# (``api/config.py`` ``_resolve_cli_toolsets``); every configured MCP server adds
+# its own ``mcp-<name>`` toolset to that surface.
+TOOLSET_CONSUMED_KEYS = (
+    "platform_toolsets.cli",
+    "agent.disabled_toolsets",
+    "mcp_servers",
+)
+_WILDCARD_TOOLSETS = frozenset({"all", "*"})
+
+
+class ToolsetFacts(BaseModel):
+    """Toolset surface facts from a Hermes config. Holds names only, never URLs."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cli_toolsets: list[str] | None = None  # ``None``: unset, the full default surface
+    disabled_toolsets: list[str] = Field(default_factory=list)
+    mcp_servers: list[str] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
+
+
+def read_toolset_facts(path: Path, managed: Path | None = None) -> ToolsetFacts:
+    """Read toolset facts from ``path`` with the ``managed`` overlay merged on top.
+
+    Raises ``OSError``/``ValueError`` when either file is unusable.
+    """
+    loaded, _ = _load_config(path, managed)
+    issues: list[str] = []
+    platform = loaded.get("platform_toolsets")
+    cli: list[str] | None = None
+    if platform is not None and not isinstance(platform, dict):
+        issues.append("platform_toolsets_unparsed")
+    elif isinstance(platform, dict) and platform.get("cli") is not None:
+        raw = platform["cli"]
+        if not isinstance(raw, (str, list)):
+            issues.append("platform_toolsets_cli_not_list")
+        cli = _str_list(raw)
+    disabled = _get(loaded, "agent.disabled_toolsets")
+    if disabled is not None and not isinstance(disabled, (str, list)):
+        issues.append("agent_disabled_toolsets_not_list")
+    servers = loaded.get("mcp_servers")
+    names: list[str] = []
+    if isinstance(servers, dict):
+        names = [str(name) for name in servers]
+    elif servers is not None:
+        issues.append("mcp_servers_unparsed")
+    return ToolsetFacts(
+        cli_toolsets=cli,
+        disabled_toolsets=_str_list(disabled),
+        mcp_servers=names,
+        issues=issues,
+    )
+
+
+def evaluate_web_toolsets(
+    facts: ToolsetFacts,
+    *,
+    mcp_server: str,
+    allowed: list[str],
+    pinned_basic: list[str],
+) -> RouteVerdict:
+    """Fail closed unless the surface is the MCP toolset plus ``allowed`` and all else is off.
+
+    A WebUI session can override its enabled toolsets, and ``disabled_toolsets``
+    subtracts at tool granularity, so the deny list (not UI hiding) is the control:
+    every pinned basic toolset outside ``allowed`` must be disabled.
+    """
+    reasons = list(facts.issues)
+    mcp_names = {f"mcp-{mcp_server}", mcp_server}
+    permitted = mcp_names | set(allowed)
+    if facts.cli_toolsets is None:
+        reasons.append("cli_toolsets_unset")
+    else:
+        for name in facts.cli_toolsets:
+            if name in _WILDCARD_TOOLSETS or name not in permitted:
+                reasons.append(f"cli_toolset_not_allowed:{safe_label(name)}")
+        if not mcp_names & set(facts.cli_toolsets):
+            reasons.append("openbb_toolset_missing")
+    if mcp_server not in facts.mcp_servers:
+        reasons.append("openbb_mcp_server_missing")
+    for name in facts.mcp_servers:
+        if name != mcp_server:
+            reasons.append(f"mcp_server_not_allowed:{safe_label(name)}")
+    disabled = set(facts.disabled_toolsets)
+    for name in pinned_basic:
+        if name not in allowed and name not in disabled:
+            reasons.append(f"toolset_not_disabled:{safe_label(name)}")
+    reasons = list(dict.fromkeys(reasons))
+    return RouteVerdict(blocked=bool(reasons), reasons=reasons)

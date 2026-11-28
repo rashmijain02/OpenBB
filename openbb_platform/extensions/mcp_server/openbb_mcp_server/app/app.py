@@ -59,6 +59,7 @@ from openbb_mcp_server.adapters.portfolio_intel import (
     compose_portfolio_intel_app,
 )
 from openbb_mcp_server.app.auth import TokenAuthProvider, get_auth_provider
+from openbb_mcp_server.app.owner_principal import effective_story_principal
 from openbb_mcp_server.models.category_index import CategoryIndex
 from openbb_mcp_server.models.mcp_config import (
     ArgumentDefinitionModel,
@@ -881,6 +882,8 @@ def create_mcp_server(
     fastapi_app: FastAPI,
     httpx_kwargs: dict | None = None,
     auth: Any | None = None,
+    *,
+    owner_principal: str | None = None,
 ) -> FastMCP:
     """Create and configure the FastMCP server from a FastAPI app instance.
 
@@ -896,6 +899,8 @@ def create_mcp_server(
         The authentication provider to use for the server.
         Should be a valid FastMCP.server.auth.AuthProvider instance,
         or an object accepted by the `auth` parameter of FastMCP initialization.
+    owner_principal: str | None
+        In-process owner a jobs worker acts for; see ``owner_principal`` (#1342).
 
     Returns
     -------
@@ -945,6 +950,7 @@ def create_mcp_server(
         if isinstance(auth_provider, TokenAuthProvider) and auth_provider.server_auth
         else None
     )
+    story_principal = effective_story_principal(story_principal, owner_principal)
 
     source_app = _compose_profile_adapters(
         fastapi_app,

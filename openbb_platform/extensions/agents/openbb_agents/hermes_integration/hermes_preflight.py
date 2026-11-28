@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import BaseModel, ConfigDict
 
 from . import handshake, hermes_config, litellm_config, provenance, skills_admission
 from .models import (
@@ -25,8 +26,10 @@ from .models import (
     GatewayReport,
     HealthLevel,
     PreflightReport,
+    Presence,
 )
-from .profile import ComponentPin, FinanceRuntimeProfile, load_profile
+from .profile import ComponentPin, FinanceRuntimeProfile, WebProfilePin, load_profile
+from .web import bundle as web_bundle
 
 _LAYER_ORDER = list(FailedLayer)
 
@@ -302,6 +305,180 @@ def _check_gateway(
     return [cfg, route], report, facts
 
 
+# ---- finance-web WebUI profile (#1342) -------------------------------------------------
+
+# Delegated runtimes: a WebUI configured with any of these runs the agent loop
+# elsewhere instead of in-process (``api/runtime_adapter.py``, ``api/gateway_chat.py``).
+_WEBUI_DELEGATION_ENV = (
+    "HERMES_WEBUI_GATEWAY_BASE_URL",
+    "HERMES_WEBUI_GATEWAY_API_KEY",
+    "HERMES_WEBUI_GATEWAY_USE_RUNS_API",
+    "HERMES_WEBUI_CHAT_BACKEND",
+    "HERMES_WEBUI_RUNNER_BASE_URL",
+    "HERMES_WEBUI_RUNNER_API_KEY",
+)
+# Origin, forwarded-trust and CSP widenings: the only accepted origin must stay
+# ``http://127.0.0.1:<webui-port>``.
+_WEBUI_ORIGIN_ENV = (
+    "HERMES_WEBUI_ALLOWED_ORIGINS",
+    "HERMES_WEBUI_TRUST_FORWARDED_HOST",
+    "HERMES_WEBUI_TRUST_FORWARDED_PROTO",
+    "HERMES_WEBUI_TRUST_FORWARDED_FOR",
+    "HERMES_WEBUI_TRUSTED_AUTH_HEADER",
+    "HERMES_WEBUI_TRUSTED_GROUPS_HEADER",
+    "HERMES_WEBUI_TRUSTED_PROXY_CIDRS",
+    "HERMES_WEBUI_CSP_CONNECT_EXTRA",
+    "HERMES_WEBUI_CSP_FRAME_EXTRA",
+    "HERMES_WEBUI_CSP_IMG_EXTRA",
+)
+_WEBUI_INSTALL_ENV = (
+    "HERMES_WEBUI_ONBOARDING_OPEN",
+    "HERMES_WEBUI_AUTO_INSTALL",
+    "HERMES_WEBUI_PLUGINS_DIR",
+)
+_IN_PROCESS_ADAPTER = "legacy-direct"
+
+
+def _webui_env_problems(env: Mapping[str, str]) -> list[tuple[FailedLayer, str]]:
+    """Check the static WebUI env; codes name variables, never their values."""
+    problems: list[tuple[FailedLayer, str]] = []
+
+    def is_set(name: str) -> bool:
+        return bool(env.get(name, "").strip())
+
+    for name in _WEBUI_DELEGATION_ENV:
+        if is_set(name):
+            problems.append((FailedLayer.PROCESS, f"delegated_backend:{name}"))
+    adapter = env.get("HERMES_WEBUI_RUNTIME_ADAPTER", "").strip()
+    if adapter and adapter != _IN_PROCESS_ADAPTER:
+        problems.append(
+            (FailedLayer.PROCESS, "delegated_backend:HERMES_WEBUI_RUNTIME_ADAPTER")
+        )
+    if not hermes_config.is_loopback_host(env.get("HERMES_WEBUI_HOST", "127.0.0.1")):
+        problems.append((FailedLayer.AUTH, "non_loopback_bind"))
+    if not is_set("HERMES_WEBUI_PASSWORD"):
+        problems.append((FailedLayer.AUTH, "no_password"))
+    for name in _WEBUI_ORIGIN_ENV:
+        if is_set(name):
+            problems.append((FailedLayer.AUTH, f"env_must_be_unset:{name}"))
+    for name in _WEBUI_INSTALL_ENV:
+        if is_set(name):
+            problems.append((FailedLayer.CONFIG, f"env_must_be_unset:{name}"))
+    if not is_set("HERMES_WEBUI_STATE_DIR"):
+        problems.append((FailedLayer.CONFIG, "state_dir_unset"))
+    if env.get("HERMES_WEBUI_EXTENSION_MANIFEST", "").strip() != web_bundle.MANIFEST:
+        problems.append((FailedLayer.CONFIG, "extension_manifest_not_manifest_json"))
+    return problems
+
+
+def _extension_dir_problems(
+    pin: WebProfilePin, env: Mapping[str, str]
+) -> list[tuple[FailedLayer, str]]:
+    """Check that the bundle dir is outside every git tree and matches its pin."""
+    raw = env.get("HERMES_WEBUI_EXTENSION_DIR", "").strip()
+    if not raw:
+        return [(FailedLayer.CONFIG, "extension_dir_unset")]
+    directory = Path(raw)
+    if not directory.is_dir():
+        return [(FailedLayer.SCHEMA, "extension_dir_missing")]
+    problems: list[tuple[FailedLayer, str]] = []
+    if web_bundle.inside_git_tree(directory):
+        problems.append((FailedLayer.SCHEMA, "extension_dir_in_git_tree"))
+    if pin.extension_tree_sha256 is None:
+        problems.append((FailedLayer.SCHEMA, "extension_tree_unpinned"))
+        return problems
+    try:
+        observed = skills_admission.tree_sha256(directory)
+    except OSError:
+        problems.append((FailedLayer.SCHEMA, "extension_tree_unreadable"))
+        return problems
+    if observed != pin.extension_tree_sha256:
+        problems.append((FailedLayer.SCHEMA, "extension_tree_drift"))
+    return problems
+
+
+def _check_webui_profile(pin: WebProfilePin, env: Mapping[str, str]) -> ComponentReport:
+    """Native in-process delegation, explicit origins and a pinned bundle outside git."""
+    problems = _webui_env_problems(env) + _extension_dir_problems(pin, env)
+    has_password = bool(env.get("HERMES_WEBUI_PASSWORD", "").strip())
+    presence = {"webui_password": Presence.PRESENT if has_password else Presence.ABSENT}
+    if problems:
+        layer = min((p[0] for p in problems), key=_LAYER_ORDER.index)
+        return ComponentReport(
+            name="webui_profile",
+            failed_layer=layer,
+            presence=presence,
+            detail="webui_profile_blocked: " + ",".join(p[1] for p in problems),
+        )
+    return ComponentReport(
+        name="webui_profile",
+        level=HealthLevel.ADMITTED,
+        presence=presence,
+        detail="webui_profile_admitted: in_process,loopback,bundle_pinned",
+    )
+
+
+class PinnedToolsets(BaseModel):
+    """Toolset names at one Hermes agent commit (``web/pinned_toolsets.json``)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source: str
+    agent_sha: str
+    basic: list[str]
+    composite: list[str]
+
+
+def load_pinned_toolsets() -> PinnedToolsets:
+    """Load the shipped toolset list; raise ``OSError``/``ValueError`` if unusable."""
+    path = Path(web_bundle.__file__).resolve().parent / "pinned_toolsets.json"
+    return PinnedToolsets.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def _web_toolsets_blocked(layer: FailedLayer, reasons: str) -> ComponentReport:
+    return ComponentReport(
+        name="web_toolsets",
+        failed_layer=layer,
+        detail=f"web_toolsets_blocked: {reasons}",
+    )
+
+
+def _check_web_toolsets(
+    profile: FinanceRuntimeProfile, pin: WebProfilePin, config: Path | None
+) -> ComponentReport:
+    """Only the OpenBB MCP toolset and the allowlist; every other pinned toolset off."""
+    if config is None:
+        return _web_toolsets_blocked(FailedLayer.CONFIG, "no_hermes_config")
+    try:
+        pinned = load_pinned_toolsets()
+    except (OSError, ValueError):
+        return _web_toolsets_blocked(FailedLayer.SCHEMA, "toolset_list_unreadable")
+    if not pinned.agent_sha.startswith(profile.hermes_agent.expected_sha):
+        return _web_toolsets_blocked(
+            FailedLayer.SCHEMA, "toolset_list_not_for_agent_pin"
+        )
+    try:
+        facts = hermes_config.read_toolset_facts(
+            config, hermes_config.managed_config_path()
+        )
+    except _CONFIG_ERRORS as exc:
+        return _web_toolsets_blocked(FailedLayer.CONFIG, _config_error(exc))
+    verdict = hermes_config.evaluate_web_toolsets(
+        facts,
+        mcp_server=pin.mcp_server,
+        allowed=pin.allowed_toolsets,
+        pinned_basic=pinned.basic,
+    )
+    if verdict.blocked:
+        return _web_toolsets_blocked(FailedLayer.CONFIG, ",".join(verdict.reasons))
+    return ComponentReport(
+        name="web_toolsets",
+        level=HealthLevel.ADMITTED,
+        detail=f"web_toolsets_admitted: cli={len(facts.cli_toolsets or [])} "
+        f"disabled={len(facts.disabled_toolsets)}",
+    )
+
+
 @dataclass(frozen=True)
 class PreflightOptions:
     """Inputs of one preflight run besides the profile, env and transport."""
@@ -348,6 +525,11 @@ def run_preflight(
         ),
         *gateway_components,
     ]
+    if profile.web is not None:
+        components += [
+            _check_webui_profile(profile.web, env),
+            _check_web_toolsets(profile, profile.web, opts.hermes_config_path),
+        ]
     edges: list[EdgeReport] = []
     if opts.probe == "loopback":
         edges = handshake.run_handshake(

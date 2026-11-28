@@ -36,8 +36,17 @@ def in_process_principal(name: str) -> str:
     return story_principal_for((name, _IN_PROCESS_SECRET))
 
 
-def build_server(profile: str = "portfolio-ops", principal: str = "workflow-admit"):
-    """Build an in-process MCP server for ``profile`` (no network, no services)."""
+def build_server(
+    profile: str = "portfolio-ops",
+    principal: str = "workflow-admit",
+    *,
+    owner_principal: str | None = None,
+):
+    """Build an in-process MCP server for ``profile`` (no network, no services).
+
+    ``owner_principal`` (jobs worker only, #1342) makes the story routes act
+    for that recorded run owner instead of ``in_process_principal(principal)``.
+    """
     # pylint: disable=import-outside-toplevel
     from openbb_core.api.rest_api import app
     from openbb_mcp_server.app.app import create_mcp_server
@@ -51,7 +60,12 @@ def build_server(profile: str = "portfolio-ops", principal: str = "workflow-admi
             "default_skills_dir": None,
         }
     )
-    return create_mcp_server(settings, app, auth=(principal, _IN_PROCESS_SECRET))
+    return create_mcp_server(
+        settings,
+        app,
+        auth=(principal, _IN_PROCESS_SECRET),
+        owner_principal=owner_principal,
+    )
 
 
 async def server_tool_hashes(server, profile: str = "portfolio-ops") -> dict[str, str]:

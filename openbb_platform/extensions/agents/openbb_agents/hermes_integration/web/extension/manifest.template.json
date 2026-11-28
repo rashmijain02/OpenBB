@@ -1,0 +1,23 @@
+{
+  "extensions": [
+    {
+      "id": "openbb-hfp",
+      "name": "OpenBB Financial Planning",
+      "description": "Plan, approval and run cards for admitted OpenBB workflows. Reads server-stored facts through the consented sidecar proxy.",
+      "scripts": ["hfp.js"],
+      "stylesheets": ["hfp.css"],
+      "permissions": {
+        "network_external": false,
+        "storage": {
+          "owned": true
+        }
+      },
+      "sidecar": {
+        "type": "loopback",
+        "origin": "",
+        "health_path": "/health",
+        "proxy_auth": "token-v1"
+      }
+    }
+  ]
+}

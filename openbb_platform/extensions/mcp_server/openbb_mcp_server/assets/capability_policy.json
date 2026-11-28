@@ -2,7 +2,7 @@
   "schema_version": 1,
   "operation_catalog": {
     "file": "capability_policy_operations.csv",
-    "sha256": "e92dbb6115e5e0d8c6427aa8b7a726445cc785c2b6e65c8658fddf195d1f35fd"
+    "sha256": "2d273df3a0b61f7db124ede48bc263d3a2a76e6599102c3e0490f4e03121362d"
   },
   "reviewed_metadata_ids": [
     "platform:profile:platform-standard",
@@ -175,7 +175,9 @@
         "/api/v1/story/runs/{run_id}/jobs/{job_id}",
         "/api/v1/story/runs/{run_id}/jobs/{job_id}/cancel",
         "/api/v1/story/runs/{run_id}/cancel",
-        "/api/v1/story/runs/{run_id}/outcome"
+        "/api/v1/story/runs/{run_id}/outcome",
+        "/api/v1/story/plans",
+        "/api/v1/story/plans/{plan_id}/start"
       ],
       "disposition": "direct",
       "access_class": "story_state",

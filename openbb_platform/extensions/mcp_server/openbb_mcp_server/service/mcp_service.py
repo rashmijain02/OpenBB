@@ -8,6 +8,7 @@ from typing import Any, Union, get_args, get_origin
 
 from openbb_core.app.constants import OPENBB_DIRECTORY
 from openbb_core.app.model.abstract.singleton import SingletonMeta
+from pydantic import ValidationError
 
 from ..models.settings import MCPSettings
 
@@ -206,7 +207,16 @@ class MCPService(metaclass=SingletonMeta):
             temp_settings = MCPSettings(**env_vars)
             return temp_settings.model_dump(exclude_unset=True)
         except Exception as e:
-            logging.warning("Error processing environment variables: %s", e)
+            # Never log the exception text: a validation error echoes the
+            # offending input values, which may be credentials.
+            if isinstance(e, ValidationError):
+                detail = "; ".join(
+                    f"{'.'.join(str(x) for x in err['loc'])}: {err['type']}"
+                    for err in e.errors(include_input=False, include_url=False)
+                )
+            else:
+                detail = type(e).__name__
+            logging.warning("Error processing environment variables: %s", detail)
             return {}
 
     @staticmethod

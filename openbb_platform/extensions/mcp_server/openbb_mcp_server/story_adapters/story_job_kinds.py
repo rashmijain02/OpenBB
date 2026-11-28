@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib
 import json
 import math
 import sqlite3
@@ -328,6 +329,8 @@ class KindSpec:
     payload: Callable[[], type[BaseModel]]
     engine: str
     highlights: Callable[[dict[str, Any]], dict[str, Any]]
+    # The engine also gets the principal, run and submission (internal kinds).
+    contextual: bool = False
 
 
 KINDS: dict[str, KindSpec] = {
@@ -379,9 +382,107 @@ StoryJobKind = Literal[
 ]
 
 
+def _workflow_run_payload() -> type[BaseModel]:
+    _require("openbb_agents", "story.workflow_run")
+
+    class WorkflowRunPayload(BaseModel):
+        """One approved plan's workflow (#1342)."""
+
+        model_config = ConfigDict(extra="forbid")
+
+        plan_id: str = Field(pattern=r"^plan_[a-f0-9]{32}$")
+        workflow_id: str = Field(min_length=1, max_length=200)
+
+    return WorkflowRunPayload
+
+
+def run_workflow_job(
+    payload: BaseModel, *, principal: str, run: Any, submission: Submission
+) -> dict[str, Any]:
+    """Run an approved plan's workflow as the run's recorded owner (#1342).
+
+    The submitting principal, the run's owner and the plan's principal must be
+    one principal (fail closed ``principal_mismatch``). The worker has no
+    model client: an in-process ``portfolio-ops`` server acting for exactly
+    that principal resumes the plan's run, so stage tools go through the same
+    ToolGate and admission as interactive calls, and the run, receipts and
+    checkpoints are the plan's.
+    """
+    # pylint: disable=import-outside-toplevel
+    from openbb_mcp_server.story_adapters.registry import (
+        WorkflowCatalog,
+        default_workflow_dir,
+    )
+
+    # plans imports this module; resolve it at call time (no import cycle).
+    plans = importlib.import_module("openbb_mcp_server.story_adapters.plans")
+    request = cast(Any, payload)
+    plan = plans.PlanStore(default_store_path()).by_run(run.run_id)
+    if plan is None or (plan.plan_id, plan.workflow_id) != (
+        request.plan_id,
+        request.workflow_id,
+    ):
+        raise UnauthorizedStoryJob("plan_mismatch: the run is not this plan's run.")
+    if not submission.principal == principal == plan.principal:
+        raise UnauthorizedStoryJob(
+            "principal_mismatch: the job, run and plan principals differ."
+        )
+    if plan.state != "started":
+        raise UnauthorizedStoryJob("plan_not_started: the plan has no started run.")
+    workflow_dir = default_workflow_dir()
+    if workflow_dir is None:
+        raise KindUnavailable("story.workflow_run needs the shipped workflows.")
+    # The catalog-admitted document keyed by its own ``workflow_id``, never a
+    # file picked by name, and still the one the plan was approved under.
+    catalog = WorkflowCatalog(workflow_dir)
+    document = catalog.get(plan.workflow_id)
+    if document is None or document.get("workflow_id") != plan.workflow_id:
+        raise UnauthorizedStoryJob(
+            "workflow_not_admitted: the plan's workflow is not in the catalog."
+        )
+    if catalog.digest(plan.workflow_id) != plan.plan.get("workflow_manifest_sha256"):
+        raise UnauthorizedStoryJob(
+            "workflow_changed: the workflow changed since the plan was approved."
+        )
+    from openbb_agents.hermes_integration.workflow_runner import (
+        run_plan,
+        run_result_json,
+    )
+
+    result = run_plan(document, principal, run.run_id)
+    # Inside the job the run reads ``waiting_job`` (this job is active); the
+    # run's outcome is derived once the job ends, so stage results decide here.
+    stages_ok = all(s.status == "succeeded" for s in result.stages)
+    if not (result.admitted and stages_ok and result.run_id == run.run_id):
+        failed = next((s for s in result.stages if s.status == "failed"), None)
+        detail = f"{failed.stage_id}: {failed.error}" if failed else result.error or "-"
+        raise RuntimeError(
+            f"workflow_run_failed: {result.outcome or 'no_outcome'} ({detail})"[:300]
+        )
+    return run_result_json(result)
+
+
+# Internal kinds: submitted only by server code (story_workflow_start), never
+# by story_job_submit, whose StoryJobKind schema stays unchanged (#1342).
+INTERNAL_KINDS: dict[str, KindSpec] = {
+    "story.workflow_run": KindSpec(
+        "story.workflow_run",
+        "Run one human-approved workflow plan.",
+        _workflow_run_payload,
+        "run_workflow_job",
+        lambda result: {"outcome": result.get("outcome")},
+        contextual=True,
+    )
+}
+
+
+def _spec(kind: str) -> KindSpec:
+    return KINDS[kind] if kind in KINDS else INTERNAL_KINDS[kind]
+
+
 def payload_model(kind: str) -> type[BaseModel]:
     """Return the typed payload model of ``kind``; raise if it is unavailable."""
-    return KINDS[kind].payload()
+    return _spec(kind).payload()
 
 
 # --- Submission ledger ------------------------------------------------------
@@ -562,7 +663,7 @@ def _attached_submission(
 
 
 def _execute(kind: str, context: JobContext, params: StoryJobParams) -> JobResult:
-    spec = KINDS[kind]
+    spec = _spec(kind)
     db_path = default_store_path()
     digest = payload_digest(params.run_id, kind, params.stage_id, params.payload)
     submission = _attached_submission(
@@ -580,8 +681,13 @@ def _execute(kind: str, context: JobContext, params: StoryJobParams) -> JobResul
             "No matching story job submission; story jobs are submitted through"
             " the story job routes."
         )
-    run = RunStore(db_path).get(params.principal, params.run_id)
+    runs = RunStore(db_path)
+    run = runs.get(params.principal, params.run_id)
     if run is None:
+        if runs.owner(params.run_id) is not None:
+            raise UnauthorizedStoryJob(
+                "principal_mismatch: the story run belongs to another principal."
+            )
         raise UnauthorizedStoryJob("The story run no longer exists.")
     if run.cancel_requested_at is not None:
         # story_run_cancel won the race with the claim: run nothing (#1341).
@@ -590,7 +696,12 @@ def _execute(kind: str, context: JobContext, params: StoryJobParams) -> JobResul
         )
     payload = spec.payload().model_validate(params.payload)
     engine = globals()[spec.engine]
-    result = _json_safe(engine(payload))
+    raw = (
+        engine(payload, principal=params.principal, run=run, submission=submission)
+        if spec.contextual
+        else engine(payload)
+    )
+    result = _json_safe(raw)
     data = json.dumps(
         result, sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode("utf-8")
@@ -635,5 +746,5 @@ def get_job_definitions() -> list[JobDefinition]:
             max_attempts=1,
             overlap_policy="allow",
         )
-        for spec in KINDS.values()
+        for spec in (*KINDS.values(), *INTERNAL_KINDS.values())
     ]

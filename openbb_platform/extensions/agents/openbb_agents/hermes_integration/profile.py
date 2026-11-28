@@ -35,6 +35,16 @@ class DatabasePin(_Strict):
     expected: str
 
 
+class WebProfilePin(_Strict):
+    """Finance-web WebUI profile (#1342): the MCP server, tool allowlist and bundle pin."""
+
+    mcp_server: str = Field(default="openbb", pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    # Hermes toolsets the WebUI ``cli`` surface may list besides the MCP toolset.
+    allowed_toolsets: list[str] = Field(default_factory=lambda: ["clarify"])
+    # ``skills_admission.tree_sha256`` of the rendered ``openbb-hfp`` bundle.
+    extension_tree_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
 class FinanceRuntimeProfile(_Strict):
     """Pins that define the qualified finance runtime. No paths or secrets."""
 
@@ -55,6 +65,8 @@ class FinanceRuntimeProfile(_Strict):
     # Admitted local-tier skills (#1339-T02): POSIX path relative to
     # ``$HERMES_HOME/skills`` -> ``skills_admission.tree_sha256`` pin.
     admitted_skills: dict[str, str] = Field(default_factory=dict)
+    # Finance-web WebUI profile (#1342); absent means no web rows are evaluated.
+    web: WebProfilePin | None = None
 
 
 def load_profile(path: Path) -> FinanceRuntimeProfile:

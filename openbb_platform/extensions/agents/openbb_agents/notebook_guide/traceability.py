@@ -27,6 +27,14 @@ STORIES_DIR = Path(__file__).resolve().parent / "stories"
 # workflow_id -> (story_id, {workflow stage id: story stage id}). Reviewed by
 # hand; the build fails if a mapped story stage binds different tools.
 WORKFLOW_STORY_MAP: dict[str, tuple[str, dict[str, str]]] = {
+    "synthetic.basket_xray": (
+        "portfolio/03",
+        {
+            "effective": "3-the-x-ray-look-through-via-sec-n-port-obb-etf",
+            "concentration": "7-concentration-obb-portfolio-intel-risk-concent",
+            "construction": "8-portfolio-construction-turning-the-x-ray-into",
+        },
+    ),
     "synthetic.concentration_review": (
         "portfolio/03",
         {

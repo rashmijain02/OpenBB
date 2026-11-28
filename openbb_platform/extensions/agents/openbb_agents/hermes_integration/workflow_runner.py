@@ -12,8 +12,12 @@ Only the synthetic pure-math workflow is wired (CLAUDE.md Lead decision Q5).
 
 Resume (#1341): ``--resume RUN_ID`` reloads the run, refuses it when the
 admitted workflow digest differs from the run's (``blocked``: start a new run),
-skips every stage whose checkpoint holds ``succeeded`` and an
-``output_sha256`` (reported ``reused``) and runs the rest. A checkpoint whose
+reuses every stage whose checkpoint holds ``succeeded`` and an
+``output_sha256`` (reported ``reused``) and runs the rest. A reused pure-math
+stage (``_PURE_TOOLS``) is recomputed, never read from a cache, so later stages
+get its output; a recomputed hash that differs from the checkpoint fails the
+stage (``resume_output_mismatch``). A reused side-effecting stage (artifact
+writes, checkpoints) is never repeated (#1342 T03). A checkpoint whose
 reply was lost is reconciled by reading the run back, never rewritten. The run
 reports success only when the server's ``story_run_outcome`` says
 ``succeeded``. ``--crash-after STAGE`` (only with
@@ -63,9 +67,31 @@ SYNTHETIC_WEIGHTS: Mapping[str, float] = {
     "SYN_K": 0.02,
     "SYN_L": 0.02,
 }
+# Basket x-ray (#1342, W2): single names plus one commodity trust, so the
+# look-through stays opaque for the trust and makes zero provider calls.
+SYNTHETIC_BASKET: tuple[tuple[str, float], ...] = (
+    ("SYN-A", 0.18),
+    ("SYN-B", 0.14),
+    ("SYN-C", 0.12),
+    ("SYN-D", 0.10),
+    ("SYN-E", 0.08),
+    ("SYN-F", 0.07),
+    ("SYN-G", 0.06),
+    ("SYN-H", 0.05),
+    ("SYN-GLD", 0.20),
+)
+SYNTHETIC_COMMODITY_TRUSTS: tuple[str, ...] = ("SYN-GLD",)
 _CHECKPOINT_TOOL = "story_run_checkpoint"
 _CREATE_TOOL = "story_run_create"
 _GET_TOOL = "story_run_get"
+# Deterministic engine reads with no side effect: recomputed on resume (#1342).
+_PURE_TOOLS = frozenset(
+    {
+        "story_basket_effective_positions",
+        "story_concentration",
+        "story_construction_targets",
+    }
+)
 _OUTCOME_TOOL = "story_run_outcome"
 FAULT_ENV = "OPENBB_HFP_FAULT_INJECTION"
 CRASH_EXIT = 75
@@ -98,6 +124,10 @@ class FastMcpInvoker:
         result = await self._client.call_tool(tool, dict(arguments))
         content = result.structured_content
         return content if content is not None else {"result": result.data}
+
+
+class ResumeOutputMismatch(Exception):
+    """A recomputed pure stage's output differs from its checkpointed hash."""
 
 
 @dataclass(frozen=True)
@@ -152,12 +182,79 @@ def _ordered(manifest: WorkflowManifest) -> list[Any]:
     return ordered
 
 
+def synthetic_inputs(workflow_id: str) -> dict[str, Any]:
+    """Return the fixed synthetic inputs of a shipped workflow."""
+    if workflow_id == "synthetic.basket_xray":
+        return {
+            "basket": [{"symbol": s, "weight": w} for s, w in SYNTHETIC_BASKET],
+            "commodity_trusts": list(SYNTHETIC_COMMODITY_TRUSTS),
+        }
+    return {"weights": dict(SYNTHETIC_WEIGHTS)}
+
+
+def _upstream(ctx: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Return the outputs this stage reads, in its declared input order."""
+    outputs = ctx.get("outputs") or {}
+    stage = ctx.get("stage")
+    names = [i.from_stage for i in stage.inputs] if stage is not None else []
+    return [outputs[n] for n in names if n in outputs]
+
+
+def _weights(ctx: Mapping[str, Any]) -> dict[str, float]:
+    """Effective positions of an upstream look-through, else the input weights."""
+    for output in _upstream(ctx):
+        if isinstance(output.get("positions"), list):
+            return {p["key"]: p["weight"] for p in output["positions"]}
+    if "weights" not in ctx["inputs"]:
+        raise LookupError("no upstream effective positions for this stage")
+    return dict(ctx["inputs"]["weights"])
+
+
+def _effective_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "basket": [dict(p) for p in ctx["inputs"]["basket"]],
+        "commodity_trusts": list(ctx["inputs"]["commodity_trusts"]),
+    }
+
+
 def _concentration_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
-    return {"weights": dict(ctx["inputs"]["weights"])}
+    return {"weights": _weights(ctx)}
 
 
 def _construction_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
-    return {"effective": dict(ctx["inputs"]["weights"])}
+    return {"effective": _weights(ctx)}
+
+
+_TARGET_COLUMNS = ("name", "current", "target", "band_lo", "band_hi", "status")
+
+
+def evidence_table(output: Mapping[str, Any]) -> dict[str, Any]:
+    """Render one engine output as the evidence table written for it."""
+    if isinstance(output.get("positions"), list):
+        rows = [[p["key"], p["weight"]] for p in output["positions"]]
+        return {"columns": ["key", "weight"], "rows": rows}
+    if isinstance(output.get("targets"), list):
+        rows = [[t[c] for c in _TARGET_COLUMNS] for t in output["targets"]]
+        return {"columns": list(_TARGET_COLUMNS), "rows": rows}
+    rows = [
+        [key, value]
+        for key, value in sorted(output.items())
+        if isinstance(value, str | int | float | bool) or value is None
+    ]
+    return {"columns": ["metric", "value"], "rows": rows}
+
+
+def _table_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
+    upstream = _upstream(ctx)
+    if not upstream:
+        raise LookupError("no upstream output to tabulate")
+    return {
+        "run_id": ctx["run_id"],
+        "name": ctx["stage_id"],
+        "stage_id": ctx["stage_id"],
+        "format": "json",
+        "table": evidence_table(upstream[0]),
+    }
 
 
 def _checkpoint_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
@@ -172,6 +269,8 @@ def _checkpoint_args(ctx: Mapping[str, Any]) -> dict[str, Any]:
 
 
 _ARGUMENTS: Mapping[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
+    "story_basket_effective_positions": _effective_args,
+    "story_artifact_table": _table_args,
     "story_concentration": _concentration_args,
     "story_construction_targets": _construction_args,
     _CHECKPOINT_TOOL: _checkpoint_args,
@@ -345,6 +444,34 @@ async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-loc
         pin = manifest.capabilities[stage.capabilities[0]]
         builder = _ARGUMENTS.get(pin.tool)
         recorded = _reused(run, stage.id) if resume_run_id else None
+        if recorded is not None and pin.tool in _PURE_TOOLS:
+            context = {
+                "inputs": inputs,
+                "stage": stage,
+                "outputs": outputs,
+                "stage_id": stage.id,
+                **state,
+            }
+            try:
+                if builder is None:
+                    raise LookupError("no argument binding for tool")
+                output = await invoker.call(pin.server, pin.tool, builder(context))
+                if canonical_json_sha256(output) != recorded:
+                    raise ResumeOutputMismatch(stage.id)
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                code = (
+                    "resume_output_mismatch"
+                    if isinstance(error, ResumeOutputMismatch)
+                    else type(error).__name__
+                )
+                results.append(
+                    StageResult(stage.id, "failed", pin.tool, error=code[:_MAX_ERROR])
+                )
+                results.extend(
+                    StageResult(s.id, "not_run") for s in stages[position + 1 :]
+                )
+                break
+            outputs[stage.id] = output
         if recorded is not None:
             evidence_id = f"{digest[:12]}:{stage.id}:{recorded[:12]}"
             hashes[stage.id] = recorded
@@ -365,6 +492,8 @@ async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-loc
                 raise LookupError("no argument binding for tool")
             context = {
                 "inputs": inputs,
+                "stage": stage,
+                "outputs": outputs,
                 "stage_id": stage.id,
                 "hashes": hashes,
                 "evidence": evidence,
@@ -464,10 +593,13 @@ async def _run_in_process(
     *,
     resume_run_id: str | None = None,
     after_stage: Callable[[str, str], None] | None = None,
+    owner_principal: str | None = None,
 ) -> WorkflowRunResult:
     from fastmcp import Client  # pylint: disable=import-outside-toplevel
 
-    server = build_server(profile, principal="workflow-run")
+    server = build_server(
+        profile, principal="workflow-run", owner_principal=owner_principal
+    )
     live_tools = await server_tool_hashes(server, profile)
     async with Client(server) as client:
         return await run_workflow(
@@ -478,6 +610,27 @@ async def _run_in_process(
             resume_run_id=resume_run_id,
             after_stage=after_stage,
         )
+
+
+def run_plan(
+    document: Any, owner_principal: str, run_id: str, profile: str = "portfolio-ops"
+) -> WorkflowRunResult:
+    """Run an approved plan's run as its recorded owner (jobs worker, #1342)."""
+    workflow_id = document.get("workflow_id") if isinstance(document, Mapping) else ""
+    return asyncio.run(
+        _run_in_process(
+            document,
+            synthetic_inputs(str(workflow_id)),
+            profile,
+            resume_run_id=run_id,
+            owner_principal=owner_principal,
+        )
+    )
+
+
+def run_result_json(result: WorkflowRunResult) -> dict[str, Any]:
+    """JSON form of a run result (no notebook-guard stats)."""
+    return _as_json(result, None)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -519,7 +672,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.write(f"usage error: {type(error).__name__}\n")
         return 3
 
-    inputs = {"weights": dict(SYNTHETIC_WEIGHTS)}
+    workflow_id = document.get("workflow_id") if isinstance(document, dict) else ""
+    inputs = synthetic_inputs(str(workflow_id))
     result = asyncio.run(
         _run_in_process(
             document,
