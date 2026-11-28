@@ -13,6 +13,15 @@ KILL_ON_JOB_CLOSE before it runs, so killing this wrapper (or the deadline)
 also kills the venv launcher and its python child and releases the target
 lock. Elsewhere the child gets its own process group. Only the child's single
 outcome line is relayed, after validation; raw output never reaches cron.
+
+Cancellation: the wrapper chooses the run id and passes it as ``--run-id``.
+The child has no console (CREATE_NO_WINDOW), so Ctrl+C / Ctrl+Break / SIGTERM
+reach only this wrapper. On such a stop request, or when DEADLINE_S is
+reached, the wrapper touches ``<state root>/cancel/<run id>``; the child's
+dispatcher polls that file between symbols, ends CANCELLED and still writes
+its run file and end receipt, and the wrapper relays that outcome line. A
+child still running GRACE_S later (or a second stop request) is killed with
+its whole job: "killed after grace", exit 5. Hard kill is the last resort.
 """
 
 # isort: skip_file
@@ -54,15 +63,19 @@ CHILD_PYTHON = @@CHILD_PYTHON@@
 SOURCE_PATHS = @@SOURCE_PATHS@@
 TARGET_CLASS = @@TARGET_CLASS@@
 DEADLINE_S = @@DEADLINE_S@@
+GRACE_S = @@GRACE_S@@
 RUN_MODE = @@MODE@@
 GENERIC_FAILURE = "fmp_cache_prices: integrity check failed"
 INTERNAL_FAILURE = "fmp_cache_prices: internal error"
-DEADLINE_FAILURE = "fmp_cache_prices: deadline exceeded"
+KILLED_FAILURE = "fmp_cache_prices: killed after grace"
 EXIT_INTEGRITY = 3
 EXIT_INTERNAL = 4
-EXIT_DEADLINE = 5
+EXIT_KILLED = 5
 BUSINESS_EXITS = (0, 10, 20, 30, 40)
 _ZERO = "0" * 64
+_POLL_S = 0.2
+_READ_CAP = 4096
+_STOP: list = []  # stop requests (signal numbers) seen by _on_stop
 _ENV_KEEP = (
     "SYSTEMROOT",
     "WINDIR",
@@ -145,7 +158,7 @@ def _child_env():
     return env
 
 
-def _child_argv():
+def _child_argv(run_id):
     boot = _BOOT.format(paths=json.dumps(list(SOURCE_PATHS)))
     return [
         CHILD_PYTHON,
@@ -159,10 +172,12 @@ def _child_argv():
         MAP_PATH,
         "--target-class",
         TARGET_CLASS,
+        "--run-id",
+        run_id,
     ]
 
 
-def valid_line(line):
+def valid_line(line, run_id=None):
     """Return True for exactly one counts-only outcome line (both CLI shapes)."""
     if not line or len(line) > 512 or "\n" in line or "\r" in line:
         return False
@@ -312,8 +327,8 @@ class _WinJob:
         self.k32.CloseHandle(self.job)
 
 
-def _spawn():
-    """Start the child; return (process, killer). The child is in the job/group."""
+def _spawn(run_id):
+    """Start the child; return (process, job). The child is in the job/group."""
     common = {
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
@@ -328,7 +343,7 @@ def _spawn():
         try:
             # pylint: disable-next=consider-using-with
             proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
-                _child_argv(), creationflags=flags, **common
+                _child_argv(run_id), creationflags=flags, **common
             )
         except BaseException:
             job.close()
@@ -344,7 +359,7 @@ def _spawn():
         return proc, job
     # pylint: disable-next=consider-using-with
     proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
-        _child_argv(), start_new_session=True, **common
+        _child_argv(run_id), start_new_session=True, **common
     )
     return proc, None
 
@@ -362,23 +377,129 @@ def _kill(proc, job):
             proc.kill()
 
 
-def _relay(proc, job):
+# ------------------------------------------------------------------ cancellation
+
+
+def _on_stop(signum, _frame):
+    _STOP.append(signum)
+
+
+def _install_handlers():
+    """Turn Ctrl+C / Ctrl+Break / SIGTERM into a stop request; return old handlers.
+
+    The child runs with CREATE_NO_WINDOW (Windows) or in its own session, so it
+    never sees console events: the wrapper relays them as the cancel file.
+    """
+    import signal  # pylint: disable=import-outside-toplevel
+
+    previous = {}
+    for name in ("SIGINT", "SIGBREAK", "SIGTERM"):
+        number = getattr(signal, name, None)
+        if number is None:
+            continue
+        try:
+            previous[number] = signal.signal(number, _on_stop)
+        except (OSError, ValueError):
+            continue
+    return previous
+
+
+def _restore_handlers(previous):
+    import signal  # pylint: disable=import-outside-toplevel
+
+    for number, handler in previous.items():
+        if handler is not None:
+            try:
+                signal.signal(number, handler)
+            except (OSError, ValueError, TypeError):
+                continue
+
+
+def _cancel_path(run_id):
+    return os.path.join(STATE_ROOT, "cancel", run_id)
+
+
+def _request_cancel(run_id):
+    """Touch ``<state>/cancel/<run_id>``; the child's CancelController polls it."""
     try:
-        out, _ = proc.communicate(timeout=DEADLINE_S)
-    except subprocess.TimeoutExpired:
-        _kill(proc, job)
-        proc.communicate()
-        return DEADLINE_FAILURE, EXIT_DEADLINE
-    lines = (out or b"")[:4096].decode("utf-8", "replace").splitlines()
+        os.makedirs(os.path.dirname(_cancel_path(run_id)), exist_ok=True)
+        with open(_cancel_path(run_id), "ab"):
+            pass
+    except OSError:
+        return False
+    return True
+
+
+def _clear_cancel(run_id):
+    try:
+        os.remove(_cancel_path(run_id))
+    except OSError:
+        return False
+    return True
+
+
+def _drain(stream, sink):
+    """Read the child's stdout to EOF; keep only the first _READ_CAP bytes."""
+    kept = 0
+    while True:
+        chunk = stream.read(_READ_CAP)
+        if not chunk:
+            return
+        if kept <= _READ_CAP:
+            sink.append(chunk)
+            kept += len(chunk)
+
+
+def _verdict(out, code, run_id):
+    lines = out[:_READ_CAP].decode("utf-8", "replace").splitlines()
     lines = [line for line in lines if line.strip()]
-    code = proc.returncode
     if code not in BUSINESS_EXITS or len(lines) > 1:
         return INTERNAL_FAILURE, EXIT_INTERNAL
     if not lines:
         return ("", 0) if code == 0 else (INTERNAL_FAILURE, EXIT_INTERNAL)
-    if not valid_line(lines[0]):
+    if not valid_line(lines[0], run_id):
         return INTERNAL_FAILURE, EXIT_INTERNAL
     return lines[0], code
+
+
+def _supervise(proc, job, run_id):
+    """Wait for the child; on a stop request or the deadline cancel, then kill.
+
+    Stop request (signal) or DEADLINE_S reached: touch the cancel file and wait
+    up to GRACE_S. A child that ends in time has its validated outcome line
+    (normally CANCELLED, with run file and end receipt written) relayed. A
+    child still running after GRACE_S, or a second stop request, gets the job
+    terminated: KILLED_FAILURE, EXIT_KILLED.
+    """
+    import threading  # pylint: disable=import-outside-toplevel
+    import time  # pylint: disable=import-outside-toplevel
+
+    sink: list = []
+    reader = threading.Thread(target=_drain, args=(proc.stdout, sink), daemon=True)
+    reader.start()
+    deadline = time.monotonic() + DEADLINE_S
+    asked_at = None
+    stops = 0
+    while True:
+        try:
+            proc.wait(timeout=_POLL_S)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        if asked_at is None:
+            if _STOP or now >= deadline:
+                asked_at, stops = now, len(_STOP)
+                if not _request_cancel(run_id):
+                    asked_at = now - GRACE_S  # cannot ask politely: kill now
+            continue
+        if now - asked_at >= GRACE_S or len(_STOP) > stops:
+            _kill(proc, job)
+            proc.wait()
+            reader.join(timeout=5)
+            return KILLED_FAILURE, EXIT_KILLED
+    reader.join(timeout=5)
+    return _verdict(b"".join(sink), proc.returncode, run_id)
 
 
 def main():
@@ -386,15 +507,19 @@ def main():
     if not (_self_ok() and _map_ok()) or not os.path.isfile(CHILD_PYTHON):
         _say(GENERIC_FAILURE)
         return EXIT_INTEGRITY
+    run_id = os.urandom(16).hex()
+    previous = _install_handlers()
     job = None
     try:
-        proc, job = _spawn()
-        line, code = _relay(proc, job)
+        proc, job = _spawn(run_id)
+        line, code = _supervise(proc, job, run_id)
     except BaseException:  # noqa: BLE001 - nothing may leak from here
         line, code = INTERNAL_FAILURE, EXIT_INTERNAL
     finally:
         if job is not None:
             job.close()  # KILL_ON_JOB_CLOSE: nothing outlives the wrapper
+        _clear_cancel(run_id)
+        _restore_handlers(previous)
     if line:
         _say(line)
     return code

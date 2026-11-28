@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 from portfolio_utils.fmp_sync import locking
 from portfolio_utils.fmp_sync.admission import DeploymentMap, load_map
 
-WRAPPER_VERSION = 2
+WRAPPER_VERSION = 3
 WRAPPER_NAME = "fmp_cache_prices.py"
 JOB_NAME = "fmp-cache-prices"
 SCHEDULE = "30 15 * * 1-5"
@@ -39,10 +39,15 @@ HERMES_TZ = "America/Los_Angeles"
 MARKET_TZ = "America/New_York"
 MARKET_TIME = (18, 30)  # Eastern wall-clock the schedule must land on
 RUN_MODE = "execute"
-# Hard wall-clock limit the wrapper enforces on its child (job object / process
-# group kill). Above the dispatcher's cooperative deadline so a healthy run ends
-# itself first, and well under Hermes' default 3600 s script timeout.
-WRAPPER_DEADLINE_S = locking.DEFAULT_DEADLINE_S + 120.0
+# Deadline story (one place): the dispatcher in the child ends itself at
+# locking.DEFAULT_DEADLINE_S (900 s, CANCELLED_DEADLINE). The wrapper's own
+# deadline is WRAPPER_MARGIN_S later; at that point it touches the cancel file
+# and waits WRAPPER_GRACE_S for a CANCELLED outcome, then kills the job. The
+# worst case (deadline + grace) stays under Hermes' 3600 s script timeout.
+WRAPPER_MARGIN_S = 120.0
+WRAPPER_DEADLINE_S = locking.DEFAULT_DEADLINE_S + WRAPPER_MARGIN_S
+WRAPPER_GRACE_S = 30.0
+HERMES_SCRIPT_TIMEOUT_S = 3600.0
 TEMPLATE = Path(__file__).resolve().parent / "templates" / "fmp_cache_prices.py.tmpl"
 _ZERO = "0" * 64
 # Windows/DST-sensitive instants: the days around both 2027 US transitions.
@@ -175,6 +180,10 @@ def render_wrapper(map_path: Path) -> str:
     problems = dst_check(SCHEDULE)
     if problems:
         raise RenderError("schedule does not land on the market time through DST")
+    if not 0 < WRAPPER_GRACE_S < WRAPPER_MARGIN_S:
+        raise RenderError("grace period must be positive and below the deadline margin")
+    if WRAPPER_DEADLINE_S + WRAPPER_GRACE_S >= HERMES_SCRIPT_TIMEOUT_S:
+        raise RenderError("wrapper deadline plus grace reaches the Hermes timeout")
     root = effective_state_root(map_path)
     child, minor = resolve_child_python(Path(dmap.interpreter))
     sync_python = dmap.sync_python or minor
@@ -192,6 +201,7 @@ def render_wrapper(map_path: Path) -> str:
         "CHILD_PYTHON": json.dumps(child),
         "TARGET_CLASS": json.dumps(dmap.target_class),
         "DEADLINE_S": repr(float(WRAPPER_DEADLINE_S)),
+        "GRACE_S": repr(float(WRAPPER_GRACE_S)),
         "SOURCE_PATHS": json.dumps(
             [
                 str(source / "openbb_platform" / "tools" / "portfolio_utils"),

@@ -10,8 +10,14 @@ Commands:
   ``--execute`` is blocked (40) until the map carries explicit limits.
   ``--receipt`` (used by the cron wrapper) also appends the start/end receipts
   under the state root, prints the line only when the recorded state changed
-  and exits 0 once the outcome is persisted. Ctrl+C / Ctrl+Break cancel the
-  run (``CANCELLED``); the run file and receipts are still written.
+  and exits 0 once the outcome is persisted. ``--run-id <32 hex>`` fixes the
+  run id (the cron wrapper chooses it so it knows the cancel file
+  ``<state root>/cancel/<run_id>``). Cancellation is cooperative: Ctrl+C /
+  Ctrl+Break in a console, or that cancel file, end the run ``CANCELLED`` and
+  the run file and receipts are still written. Under the cron wrapper the
+  child has no console (CREATE_NO_WINDOW), so the wrapper turns its own
+  Ctrl+C / Ctrl+Break and its deadline into the cancel file, waits a bounded
+  grace period, and only then kills the job (see the wrapper docstring).
 - ``lock --status --map <map.json>`` -- print whether the target lock is free or
   busy. Never takes ownership.
 
@@ -22,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import uuid
 from collections.abc import Callable
@@ -53,6 +60,15 @@ def _emit_line(line: str) -> None:
     print(line[:512])  # noqa: T201
 
 
+_RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+
+
+def _run_id(value: str) -> str:
+    if not _RUN_ID.match(value):
+        raise argparse.ArgumentTypeError("run id must be 32 lowercase hex characters")
+    return value
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m portfolio_utils.fmp_sync")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -65,6 +81,7 @@ def _parser() -> argparse.ArgumentParser:
         "--target-class", choices=("disposable", "production"), default="disposable"
     )
     prices.add_argument("--receipt", action="store_true")
+    prices.add_argument("--run-id", type=_run_id, default=None)
     lock = sub.add_parser("lock", help="target lock status")
     lock.add_argument("--status", action="store_true", required=True)
     lock.add_argument("--map", required=True, type=Path)
@@ -88,7 +105,7 @@ def _prices(
     mode: Mode = "execute" if args.execute else "dry_run"
     kwargs = {"mode": mode, "requested_class": args.target_class}
     if not args.receipt:
-        result = run(dmap, install_signals=True, **kwargs)
+        result = run(dmap, install_signals=True, run_id=args.run_id, **kwargs)
         _emit_line(result.to_line())
         return result.exit_code
     try:
@@ -97,7 +114,7 @@ def _prices(
         )
     except LockRootRejected:
         return _blocked_root()
-    run_id = uuid.uuid4().hex
+    run_id = args.run_id or uuid.uuid4().hex
     state.record_start(root, run_id, mode)
     result = run(dmap, install_signals=True, run_id=run_id, **kwargs)
     receipt = state.record_end(root, result)

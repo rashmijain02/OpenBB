@@ -8,6 +8,8 @@ the tests) as the map's venv, so the child really is that venv's python.
 from __future__ import annotations
 
 import json
+import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -274,13 +276,20 @@ def test_killing_the_wrapper_kills_the_child_and_frees_the_lock(
 
 
 @pytest.mark.skipif(not WINDOWS, reason="Windows job object")
-def test_wrapper_deadline_terminates_the_job(real, child_env, python_exe, monkeypatch):
+def test_child_ignoring_cancel_is_killed_after_grace(
+    real, child_env, python_exe, monkeypatch
+):
+    """Deadline -> cancel file -> grace -> hard kill of the job; lock freed."""
     monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", 4.0)
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 3.0)
     proc, holder_pid, root = _start_holding_wrapper(real, child_env, python_exe)
     try:
+        started = time.monotonic()
         out, _ = proc.communicate(timeout=60)
         assert proc.returncode == 5
-        assert out.strip() == "fmp_cache_prices: deadline exceeded"
+        assert out.strip() == "fmp_cache_prices: killed after grace"
+        assert time.monotonic() - started >= 2.5, "killed before the grace period"
+        assert (root / "cancel").is_dir(), "no cooperative cancel was requested"
         assert _lock_freed(root)
         assert not _pid_alive(holder_pid)
     finally:
@@ -301,7 +310,9 @@ def _load_wrapper(script: Path, monkeypatch) -> dict:
     """Exec an applied wrapper in-process (``__name__`` is not ``__main__``)."""
     monkeypatch.setattr(sys, "path", sys.path[:])  # the wrapper scrubs sys.path
     namespace: dict = {"__file__": str(script), "__name__": "wrapper_under_test"}
-    exec(compile(script.read_text("utf-8"), str(script), "exec"), namespace)  # noqa: S102
+    exec(
+        compile(script.read_text("utf-8"), str(script), "exec"), namespace
+    )  # noqa: S102
     return namespace
 
 
@@ -342,3 +353,166 @@ def test_failed_resume_terminates_the_job_and_exits_internal(real, monkeypatch, 
     assert code == 4
     assert out.strip() == "fmp_cache_prices: internal error"
     assert seen and seen[0].poll() is not None, "suspended child left behind"
+
+
+# ------------------------------------------------------------------ cooperative cancel
+
+COOP_MAIN = r"""
+import importlib.util, os, socket, sys, time, types
+from pathlib import Path
+
+import pymysql
+
+def _no(*_a, **_k):
+    raise RuntimeError("no MySQL in this test")
+
+pymysql.connect = pymysql.Connect = _no
+socket.socket.connect = lambda self, address: _no()
+
+from portfolio_utils.fmp_sync import dispatcher
+from portfolio_utils.fmp_sync.admission import Admission
+
+READY = Path(@READY@)
+
+def _admit(dmap, **_kw):
+    return Admission(True, "ADMITTED", symbols=("AAA", "BBB"),
+                     counts={"requested": 2, "skipped": 0},
+                     target=dmap.target, target_class=dmap.target_class)
+
+dispatcher.admit = _admit
+fake = types.ModuleType("portfolio_utils.fetch_position_history")
+
+def _warm(*, should_cancel, **_kw):
+    READY.write_text(str(os.getpid()), encoding="utf-8")
+    end = time.monotonic() + 120
+    while time.monotonic() < end:
+        if should_cancel():
+            return types.SimpleNamespace(success=[], failed=[], cancelled=True)
+        time.sleep(0.02)
+    return types.SimpleNamespace(success=[], failed=[], cancelled=False)
+
+fake.run_position_history_warm = _warm
+fake.ensure_market_holidays = lambda *_a: None
+fake.check_portfolio_app_readiness = lambda *_a: {}
+fake._resolve_api_key = lambda: "k"
+sys.modules["portfolio_utils.fetch_position_history"] = fake
+spec = importlib.util.spec_from_file_location(
+    "portfolio_utils.fmp_sync._real_main", @REAL_MAIN@
+)
+real_main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(real_main)
+sys.exit(real_main.main(sys.argv[1:]))
+"""
+
+
+def _coop_source(tmp: Path, ready: Path) -> Path:
+    """Overlay package: real modules, fake admission/warmer, real ``main()``."""
+    real_pkg = PORTFOLIO_UTILS_ROOT / "portfolio_utils"
+    src = tmp / "coop_src"
+    pkg = src / "openbb_platform" / "tools" / "portfolio_utils" / "portfolio_utils"
+    (pkg / "fmp_sync").mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        f"__path__.append({str(real_pkg)!r})\n", encoding="utf-8"
+    )
+    (pkg / "fmp_sync" / "__init__.py").write_text(
+        f"__path__.append({str(real_pkg / 'fmp_sync')!r})\n", encoding="utf-8"
+    )
+    (pkg / "fmp_sync" / "__main__.py").write_text(
+        COOP_MAIN.replace("@READY@", repr(str(ready))).replace(
+            "@REAL_MAIN@", repr(str(real_pkg / "fmp_sync" / "__main__.py"))
+        ),
+        encoding="utf-8",
+    )
+    return src
+
+
+def _start_coop_wrapper(real, child_env, python_exe, flags=0):
+    ready = real["tmp"] / "coop.pid"
+    real["write"](source_root=str(_coop_source(real["tmp"], ready)))
+    render.apply_files(real["map"], real["home"])
+    proc = subprocess.Popen(  # noqa: S603
+        [python_exe, str(_script(real))],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=child_env,
+        creationflags=flags,
+    )
+    end = time.monotonic() + 90
+    while not ready.exists() and proc.poll() is None and time.monotonic() < end:
+        time.sleep(0.05)
+    assert ready.exists(), proc.communicate(timeout=30)
+    time.sleep(0.2)
+    return proc, int(ready.read_text("utf-8")), render.effective_state_root(real["map"])
+
+
+def _assert_cancelled_receipts(out: str, root: Path) -> None:
+    payload = json.loads(out.strip())
+    assert payload["outcome"] == "CANCELLED"
+    run = json.loads((root / "runs" / f"{payload['run_id']}.json").read_text("utf-8"))
+    assert run["outcome"]["outcome"] == "CANCELLED"
+    records = [
+        json.loads(line)
+        for line in (root / "history.jsonl").read_text("utf-8").splitlines()
+    ]
+    ends = [r for r in records if r.get("kind") == "end"]
+    assert [(r["outcome"], r["run_id"]) for r in ends] == [
+        ("CANCELLED", payload["run_id"])
+    ]
+    assert not (root / "cancel" / payload["run_id"]).exists()
+
+
+def _cleanup(proc, pid):
+    if proc.poll() is None:
+        proc.kill()
+        proc.communicate()
+    if _pid_alive(pid):
+        subprocess.run(  # noqa: S603, S607
+            ["taskkill", "/PID", str(pid), "/F"], capture_output=True, check=False
+        )
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows job object")
+def test_wrapper_deadline_cancels_cooperatively(
+    real, child_env, python_exe, monkeypatch
+):
+    """Deadline -> cancel file -> CANCELLED run file + end receipt within grace."""
+    monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", 12.0)
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 60.0)
+    proc, pid, root = _start_coop_wrapper(real, child_env, python_exe)
+    try:
+        out, err = proc.communicate(timeout=60)  # < deadline + grace
+    finally:
+        _cleanup(proc, pid)
+    assert proc.returncode == 0, (out, err)
+    _assert_cancelled_receipts(out, root)
+    assert _lock_freed(root, timeout=2)
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows console control event")
+def test_wrapper_ctrl_break_cancels_cooperatively(real, child_env, python_exe):
+    """Ctrl+Break reaches only the wrapper (child has no console); it cancels."""
+    flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    proc, pid, root = _start_coop_wrapper(real, child_env, python_exe, flags)
+    try:
+        try:
+            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+        except OSError:
+            pytest.skip("no shared console to deliver the control event")
+        out, err = proc.communicate(timeout=60)
+    finally:
+        _cleanup(proc, pid)
+    assert proc.returncode == 0, (out, err)
+    _assert_cancelled_receipts(out, root)
+    assert _lock_freed(root, timeout=2)
+
+
+@pytest.mark.parametrize("bad", ["", "A" * 32, "a" * 31, "../" + "a" * 29, "a" * 33])
+def test_main_rejects_malformed_run_id(bad, tmp_path):
+    """``--run-id`` names the cancel file: only 32 lowercase hex characters pass."""
+    from portfolio_utils.fmp_sync.__main__ import main
+
+    with pytest.raises(SystemExit):
+        main(
+            ["prices", "--dry-run", "--map", str(tmp_path / "m.json"), "--run-id", bad]
+        )
