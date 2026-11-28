@@ -592,6 +592,18 @@ HOSTED = "https://hosted.invalid/v1"
             "mcp_servers_notes_not_loopback",
         ),
         (_set_path("x_search", {"model": "hosted"}), "unvetted_key:x_search"),
+        (
+            _set_path("auxiliary.Vision", {"provider": "custom"}),
+            "auxiliary_unknown_task:Vision",
+        ),
+        (
+            _set_path("auxiliary.vision ", {"provider": "custom"}),
+            "auxiliary_unknown_task:vision_",
+        ),
+        (
+            _set_path("auxiliary.brand_new_task", {"provider": "custom"}),
+            "auxiliary_unknown_task:brand_new_task",
+        ),
         (_set_path("brand_new_key", 1), "unvetted_key:brand_new_key"),
     ],
 )
@@ -626,7 +638,7 @@ def test_allowlists_are_derived_from_pinned_default_config():
         (HERMES / "pinned-default-keys.yaml").read_text(encoding="utf-8")
     )
     assert tuple(sorted(pinned["auxiliary_tasks"])) == hermes_config.AUXILIARY_TASKS
-    assert hermes_config.AUXILIARY_SETTINGS <= set(pinned["auxiliary_settings"])
+    assert set(pinned["auxiliary_settings"]) >= hermes_config.AUXILIARY_SETTINGS
     legacy = {
         "fallback_model",
         "custom_providers",

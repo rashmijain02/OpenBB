@@ -283,20 +283,28 @@ def _classify(
     )
 
 
+_ALL_SOURCES = "<default_fallbacks>"  # bare ``default_fallbacks`` targets: every alias
+_PATTERN_CHARS = "*?["
+
+
+def _is_pattern(name: str) -> bool:
+    return any(c in name for c in _PATTERN_CHARS)
+
+
 def _fallback_pairs(value: Any) -> list[tuple[str, list[str]]]:
     """Normalise ``[{src: [targets]}]`` and ``default_fallbacks: [targets]``."""
     pairs: list[tuple[str, list[str]]] = []
     if isinstance(value, dict):
         value = [value]
     if not isinstance(value, list):
-        return [("*", ["<unparsed>"])] if value else []
+        return [(_ALL_SOURCES, ["<unparsed>"])] if value else []
     for item in value:
         if isinstance(item, dict):
             for src, targets in item.items():
                 tl = targets if isinstance(targets, list) else [targets]
                 pairs.append((str(src), [str(t) for t in tl]))
         else:  # default_fallbacks: a bare list of targets applying to every alias
-            pairs.append(("*", [str(item)]))
+            pairs.append((_ALL_SOURCES, [str(item)]))
     return pairs
 
 
@@ -465,18 +473,25 @@ def evaluate_gateway(
         for other in facts.aliases:
             if (
                 other.name != name
-                and any(c in other.name for c in "*?[")
+                and _is_pattern(other.name)
                 and fnmatch.fnmatchcase(name, other.name)
-                and other.kind is BackendKind.HOSTED
             ):
-                reasons.append(f"alias_{name}_captured_by_hosted_wildcard")
+                reasons.append(f"alias_{name}_pattern_overlaps_private")
+                if other.kind is BackendKind.HOSTED:
+                    reasons.append(f"alias_{name}_captured_by_hosted_wildcard")
     for key, pairs in sorted(facts.fallbacks.items()):
         for src, targets in pairs:
+            if src != _ALL_SOURCES and _is_pattern(src):
+                # A glob/regex source can name any alias, so it is never vetted.
+                reasons.append(f"fallback_source_wildcard:{key}")
+                continue
             # litellm also looks up ``<provider>/<group>`` keys for a group named
             # without a slash (``_provider_prefixed_model_group``), so match on the
             # last path segment too (a superset, so it fails closed).
             bare = src.rsplit("/", 1)[-1]
-            applies = src == "*" or src in private or bare in private or not private
+            applies = (
+                src == _ALL_SOURCES or src in private or bare in private or not private
+            )
             if applies and any(t not in local for t in targets):
                 reasons.append(f"unsafe_fallback:{key}")
                 break

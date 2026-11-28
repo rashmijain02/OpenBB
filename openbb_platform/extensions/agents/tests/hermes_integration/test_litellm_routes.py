@@ -803,6 +803,65 @@ def test_malformed_entry_next_to_valid_local_alias_still_blocks(tmp_path):
     assert verdict.reasons == ["model_list_2_unparsed"]
 
 
+# --- wildcard fallback sources and private-alias patterns (#1338 review) ---------------
+
+
+@pytest.mark.parametrize(
+    "src", ["finance-*", "*", "fin?nce-private", "finance-[p]rivate"]
+)
+@pytest.mark.parametrize("section", ["router_settings", "litellm_settings"])
+@pytest.mark.parametrize(
+    "key",
+    ["fallbacks", "context_window_fallbacks", "content_policy_fallbacks"],
+)
+def test_wildcard_fallback_source_blocks_even_to_a_local_target(
+    tmp_path, section, key, src
+):
+    cfg = _local_cfg()
+    cfg[section][key] = [{src: [ALIAS]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert f"fallback_source_wildcard:{section}.{key}" in verdict.reasons
+
+
+@pytest.mark.parametrize("section", ["router_settings", "litellm_settings"])
+def test_wildcard_default_fallbacks_source_blocks(tmp_path, section):
+    cfg = _local_cfg()
+    cfg[section]["default_fallbacks"] = [{"finance-*": ["hosted-a"]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert f"fallback_source_wildcard:{section}.default_fallbacks" in verdict.reasons
+
+
+def test_bare_default_fallbacks_list_is_not_a_wildcard_source(tmp_path):
+    cfg = _local_cfg()
+    cfg["router_settings"]["default_fallbacks"] = [ALIAS]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert not any(r.startswith("fallback_source_wildcard") for r in verdict.reasons)
+
+
+@pytest.mark.parametrize("kind", ["local", "hosted"])
+def test_model_name_pattern_matching_private_alias_blocks(tmp_path, kind):
+    cfg = _local_cfg()
+    model = "openai/local-finance-model" if kind == "local" else "github_copilot/*"
+    params = {"model": model}
+    if kind == "local":
+        params["api_base"] = cfg["model_list"][0]["litellm_params"]["api_base"]
+    cfg["model_list"].append({"model_name": "finance-*", "litellm_params": params})
+    _, verdict = _verdict(tmp_path, cfg)
+    assert f"alias_{ALIAS}_pattern_overlaps_private" in verdict.reasons
+
+
+def test_model_name_pattern_not_matching_private_alias_is_admitted(tmp_path):
+    cfg = _local_cfg()
+    cfg["model_list"].append(
+        {
+            "model_name": "other-*",
+            "litellm_params": cfg["model_list"][0]["litellm_params"],
+        }
+    )
+    _, verdict = _verdict(tmp_path, cfg)
+    assert not any("pattern_overlaps" in r for r in verdict.reasons)
+
+
 # --- provider-prefixed fallback source keys (#1338 N4) ----------------------------------
 
 

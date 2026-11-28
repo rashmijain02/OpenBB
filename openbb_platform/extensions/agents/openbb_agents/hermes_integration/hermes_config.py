@@ -404,9 +404,13 @@ def _read_auxiliary(
             if _set(cfg):
                 issues.append("auxiliary_openrouter_model_set")
             continue
-        if task not in AUXILIARY_TASKS and not isinstance(cfg, dict):
-            unvetted.append(f"auxiliary.{safe_label(task)}")
-            continue
+        if task not in AUXILIARY_TASKS:
+            # Exact names only: ``Vision`` / ``vision `` are not the pinned ``vision``
+            # task, so Hermes would not read them as its route; never normalised.
+            issues.append(f"auxiliary_unknown_task:{safe_label(task)}")
+            if not isinstance(cfg, dict):
+                unvetted.append(f"auxiliary.{safe_label(task)}")
+                continue
         entry = cfg if isinstance(cfg, dict) else {}
         host, port, _, _ = _split(entry.get("base_url"))
         provider, model = entry.get("provider"), entry.get("model")
