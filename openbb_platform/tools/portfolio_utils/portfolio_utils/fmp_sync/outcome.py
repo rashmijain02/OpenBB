@@ -18,9 +18,12 @@ from typing import Any
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from portfolio_utils.fmp_sync.checks import DATA_STATUSES
+
 SCHEMA_VERSION = 1
 MAX_LINE = 512
 _CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,64}$")
+_SESSION = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class Outcome(str, Enum):
@@ -119,6 +122,7 @@ class FmpSyncOutcome(_Strict):
     manifest_sha256: str | None = None
     source_sha: str | None = None
     failed_layer: str | None = None
+    target_session: str | None = None
     findings: tuple[str, ...] = ()
     counts: Counts = Field(default_factory=Counts)
     budget: BudgetUse = Field(default_factory=BudgetUse)
@@ -130,6 +134,20 @@ class FmpSyncOutcome(_Strict):
             if not _CODE.match(code):
                 raise ValueError("findings must be stable code tokens")
         return tuple(sorted(set(value)))
+
+    @field_validator("target_session")
+    @classmethod
+    def _iso_session(cls, value: str | None) -> str | None:
+        if value is not None and not _SESSION.match(value):
+            raise ValueError("target_session must be an ISO date")
+        return value
+
+    @field_validator("data_status")
+    @classmethod
+    def _known_status(cls, value: str) -> str:
+        if value not in DATA_STATUSES:
+            raise ValueError("data_status must be a known aggregate status")
+        return value
 
     @property
     def exit_code(self) -> int:

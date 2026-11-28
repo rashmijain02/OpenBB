@@ -20,6 +20,13 @@ Commands:
   grace period, and only then kills the job (see the wrapper docstring).
 - ``lock --status --map <map.json>`` -- print whether the target lock is free or
   busy. Never takes ownership.
+- ``audit --dry-run|--read-only --map <map.json> [--now <ISO aware>]`` (#1345) --
+  readiness v2. ``--dry-run`` evaluates calendar/session checks with zero
+  sockets and lists database checks ``NOT_EVALUATED``
+  (``data_status=UNVALIDATED``). ``--read-only`` runs admission, then only the
+  allowlisted SELECTs inside a read-only transaction; it never takes the target
+  lock and writes a local ``runs/<run_id>.json`` (opt-in private counts stay
+  there). Exit 0 for a recorded outcome, 30 database unavailable, 40 policy.
 
 Output never carries symbols, paths, exception text or secrets.
 """
@@ -31,11 +38,12 @@ import json
 import re
 import sys
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from portfolio_utils.fmp_sync import state
+from portfolio_utils.fmp_sync import readiness, state
 from portfolio_utils.fmp_sync.admission import (
     EXIT_POLICY,
     DeploymentMap,
@@ -69,6 +77,30 @@ def _run_id(value: str) -> str:
     return value
 
 
+def _aware(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("--now must be an ISO timestamp") from exc
+    if parsed.tzinfo is None:
+        raise argparse.ArgumentTypeError("--now must carry a UTC offset")
+    return parsed
+
+
+def _checks(value: str) -> tuple[str, ...]:
+    groups = ("readiness", "integrity", "fundamentals", "ops")
+    names = (
+        groups
+        if value.strip() == "all"
+        else tuple(n for n in (p.strip() for p in value.split(",")) if n)
+    )
+    if not names or any(n not in groups for n in names):
+        raise argparse.ArgumentTypeError(
+            "--checks takes readiness, integrity, fundamentals, ops or all"
+        )
+    return names
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m portfolio_utils.fmp_sync")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -82,16 +114,32 @@ def _parser() -> argparse.ArgumentParser:
     )
     prices.add_argument("--receipt", action="store_true")
     prices.add_argument("--run-id", type=_run_id, default=None)
+    audit = sub.add_parser("audit", help="readiness audit (dry run or read-only)")
+    amode = audit.add_mutually_exclusive_group(required=True)
+    amode.add_argument("--dry-run", action="store_true")
+    amode.add_argument("--read-only", action="store_true")
+    audit.add_argument("--map", required=True, type=Path)
+    audit.add_argument("--now", type=_aware, default=None)
+    audit.add_argument(
+        "--target-class", choices=("disposable", "production"), default="disposable"
+    )
+    audit.add_argument("--run-id", type=_run_id, default=None)
+    audit.add_argument(
+        "--checks",
+        type=_checks,
+        default=("readiness",),
+        help="comma list of readiness,integrity,fundamentals,ops, or all",
+    )
     lock = sub.add_parser("lock", help="target lock status")
     lock.add_argument("--status", action="store_true", required=True)
     lock.add_argument("--map", required=True, type=Path)
     return parser
 
 
-def _blocked_root() -> int:
+def _blocked_root(op: str = "prices") -> int:
     _emit(
         {
-            "op": "prices",
+            "op": op,
             "outcome": "BLOCKED_CONFIG",
             "findings": ["LOCK_ROOT_REJECTED"],
         }
@@ -124,17 +172,43 @@ def _prices(
 
 
 def main(
-    argv: list[str] | None = None, *, runner: Callable[..., Any] | None = None
+    argv: list[str] | None = None,
+    *,
+    runner: Callable[..., Any] | None = None,
+    audit_kwargs: Mapping[str, Any] | None = None,
 ) -> int:
     """Entry point; returns the process exit code."""
     args = _parser().parse_args(argv)
     if args.command == "prices":
         with pending_signals():
             return _main(args, runner)
-    return _main(args, runner)
+    return _main(args, runner, audit_kwargs)
 
 
-def _main(args: argparse.Namespace, runner: Callable[..., Any] | None) -> int:
+def _audit(
+    dmap: DeploymentMap, args: argparse.Namespace, extra: Mapping[str, Any] | None
+) -> int:
+    try:
+        result = readiness.run_audit(
+            dmap,
+            mode="read_only" if args.read_only else "dry_run",
+            now=args.now or readiness.utc_now(),
+            requested_class=args.target_class,
+            run_id=args.run_id,
+            checks=args.checks,
+            **(extra or {}),
+        )
+    except LockRootRejected:
+        return _blocked_root("audit")
+    _emit_line(result.to_line())
+    return result.exit_code
+
+
+def _main(
+    args: argparse.Namespace,
+    runner: Callable[..., Any] | None,
+    audit_kwargs: Mapping[str, Any] | None = None,
+) -> int:
     try:
         dmap = load_map(args.map)
     except ValueError:
@@ -163,6 +237,8 @@ def _main(args: argparse.Namespace, runner: Callable[..., Any] | None) -> int:
         _emit({"op": "lock", "lock": status})
         return 0
 
+    if args.command == "audit":
+        return _audit(dmap, args, audit_kwargs)
     return _prices(dmap, args, runner or run_prices)
 
 

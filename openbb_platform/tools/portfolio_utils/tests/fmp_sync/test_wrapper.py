@@ -664,3 +664,29 @@ def test_signal_during_deadline_grace_kills_at_once(
         assert _lock_freed(root)
     finally:
         _cleanup(proc, holder_pid)
+
+
+def test_wrapper_v4_accepts_new_data_status_rejects_others(rig, monkeypatch):  # noqa: F811
+    """v4 (#1345) relays every readiness aggregate status and nothing else."""
+    monkeypatch.setattr(sys, "path", sys.path[:])
+    namespace: dict = {"__file__": "x"}
+    text = render.render_wrapper(rig["map"])
+    assert "WRAPPER_VERSION = 4" in text
+    exec(compile(text, "wrapper", "exec"), namespace)  # noqa: S102
+    valid = namespace["valid_line"]
+    good = {
+        "op": "prices",
+        "mode": "execute",
+        "run_id": "a" * 32,
+        "outcome": "OK",
+        "exit": 0,
+        "data_status": "UNVALIDATED",
+        "failed_layer": None,
+        "findings": [],
+        "counts": {"requested": 1, "skipped": 0, "success": 1, "failed": 0, "deferred": 0},
+        "sent": 1,
+    }
+    for status in ("VALIDATED", "WARN", "CRITICAL", "UNKNOWN", "BLOCKED", "UNVALIDATED"):
+        assert valid(json.dumps({**good, "data_status": status})), status
+    for status in ("validated", "OK", "HEALTHY", "", None, 0):
+        assert not valid(json.dumps({**good, "data_status": status})), status

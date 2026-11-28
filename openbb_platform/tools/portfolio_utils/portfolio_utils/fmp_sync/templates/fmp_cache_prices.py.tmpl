@@ -153,7 +153,15 @@ _OUTCOME_EXITS = {
     "BLOCKED_EMPTY_UNIVERSE": 40,
 }
 _SHORT_OUTCOMES = {"BLOCKED_CONFIG"}
-_DATA_STATUS = {"UNVALIDATED"}
+# v4 (#1345): readiness v2 aggregate statuses.
+_DATA_STATUS = {
+    "BLOCKED",
+    "CRITICAL",
+    "UNKNOWN",
+    "UNVALIDATED",
+    "WARN",
+    "VALIDATED",
+}
 _LAYERS = {
     "process",
     "module_origin",

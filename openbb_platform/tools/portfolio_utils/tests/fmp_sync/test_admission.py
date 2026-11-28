@@ -727,3 +727,14 @@ def test_import_that_removes_a_present_key_is_drift(world):
     env = {"DB_NAME": DISPOSABLE_DB}
     result = _admit(world, env=env, import_warmer_fn=lambda: env.pop("DB_NAME"))
     assert "DOTENV_DRIFT" in result.findings
+
+
+@pytest.mark.parametrize("first_arg", [[2003], {"code": 2003}, None, object(), "boom"])
+def test_session_probe_odd_error_args_never_raise(world, first_arg):
+    """An unhashable/odd ``args[0]`` must map to SESSION_CHECK_FAILED, not TypeError."""
+
+    def _raise():
+        raise RuntimeError(first_arg)
+
+    result = _admit(world, mode="execute", connect_fn=_raise)
+    assert "SESSION_CHECK_FAILED" in result.findings
