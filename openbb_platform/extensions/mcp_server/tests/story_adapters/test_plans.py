@@ -204,3 +204,69 @@ def test_no_mcp_tool_can_approve():
         tools = {row["mcp_tool"] for row in csv.DictReader(handle)}
     assert {"story_plan_preview", "story_workflow_start"} <= tools
     assert not [t for t in tools if t and "approv" in t and t.startswith("story_")]
+
+
+def test_start_returns_the_run_marker(env):
+    """The start reply carries ``[[hfp:run:<id>]]`` like the plan view's marker."""
+    plan = _preview(env)
+    assert plan["marker"] == f"[[hfp:plan:{plan['plan_id']}]]"
+    _approve(env, plan)
+    started = _start(env, plan["plan_id"]).json()
+    assert started["marker"] == f"[[hfp:run:{started['run_id']}]]"
+
+
+def test_started_plan_replays_before_manifest_recheck(env):
+    """A repeat start of a started plan returns its ids even after drift (F6)."""
+    plan = _preview(env)
+    _approve(env, plan)
+    first = _start(env, plan["plan_id"]).json()
+    # The workflow changed after the start: a fresh start would be superseded.
+    old = env["plans"].get("alice", plan["plan_id"]).plan
+    old["workflow_manifest_sha256"] = "0" * 64
+    with sqlite3.connect(env["store"]) as connection:
+        connection.execute("UPDATE story_plans SET plan_sha256 = ?", (plans._sha(old),))
+    again = _start(env, plan["plan_id"])
+    assert again.status_code == 202, again.text
+    body = again.json()
+    assert (body["run_id"], body["job_id"]) == (first["run_id"], first["job_id"])
+    assert body["replay_of"] == first["run_id"]
+    assert _count(env, "SELECT COUNT(*) FROM story_runs") == 1
+    assert _count(env, "SELECT COUNT(*) FROM story_jobs") == 1
+
+
+def test_interleaved_starts_create_exactly_one_run_record(env, monkeypatch):
+    """H1: both starts read the approved plan before either creates its run."""
+    plan = _preview(env)
+    _approve(env, plan)
+    barrier = threading.Barrier(2, timeout=20)
+    gate = {"left": 2}
+    lock = threading.Lock()
+    real_get = plans.PlanStore.get
+
+    def get(self, principal, plan_id):
+        found = real_get(self, principal, plan_id)
+        with lock:
+            wait = gate["left"] > 0
+            gate["left"] -= 1
+        if wait:
+            barrier.wait()  # both deliveries saw run_id None
+        return found
+
+    monkeypatch.setattr(plans.PlanStore, "get", get)
+    replies = []
+    threads = [
+        threading.Thread(target=lambda: replies.append(_start(env, plan["plan_id"])))
+        for _ in range(2)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert [r.status_code for r in replies] == [202, 202], [r.text for r in replies]
+    bodies = [r.json() for r in replies]
+    run_id = bodies[0]["run_id"]
+    assert {b["run_id"] for b in bodies} == {run_id}
+    assert sorted(str(b["replay_of"]) for b in bodies) == sorted(["None", run_id])
+    assert _count(env, "SELECT COUNT(*) FROM story_runs") == 1
+    assert _count(env, "SELECT COUNT(*) FROM story_run_bindings") == 1
+    assert _count(env, "SELECT COUNT(*) FROM story_jobs") == 1

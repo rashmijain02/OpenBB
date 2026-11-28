@@ -354,7 +354,7 @@ class WorkflowStart(BaseModel):
 
 
 class WorkflowStarted(BaseModel):
-    """The plan's one run and one job."""
+    """The plan's one run and one job; ``marker`` mounts its run card."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -364,6 +364,7 @@ class WorkflowStarted(BaseModel):
     job_id: str
     operation_id: str
     job_status: str
+    marker: str
     replay_of: str | None = None
 
 
@@ -383,6 +384,22 @@ def plan_view(plan: Plan) -> PlanView:
 
 
 Submit = Callable[..., Any]
+# ``existing(service, run_id, kind)``: the run's submitted job of ``kind``, or None.
+Existing = Callable[..., Any]
+
+
+def _started(plan: Plan, job: Any, replay_of: str | None) -> WorkflowStarted:
+    assert plan.run_id is not None  # noqa: S101  # callers checked
+    return WorkflowStarted(
+        plan_id=plan.plan_id,
+        plan_sha256=plan.plan_sha256,
+        run_id=plan.run_id,
+        job_id=job.job_id,
+        operation_id=job.operation_id,
+        job_status=job.status,
+        marker=f"[[hfp:run:{plan.run_id}]]",
+        replay_of=replay_of,
+    )
 
 
 def build_router(  # pylint: disable=too-many-arguments
@@ -391,6 +408,8 @@ def build_router(  # pylint: disable=too-many-arguments
     principal: str,
     workflows: WorkflowCatalog,
     submit: Submit,
+    *,
+    existing: Existing | None = None,
 ) -> APIRouter:
     """Plan routes; ``submit(service, run_id, kind, payload, operation_id)``."""
     router = APIRouter(prefix="/api/v1/story/plans", tags=["story"])
@@ -436,6 +455,12 @@ def build_router(  # pylint: disable=too-many-arguments
             raise HTTPException(status.HTTP_404_NOT_FOUND, "plan_not_found")
         if plan.state == "pending":
             raise HTTPException(status.HTTP_409_CONFLICT, "plan_not_approved")
+        # A started plan replays its run and job before any re-check: a later
+        # manifest change must not turn a repeat of a done start into an error.
+        if plan.run_id is not None and existing is not None:
+            job = existing(service, plan.run_id, WORKFLOW_RUN_KIND)
+            if job is not None:
+                return _started(plan, job, plan.run_id)
         if plan.expired(_now()):
             raise HTTPException(status.HTTP_410_GONE, "plan_expired")
         document, digest = _current(plan.workflow_id)
@@ -446,10 +471,13 @@ def build_router(  # pylint: disable=too-many-arguments
         if plan.run_id is None:
             origin = request.binding.origin if request.binding else "interactive"
             now = _now()
+            candidate = uuid.uuid4().hex
+            # The plan's binding key makes this create-once: a concurrent start
+            # gets the run the first one bound, never a second run record.
             record = runs.create(
                 principal,
                 RunRecord(
-                    run_id=uuid.uuid4().hex,
+                    run_id=candidate,
                     story_id=f"workflow:{plan.workflow_id}",
                     manifest_version=workflows.version(plan.workflow_id),
                     workflow_manifest_sha256=digest,
@@ -464,6 +492,8 @@ def build_router(  # pylint: disable=too-many-arguments
                 ),
             )
             plan = plans.mark_started(principal, plan_id, record.run_id)
+            if record.run_id != candidate:  # a concurrent start bound it first
+                replay_of = record.run_id
         if plan.run_id is None:  # another delivery is mid-start
             raise HTTPException(status.HTTP_409_CONFLICT, "plan_not_approved")
         job = submit(
@@ -473,15 +503,7 @@ def build_router(  # pylint: disable=too-many-arguments
             {"plan_id": plan.plan_id, "workflow_id": plan.workflow_id},
             "wr-" + plan.plan_id.removeprefix("plan_"),
         )
-        return WorkflowStarted(
-            plan_id=plan.plan_id,
-            plan_sha256=plan.plan_sha256,
-            run_id=plan.run_id,
-            job_id=job.job_id,
-            operation_id=job.operation_id,
-            job_status=job.status,
-            replay_of=replay_of,
-        )
+        return _started(plan, job, replay_of)
 
     return router
 

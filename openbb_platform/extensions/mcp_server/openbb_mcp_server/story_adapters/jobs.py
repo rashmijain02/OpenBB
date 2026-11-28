@@ -430,6 +430,15 @@ def build_router(  # pylint: disable=too-many-statements,too-many-locals
         )
         return story_job_submit(run_id, request, service)
 
+    def existing_internal(
+        service: JobService, run_id: str, kind: str
+    ) -> StoryJob | None:
+        """The run's submitted job of an internal kind, read only (no checks)."""
+        for submission in ledger.for_run(principal, run_id):
+            if submission.kind == kind and submission.job_id is not None:
+                return _view(submission, service.get_run(submission.job_id))
+        return None
+
     router.routes.extend(
         plans.build_router(
             runs,
@@ -437,6 +446,7 @@ def build_router(  # pylint: disable=too-many-statements,too-many-locals
             principal,
             workflow_catalog,
             submit_internal,
+            existing=existing_internal,
         ).routes
     )
 
