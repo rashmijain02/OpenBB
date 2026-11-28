@@ -34,7 +34,14 @@ from openbb_mcp_server.story_adapters.artifacts import (
     default_artifact_root,
 )
 from openbb_mcp_server.story_adapters.paper import Gate, Ticket, _Strict, _Text
-from openbb_mcp_server.story_adapters.registry import RunStore, default_store_path
+from openbb_mcp_server.story_adapters.registry import (
+    RunStore,
+    WorkflowCatalog,
+    default_store_path,
+    default_workflow_dir,
+    ensure_run_open,
+    ensure_workflow_current,
+)
 
 MAX_TICKETS = 50
 RETENTION_DAYS = 30
@@ -157,9 +164,15 @@ def _unprocessable(error: Exception) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail)
 
 
-def build_router(runs: RunStore, artifacts: ArtifactStore, principal: str) -> APIRouter:
+def build_router(
+    runs: RunStore,
+    artifacts: ArtifactStore,
+    principal: str,
+    workflows: WorkflowCatalog | None = None,
+) -> APIRouter:
     """Return the batch routes bound to one principal."""
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
+    workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     authenticated = [Depends(AuthService().auth_hook)]
 
     @router.post(
@@ -186,6 +199,10 @@ def build_router(runs: RunStore, artifacts: ArtifactStore, principal: str) -> AP
         run = runs.get(principal, run_id)
         if run is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
+        # A mutation like any other: a changed workflow or a cancelled run
+        # refuses it (#1341).
+        ensure_workflow_current(run, workflow_catalog)
+        ensure_run_open(run)
         try:
             sha, csv_bytes, xlsx_bytes = sink_files(plan)
         except ValueError as error:
@@ -246,6 +263,7 @@ def compose_story_paper_batch_app(
     principal: str,
     store_path: Path | None = None,
     artifact_root: Path | None = None,
+    workflow_dir: Path | None = None,
 ) -> FastAPI:
     """Add the batch routes, bound to ``principal``, to an isolated app copy."""
     if not principal:
@@ -260,6 +278,11 @@ def compose_story_paper_batch_app(
     composed.router.middleware_stack = composed.router.app
     composed.middleware_stack = None
     composed.router.routes = list(source_app.router.routes)
-    composed.include_router(build_router(RunStore(db_path), artifacts, principal))
+    workflows = WorkflowCatalog(
+        workflow_dir if workflow_dir is not None else default_workflow_dir()
+    )
+    composed.include_router(
+        build_router(RunStore(db_path), artifacts, principal, workflows)
+    )
     composed.openapi_schema = None
     return composed

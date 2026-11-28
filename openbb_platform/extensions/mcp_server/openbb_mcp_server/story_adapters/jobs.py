@@ -23,6 +23,7 @@ that says so. Every route is bound to the server's one principal.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import sqlite3
 from datetime import datetime, timezone
@@ -402,10 +403,9 @@ def build_router(  # pylint: disable=too-many-statements
         if latest is not None and latest.cancel_requested_at is not None:
             # story_run_cancel ran between the open check and the enqueue and
             # could not see this job yet: cancel it here (#1341).
-            try:
+            # A worker that claimed it first refuses a cancelled run.
+            with contextlib.suppress(ValueError):
                 service.cancel(job.run_id)
-            except ValueError:
-                pass  # a worker claimed it; the worker refuses a cancelled run
             ensure_run_open(latest)
         if run.binding is not None:
             receipts.record_outcome(
