@@ -150,6 +150,33 @@ def test_unconfigured_tools_fail_closed(tmp_path):
         tools.configure(None)
 
 
+def test_failed_index_build_is_cached_with_bounded_retry(tmp_path, monkeypatch):
+    calls = []
+    real = tools.register.load_register
+
+    def counting(path):
+        calls.append(path)
+        return real(path)
+
+    clock = [1000.0]
+    monkeypatch.setattr(tools.register, "load_register", counting)
+    monkeypatch.setattr(tools, "_now", lambda: clock[0])
+    tools.configure(tmp_path / "does-not-exist.json")
+    try:
+        for _ in range(3):
+            with pytest.raises(tools.KnowledgeUnavailable, match="register_unreadable"):
+                tools.knowledge_search("PF-15")
+            with pytest.raises(tools.KnowledgeUnavailable, match="register_unreadable"):
+                tools.knowledge_get_section("x")
+        assert len(calls) == 1
+        clock[0] += tools.RETRY_SECONDS + 1
+        with pytest.raises(tools.KnowledgeUnavailable):
+            tools.knowledge_search("PF-15")
+        assert len(calls) == 2
+    finally:
+        tools.configure(None)
+
+
 def test_main_rejects_knowledge_register_without_profile(monkeypatch, capsys):
     async def fake_serve(**_kwargs):
         raise AssertionError("must not serve")

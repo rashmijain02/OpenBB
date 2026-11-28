@@ -292,6 +292,34 @@ def test_private_path_and_secret_shaped_sections_dropped(repo, write_register, c
     assert scan_text(out) == []
 
 
+_SPLIT = (
+    "# Doc\n\n## Clean\n\nfine\n\n"
+    "## Cmt key\n\napi_key<!-- x -->= abcdef123456\n\n"
+    "## Zw key\n\napi_key\u200b= abcdef123456\n\n"
+    "## Cmt path\n\n/ho<!---->me/alice/project/file\n\n"
+    "## Zw path\n\n/home/\u200balice/project/file\n\n"
+    "## Full width\n\n\uff41pi_key<!-- x -->=abcdef123456\n\n\n"
+    "## Cmt secret\n\n<!-- api_key=abcdef123456 -->\n"
+)
+
+
+def test_split_secret_and_path_forms_excluded_by_served_text_scan(repo):
+    repo.write("docs/designs/s.md", _SPLIT)
+    commit = repo.commit()
+    rows = [row("s", "docs/designs/s.md", repo.blob("docs/designs/s.md"))]
+    built = _build(repo, rows, commit)
+    assert [s.anchor for s in built.documents[0].sections] == ["clean"]
+    assert sorted((e.anchor, e.code) for e in built.exclusions) == [
+        ("cmt-key", "secret_shape_excluded"),
+        ("cmt-path", "private_path_excluded"),
+        ("cmt-secret", "secret_shape_excluded"),
+        ("doc", "private_path_excluded"),  # the H1 section contains its children
+        ("full-width", "secret_shape_excluded"),
+        ("zw-key", "secret_shape_excluded"),
+        ("zw-path", "private_path_excluded"),
+    ]
+
+
 def test_check_clean_register_reports_counts_only(repo, write_register, capsys):
     repo.write("docs/designs/a.md", "# A\n\nalpha\n")
     repo.write("specs/gh-9-x/plan.md", "# Plan\n\nbeta\n")

@@ -300,10 +300,18 @@ _USER_PATH = re.compile(
 
 
 def section_code(text: str) -> str | None:
-    """Return the fixed exclusion code for a section's text (``None`` when clean)."""
-    if _USER_PATH.search(text):
+    """Return the fixed exclusion code for a section's text (``None`` when clean).
+
+    Both the raw text and the served form (``clean_text``; ``scan_text`` folds NFKC itself) are
+    scanned, so a secret or user path split by an HTML comment or a
+    zero-width character cannot evade the scan yet reach the excerpt.
+    """
+    from .index import clean_text  # pylint: disable=import-outside-toplevel
+
+    forms = (text, clean_text(text))
+    if any(_USER_PATH.search(f) for f in forms):
         return "private_path_excluded"
-    if scan_text(text):
+    if any(scan_text(f) for f in forms):
         return "secret_shape_excluded"
     return None
 

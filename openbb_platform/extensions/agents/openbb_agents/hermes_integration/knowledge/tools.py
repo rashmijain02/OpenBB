@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,16 @@ from .index import ANSWER_CONTRACT_VERSION, KnowledgeIndex, QueryRejected
 logger = logging.getLogger(__name__)
 
 _LOCK = threading.Lock()
-_STATE: dict[str, Any] = {"register": register.DEFAULT_REGISTER, "index": None}
+_STATE: dict[str, Any] = {
+    "register": register.DEFAULT_REGISTER,
+    "index": None,
+    "failure": None,  # (code, monotonic time) of the last failed build
+}
+RETRY_SECONDS = 30.0
+
+
+def _now() -> float:
+    return time.monotonic()
 
 
 class KnowledgeUnavailable(RuntimeError):
@@ -42,6 +52,7 @@ def configure(register_path: Path | None) -> None:
             register.DEFAULT_REGISTER if register_path is None else Path(register_path)
         )
         _STATE["index"] = None
+        _STATE["failure"] = None
 
 
 def _build(register_path: Path) -> KnowledgeIndex:
@@ -69,9 +80,20 @@ def _build(register_path: Path) -> KnowledgeIndex:
 
 def _index() -> KnowledgeIndex:
     with _LOCK:
-        if _STATE["index"] is None:
-            _STATE["index"] = _build(_STATE["register"])
-        return _STATE["index"]
+        if _STATE["index"] is not None:
+            return _STATE["index"]
+        failure = _STATE["failure"]
+        if failure is not None and _now() - failure[1] < RETRY_SECONDS:
+            # A broken register is not rebuilt (hundreds of git calls) on every call.
+            raise KnowledgeUnavailable(failure[0])
+        try:
+            built = _build(_STATE["register"])
+        except KnowledgeUnavailable as exc:
+            _STATE["failure"] = (str(exc), _now())
+            raise
+        _STATE["index"] = built
+        _STATE["failure"] = None
+        return built
 
 
 def _rejected(code: str) -> dict[str, Any]:
