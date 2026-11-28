@@ -35,6 +35,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from portfolio_utils.fmp_sync import readiness as readiness_v2
 from portfolio_utils.fmp_sync.locking import LockBusy, LockRootRejected, target_lock
 
 EXIT_SKIPPED_BUSY = 75  # EX_TEMPFAIL: another warming run holds the target lock (#1344)
@@ -217,61 +218,48 @@ def _connect(database: str | None = None):
 
 
 def _previous_trading_day(ref_date: datetime.date) -> datetime.date:
-    """Return previous weekday date (Mon->Fri), suitable as default freshness target."""
+    """Deprecated (#1345): weekday-only, no holidays, host-local date.
+
+    Kept as a shim for external callers; readiness uses
+    ``portfolio_utils.fmp_sync.sessions.target_session`` (XNYS, actual close +
+    publication grace).
+    """
     d = ref_date - timedelta(days=1)
     while d.weekday() >= 5:  # 5=Sat, 6=Sun
         d -= timedelta(days=1)
     return d
 
 
-def check_portfolio_app_readiness(symbols: list[str], database: str | None = None) -> dict:
-    """Check whether Portfolio App required data is present and recent.
+def check_portfolio_app_readiness(  # pylint: disable=too-many-arguments
+    symbols: list[str],
+    database: str | None = None,
+    *,
+    now: datetime | None = None,
+    policy: Any = None,
+    connect_fn: Callable[[], Any] | None = None,
+    calendar: Any = None,
+) -> dict:
+    """Check whether Portfolio App price data is present and recent (readiness v2, #1345).
 
-    Validates:
-      1) required tables have rows (Portfolio_Positions, Account_Owner, ESPP_Plan)
-      2) each symbol has a cached latest close in equity_historical
-      3) latest close date is at least the previous trading day
+    Keeps the legacy keys ``target_date``, ``table_counts``,
+    ``missing_price_symbols`` and ``stale_price_symbols`` and adds ``checks``,
+    ``data_status`` and ``calendar``. The body is
+    :func:`portfolio_utils.fmp_sync.readiness.evaluate`: XNYS target session
+    (actual close + 2 h grace, never the host-local date), a read-only
+    transaction with allowlisted SELECTs, valid non-filled rows only. Private
+    table counts (``Portfolio_Positions``, ``Account_Owner``, ``ESPP_Plan``)
+    are opt-in via ``policy={"private_counts": True}``; ``table_counts`` only
+    ever holds counts that were actually read (never a fabricated zero).
     """
-    target_date = _previous_trading_day(datetime.now().date())
-    readiness: dict = {
-        "target_date": str(target_date),
-        "table_counts": {},
-        "missing_price_symbols": [],
-        "stale_price_symbols": [],
-    }
-
-    if not symbols:
-        return readiness
-
-    conn = _connect(database)
-    try:
-        with conn.cursor() as cur:
-            for table_name in ("Portfolio_Positions", "Account_Owner", "ESPP_Plan"):
-                cur.execute(f"SELECT COUNT(*) AS c FROM {table_name}")
-                readiness["table_counts"][table_name] = cur.fetchone()["c"]
-
-            placeholders = ", ".join(["%s"] * len(symbols))
-            sql = f"""
-                SELECT symbol, MAX(date) AS max_date
-                FROM equity_historical
-                WHERE symbol IN ({placeholders})
-                GROUP BY symbol
-            """
-            cur.execute(sql, tuple(symbols))
-            rows = cur.fetchall()
-            max_by_symbol = {r["symbol"]: r["max_date"] for r in rows}
-
-            for sym in symbols:
-                max_date = max_by_symbol.get(sym)
-                if max_date is None:
-                    readiness["missing_price_symbols"].append(sym)
-                    continue
-                if max_date < target_date:
-                    readiness["stale_price_symbols"].append((sym, str(max_date)))
-    finally:
-        conn.close()
-
-    return readiness
+    report = readiness_v2.evaluate(
+        symbols,
+        now=now or readiness_v2.utc_now(),
+        calendar=calendar,
+        policy=policy,
+        connect_fn=connect_fn or (lambda: _connect(database)),
+        database=database,
+    )
+    return report.legacy()
 
 
 def _resolve_api_key() -> str | None:

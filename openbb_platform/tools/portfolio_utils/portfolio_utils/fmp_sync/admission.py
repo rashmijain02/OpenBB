@@ -116,6 +116,8 @@ class DeploymentMap(_Strict):
     # Transport allowlist for the budget guard (FMP host names, loopback MySQL port).
     fmp_hosts: list[str] | None = None
     mysql_port: int | None = Field(default=None, gt=0, lt=65536)
+    # Readiness / audit policy (#1345); validated by ``readiness.ReadinessPolicy``.
+    readiness: dict[str, Any] | None = None
 
 
 class UniverseManifest(_Strict):

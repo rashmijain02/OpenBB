@@ -185,3 +185,17 @@ def test_grace_must_fit_the_margin_and_hermes_timeout(
         monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", deadline)
     with pytest.raises(render.RenderError):
         render.render_wrapper(rig["map"])
+
+
+def test_render_v3_install_is_update(rig, monkeypatch):
+    """A self-hashed v3 install is an ``UPDATE`` (not drift) for the v4 template."""
+    assert render.WRAPPER_VERSION == 4
+    monkeypatch.setattr(render, "WRAPPER_VERSION", 3)
+    render.apply_files(rig["map"], rig["home"])
+    script = rig["home"] / "scripts" / render.WRAPPER_NAME
+    assert "WRAPPER_VERSION = 3" in script.read_text("utf-8")
+    monkeypatch.setattr(render, "WRAPPER_VERSION", 4)
+    assert _plan(rig).status == "UPDATE"
+    render.apply_files(rig["map"], rig["home"])
+    assert "WRAPPER_VERSION = 4" in script.read_text("utf-8")
+    assert _plan(rig).status == "UNCHANGED"

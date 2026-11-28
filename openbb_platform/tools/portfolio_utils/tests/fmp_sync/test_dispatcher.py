@@ -320,3 +320,35 @@ def test_outcome_rejects_free_text_and_unknown_fields():
             outcome=Outcome.OK,
             error="free text",
         )
+
+
+def test_readiness_error_maps_to_unavailable(harness):
+    """A readiness exception is UNAVAILABLE READINESS_ERROR -> data_status UNKNOWN."""
+
+    def unavailable(symbols, database=None):
+        raise RuntimeError("least-privilege user cannot COUNT")
+
+    out = harness.run(readiness_fn=unavailable)
+    assert out.outcome is Outcome.OK and out.exit_code == 0
+    assert out.data_status == "UNKNOWN"
+    assert "least-privilege" not in out.model_dump_json()
+    assert json.loads(out.to_line())["data_status"] == "UNKNOWN"
+
+
+def test_readiness_data_status_reaches_outcome(harness):
+    out = harness.run(readiness_fn=lambda symbols, database=None: {"data_status": "WARN"})
+    assert out.data_status == "WARN"
+    bogus = harness.run(readiness_fn=lambda symbols, database=None: {"data_status": "GREEN"})
+    assert bogus.data_status == "UNVALIDATED"
+
+
+def test_outcome_rejects_unknown_data_status():
+    with pytest.raises(ValidationError):
+        FmpSyncOutcome(
+            run_id="a" * 32,
+            mode="execute",
+            started_utc=utcnow(),
+            ended_utc=utcnow(),
+            outcome=Outcome.OK,
+            data_status="HEALTHY",
+        )

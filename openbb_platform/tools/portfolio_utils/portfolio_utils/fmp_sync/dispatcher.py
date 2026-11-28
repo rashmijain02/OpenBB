@@ -49,6 +49,12 @@ from portfolio_utils.fmp_sync.budget import (
     Limits,
     TransportGuard,
 )
+from portfolio_utils.fmp_sync.checks import (
+    DATA_STATUSES,
+    CheckResult,
+    CheckState,
+    aggregate,
+)
 from portfolio_utils.fmp_sync.outcome import (
     BudgetUse,
     Counts,
@@ -177,6 +183,7 @@ class _Ctx:  # pylint: disable=too-many-instance-attributes
         self.success: list[str] = []
         self.failed: list[str] = []
         self.deferred: list[str] = []
+        self.data_status = "UNVALIDATED"
 
     def outcome(self, outcome: Outcome, *findings: str) -> FmpSyncOutcome:
         return FmpSyncOutcome(
@@ -185,6 +192,7 @@ class _Ctx:  # pylint: disable=too-many-instance-attributes
             started_utc=self.started,
             ended_utc=utcnow(),
             outcome=outcome,
+            data_status=self.data_status,
             target_class=self.target_class,
             db_category=self.db_category,
             manifest_id=self.manifest_id,
@@ -249,12 +257,26 @@ def _warm(  # pylint: disable=too-many-arguments,too-many-locals
 
     def _readiness(symbols: list[str], database: str | None) -> dict:
         try:
-            return (readiness_fn or tool.check_portfolio_app_readiness)(
+            result = (readiness_fn or tool.check_portfolio_app_readiness)(
                 symbols, database
             )
         except Exception:  # noqa: BLE001  pylint: disable=broad-exception-caught
+            # UNAVAILABLE READINESS_ERROR: error type is not recorded, only the code.
             ctx.findings.append("READINESS_UNAVAILABLE")
+            ctx.data_status = aggregate(
+                [
+                    CheckResult(
+                        check_id="readiness",
+                        state=CheckState.UNAVAILABLE,
+                        reason_code="READINESS_ERROR",
+                    )
+                ]
+            )
             return {}
+        status = result.get("data_status") if isinstance(result, dict) else None
+        if status in DATA_STATUSES:
+            ctx.data_status = status
+        return result
 
     def _fetch(symbol: str, **kwargs: Any) -> dict:
         try:

@@ -18,6 +18,8 @@ from typing import Any
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from portfolio_utils.fmp_sync.checks import DATA_STATUSES
+
 SCHEMA_VERSION = 1
 MAX_LINE = 512
 _CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,64}$")
@@ -130,6 +132,13 @@ class FmpSyncOutcome(_Strict):
             if not _CODE.match(code):
                 raise ValueError("findings must be stable code tokens")
         return tuple(sorted(set(value)))
+
+    @field_validator("data_status")
+    @classmethod
+    def _known_status(cls, value: str) -> str:
+        if value not in DATA_STATUSES:
+            raise ValueError("data_status must be a known aggregate status")
+        return value
 
     @property
     def exit_code(self) -> int:

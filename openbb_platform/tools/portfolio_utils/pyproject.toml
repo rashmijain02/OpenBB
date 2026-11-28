@@ -17,6 +17,8 @@ python-dotenv = "*"
 requests = "*"
 pandas = "*"
 openbb-core = "^1.6.10"
+# XNYS session authority for readiness (#1345); explicit start/end, see fmp_sync/sessions.py.
+exchange-calendars = "^4.13.2"
 
 [tool.poetry.plugins."openbb_job_extension"]
 portfolio_utils = "portfolio_utils.jobs:get_job_definitions"

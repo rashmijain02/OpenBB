@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 from portfolio_utils.fmp_sync import locking
 from portfolio_utils.fmp_sync.admission import DeploymentMap, load_map
 
-WRAPPER_VERSION = 3
+WRAPPER_VERSION = 4
 WRAPPER_NAME = "fmp_cache_prices.py"
 JOB_NAME = "fmp-cache-prices"
 SCHEDULE = "30 15 * * 1-5"
