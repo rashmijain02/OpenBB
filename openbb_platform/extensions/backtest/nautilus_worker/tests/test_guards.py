@@ -87,6 +87,35 @@ def test_env_with_broker_credentials_is_refused():
     assert SENTINEL not in info.value.message
 
 
+@pytest.mark.parametrize(
+    "name",
+    [
+        "SERVICE_KEY",
+        "MASTERKEY",
+        "DB_PWD",
+        "SSH_PRIVKEY_PATH",
+        "DATABASE_URL",
+        "FMP_CACHED",
+        "FMPKEY",
+    ],
+)
+def test_env_extra_credential_names_are_refused(name):
+    """Names only: each extra credential shape is refused, the value never shown."""
+    assert guards.broker_env_names({**BENIGN, name: SENTINEL}) == [name]
+    with pytest.raises(ProtocolError) as info:
+        guards.refuse_broker_env({name: SENTINEL})
+    assert SENTINEL not in info.value.message
+
+
+def test_env_url_with_userinfo_is_refused_plain_url_is_not():
+    creds = "postgresql://svc:" + SENTINEL + "@db.internal:5432/x"
+    env = {"CACHE_URL": creds, "DOCS_URL": "https://example.invalid/a@b"}
+    assert guards.broker_env_names(env) == ["CACHE_URL"]
+    with pytest.raises(ProtocolError) as info:
+        guards.refuse_broker_env(env)
+    assert SENTINEL not in info.value.message and "svc" not in info.value.message
+
+
 def test_env_allowlist_exempts_named_variables_only():
     env = {"MY_SERVICE_API_KEY": SENTINEL, "GH_TOKEN": SENTINEL}
     assert guards.broker_env_names(env, allow=frozenset({"GH_TOKEN"})) == [
@@ -201,7 +230,7 @@ def test_import_exemptions_are_exact_closure_names_never_adapters():
         "nautilus_trader.live.reconciliation",
         "nautilus_trader.live.risk_engine",
     }
-    assert guards.IMPORT_EXEMPT == expected
+    assert expected == guards.IMPORT_EXEMPT
     assert guards.IMPORT_EXEMPT <= nautilus_closure.NAUTILUS_IMPORT_CLOSURE
     assert nautilus_closure.SOURCE_COMMIT == "27a8e54e7ac3c57d6cbf8891f0283dfbaee97317"
     # A closure that (in some future pin) contained the node or an adapter

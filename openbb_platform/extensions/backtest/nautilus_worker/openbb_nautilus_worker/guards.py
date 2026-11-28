@@ -60,6 +60,12 @@ _GENERIC_RE = re.compile(
     r"(?:ACCESS_|AUTH_|REFRESH_)?TOKEN|PASSWORD|PASSPHRASE|PRIVATE_?KEY|MNEMONIC)"
     r"(?:_|$)"
 )
+# Further credential-shaped names: ``*KEY`` / ``*_KEY``, ``*_PWD``, ``*PRIVKEY*``,
+# ``DATABASE_URL`` and data-vendor keys (``FMP*``).
+_EXTRA_RE = re.compile(r"(?:KEY$|_PWD$|PRIVKEY|^DATABASE_URL$|^FMP)")
+# ``*_URL`` whose value embeds credentials (``scheme://user:pass@host``). The
+# value is only tested, never reported.
+_URL_USERINFO_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*://[^/@\s]+@")
 # Owner-reviewed names that match a pattern but carry no credential. Code
 # constant on purpose: an env-controlled allowlist would defeat the scrub.
 ENV_ALLOWLIST: frozenset[str] = frozenset()
@@ -154,6 +160,12 @@ def broker_env_names(
         if upper in allowed:
             continue
         if _PREFIX_RE.match(upper) or _GENERIC_RE.search(upper):
+            hits.append(name)
+            continue
+        if _EXTRA_RE.search(upper):
+            hits.append(name)
+            continue
+        if upper.endswith("_URL") and _URL_USERINFO_RE.match(env[name] or ""):
             hits.append(name)
     return sorted(hits)
 
