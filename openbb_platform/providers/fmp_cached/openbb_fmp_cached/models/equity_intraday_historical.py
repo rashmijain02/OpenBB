@@ -41,8 +41,11 @@ from openbb_fmp_cached.utils.database import execute_many, execute_query, init_d
 from openbb_fmp_cached.utils.session_calendar import (
     classify_symbol,
     forex_is_closed,
+    forex_is_thin_day,
     forex_last_open_bar_start,
     forex_next_open,
+    gap_tolerances,
+    is_24h_symbol,
 )
 
 logger = logging.getLogger(__name__)
@@ -347,14 +350,13 @@ def _analyze_intraday_cache(
     if not cached:
         return [], True
     interval_delta = _interval_delta(query.interval)
-    asset_class = classify_symbol(query.symbol)
-    if asset_class != "equity":
+    if is_24h_symbol(query.symbol):
         return cached, has_invalid or _has_continuous_gap(
             cached,
             start=start,
             end=end_exclusive - timedelta(seconds=1),
             delta=interval_delta,
-            asset_class=asset_class,
+            symbol=str(query.symbol),
             now=now or datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None),
         )
     # Coverage check — earliest & latest cached bar bracket the requested range.
@@ -468,7 +470,7 @@ def _is_extended_row(
     ts: datetime | None = None,
     symbol: str | None = None,
 ) -> bool:
-    if classify_symbol(symbol or row.get("symbol")) != "equity":
+    if is_24h_symbol(row.get("symbol") or symbol):
         return False  # 24h assets have no regular/extended session split
     explicit = row.get("is_extended")
     if explicit is not None:
@@ -559,30 +561,45 @@ def _has_continuous_gap(
     start: datetime,
     end: datetime,
     delta: timedelta,
-    asset_class: str,
+    symbol: str,
     now: datetime,
 ) -> bool:
     """Gap check for 24h assets: bars every ``delta`` while the market is open.
 
-    Crypto is open continuously. Forex skips the weekly closure (Friday 17:00
-    to Sunday 17:00 New York time). The grid is anchored at midnight, like the
-    bars FMP returns, and never demands bars that start after ``now``.
+    Crypto is open continuously. Forex skips its closures (weekly, plus the
+    New Year window). The grid is anchored at midnight, like the bars FMP
+    returns. Recorded data shows FMP omits some no-trade bars and publishes
+    the newest bar one to two intervals late. Holes and edge shortfalls up to
+    the tolerance (at least three intervals) are therefore accepted, which
+    also absorbs the publishing lag; forex holiday days are exempt; and bars
+    after ``now`` are not demanded.
     """
-    forex = asset_class == "forex"
-    first_start = start if not forex else forex_next_open(start)
+    forex = classify_symbol(symbol) == "forex"
+    interior_tol, edge_tol = gap_tolerances(symbol, delta)
+    first_start = forex_next_open(start) if forex else start
     midnight = datetime.combine(first_start.date(), time())
     expected_first = midnight + -(-(first_start - midnight) // delta) * delta
-    last_start = end if not forex else forex_last_open_bar_start(end, delta)
-    expected_last = min(_floor_to_grid(last_start, delta), _floor_to_grid(now, delta))
+    last_start = forex_last_open_bar_start(end, delta) if forex else end
+    expected_last = min(
+        _floor_to_grid(last_start, delta),
+        _floor_to_grid(now, delta),
+    )
     timestamps = [row["date"] for row in rows]
-    if timestamps[0] > expected_first or timestamps[-1] < expected_last:
+    if timestamps[0] - expected_first > edge_tol:
         return True
+    if expected_last - timestamps[-1] > edge_tol:
+        return True
+    if interior_tol is None:
+        return False
     for current, following in zip(timestamps, timestamps[1:]):
         expected_next = current + delta
         if forex and forex_is_closed(expected_next):
             expected_next = forex_next_open(expected_next)
-        if following > expected_next:
-            return True
+        if following - expected_next <= interior_tol:
+            continue
+        if forex and (forex_is_thin_day(current) or forex_is_thin_day(following)):
+            continue
+        return True
     return False
 
 
@@ -681,7 +698,7 @@ def _invalidate_same_session_tail(
     current = now or datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None)
     if tail_ts + _interval_delta(interval) <= current:
         return  # Bar already finished.
-    if classify_symbol(symbol) == "equity":
+    if not is_24h_symbol(symbol):
         if tail_ts.date() != current.date():
             return  # Prior-session bar; leave immutable.
         _, market_close = _us_session_bounds(tail_ts.date())

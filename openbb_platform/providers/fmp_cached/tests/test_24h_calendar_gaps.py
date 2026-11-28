@@ -4,16 +4,25 @@ Crypto trades 24x7 and forex 24x5 (closed Fri 17:00 -> Sun 17:00 New York
 time). The equity gap detectors must not apply NYSE sessions or holidays to
 those symbols, and must be unchanged for equities.
 
-Bars are generated in the shape FMP returns for ``historical-chart`` rows
-(naive New York wall time, one bar per interval) because no recorded
-crypto/forex intraday snapshot exists in ``tests/fixtures`` yet.
+Recorded FMP snapshots (``tests/fixtures/fmp_24h``, recorded 2026-11-28)
+settled how the data behaves:
+
+* timestamps are naive New York wall time (EDT in July, EST in January);
+* crypto majors are dense, forex majors are dense except for the weekly
+  closure (last Friday bar 16:55, first Sunday bar 17:05) and thin days
+  (Dec 24/25/31 and Jan 1); exotic pairs (USDTRY) omit no-trade bars, with
+  holes of 5+ hours inside a normal day;
+* the newest bar is published roughly two intervals behind the clock;
+* EURUSD daily bars have no rows for Dec 25 or Jan 1, BTCUSD has every day.
 """
 
 # ruff: noqa: D102, D103
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -24,6 +33,37 @@ from openbb_fmp_cached.models import (
 from openbb_fmp_cached.utils import session_calendar as sc
 
 EXEC = "openbb_fmp_cached.models.equity_intraday_historical.execute_query"
+_SNAP = json.loads(
+    (
+        Path(__file__).parent / "fixtures" / "fmp_24h" / "fmp_24h_snapshots.json"
+    ).read_text(encoding="utf-8")
+)
+FAR = datetime(2030, 1, 1)
+
+
+def _fx(name, symbol, interval="5min", *, skip=None, lo=None, hi=None):
+    """Convert recorded FMP rows to cache rows (DB column names)."""
+    rows = []
+    for raw in _SNAP[name]:
+        ts = datetime.strptime(raw["date"], "%Y-%m-%d %H:%M:%S")
+        if (lo and ts < lo) or (hi and ts > hi) or (skip and skip(ts)):
+            continue
+        rows.append(
+            {
+                "symbol": symbol,
+                "interval_type": interval,
+                "ts": ts,
+                "open_price": raw["open"],
+                "high_price": raw["high"],
+                "low_price": raw["low"],
+                "close_price": raw["close"],
+                "volume": raw["volume"],
+                "is_extended": False,
+                "is_valid": True,
+            }
+        )
+    rows.sort(key=lambda r: r["ts"])
+    return rows
 
 
 def _bars(symbol, interval, start, end, *, skip=None, extended=False):
@@ -50,7 +90,7 @@ def _bars(symbol, interval, start, end, *, skip=None, extended=False):
     return rows
 
 
-def _analyze(symbol, interval, start, end, rows, *, date_only=False, now=None):
+def _analyze(symbol, interval, start, end, rows, *, date_only=False, now=FAR):
     q = ei.FMPCachedEquityIntradayHistoricalQueryParams(
         symbol=symbol,
         interval=interval,
@@ -74,10 +114,12 @@ def _analyze(symbol, interval, start, end, rows, *, date_only=False, now=None):
     [
         ("BTCUSD", "crypto"),
         ("ethusd", "crypto"),
-        ("SOLUSDT", "crypto"),
+        ("SOLUSD", "crypto"),
         ("BTC-USD", "crypto"),
         ("EURUSD", "forex"),
         ("USDJPY", "forex"),
+        ("USDTRY", "forex"),
+        ("XAUSAR", "forex"),
         ("GBP/USD", "forex"),
         ("AAPL", "equity"),
         ("SPY", "equity"),
@@ -206,7 +248,7 @@ def test_crypto_missing_overnight_tail_before_next_day_is_a_gap():
 def test_crypto_overnight_bars_are_not_extended_hours():
     row = {"symbol": "BTCUSD", "date": "2026-07-08 21:00:00"}
     assert ei._is_extended_row(row, symbol="BTCUSD") is False
-    assert ei._is_extended_row(row, symbol="AAPL") is True
+    assert ei._is_extended_row({"date": row["date"]}, symbol="AAPL") is True
     q = ei.FMPCachedEquityIntradayHistoricalQueryParams(
         symbol="BTCUSD",
         interval="5min",
@@ -303,3 +345,155 @@ def test_equity_tail_after_close_still_not_invalidated():
             "AAPL", "5min", rows, now=datetime(2026, 7, 8, 16, 2)
         )
     assert ex.call_count == 0
+
+
+# --------------------------------------------------------------------------
+# recorded-data behaviour (#1304 review round 1)
+# --------------------------------------------------------------------------
+
+D = datetime
+
+
+def test_recorded_crypto_weekend_is_complete_and_dense():
+    start, end = D(2025, 1, 3, 12, 0), D(2025, 1, 6, 12, 0)
+    rows = _fx("btcusd_5min_weekend", "BTCUSD")
+    assert _analyze("BTCUSD", "5min", start, end, rows)[1] is False
+    no_sat = [r for r in rows if r["ts"].date() != date(2025, 1, 4)]
+    assert _analyze("BTCUSD", "5min", start, end, no_sat)[1] is True
+
+
+def test_recorded_crypto_small_hole_tolerated_but_long_hole_flagged():
+    start, end = D(2025, 1, 3, 12, 0), D(2025, 1, 6, 12, 0)
+    short = _fx(
+        "btcusd_5min_weekend",
+        "BTCUSD",
+        skip=lambda t: D(2025, 1, 4, 3, 0) <= t < D(2025, 1, 4, 3, 10),
+    )
+    assert _analyze("BTCUSD", "5min", start, end, short)[1] is False
+    long_ = _fx(
+        "btcusd_5min_weekend",
+        "BTCUSD",
+        skip=lambda t: D(2025, 1, 4, 3, 0) <= t < D(2025, 1, 4, 3, 30),
+    )
+    assert _analyze("BTCUSD", "5min", start, end, long_)[1] is True
+
+
+def test_recorded_forex_weekend_closure_and_sunday_1705_open_is_complete():
+    start, end = D(2025, 1, 3, 12, 0), D(2025, 1, 6, 12, 0)
+    rows = _fx("eurusd_5min_weekend", "EURUSD")
+    assert not any(r["ts"] == D(2025, 1, 5, 17, 0) for r in rows)  # opens 17:05
+    assert _analyze("EURUSD", "5min", start, end, rows)[1] is False
+    gap = _fx(
+        "eurusd_5min_weekend",
+        "EURUSD",
+        skip=lambda t: D(2025, 1, 6, 3, 0) <= t < D(2025, 1, 6, 4, 0),
+    )
+    assert _analyze("EURUSD", "5min", start, end, gap)[1] is True
+
+
+def test_recorded_forex_holiday_windows_do_not_report_a_gap():
+    xmas = _fx(
+        "eurusd_5min_holidays", "EURUSD", lo=D(2024, 12, 24), hi=D(2024, 12, 27, 23)
+    )
+    assert (
+        _analyze("EURUSD", "5min", D(2024, 12, 24), D(2024, 12, 27, 16, 55), xmas)[1]
+        is False
+    )
+    new_year = _fx(
+        "eurusd_5min_holidays", "EURUSD", lo=D(2024, 12, 31), hi=D(2025, 1, 2, 23, 59)
+    )
+    assert (
+        _analyze("EURUSD", "5min", D(2024, 12, 31), D(2025, 1, 2, 23, 55), new_year)[1]
+        is False
+    )
+
+
+def test_recorded_exotic_forex_sparse_bars_do_not_loop_refetch():
+    rows = _fx("usdtry_5min", "USDTRY")
+    # FMP omits no-trade bars: a 17h hole inside a normal Wednesday.
+    assert (
+        _analyze("USDTRY", "5min", D(2025, 1, 6), D(2025, 1, 8, 23, 55), rows)[1]
+        is False
+    )
+
+
+def test_live_edge_allows_publishing_lag_but_not_more():
+    start, end = D(2025, 1, 6, 0, 0), D(2025, 1, 6, 23, 55)
+    rows = _fx("btcusd_5min_weekend", "BTCUSD", lo=start, hi=D(2025, 1, 6, 3, 20))
+    # newest bar is 03:20; clock 03:27 -> latest published is two intervals back
+    assert (
+        _analyze("BTCUSD", "5min", start, end, rows, now=D(2025, 1, 6, 3, 27))[1]
+        is False
+    )
+    # clock 04:30 -> ~70 minutes of bars missing at the live edge
+    assert (
+        _analyze("BTCUSD", "5min", start, end, rows, now=D(2025, 1, 6, 4, 30))[1]
+        is True
+    )
+
+
+def test_recorded_daily_forex_has_no_rows_for_dec25_or_jan1():
+    cached = {date.fromisoformat(r["date"]) for r in _SNAP["eurusd_daily_holidays"]}
+    start, end = date(2024, 12, 20), date(2025, 1, 3)
+    assert (
+        eh._detect_missing_ranges(start, end, cached, "1d", asset_class="forex") == []
+    )
+    for day in (date(2024, 12, 25), date(2025, 1, 1)):
+        assert day not in cached
+        assert not sc.is_calendar_day_open(day, "forex")
+        assert not sc.is_calendar_day_open(day, "forex", intraday=True)
+
+
+def test_recorded_daily_crypto_has_every_calendar_day():
+    cached = {date.fromisoformat(r["date"]) for r in _SNAP["btcusd_daily_holidays"]}
+    start, end = date(2024, 12, 20), date(2025, 1, 3)
+    assert (
+        eh._detect_missing_ranges(start, end, cached, "1d", asset_class="crypto") == []
+    )
+    weekdays = {d for d in cached if d.weekday() < 5}
+    assert eh._detect_missing_ranges(start, end, weekdays, "1d", asset_class="crypto")
+
+
+def test_forex_new_year_closure_window_matches_recording():
+    assert not sc.forex_is_closed(D(2024, 12, 31, 16, 55))
+    assert sc.forex_is_closed(D(2024, 12, 31, 17, 30))
+    assert sc.forex_is_closed(D(2025, 1, 1, 15, 55))
+    assert not sc.forex_is_closed(D(2025, 1, 1, 16, 0))
+    assert sc.forex_next_open(D(2024, 12, 31, 20, 0)) == D(2025, 1, 1, 16, 0)
+
+
+def test_multi_symbol_rows_are_classified_per_row_symbol():
+    crypto = {"symbol": "BTCUSD", "date": "2025-01-04 21:00:00"}
+    stock = {"symbol": "AAPL", "date": "2025-01-06 21:00:00"}
+    assert ei._is_extended_row(crypto, symbol="AAPL,BTCUSD") is False
+    assert ei._is_extended_row(stock, symbol="BTCUSD,AAPL") is True
+    q = ei.FMPCachedEquityIntradayHistoricalQueryParams(
+        symbol="AAPL,BTCUSD",
+        interval="5min",
+        start_date=datetime(2025, 1, 4),
+        end_date=datetime(2025, 1, 7),
+        extended_hours=False,
+    )
+    kept = ei._filter_fresh_rows([crypto, stock], q)
+    assert [r["symbol"] for r in kept] == ["BTCUSD"]
+
+
+def test_is_24h_symbol_matches_classification():
+    assert sc.is_24h_symbol("BTCUSD") and sc.is_24h_symbol("EURUSD")
+    assert not sc.is_24h_symbol("AAPL")
+
+
+def test_edge_shortfall_within_tolerance_is_accepted_beyond_it_flagged():
+    start, end = D(2025, 1, 3, 12, 0), D(2025, 1, 6, 12, 0)
+    # last two bars (10 min) absent at the end, first two at the start
+    ok = _fx(
+        "btcusd_5min_weekend",
+        "BTCUSD",
+        lo=D(2025, 1, 3, 12, 10),
+        hi=D(2025, 1, 6, 11, 50),
+    )
+    assert _analyze("BTCUSD", "5min", start, end, ok)[1] is False
+    late_end = _fx("btcusd_5min_weekend", "BTCUSD", hi=D(2025, 1, 6, 11, 30))
+    assert _analyze("BTCUSD", "5min", start, end, late_end)[1] is True
+    late_start = _fx("btcusd_5min_weekend", "BTCUSD", lo=D(2025, 1, 3, 12, 30))
+    assert _analyze("BTCUSD", "5min", start, end, late_start)[1] is True
