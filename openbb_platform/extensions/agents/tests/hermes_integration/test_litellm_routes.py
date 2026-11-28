@@ -708,3 +708,14 @@ def test_consumed_keys_are_real_settings_in_litellm_1_106_6(litellm_mod):
                 assert hasattr(litellm_mod, key), dotted
         elif section == "general_settings":
             assert f'"{key}"' in proxy_src, dotted
+
+
+def test_alias_names_are_stripped_of_control_chars_and_capped(tmp_path):
+    cfg = _local_cfg()
+    cfg["model_list"][1]["model_name"] = "\x1b[31mhosted\r\n" + "x" * 200
+    facts, verdict = _verdict(tmp_path, cfg)
+    report = litellm_config.gateway_report(facts, verdict)
+    names = [a.name for a in report.aliases]
+    assert all(len(n) <= 64 for n in names)
+    assert not any(ord(c) < 32 or ord(c) == 127 for n in names for c in n)
+    assert ALIAS in names

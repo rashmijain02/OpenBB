@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 from .hermes_config import RouteFacts, evaluate_route, is_loopback_host
 from .models import EdgeReport, EdgeStatus, FailedLayer, HealthLevel, Presence
 from .profile import FinanceRuntimeProfile
+from .provenance import load_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -353,6 +354,10 @@ def check_webui(
             detail="static_checks_passed; no port to probe",
             presence=presence,
         )
+    if not raw_port.strip().isdigit():
+        return _blocked(
+            name, FailedLayer.PROCESS, "webui_port_not_numeric", presence=presence
+        )
     result = transport.http_get(host, int(raw_port), "/health", {}, timeout)
     if result.kind != "ok":
         return _unavailable(name, result, FailedLayer.PROCESS, "webui").model_copy(
@@ -379,35 +384,19 @@ def _mysql_endpoint(
     settings_path: Path | None, env: Mapping[str, str]
 ) -> tuple[str, int]:
     """Host and port only; mirrors ``DatabaseConfig`` keys. Credentials are never read."""
-    host, port = None, None
-    if settings_path is not None and Path(settings_path).is_file():
-        try:
-            creds = json.loads(Path(settings_path).read_text(encoding="utf-8")).get(
-                "credentials", {}
-            )
-        except (OSError, ValueError):
-            creds = {}
-        if isinstance(creds, dict):
-            host = next(
-                (
-                    creds[k]
-                    for k in ("mysql_host", "db_host", "database_host")
-                    if creds.get(k)
-                ),
-                None,
-            )
-            port = next(
-                (
-                    creds[k]
-                    for k in ("mysql_port", "db_port", "database_port")
-                    if creds.get(k)
-                ),
-                None,
-            )
+    creds, _ = load_credentials(settings_path)
+    host = next(
+        (creds[k] for k in ("mysql_host", "db_host", "database_host") if creds.get(k)),
+        None,
+    )
+    port = next(
+        (creds[k] for k in ("mysql_port", "db_port", "database_port") if creds.get(k)),
+        None,
+    )
     host = host or env.get("DB_HOST") or "localhost"
     port = port or env.get("DB_PORT") or 3306
     try:
-        return str(host), int(port)
+        return str(host), int(str(port))
     except (TypeError, ValueError):
         return str(host), 3306
 

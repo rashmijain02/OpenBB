@@ -135,21 +135,22 @@ def _check_database(
     profile: FinanceRuntimeProfile, settings: Path | None, env: Mapping[str, str]
 ) -> ComponentReport:
     resolved = provenance.resolve_fmp_cached_database(settings, env)
-    expected = profile.database.expected
-    if resolved.database != expected:
+    category = provenance.db_category(resolved.database, profile.database.expected)
+    notes = "".join(f"; {issue}" for issue in resolved.issues)
+    if category != "expected":
         return ComponentReport(
             name="database",
             failed_layer=FailedLayer.DATABASE,
-            observed_database=resolved.database,
+            observed_database=category,
             presence=resolved.presence,
-            detail=f"wrong_database: observed {resolved.database}, expected {expected}",
+            detail=f"wrong_database: observed {category}{notes}",
         )
     return ComponentReport(
         name="database",
         level=HealthLevel.CONFIGURED,
-        observed_database=resolved.database,
+        observed_database=category,
         presence=resolved.presence,
-        detail=f"source={resolved.source}",
+        detail=f"source={resolved.source}{notes}",
     )
 
 
@@ -262,13 +263,15 @@ def run_preflight(
     """Run all checks. ``probe="loopback"`` adds the handshake edges. Never executes Hermes."""
     opts = options or PreflightOptions()
     env = os.environ if env is None else env
+    # Like ``DatabaseConfig``: no flag means the per-user settings file.
+    settings = opts.openbb_settings or provenance.default_settings_path()
     route_components, facts = _check_route(profile, opts.hermes_config_path)
     gateway_components, gateway = _check_gateway(profile, opts.litellm_config_path)
     components = [
         _check_checkout("hermes_agent", profile.hermes_agent, env),
         _check_webui(profile, env),
         _check_abi(profile, env),
-        _check_database(profile, opts.openbb_settings, env),
+        _check_database(profile, settings, env),
         *route_components,
         *gateway_components,
     ]
@@ -280,7 +283,7 @@ def run_preflight(
             env=env,
             transport=transport,
             options=handshake.HandshakeOptions(
-                settings_path=opts.openbb_settings,
+                settings_path=settings,
                 mcp_tools=opts.mcp_tools,
                 mcp_http_url=opts.mcp_http_url,
                 backend_base_url=opts.backend_base_url,
@@ -358,15 +361,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if exc.code == 0 else 3
     try:
         profile = load_profile(args.profile)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, yaml.YAMLError) as exc:
         sys.stderr.write(f"cannot load profile: {type(exc).__name__}\n")
         return 3
     tools = None
     if args.mcp_tools is not None:
         try:
             tools = json.loads(args.mcp_tools.read_text(encoding="utf-8"))
-            if not isinstance(tools, list):
-                raise ValueError("tool list is not a list")
+            if not isinstance(tools, list) or not all(
+                isinstance(t, dict) for t in tools
+            ):
+                raise ValueError("tool list is not a list of objects")
         except (OSError, ValueError) as exc:
             sys.stderr.write(f"cannot load mcp tools: {type(exc).__name__}\n")
             return 3

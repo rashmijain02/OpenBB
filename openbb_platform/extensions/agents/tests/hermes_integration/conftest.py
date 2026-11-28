@@ -24,6 +24,8 @@ SENTINELS = {
 }
 
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+# The live MySQL and LiteLLM proxy ports: never contacted, whatever a test resolves.
+_LIVE_PORTS = {3306, 4000}
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +48,10 @@ def deny_non_loopback(monkeypatch):
         host = address[0] if isinstance(address, tuple) else address
         if host not in _LOOPBACK:
             raise OSError(f"non-loopback connect refused in tests: {host!r}")
+        if isinstance(address, tuple) and address[1] in _LIVE_PORTS:
+            raise ConnectionRefusedError(
+                f"live service port refused in tests: {address[1]}"
+            )
         return real_connect(self, address)
 
     monkeypatch.setattr(socket.socket, "connect", guarded)

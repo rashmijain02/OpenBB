@@ -175,6 +175,12 @@ class GatewayFacts(BaseModel):
     config_issues: list[str] = Field(default_factory=list)
 
 
+def _alias_name(value: Any, limit: int = 64) -> str:
+    """Alias name for reports: control characters removed, length capped."""
+    text = "".join(c for c in str(value) if ord(c) >= 32 and ord(c) != 127)
+    return text[:limit]
+
+
 def _secret(value: Any) -> SecretRef:
     if value is None or value == "":
         return SecretRef()
@@ -284,7 +290,7 @@ def read_gateway_facts(
     for entry in loaded.get("model_list") or []:
         if not isinstance(entry, dict):
             continue
-        name = str(entry.get("model_name"))
+        name = _alias_name(entry.get("model_name"))
         groups.setdefault(name, []).append(_classify(entry, profile))
     aliases = []
     for name, deps in groups.items():

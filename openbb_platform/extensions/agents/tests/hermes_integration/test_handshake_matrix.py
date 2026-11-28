@@ -399,6 +399,29 @@ def test_mysql_non_loopback_host_is_blocked_and_not_probed(tmp_path):
 # --- transport contract ----------------------------------------------------------------
 
 
+def test_webui_non_numeric_port_is_blocked_process_layer(tmp_path):
+    rec = Recording()
+    edge = handshake.check_webui(
+        _profile("http://127.0.0.1:1"),
+        _webui_env(tmp_path, HERMES_WEBUI_PORT="80a"),
+        rec,
+        1.0,
+    )
+    assert edge.status is EdgeStatus.BLOCKED
+    assert edge.failed_layer is FailedLayer.PROCESS
+    assert edge.detail == "webui_port_not_numeric" and rec.log == []
+
+
+def test_mysql_endpoint_from_non_mapping_settings_uses_env_fallback(tmp_path):
+    bad = tmp_path / "settings.json"
+    bad.write_text('"just a string"', encoding="utf-8")
+    port = _free_closed_port()
+    rec = Recording()
+    edge = handshake.probe_mysql(bad, {"DB_PORT": str(port)}, rec, 1.0)
+    assert rec.log == [("tcp", "localhost", port)]
+    assert edge.status is EdgeStatus.UNAVAILABLE
+
+
 def test_transport_refuses_non_loopback_host_before_any_connect():
     t = handshake.LoopbackTransport()
     with pytest.raises(ValueError):

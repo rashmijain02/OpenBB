@@ -208,7 +208,7 @@ def test_webui_agent_dir_pointing_elsewhere_blocks(repos, tmp_path):
 def test_default_fmp_cached_db_name_blocks_wrong_database(repos):
     report = _run(repos, settings=SETTINGS_DEFAULT_DB)
     db = _comp(report, "database")
-    assert db.observed_database == "openbb_fmp_cache"
+    assert db.observed_database == "legacy_default"
     assert db.failed_layer is FailedLayer.DATABASE
     assert FailedLayer.DATABASE in report.failed_layers
     assert "wrong_database" in db.detail
@@ -217,7 +217,7 @@ def test_default_fmp_cached_db_name_blocks_wrong_database(repos):
 def test_expected_db_name_passes(repos):
     report = _run(repos, settings=SETTINGS_OK)
     db = _comp(report, "database")
-    assert db.observed_database == "openbb_fmp_cache_test"
+    assert db.observed_database == "expected"
     assert db.failed_layer is None
     assert FailedLayer.DATABASE not in report.failed_layers
 
@@ -337,3 +337,86 @@ def test_preflight_never_spawns_hermes_or_pip(repos, monkeypatch):
     _run(repos)
     assert calls and set(calls) == {"git"}
     assert "hermes_cli" not in sys.modules
+
+
+# --- review fixes: default settings path, malformed inputs (#1338 CODE-3, CODE-4) ---------
+
+
+def _home_settings(home, credentials):
+    path = home / ".openbb_platform" / "user_settings.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"credentials": credentials}), encoding="utf-8")
+    return path
+
+
+def test_wrong_db_in_home_settings_is_caught_without_the_flag(repos, isolated_home):
+    _home_settings(isolated_home, {"mysql_user": "u", "mysql_database": "other_db"})
+    report = run_preflight(_profile(repos), env=_env(repos))
+    db = _comp(report, "database")
+    assert db.failed_layer is FailedLayer.DATABASE
+    assert db.observed_database == "other"
+    assert "other_db" not in report.model_dump_json()
+
+
+def test_non_loopback_mysql_host_in_home_settings_blocks_without_the_flag(
+    repos, isolated_home
+):
+    from openbb_agents.hermes_integration import handshake
+
+    _home_settings(isolated_home, {"mysql_host": "db.example.invalid"})
+    seen = []
+
+    class NoNet(handshake.LoopbackTransport):
+        def tcp_connect(self, host, port, timeout):
+            seen.append((host, port))
+            return handshake.ProbeResult("refused")
+
+    report = run_preflight(
+        _profile(repos),
+        PreflightOptions(probe="loopback"),
+        env=_env(repos),
+        transport=NoNet(),
+    )
+    mysql = next(e for e in report.edges if e.name == "openbb_mysql")
+    assert mysql.detail == "mysql_host_not_loopback" and seen == []
+
+
+def test_non_mapping_settings_json_falls_back_with_a_reason(repos, tmp_path):
+    bad = tmp_path / "settings.json"
+    bad.write_text("[1, 2]", encoding="utf-8")
+    report = _run(repos, settings=bad)
+    db = _comp(report, "database")
+    assert db.observed_database == "legacy_default"
+    assert "settings_not_a_mapping" in db.detail
+
+
+def test_malformed_profile_yaml_exits_3(tmp_path, capsys):
+    bad = tmp_path / "profile.yaml"
+    bad.write_text("a: [b\n", encoding="utf-8")
+    assert main(["--profile", str(bad)]) == 3
+
+
+@pytest.mark.parametrize("payload", ["[1, 2]", '["x"]', '[{"name": "t"}, 3]'])
+def test_mcp_tools_with_non_mapping_items_exits_3(tmp_path, payload):
+    tools = tmp_path / "tools.json"
+    tools.write_text(payload, encoding="utf-8")
+    assert main(["--profile", str(PROFILE), "--mcp-tools", str(tools)]) == 3
+
+
+def test_db_name_rendered_as_category_only(repos):
+    report = _run(repos, settings=SETTINGS_OK)
+    text = report.model_dump_json()
+    assert _comp(report, "database").observed_database == "expected"
+    assert "openbb_fmp_cache_test" not in text
+
+
+def test_git_runs_with_fsmonitor_disabled(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(cmd, **_kw):
+        calls.append(cmd)
+        raise OSError("not run")
+
+    monkeypatch.setattr(provenance.subprocess, "run", fake_run)
+    provenance.git_facts(tmp_path)
+    assert calls and all(c[:3] == ["git", "-c", "core.fsmonitor=false"] for c in calls)

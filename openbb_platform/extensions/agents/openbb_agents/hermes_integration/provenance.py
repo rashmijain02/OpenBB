@@ -56,7 +56,14 @@ class GitFacts:
 def _git(directory: Path, *args: str) -> str | None:
     try:
         result = subprocess.run(  # noqa: S603
-            ["git", "-C", str(directory), *args],  # noqa: S607
+            [  # noqa: S607
+                "git",
+                "-c",
+                "core.fsmonitor=false",  # never run a repo-configured fsmonitor hook
+                "-C",
+                str(directory),
+                *args,
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -137,6 +144,41 @@ class DbResolution:
     database: str
     source: str
     presence: dict[str, Presence] = field(default_factory=dict)
+    issues: tuple[str, ...] = ()
+
+
+def default_settings_path() -> Path:
+    """Return the file ``DatabaseConfig`` reads: ``~/.openbb_platform/user_settings.json``."""
+    return Path.home() / ".openbb_platform" / "user_settings.json"
+
+
+def load_credentials(
+    settings_path: Path | None,
+) -> tuple[dict[str, object], tuple[str, ...]]:
+    """Return the ``credentials`` mapping, or ``{}`` plus a reason when unusable.
+
+    ``DatabaseConfig`` falls back to environment variables on any settings error,
+    so an unusable file is reported, never raised.
+    """
+    if settings_path is None or not Path(settings_path).is_file():
+        return {}, ()
+    try:
+        loaded = json.loads(Path(settings_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}, ("settings_unreadable",)
+    if not isinstance(loaded, dict):
+        return {}, ("settings_not_a_mapping",)
+    raw = loaded.get("credentials", {})
+    if not isinstance(raw, dict):
+        return {}, ("credentials_not_a_mapping",)
+    return raw, ()
+
+
+def db_category(database: str, expected: str) -> str:
+    """Render a database name as ``expected``, ``legacy_default`` or ``other``."""
+    if database == expected:
+        return "expected"
+    return "legacy_default" if database == DEFAULT_DB else "other"
 
 
 def _secret_presence(credentials: Mapping[str, object]) -> dict[str, Presence]:
@@ -154,14 +196,7 @@ def resolve_fmp_cached_database(
     env = os.environ if env is None else env
     test_mode = env.get("FMP_CACHE_TEST_MODE", "false").lower() == "true"
     default = TEST_DB if test_mode else DEFAULT_DB
-    credentials: dict[str, object] = {}
-    if settings_path is not None and Path(settings_path).is_file():
-        try:
-            loaded = json.loads(Path(settings_path).read_text(encoding="utf-8"))
-            raw = loaded.get("credentials", {})
-            credentials = raw if isinstance(raw, dict) else {}
-        except (OSError, ValueError):
-            credentials = {}
+    credentials, issues = load_credentials(settings_path)
     presence = _secret_presence(credentials)
     if any(key in credentials for key in SETTINGS_ANY_KEYS):
         database = next(
@@ -170,8 +205,8 @@ def resolve_fmp_cached_database(
         )
         source = "settings" if database else "default"
         database = TEST_DB if test_mode else (database or default)
-        return DbResolution(database, source, presence)
+        return DbResolution(database, source, presence, issues)
     if any(env.get(var) for var in ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME")):
         database = TEST_DB if test_mode else env.get("DB_NAME", default)
-        return DbResolution(database, "env", presence)
-    return DbResolution(default, "default", presence)
+        return DbResolution(database, "env", presence, issues)
+    return DbResolution(default, "default", presence, issues)
