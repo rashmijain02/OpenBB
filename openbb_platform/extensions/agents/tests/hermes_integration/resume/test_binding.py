@@ -290,3 +290,25 @@ def test_plugin_reads_the_server_name_from_the_environment(monkeypatch):
         )
         is None
     )
+
+
+def test_hook_binds_workflow_start_and_keys_preview():
+    """#1342: a plan start is bound like a run create; a preview is delivery-keyed."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_agents.hermes_integration import binding as hb
+
+    hook = hb.make_pre_tool_call()
+    ids = {"session_id": "s-1", "tool_call_id": "c-1"}
+    start = hook(
+        tool_name="mcp__openbb__story_workflow_start", args={"plan_id": "p"}, **ids
+    )
+    assert start["args"]["binding"]["binding_key"] == hb.binding_key_for_session(
+        "s-1", "c-1"
+    )
+    preview = hook(
+        tool_name="mcp__openbb__story_plan_preview", args={"workflow_id": "w"}, **ids
+    )
+    assert preview == {
+        "action": "modify",
+        "args": {"operation_id": hb.delivery_key("s-1", "c-1")},
+    }

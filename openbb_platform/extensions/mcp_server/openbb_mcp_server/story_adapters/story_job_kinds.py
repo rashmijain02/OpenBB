@@ -379,9 +379,53 @@ StoryJobKind = Literal[
 ]
 
 
+def _workflow_run_payload() -> type[BaseModel]:
+    _require("openbb_agents", "story.workflow_run")
+
+    class WorkflowRunPayload(BaseModel):
+        """One approved plan's workflow (#1342)."""
+
+        model_config = ConfigDict(extra="forbid")
+
+        plan_id: str = Field(pattern=r"^plan_[a-f0-9]{32}$")
+        workflow_id: str = Field(min_length=1, max_length=200)
+
+    return WorkflowRunPayload
+
+
+def run_workflow_job(payload: BaseModel) -> dict[str, Any]:
+    """Run an approved plan's workflow through the in-process runner (#1342).
+
+    The worker has no model client; the runner resumes the plan's run, so
+    stage tools go through the same ToolGate and admission as interactive
+    calls. Only runs owned by the in-process runner principal can be run.
+    """
+    raise UnauthorizedStoryJob(
+        "workflow_run_unwired: the in-process runner principal is not bound"
+        f" yet for {getattr(payload, 'workflow_id', '?')} (#1342 T02 follow-up)."
+    )
+
+
+# Internal kinds: submitted only by server code (story_workflow_start), never
+# by story_job_submit, whose StoryJobKind schema stays unchanged (#1342).
+INTERNAL_KINDS: dict[str, KindSpec] = {
+    "story.workflow_run": KindSpec(
+        "story.workflow_run",
+        "Run one human-approved workflow plan.",
+        _workflow_run_payload,
+        "run_workflow_job",
+        lambda result: {"outcome": result.get("outcome")},
+    )
+}
+
+
+def _spec(kind: str) -> KindSpec:
+    return KINDS[kind] if kind in KINDS else INTERNAL_KINDS[kind]
+
+
 def payload_model(kind: str) -> type[BaseModel]:
     """Return the typed payload model of ``kind``; raise if it is unavailable."""
-    return KINDS[kind].payload()
+    return _spec(kind).payload()
 
 
 # --- Submission ledger ------------------------------------------------------
@@ -562,7 +606,7 @@ def _attached_submission(
 
 
 def _execute(kind: str, context: JobContext, params: StoryJobParams) -> JobResult:
-    spec = KINDS[kind]
+    spec = _spec(kind)
     db_path = default_store_path()
     digest = payload_digest(params.run_id, kind, params.stage_id, params.payload)
     submission = _attached_submission(
@@ -635,5 +679,5 @@ def get_job_definitions() -> list[JobDefinition]:
             max_attempts=1,
             overlap_policy="allow",
         )
-        for spec in KINDS.values()
+        for spec in (*KINDS.values(), *INTERNAL_KINDS.values())
     ]

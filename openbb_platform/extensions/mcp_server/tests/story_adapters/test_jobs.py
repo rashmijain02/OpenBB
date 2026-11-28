@@ -718,7 +718,7 @@ def test_definitions_are_the_allowlist_with_no_retries():
     """Five kinds, one attempt each, all taking the same strict params."""
     definitions = get_job_definitions()
     assert (
-        {d.name for d in definitions}
+        {d.name for d in definitions} - {"story.workflow_run"}  # internal (#1342)
         == set(KINDS)
         == {
             "story.single_name",
@@ -760,6 +760,8 @@ def test_the_job_routes_are_six_mcp_tools(tmp_path):
         "story_job_cancel",
         "story_run_cancel",
         "story_run_outcome",
+        "story_plan_preview",  # #1342, additive
+        "story_workflow_start",
     }
     assert not (tmp_path / "r.sqlite").exists()
     with pytest.raises(ValueError):

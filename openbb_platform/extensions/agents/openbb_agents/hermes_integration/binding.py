@@ -9,7 +9,8 @@ and rewrites exactly two arguments of the story mutation tools:
   for an interactive turn, or ``hc-`` + sha256(cron job, execution, workflow)
   inside a cron fire, so one Hermes start or one cron execution binds to one
   OpenBB run.
-- ``story_job_submit`` and ``story_paper_prepare``: ``operation_id`` = ``hd-``
+- ``story_workflow_start`` (#1342): ``binding`` as for a run create.
+- ``story_job_submit``, ``story_paper_prepare`` and ``story_plan_preview``: ``operation_id`` = ``hd-``
   + sha256(session, tool call), so a transport re-delivery of the same call
   reuses the same delivery key.
 
@@ -39,7 +40,11 @@ MCP_PREFIX = "mcp__"
 DEFAULT_SERVER = "openbb"
 SERVER_ENV = "OPENBB_HERMES_MCP_SERVER"
 RUN_CREATE = "story_run_create"
-DELIVERY_KEYED = frozenset({"story_job_submit", "story_paper_prepare"})
+# Tools whose ``binding`` the hook sets; a plan start binds like a run create (#1342).
+RUN_BOUND = frozenset({RUN_CREATE, "story_workflow_start"})
+DELIVERY_KEYED = frozenset(
+    {"story_job_submit", "story_paper_prepare", "story_plan_preview"}
+)
 
 
 def _key(prefix: str, *parts: str) -> str:
@@ -80,7 +85,7 @@ def story_tool(tool_name: Any, server: str = DEFAULT_SERVER) -> str | None:
         name = tool_name[len(prefix) :]
     else:
         name = tool_name
-    if name == RUN_CREATE or name in DELIVERY_KEYED:
+    if name in RUN_BOUND or name in DELIVERY_KEYED:
         return name
     return None
 

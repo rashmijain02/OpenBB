@@ -540,6 +540,8 @@ portfolio-venv-core-in-process,GET,/api/v1/story/runs/{run_id}/jobs/{job_id},act
 portfolio-venv-core-in-process,POST,/api/v1/story/runs/{run_id}/jobs/{job_id}/cancel,activatable,story_job_cancel,False,
 portfolio-venv-core-in-process,POST,/api/v1/story/runs/{run_id}/cancel,activatable,story_run_cancel,False,
 portfolio-venv-core-in-process,GET,/api/v1/story/runs/{run_id}/outcome,activatable,story_run_outcome,False,
+portfolio-venv-core-in-process,POST,/api/v1/story/plans,activatable,story_plan_preview,False,
+portfolio-venv-core-in-process,POST,/api/v1/story/plans/{plan_id}/start,activatable,story_workflow_start,False,
 portfolio-venv-core-in-process,POST,/api/v1/story/runs/{run_id}/paper/sandboxes,activatable,story_paper_sandbox_create,False,
 portfolio-venv-core-in-process,GET,/api/v1/story/runs/{run_id}/paper/sandboxes,activatable,story_paper_sandbox_list,False,
 portfolio-venv-core-in-process,GET,/api/v1/story/paper/sandboxes/{sandbox_id},activatable,story_paper_state,False,

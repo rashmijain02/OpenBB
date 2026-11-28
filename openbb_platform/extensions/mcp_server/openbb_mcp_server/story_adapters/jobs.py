@@ -37,7 +37,7 @@ from openbb_core.app.jobs.registry import UnknownJobDefinitionError
 from openbb_core.app.service.job_service import JobService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from openbb_mcp_server.story_adapters import run_outcome
+from openbb_mcp_server.story_adapters import plans, run_outcome
 from openbb_mcp_server.story_adapters.artifacts import (
     ArtifactConflict,
     ArtifactExpired,
@@ -210,7 +210,7 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def build_router(  # pylint: disable=too-many-statements
+def build_router(  # pylint: disable=too-many-statements,too-many-locals
     runs: RunStore,
     ledger: SubmissionLedger,
     principal: str,
@@ -416,6 +416,29 @@ def build_router(  # pylint: disable=too-many-statements
                 state="submitted",
             )
         return _view(submission, job, replay_of)
+
+    def submit_internal(
+        service: JobService,
+        run_id: str,
+        kind: str,
+        payload: dict[str, Any],
+        operation_id: str,
+    ) -> StoryJob:
+        """Submit an internal kind through the same path (LOK, ledger, dedupe)."""
+        request = JobSubmit.model_construct(
+            operation_id=operation_id, kind=kind, payload=payload, stage_id=None
+        )
+        return story_job_submit(run_id, request, service)
+
+    router.routes.extend(
+        plans.build_router(
+            runs,
+            plans.PlanStore(ledger.db_path),
+            principal,
+            workflow_catalog,
+            submit_internal,
+        ).routes
+    )
 
     @router.get(
         "/{run_id}/jobs",
