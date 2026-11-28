@@ -141,12 +141,13 @@ def build_router(  # pylint: disable=too-many-statements
     router = APIRouter(prefix="/api/v1/story/runs", tags=["story"])
     dedupe_prefix = f"story:{ArtifactStore.principal_key(principal)}:"
 
-    def _owned_run(run_id: str):
+    def _owned_run(run_id: str, *, mutating: bool = False):
         record = runs.get(principal, run_id)
         if record is None:
             # Another principal's run is indistinguishable from no run.
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
-        ensure_workflow_current(record, workflow_catalog)
+        if mutating:
+            ensure_workflow_current(record, workflow_catalog)
         return record
 
     def _job(
@@ -182,7 +183,7 @@ def build_router(  # pylint: disable=too-many-statements
         service: Annotated[JobService, Depends(get_authenticated_job_service)],
     ) -> StoryJob:
         """Queue one allowlisted story job; the same operation ID returns the same job."""
-        run = _owned_run(run_id)
+        run = _owned_run(run_id, mutating=True)
         if request.stage_id is not None and request.stage_id not in run.stage_status:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,

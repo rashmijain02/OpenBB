@@ -425,7 +425,7 @@ def build_router(  # pylint: disable=too-many-statements
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
     authenticated = [Depends(AuthService().auth_hook)]
 
-    def _owned_run(run_id: str):
+    def _owned_run(run_id: str, *, mutating: bool = False):
         try:
             _token(run_id, "run_id")
         except InvalidArtifactId as error:
@@ -434,7 +434,8 @@ def build_router(  # pylint: disable=too-many-statements
         if record is None:
             # Another principal's run is indistinguishable from no run.
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
-        ensure_workflow_current(record, workflow_catalog)
+        if mutating:
+            ensure_workflow_current(record, workflow_catalog)
         return record
 
     def _write(
@@ -445,7 +446,7 @@ def build_router(  # pylint: disable=too-many-statements
         media_type: str,
         render,
     ) -> ArtifactRecord:
-        run = _owned_run(run_id)
+        run = _owned_run(run_id, mutating=True)
         if request.stage_id is not None and request.stage_id not in run.stage_status:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -521,7 +522,7 @@ def build_router(  # pylint: disable=too-many-statements
     )
     def story_artifact_report(run_id: str, request: ReportRequest) -> ArtifactRecord:
         """Compose an escaped HTML report citing this run's artifacts."""
-        _owned_run(run_id)
+        _owned_run(run_id, mutating=True)
         cited: dict[str, ArtifactRecord] = {}
         for section in request.sections:
             for artifact_id in section.artifact_ids:
