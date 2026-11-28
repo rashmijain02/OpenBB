@@ -48,7 +48,9 @@ def test_principal_from_the_settings_file(no_settings_file):
 
 
 @pytest.mark.parametrize("auth", [None, '["hfp-test", "   "]', '["only-one"]'])
-def test_unpaired_fails_closed_before_binding(no_settings_file, monkeypatch, capsys, auth):
+def test_unpaired_fails_closed_before_binding(
+    no_settings_file, monkeypatch, capsys, auth
+):
     """No usable credentials: exit 4 ``principal_unpaired``; nothing binds."""
     if auth is not None:
         monkeypatch.setenv("OPENBB_MCP_SERVER_AUTH", auth)
@@ -65,7 +67,10 @@ def test_unpaired_fails_closed_before_binding(no_settings_file, monkeypatch, cap
     assert "principal_unpaired" in capsys.readouterr().err
 
 
-def test_check_passes_and_never_prints_the_secret(no_settings_file, monkeypatch, capsys):
+def test_check_passes_and_never_prints_the_secret(
+    no_settings_file, monkeypatch, capsys
+):
+    """``--check`` with temp credentials prints only ``pairing_ok``."""
     secret = secrets.token_hex(16)
     monkeypatch.setenv("OPENBB_MCP_SERVER_AUTH", json.dumps(["hfp-test", secret]))
     assert sidecar.main(["--check"]) == 0

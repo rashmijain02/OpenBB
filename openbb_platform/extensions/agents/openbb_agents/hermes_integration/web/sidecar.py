@@ -280,11 +280,9 @@ def live_story_principal(settings: Any = None) -> str:
 
     if settings is None:
         settings = MCPService.read_with_overrides()
-    auth = getattr(settings, "server_auth", None)
-    if (
-        not auth
-        or len(auth) != 2
-        or not all(isinstance(value, str) and value.strip() for value in auth)
+    auth = tuple(getattr(settings, "server_auth", None) or ())
+    if len(auth) != 2 or not all(
+        isinstance(value, str) and value.strip() for value in auth
     ):
         raise PairingError(
             "principal_unpaired",

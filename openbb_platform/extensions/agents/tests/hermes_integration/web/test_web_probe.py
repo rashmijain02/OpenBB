@@ -94,9 +94,7 @@ def test_web_journey_live_refuses_without_owner_config(capsys, tmp_path):
     assert web_journey.main(["--stack", "nope"]) == 3
 
 
-def test_web_journey_local_without_webui_is_unavailable_not_pass(
-    capsys, monkeypatch
-):
+def test_web_journey_local_without_webui_is_unavailable_not_pass(capsys, monkeypatch):
     """A missing prerequisite exits 4 with a reason, never 0."""
     from openbb_agents.hermes_integration.web import web_journey
 

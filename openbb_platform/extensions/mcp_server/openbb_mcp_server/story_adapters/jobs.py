@@ -433,7 +433,7 @@ def build_router(  # pylint: disable=too-many-statements,too-many-locals
     def existing_internal(
         service: JobService, run_id: str, kind: str
     ) -> StoryJob | None:
-        """The run's submitted job of an internal kind, read only (no checks)."""
+        """Return the run's submitted job of an internal kind; a read, no checks."""
         for submission in ledger.for_run(principal, run_id):
             if submission.kind == kind and submission.job_id is not None:
                 return _view(submission, service.get_run(submission.job_id))

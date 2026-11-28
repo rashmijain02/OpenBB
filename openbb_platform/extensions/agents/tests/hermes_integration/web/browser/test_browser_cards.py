@@ -23,7 +23,6 @@ from openbb_agents.hermes_integration.web.journey import (  # noqa: E402
     WORKFLOW_ID,
     synthetic_stack,
 )
-
 from openbb_agents.hermes_integration.web.web_journey import (  # noqa: E402
     PINNED_SHELL_ASSETS,
 )

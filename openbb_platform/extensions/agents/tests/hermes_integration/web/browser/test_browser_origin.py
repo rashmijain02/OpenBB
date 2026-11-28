@@ -112,9 +112,11 @@ def test_browser_origin(browser_context, stack):
     seen: list[tuple[str, str, int]] = []
     browser_context.on(
         "response",
-        lambda r: seen.append((r.request.method, r.url, r.status))
-        if "/plans/" in r.url
-        else None,
+        lambda r: (
+            seen.append((r.request.method, r.url, r.status))
+            if "/plans/" in r.url
+            else None
+        ),
     )
     direct = f"http://127.0.0.1:{stack.sidecar.port}/plans/plan_{'0' * 32}/approve"
     html = _ATTACK_PAGE.format(
@@ -135,7 +137,7 @@ def test_browser_origin(browser_context, stack):
     direct_seen = [s for m, u, s in seen if m == "POST" and u.startswith(direct)]
     assert proxied and all(s == 403 for s in proxied), seen
     assert direct_seen and all(s == 403 for s in direct_seen), seen
-    assert not [h for m, u, s in seen if m == "OPTIONS" and s < 300], seen
+    assert not [u for m, u, s in seen if m == "OPTIONS" and s < 300], seen
 
     # 4. Nothing left loopback. The pinned WebUI shell itself references CDN assets
     #    (xterm etc.); those were aborted. Any other aborted URL (from the extension
