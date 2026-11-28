@@ -35,6 +35,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from portfolio_utils.fmp_sync.locking import LockBusy, LockRootRejected, target_lock
+
+EXIT_SKIPPED_BUSY = 75  # EX_TEMPFAIL: another warming run holds the target lock (#1344)
+EXIT_LOCK_ROOT_REJECTED = 40
+
 # ---------------------------------------------------------------------------
 # Fix Windows console encoding (cp1252 can't handle Unicode emojis from libs)
 # ---------------------------------------------------------------------------
@@ -587,9 +592,44 @@ def run_position_history_warm(
     (``holiday_prestep_fn``), the per-symbol fetch (``fetch_one_fn``), API key
     resolution (``api_key_resolver``), and readiness (``readiness_fn``).
     ``should_cancel`` is polled between symbols for cooperative cancellation.
-    """
-    should_cancel = should_cancel or (lambda: False)
 
+    Every call holds the per-target fmp-sync lock (#1344) for its whole body, so
+    manual, openbb-jobs and cron runs never warm the same database at once. A
+    caller that already holds the lock for this target re-enters it; contention
+    raises :class:`~portfolio_utils.fmp_sync.locking.LockBusy` before any
+    database or FMP access.
+    """
+    with target_lock(database, entrypoint="run_position_history_warm"):
+        return _run_position_history_warm_locked(
+            symbols=symbols,
+            years=years,
+            database=database,
+            dry_run=dry_run,
+            skip_holiday_prestep=skip_holiday_prestep,
+            get_symbols_fn=get_symbols_fn,
+            holiday_prestep_fn=holiday_prestep_fn,
+            fetch_one_fn=fetch_one_fn,
+            api_key_resolver=api_key_resolver,
+            readiness_fn=readiness_fn,
+            should_cancel=should_cancel or (lambda: False),
+        )
+
+
+def _run_position_history_warm_locked(  # pylint: disable=too-many-arguments
+    *,
+    symbols: list[str] | None,
+    years: int,
+    database: str | None,
+    dry_run: bool,
+    skip_holiday_prestep: bool,
+    get_symbols_fn: Callable[[str | None], tuple[list[str], list[tuple[str, str]]]],
+    holiday_prestep_fn: Callable[[int, int, str | None], None],
+    fetch_one_fn: Callable[..., dict[str, Any]] | None,
+    api_key_resolver: Callable[[], str | None],
+    readiness_fn: Callable[[list[str], str | None], dict],
+    should_cancel: Callable[[], bool],
+) -> PositionHistoryWarmResult:
+    """Body of :func:`run_position_history_warm`; the caller holds the target lock."""
     if symbols is not None:
         resolved_symbols = list(symbols)
         skipped: list[tuple[str, str]] = []
@@ -665,20 +705,33 @@ def main():
     print("  FETCH DAILY EQUITY HISTORY FOR PORTFOLIO POSITIONS")
     print("=" * 70)
 
-    # Resolve symbols
-    if args.symbols:
-        symbols = [s.strip() for s in args.symbols.split(",")]
-        skipped = []
-    else:
-        symbols, skipped = get_portfolio_symbols(args.database)
+    if args.dry_run:
+        # D7 (#1344): a dry run writes nothing -- no market_holidays upsert, no lock.
+        _print_plan(args, *_resolve_cli_symbols(args))
+        return
 
+    # Non-dry runs hold the per-target lock across symbol resolution, the holiday
+    # pre-step, the warm and readiness; the warmer's own guard re-enters it.
+    try:
+        with target_lock(args.database, entrypoint="fetch_position_history.main"):
+            _run_cli_locked(args)
+    except LockBusy:
+        print("  SKIPPED_BUSY: target lock held by another run.")  # noqa: T201
+        raise SystemExit(EXIT_SKIPPED_BUSY) from None
+    except LockRootRejected:
+        print("  BLOCKED: unsafe fmp-sync lock root.")  # noqa: T201
+        raise SystemExit(EXIT_LOCK_ROOT_REJECTED) from None
+
+
+def _resolve_cli_symbols(args) -> tuple[list[str], list[tuple[str, str]]]:
+    if args.symbols:
+        return [s.strip() for s in args.symbols.split(",")], []
+    return get_portfolio_symbols(args.database)
+
+
+def _print_plan(args, symbols: list[str], skipped: list[tuple[str, str]]) -> None:
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=args.years * 365)
-
-    if not args.skip_holiday_prestep:
-        ensure_market_holidays(start_date.year, end_date.year, args.database)
-
-    # Print plan
     print(f"\n  Date range:    {start_date} -> {end_date} ({args.years} years)")
     print("  Interval:      1d (daily)")
     print("  Provider:      fmp_cached (auto-caching)")
@@ -706,7 +759,15 @@ def main():
         print("\n  Note: fmp_cached will cache results in MySQL. Subsequent runs")
         print("  only fetch missing date ranges (incremental).")
         print("=" * 70)
-        return
+
+
+def _run_cli_locked(args) -> None:  # pylint: disable=too-many-branches
+    symbols, skipped = _resolve_cli_symbols(args)
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=args.years * 365)
+    if not args.skip_holiday_prestep:
+        ensure_market_holidays(start_date.year, end_date.year, args.database)
+    _print_plan(args, symbols, skipped)
 
     print("\n  Fetching ...\n")
 
