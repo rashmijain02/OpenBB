@@ -409,7 +409,10 @@ def run_workflow_job(
     checkpoints are the plan's.
     """
     # pylint: disable=import-outside-toplevel
-    from openbb_mcp_server.story_adapters.registry import default_workflow_dir
+    from openbb_mcp_server.story_adapters.registry import (
+        WorkflowCatalog,
+        default_workflow_dir,
+    )
 
     # plans imports this module; resolve it at call time (no import cycle).
     plans = importlib.import_module("openbb_mcp_server.story_adapters.plans")
@@ -429,9 +432,18 @@ def run_workflow_job(
     workflow_dir = default_workflow_dir()
     if workflow_dir is None:
         raise KindUnavailable("story.workflow_run needs the shipped workflows.")
-    document = json.loads(
-        (workflow_dir / f"{plan.workflow_id}.workflow.json").read_text("utf-8")
-    )
+    # The catalog-admitted document keyed by its own ``workflow_id``, never a
+    # file picked by name, and still the one the plan was approved under.
+    catalog = WorkflowCatalog(workflow_dir)
+    document = catalog.get(plan.workflow_id)
+    if document is None or document.get("workflow_id") != plan.workflow_id:
+        raise UnauthorizedStoryJob(
+            "workflow_not_admitted: the plan's workflow is not in the catalog."
+        )
+    if catalog.digest(plan.workflow_id) != plan.plan.get("workflow_manifest_sha256"):
+        raise UnauthorizedStoryJob(
+            "workflow_changed: the workflow changed since the plan was approved."
+        )
     from openbb_agents.hermes_integration.workflow_runner import (
         run_plan,
         run_result_json,

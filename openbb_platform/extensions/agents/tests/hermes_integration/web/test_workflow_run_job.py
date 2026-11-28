@@ -345,3 +345,32 @@ def test_resume_recomputed_hash_mismatch_fails_the_stage(stack, monkeypatch):
     _, message = _job_error(stack, started["job_id"])
     assert "effective: resume_output_mismatch" in message
     assert _artifacts(stack, started["run_id"]) == {}
+
+
+@pytest.mark.parametrize(
+    ("mutate", "code"),
+    [
+        (lambda d: d.update(workflow_id="synthetic.renamed"), "workflow_not_admitted"),
+        (lambda d: d.update(version=d["version"] + ".changed"), "workflow_changed"),
+    ],
+)
+def test_worker_uses_the_catalog_document_and_fails_closed(
+    stack, tmp_path, monkeypatch, mutate, code
+):
+    """H6: a file named for the plan's workflow is not trusted by its name."""
+    from openbb_mcp_server.story_adapters import registry
+
+    started = _started(stack)
+    document = json.loads(
+        (Path(default_workflow_dir()) / f"{WID}.workflow.json").read_text("utf-8")
+    )
+    mutate(document)
+    swapped = tmp_path / "swapped-workflows"
+    swapped.mkdir()
+    (swapped / f"{WID}.workflow.json").write_text(json.dumps(document), "utf-8")
+    monkeypatch.setattr(registry, "default_workflow_dir", lambda: swapped)
+    assert stack["worker"].run_once().status == "failed"
+    status, message = _job_error(stack, started["job_id"])
+    assert status == "failed" and message.startswith(code), message
+    assert set(_stage_status(stack, started["run_id"]).values()) == {"pending"}
+    assert _artifacts(stack, started["run_id"]) == {}
