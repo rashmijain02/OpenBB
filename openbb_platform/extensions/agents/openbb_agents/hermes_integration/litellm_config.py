@@ -186,6 +186,18 @@ def _alias_name(value: Any, limit: int = 64) -> str:
     return text[:limit]
 
 
+def _canonical_name(value: Any) -> bool:
+    """A string with no surrounding whitespace and no control characters.
+
+    The report name is normalised, so a non-canonical raw name could be shown as (or
+    hide behind) the private alias; it blocks instead of being normalised."""
+    return (
+        isinstance(value, str)
+        and value == value.strip()
+        and not any(ord(c) < 32 or ord(c) == 127 for c in value)
+    )
+
+
 def _secret(value: Any) -> SecretRef:
     if value is None or value == "":
         return SecretRef()
@@ -315,7 +327,10 @@ def read_gateway_facts(
     entries, shape_issues = _model_entries(loaded.get("model_list"))
     groups: dict[str, list[Deployment]] = {}
     for entry in entries:
-        name = _alias_name(entry.get("model_name"))
+        raw_name = entry.get("model_name")
+        if not _canonical_name(raw_name):
+            shape_issues.append("alias_name_not_canonical")
+        name = _alias_name(raw_name)
         groups.setdefault(name, []).append(_classify(entry, profile))
     aliases = []
     for name, deps in groups.items():
@@ -363,7 +378,7 @@ def read_gateway_facts(
         store_prompts_in_spend_logs=_toggle_on(gen, "store_prompts_in_spend_logs"),
         secrets={k: _secret(gen.get(k)) for k in SECRET_KEYS},
         unvetted_keys=_unvetted(loaded),
-        config_issues=[*shape_issues, *_config_issues(loaded)],
+        config_issues=[*dict.fromkeys(shape_issues), *_config_issues(loaded)],
     )
 
 

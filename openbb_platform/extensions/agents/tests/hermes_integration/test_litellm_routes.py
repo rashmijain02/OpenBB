@@ -815,3 +815,25 @@ def test_provider_prefixed_fallback_source_applies_to_private_alias(
     cfg[section]["fallbacks"] = [{src: ["hosted-a"]}]
     _, verdict = _verdict(tmp_path, cfg)
     assert f"unsafe_fallback:{section}.fallbacks" in verdict.reasons, verdict.reasons
+
+
+# --- alias names must be canonical (#1338 minor a) --------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name", [f"{ALIAS}\t", f" {ALIAS}", f"{ALIAS} ", f"{ALIAS}\x00", "hosted\r\n", 5]
+)
+def test_non_canonical_alias_name_blocks(tmp_path, name):
+    cfg = _local_cfg()
+    cfg["model_list"].append(
+        {"model_name": name, "litellm_params": {"model": "github_copilot/x"}}
+    )
+    _, verdict = _verdict(tmp_path, cfg)
+    assert "alias_name_not_canonical" in verdict.reasons, verdict.reasons
+
+
+def test_local_alias_with_trailing_tab_is_not_the_private_alias(tmp_path):
+    cfg = _local_cfg()
+    cfg["model_list"][0]["model_name"] = f"{ALIAS}\t"
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked and "alias_name_not_canonical" in verdict.reasons
