@@ -196,6 +196,18 @@ def probe_gateway(
             detail="private_alias_not_served",
             presence=presence,
         )
+    # litellm 1.106.6 lists a scoped key's own models only (key models, then team
+    # models, then the full proxy list); anything beyond the allowlist means the
+    # key can also reach hosted aliases, so a caller-supplied fallback could too.
+    if served - set(profile.private_alias_allowlist):
+        return EdgeReport(
+            name=name,
+            status=EdgeStatus.BLOCKED,
+            level=HealthLevel.AUTHENTICATED,
+            failed_layer=FailedLayer.AUTH,
+            detail="gateway_key_not_scoped",
+            presence=presence,
+        )
     return EdgeReport(
         name=name,
         status=EdgeStatus.OK,

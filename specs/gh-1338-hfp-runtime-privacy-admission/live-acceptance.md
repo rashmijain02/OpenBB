@@ -77,7 +77,7 @@ Preconditions: PR A merged; O3 runtime chosen and listening on 127.0.0.1:<LOCAL_
                                     Expect: an error; no hosted request. (In-process, a caller-supplied fallbacks
                                     kwarg DOES reach a hosted alias, so the key's model scope is the control here.)
 7. Local runtime running: hermes_preflight ... --hermes-config <qual-home>\config.yaml --probe loopback --backend-url http://127.0.0.1:<LOCAL_RUNTIME_PORT>
-                                    Expect: hermes_litellm callable (finance-private listed); litellm_backend callable
+                                    Expect: hermes_litellm callable (only finance-private listed); litellm_backend callable
 8. Stop the local runtime; re-run step 7.
                                     Expect: litellm_backend unavailable (failed_layer=backend); exit 2
 9. Owner-only, count-only query on the proxy's request history for the sentinel string used in steps 6-8.
@@ -93,5 +93,12 @@ Notes for the owner:
   logging for the Copilot aliases.
 - `store_prompts_in_spend_logs: false` keeps prompts out of the Postgres request history; the preflight blocks
   an explicit `true`.
+- Key scope (read from litellm 1.106.6 code, `proxy/auth/model_checks.py` `get_key_models` /
+  `get_complete_model_list` and `proxy/utils.py` `get_available_models_for_user`): `/v1/models` with a virtual
+  key whose `models` list is non-empty returns only those models (plus models of its access groups); an empty
+  list falls back to the team's models and then to every proxy model, and `all-proxy-models` /
+  `all-team-models` expand the same way. So the served list is the key's call scope. The `hermes_litellm` edge
+  in step 7 reports `blocked` (`failed_layer=auth`, `gateway_key_not_scoped`) when that list holds anything
+  outside `private_alias_allowlist`, which is what the master key or an unscoped key produce.
 - The preflight cannot see CLI flags or env vars of the running proxy (`--detailed_debug`, `LITELLM_LOG`), so
   step 4 is a manual check.

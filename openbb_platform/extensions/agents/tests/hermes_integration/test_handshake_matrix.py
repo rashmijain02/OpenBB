@@ -210,6 +210,18 @@ def test_200_without_private_alias_is_authenticated_not_callable(tmp_path):
     assert gw.failed_layer is FailedLayer.ROUTE
 
 
+def test_key_that_lists_hosted_aliases_is_not_scoped(tmp_path):
+    with serve(body=_models(ALIAS, "hosted-a")) as (_s, base):
+        edges = _run(tmp_path, base)
+    gw = _edge(edges, "hermes_litellm")
+    assert gw.status is EdgeStatus.BLOCKED
+    assert gw.failed_layer is FailedLayer.AUTH
+    assert gw.detail == "gateway_key_not_scoped"
+    assert gw.callable is False
+    assert "hosted-a" not in gw.model_dump_json()
+    assert _edge(edges, "litellm_backend").status is EdgeStatus.NOT_EVALUATED
+
+
 def test_5xx_is_backend_unavailable(tmp_path):
     with serve(status=503) as (_s, base):
         gw = _edge(_run(tmp_path, base), "hermes_litellm")
