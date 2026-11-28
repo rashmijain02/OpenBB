@@ -2,6 +2,7 @@
 
 # ruff: noqa: D103
 
+import importlib
 import re
 from pathlib import Path
 
@@ -28,7 +29,14 @@ def _write(tmp_path, raw):
 def test_pin_loads_with_lead_decisions():
     pin = pin_mod.load_pin()
     assert pin.version == "1.231.0" and pin.python_tag == "cp312"
-    assert pin.source_commit.startswith("d3e1685e")
+    assert pin.source_commit == "27a8e54e7ac3c57d6cbf8891f0283dfbaee97317"
+    assert pin.source_tag_object == "d3e1685e979925d7b0ffacd1b3f442547686e18f"
+    assert pin.source_commit != pin.source_tag_object
+    closure = importlib.import_module("openbb_nautilus_worker.nautilus_closure")
+    assert (pin.source_commit, pin.source_tag_object) == (
+        closure.SOURCE_COMMIT,
+        closure.SOURCE_TAG_OBJECT,
+    )
     assert pin.selected_runtime == "native"
     native, docker = pin.runtimes["native"], pin.runtimes["docker"]
     assert (native.platform_tag, native.wheel_sha256) == ("win_amd64", NAUTILUS_WIN_SHA)
@@ -143,3 +151,10 @@ def test_lock_files_use_real_line_continuations():
         assert hash_idx, lock.name
         for i in hash_idx:
             assert lines[i - 1].endswith(" " + backslash), (lock.name, i)
+
+
+def test_pin_requires_source_tag_object(tmp_path):
+    raw = _raw()
+    del raw["source_tag_object"]
+    with pytest.raises(ValidationError):
+        pin_mod.load_pin(_write(tmp_path, raw))

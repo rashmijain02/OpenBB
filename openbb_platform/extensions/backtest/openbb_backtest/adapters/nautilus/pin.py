@@ -49,7 +49,8 @@ class NautilusPin(BaseModel):
     schema_version: Literal[1]
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")  # stable releases only
     source_tag: str
-    source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")  # commit the tag points at
+    source_tag_object: str = Field(pattern=r"^[0-9a-f]{40}$")  # annotated tag object
     python_tag: str = Field(pattern=r"^cp\d{3,4}$")
     python_minor: str
     license_spdx: str

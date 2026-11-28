@@ -3,7 +3,8 @@
 schema_version: 1
 version: "1.231.0"            # latest stable; 2.0.0rc* are prereleases and forbidden
 source_tag: v1.231.0
-source_commit: d3e1685e979925d7b0ffacd1b3f442547686e18f
+source_commit: 27a8e54e7ac3c57d6cbf8891f0283dfbaee97317      # the COMMIT the tag points at (git ls-remote ^{})
+source_tag_object: d3e1685e979925d7b0ffacd1b3f442547686e18f  # the annotated TAG OBJECT sha
 python_tag: cp312
 python_minor: "3.12"
 license_spdx: LGPL-3.0-or-later

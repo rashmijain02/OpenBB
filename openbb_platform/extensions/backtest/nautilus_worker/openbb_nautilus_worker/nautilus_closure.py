@@ -1,8 +1,10 @@
 """Pinned static import closure of the two Nautilus classes the worker uses (#1355).
 
 Computed (one-off script, not shipped) from the public source of
-``nautilus_trader`` tag ``v1.231.0`` (tag object ``d3e1685e979925d7b0ffacd1b3f442547686e18f``,
-commit ``27a8e54e7ac3c57d6cbf8891f0283dfbaee97317``), read from GitHub raw URLs. Roots:
+``nautilus_trader`` tag ``v1.231.0`` (annotated tag object
+``d3e1685e979925d7b0ffacd1b3f442547686e18f``, which dereferences to commit
+``27a8e54e7ac3c57d6cbf8891f0283dfbaee97317``; ``pin.yaml`` ``source_commit`` is the commit,
+``source_tag_object`` the tag object), read from GitHub raw URLs. Roots:
 ``nautilus_trader.backtest.engine`` (``BacktestEngine``) and
 ``nautilus_trader.persistence.catalog[.parquet]`` (``ParquetDataCatalog``).
 
