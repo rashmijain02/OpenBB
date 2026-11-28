@@ -119,7 +119,7 @@ def _is_error_body(path: str, body: bytes) -> bool:
     if path.endswith("-xlsx"):
         return False
     text = body.decode("utf-8", "replace")
-    if text.startswith("﻿"):
+    if text.startswith("\ufeff"):
         text = text[1:]
     try:
         parsed = json.loads(text)

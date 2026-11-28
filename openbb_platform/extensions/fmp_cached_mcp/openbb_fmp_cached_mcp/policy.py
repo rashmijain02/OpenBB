@@ -149,9 +149,14 @@ def resolve_policy(  # noqa: PLR0911
             return _series_policy(path, args, today)
         # Open-ended request (FMP picks the window): treat as a short-lived answer.
         return Policy("ephemeral", series_tail_ttl(path, args), retention)
-    if retention in ("ephemeral", "revisable", "feed") and (
-        ("date" in args and _is_past(args["date"], today))
-        or ("to_date" in args and _is_past(args["to_date"], today))
+    # A past date fixes the answer only when the endpoint requires that date
+    # (hosted metadata, e.g. "sector-performance-snapshot (date*)"). Every tool
+    # schema accepts every date property, and FMP ignores the ones an endpoint
+    # does not take, so an unused past date must not pin today's answer.
+    required = spec.get("required") or []
+    if retention in ("ephemeral", "revisable", "feed") and any(
+        name in required and name in args and _is_past(args[name], today)
+        for name in ("date", "to_date")
     ):
         return Policy("document", None, retention, feed=retention == "feed")
     if retention == "immutable-doc":

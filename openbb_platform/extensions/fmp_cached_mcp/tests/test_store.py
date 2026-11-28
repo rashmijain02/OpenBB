@@ -978,7 +978,8 @@ def test_symbol_news_and_trade_searches_are_feeds(tool, args):
     assert (pol.mode, pol.refresh_s, pol.feed) == ("ephemeral", 600, True)
 
 
-def test_past_dated_news_search_is_immutable_and_keeps_items():
+def test_past_dated_news_search_stays_a_feed_and_keeps_items():
+    """Dates are optional on news search, so a past range is not pinned."""
     pol = resolve_policy(
         "news",
         {
@@ -989,7 +990,7 @@ def test_past_dated_news_search_is_immutable_and_keeps_items():
         },
         today=TODAY,
     )
-    assert (pol.mode, pol.refresh_s, pol.feed) == ("document", None, True)
+    assert (pol.mode, pol.refresh_s, pol.feed) == ("ephemeral", 600, True)
 
 
 def test_symbol_trade_search_listing_refreshes_and_items_are_kept(env):
@@ -1107,3 +1108,56 @@ def test_error_body_under_200_does_not_replace_a_stored_document(env):
     again = _get(svc, "statements", args)
     assert (again.state, again.response.body) == ("stale", good)
     assert [r["body"] for r in store.dump("fmp_mcp_document")] != [], "kept"
+
+
+# --- /code-review (high) round 10: past dates only count when the endpoint takes them
+
+
+@pytest.mark.parametrize(
+    "tool, args, mode, refresh",
+    [
+        # FMP ignores a date on these: the answer is today's, never permanent.
+        (
+            "marketPerformance",
+            {"endpoint": "biggest-gainers", "date": "2024-01-02"},
+            "ephemeral",
+            None,
+        ),
+        (
+            "indexes",
+            {
+                "endpoint": "index-quote",
+                "symbol": "^GSPC",
+                "from_date": "2024-01-01",
+                "to_date": "2024-01-05",
+            },
+            "ephemeral",
+            None,
+        ),
+        # Optional range on a revisable listing: keeps its daily refresh.
+        (
+            "calendar",
+            {
+                "endpoint": "earnings-calendar",
+                "from_date": "2024-01-01",
+                "to_date": "2024-01-05",
+            },
+            "document",
+            86400,
+        ),
+        # Required date: a past snapshot is fixed.
+        (
+            "marketPerformance",
+            {"endpoint": "sector-performance-snapshot", "date": "2024-01-02"},
+            "document",
+            None,
+        ),
+    ],
+)
+def test_past_dates_count_only_for_parameters_the_endpoint_requires(
+    tool, args, mode, refresh
+):
+    pol = resolve_policy(tool, args, today=TODAY)
+    assert pol.mode == mode
+    if mode == "document":
+        assert pol.refresh_s == refresh
