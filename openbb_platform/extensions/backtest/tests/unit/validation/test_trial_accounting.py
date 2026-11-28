@@ -415,3 +415,25 @@ def test_undefined_dsr_caps_verdict():
         capped_verdict(pbo=0.05, dsr=None, oos_sharpe=0.0, matrix_complete=True)
         == "overfit"
     )
+
+
+def test_edited_return_value_fails_closed_on_read(tmp_path):
+    """Security LOW: an edited return is caught by the recomputed result hash."""
+    import json
+
+    cells = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+    dispatch(led, cells, ok_executor)
+    assert len(led.records()) == 2
+    lines = led.ledger_path.read_text("utf-8").splitlines()
+    rec = json.loads(lines[0])
+    session, value = rec["returns"][0]
+    rec["returns"][0] = [session, float.hex(float.fromhex(value) + 0.01)]
+    lines[0] = json.dumps(rec, sort_keys=True, separators=(",", ":"))
+    led.ledger_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="tampered ledger"):
+        led.records()
+    # also on the final line (not mistaken for a torn write)
+    led.ledger_path.write_text("\n".join(lines[1:] + lines[:1]) + "\n", "utf-8")
+    with pytest.raises(ValueError, match="tampered ledger"):
+        led.records()

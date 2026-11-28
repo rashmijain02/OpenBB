@@ -367,7 +367,12 @@ class TrialLedger:
             os.fsync(fh.fileno())
 
     def records(self) -> list[AttemptRecord]:
-        """Every attempt in append order (a torn final line is ignored)."""
+        """Every attempt in append order (a torn final line is ignored).
+
+        The returns hash of every ``ok`` record is recomputed on read; a record
+        whose stored ``result_sha256`` does not match its returns (an edited
+        ledger) fails closed with :class:`ValueError`, wherever it sits.
+        """
         if not self.ledger_path.exists():
             return []
         out: list[AttemptRecord] = []
@@ -376,7 +381,7 @@ class TrialLedger:
             if not line.strip():
                 continue
             try:
-                out.append(AttemptRecord.from_json(json.loads(line)))
+                record = AttemptRecord.from_json(json.loads(line))
             except (json.JSONDecodeError, TypeError, KeyError):
                 if i == len(lines) - 1:
                     logger.warning(
@@ -384,6 +389,14 @@ class TrialLedger:
                     )
                     continue
                 raise
+            if record.status == "ok" and (
+                record.result_sha256 != returns_sha256(record.returns)
+            ):
+                raise ValueError(
+                    f"ledger record {record.attempt_id[:12]} returns do not match"
+                    " result_sha256 (tampered ledger)"
+                )
+            out.append(record)
         return out
 
 
