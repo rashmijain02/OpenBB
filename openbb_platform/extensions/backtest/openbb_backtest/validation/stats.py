@@ -101,6 +101,8 @@ def deflated_sharpe(
     skew: float,
     kurt: float,
     n_obs: int,
+    *,
+    sr_variance: float = 1.0,
 ) -> float:
     r"""Deflated Sharpe Ratio: PSR against the expected maximum of ``n_trials``.
 
@@ -112,10 +114,13 @@ def deflated_sharpe(
         DSR = PSR( SR* = E[max Sharpe over n_trials] )
 
     With ``n_trials == 1`` the expected-max benchmark is ``0``, so DSR reduces to
-    :func:`probabilistic_sharpe` at ``sr_benchmark=0``. The cross-trial Sharpe
-    variance is taken as unity (the standardized convention matching the signature
-    in ``docs/designs/backtest-design/08-validation.md`` §2), so the benchmark is
-    :func:`_expected_max_sharpe`.
+    :func:`probabilistic_sharpe` at ``sr_benchmark=0``. The paper's benchmark is
+    ``SR0 = √V[SR_n] · E[max of N standard normals]`` where ``V[SR_n]`` is the
+    variance of the trials' Sharpe estimates, in the same (per-observation) units
+    as ``sr``. ``sr_variance`` defaults to ``1.0`` (the legacy standardized
+    convention of ``docs/designs/backtest-design/08-validation.md`` §2), which
+    keeps every legacy call bit-identical; with per-observation Sharpe ratios the
+    caller should pass the cross-trial variance (#1357, finding F1).
 
     Parameters
     ----------
@@ -126,6 +131,9 @@ def deflated_sharpe(
         component-04 sweep count feeds this.
     skew, kurt, n_obs
         Return moments and sample length, forwarded to :func:`probabilistic_sharpe`.
+    sr_variance
+        Cross-trial variance ``V[SR_n]`` of the trials' Sharpe estimates (finite,
+        ``≥ 0``; ``0`` makes the benchmark ``0``). Default ``1.0`` = legacy.
 
     Returns
     -------
@@ -136,12 +144,34 @@ def deflated_sharpe(
     Raises
     ------
     ValueError
-        If ``n_trials < 1`` (or via :func:`probabilistic_sharpe` for ``n_obs``).
+        If ``n_trials < 1``, ``sr_variance`` is negative or non-finite (or via
+        :func:`probabilistic_sharpe` for ``n_obs``).
     """
     if n_trials < 1:
         raise ValueError(f"n_trials must be >= 1, got {n_trials}")
-    expected_max = _expected_max_sharpe(n_trials)
+    expected_max = expected_max_sharpe(n_trials, sr_variance=sr_variance)
     return probabilistic_sharpe(sr, expected_max, skew, kurt, n_obs)
+
+
+def expected_max_sharpe(n_trials: int, *, sr_variance: float = 1.0) -> float:
+    r"""Return the expected maximum Sharpe of ``n_trials`` trials (``√V · E[max]``).
+
+    Bailey & López de Prado (2014), eq. (1)::
+
+        E[max SR_n] ≈ √V[SR_n] · ((1 − γ)·Φ⁻¹(1 − 1/N) + γ·Φ⁻¹(1 − 1/(N·e)))
+
+    (mean of the trials' Sharpe taken as ``0``). ``N == 1`` gives ``0``. The
+    bracket is an extreme-value approximation, not an identity: for ``N = 2`` it
+    gives ``0.5198`` against the true ``1/√π ≈ 0.5642``.
+
+    Raises
+    ------
+    ValueError
+        If ``n_trials < 1`` or ``sr_variance`` is negative or non-finite.
+    """
+    if not math.isfinite(sr_variance) or sr_variance < 0.0:
+        raise ValueError(f"sr_variance must be finite and >= 0, got {sr_variance}")
+    return math.sqrt(sr_variance) * _expected_max_sharpe(n_trials)
 
 
 def min_backtest_length(target_sr: float, n_trials: int) -> float:
@@ -181,6 +211,30 @@ def min_backtest_length(target_sr: float, n_trials: int) -> float:
     return 2.0 * math.log(n_trials) / (target_sr * target_sr)
 
 
+def min_backtest_length_exact(target_sr: float, n_trials: int) -> float:
+    r"""Minimum backtest length (years) from the expected-maximum form.
+
+    Bailey, Borwein, López de Prado & Zhu (2014)::
+
+        MinBTL = (E[max_N] / target_sr)²
+
+    with ``E[max_N]`` the unit-variance expected maximum of :func:`expected_max_sharpe`
+    and ``target_sr`` annualized. :func:`min_backtest_length` (``2·ln N / SR²``) is
+    its upper bound and stays the legacy figure; this form is reported beside it.
+
+    Raises
+    ------
+    ValueError
+        If ``target_sr <= 0`` or ``n_trials < 1``.
+    """
+    if target_sr <= 0.0:
+        raise ValueError(f"target_sr must be positive, got {target_sr}")
+    if n_trials < 1:
+        raise ValueError(f"n_trials must be >= 1, got {n_trials}")
+    emax = _expected_max_sharpe(n_trials)
+    return (emax / target_sr) ** 2
+
+
 # --- internal helpers -----------------------------------------------------
 
 
@@ -190,7 +244,7 @@ def _norm_cdf(x: float) -> float:
 
 
 def _expected_max_sharpe(n_trials: int) -> float:
-    r"""Expected maximum of ``n_trials`` i.i.d. standard-normal Sharpe estimates.
+    r"""Return the expected maximum of ``n_trials`` i.i.d. standard-normal Sharpe estimates.
 
     Bailey & López de Prado (2014) bracket the expected maximum between two
     extreme-value quantiles, weighted by the Euler–Mascheroni constant γ::

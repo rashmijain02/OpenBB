@@ -55,7 +55,7 @@ from openbb_backtest.models import (
 )
 from openbb_backtest.router_helpers import (
     build_feed,
-    reject_nautilus_until_p17,
+    resolve_backend,
     resolve_engine,
     resolve_provider,
 )
@@ -143,6 +143,14 @@ def _build_broker(config: BacktestConfig) -> Broker:
     from openbb_backtest.engine.execution import RealisticBroker
 
     return RealisticBroker(config.commission, config.slippage)
+
+
+def _nautilus_options() -> Any:
+    """Nautilus seams for routed commands (the route always uses the defaults)."""
+    # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
+    from openbb_backtest.adapters.nautilus.backend import NautilusOptions
+
+    return NautilusOptions()
 
 
 @dataclass(frozen=True)
@@ -315,6 +323,68 @@ def _sessions_per_year(config: BacktestConfig) -> int:
     return _SESSIONS_PER_YEAR.get(config.frequency, 252)
 
 
+def _validate_nautilus(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    config: BacktestConfig,
+    method: str,
+    thresholds: dict[str, float] | None,
+    strategy_params: dict[str, Any] | None,
+    param_grid: dict[str, list] | None,
+    external_trials: int,
+) -> ValidationReport:
+    """Selection-aware validate on the nautilus backend (#1357 §2.5).
+
+    Every grid combination is a trial; PBO compares configurations, DSR uses
+    ``N`` = attempted configurations + ``external_trials``. Without a grid,
+    ``N = 1 + external_trials`` and PBO is undefined (``None``).
+    """
+    # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
+    from openbb_backtest.adapters.nautilus import experiment
+
+    base = dict(strategy_params or {})
+    combos = experiment.expand_grid(param_grid, base) if param_grid else [base]
+    report, _outcome = experiment.run_validation(
+        config,
+        combos,
+        method=method,
+        options=_nautilus_options(),
+        thresholds=thresholds,
+        external_trials=external_trials,
+    )
+    return report
+
+
+def _tearsheet_nautilus(
+    config: BacktestConfig,
+    engine: str,
+    rolling_window: int,
+    export: bool,
+    strategy_params: dict[str, Any] | None,
+) -> TearSheet:
+    """Tear sheet from one nautilus run via the shared ``execute_run`` path."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_backtest.analytics import build_tearsheet, to_returns
+    from openbb_backtest.routers.run_router import execute_run
+
+    result = execute_run(
+        config,
+        engine=engine,
+        strategy_params=strategy_params,
+        nautilus=_nautilus_options(),
+    )
+    returns = to_returns(result.equity_curve)
+    sheet = build_tearsheet(
+        returns,
+        None,
+        result.trades,
+        _sessions_per_year(config),
+        rolling_window=rolling_window,
+    )
+    if export:
+        html_path = _export_html(returns, title=f"{config.strategy} Tear Sheet")
+        sheet = sheet.model_copy(update={"html_path": html_path})
+    return sheet
+
+
 # --- commands ------------------------------------------------------------
 
 
@@ -339,12 +409,14 @@ def _sessions_per_year(config: BacktestConfig) -> int:
         ),
     ],
 )
-async def validate(
+async def validate(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     config: BacktestConfig,
     method: str = "wfo",
     thresholds: dict[str, float] | None = None,
     strategy_params: dict[str, Any] | None = None,
     provider: str | None = None,
+    param_grid: dict[str, list] | None = None,
+    external_trials: int = 0,
 ) -> OBBject[ValidationReport]:
     """Score a strategy's out-of-sample robustness (anti-overfitting report).
 
@@ -368,16 +440,36 @@ async def validate(
         Keyword arguments forwarded to the strategy constructor.
     provider : str, optional
         Data provider name; defaults to the fork's ``fmp_cached``.
+    param_grid : dict[str, list], optional
+        Nautilus backend only: the searched grid (over ``strategy_params``).
+        PBO compares configurations, and the deflated Sharpe of the selected
+        configuration counts every attempted configuration.
+    external_trials : int, optional
+        Nautilus backend only: trials searched elsewhere (e.g. a tuner), added
+        to ``N`` for the deflated Sharpe (default 0).
 
     Returns
     -------
     OBBject[ValidationReport]
         Per-fold OOS metrics, PBO / deflated Sharpe / MinBTL, and the verdict.
+        On the nautilus backend ``pbo`` is ``None`` when undefined (the verdict
+        is then capped at ``fragile``) and ``experiment`` holds the trial
+        accounting.
     """
     from openbb_backtest.validation import build_validation_report
 
     _check_method(method)
-    reject_nautilus_until_p17(config, "validate")
+    if resolve_backend(None, config)[0] == "nautilus":
+        return OBBject(
+            results=_validate_nautilus(
+                config, method, thresholds, strategy_params, param_grid, external_trials
+            )
+        )
+    if param_grid is not None or external_trials:
+        raise ValueError(
+            "param_grid and external_trials need backend 'nautilus'; the legacy"
+            " validate statistics are unchanged (#1357 D6)."
+        )
     provider_name = resolve_provider(provider)
     base_factory = _strategy_factory(config.strategy)
 
@@ -445,6 +537,9 @@ async def tearsheet(
     model); when quantstats is absent this raises
     :class:`~openbb_backtest.errors.OptionalDependencyError`.
 
+    With ``config.backend="nautilus"`` the run goes through the shared
+    ``execute_run`` path (reviewed strategies only, no fallback).
+
     Parameters
     ----------
     config : BacktestConfig
@@ -467,7 +562,12 @@ async def tearsheet(
     """
     from openbb_backtest.analytics import build_tearsheet, to_returns
 
-    reject_nautilus_until_p17(config, "tearsheet")
+    if resolve_backend(None, config)[0] == "nautilus":
+        return OBBject(
+            results=_tearsheet_nautilus(
+                config, engine, rolling_window, export, strategy_params
+            )
+        )
     provider_name = resolve_provider(provider)
     strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
     engine_name = resolve_engine(

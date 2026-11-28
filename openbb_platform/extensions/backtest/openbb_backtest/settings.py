@@ -28,6 +28,11 @@ class BacktestSettings(BaseSettings):
     # ``nautilus_worker/pin.yaml``). Unset means the backend is unavailable.
     nautilus_runtime: str | None = None
     nautilus_timeout_seconds: float = 120.0
+    # #1357 experiment bounds, checked at plan time before any spawn.
+    runs_root: str = ".openbb_backtest"
+    experiment_max_configs: int = 64
+    experiment_max_cells: int = 512
+    experiment_max_attempts: int = 2
 
 
 DEFAULT_SETTINGS = BacktestSettings()

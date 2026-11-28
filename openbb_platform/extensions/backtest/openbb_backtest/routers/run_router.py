@@ -36,6 +36,7 @@ from openbb_backtest.interfaces import (
     Engine,
     Strategy,
 )  # noqa: F401, E402
+from openbb_backtest.modeled_differences import MODELED_DIFFERENCES
 from openbb_backtest.models import (
     BacktestConfig,
     BacktestResult,
@@ -46,7 +47,6 @@ from openbb_backtest.models import (
 )
 from openbb_backtest.router_helpers import (
     build_feed,
-    reject_nautilus_until_p17,
     resolve_backend,
     resolve_engine,
     resolve_provider,
@@ -100,6 +100,14 @@ def _build_broker(config: BacktestConfig) -> Broker:
     from openbb_backtest.engine.execution import RealisticBroker
 
     return RealisticBroker(config.commission, config.slippage)
+
+
+def _nautilus_options() -> Any:
+    """Nautilus seams for routed commands (the route always uses the defaults)."""
+    # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
+    from openbb_backtest.adapters.nautilus.backend import NautilusOptions
+
+    return NautilusOptions()
 
 
 def _reviewed_only(name: str) -> bool:
@@ -221,6 +229,68 @@ def execute_run(  # pylint: disable=too-many-arguments
     return sanitize_result(result.model_copy(update={"provenance": provenance}))
 
 
+def _sweep_nautilus(
+    config: BacktestConfig, param_grid: dict[str, list], rank_by: str
+) -> SweepResult:
+    """Sweep on the nautilus backend: one trial per combination (#1357)."""
+    # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
+    from openbb_backtest.adapters.nautilus import experiment
+
+    combos = experiment.expand_grid(param_grid)
+    result, _outcome = experiment.run_sweep(
+        config, combos, rank_by=rank_by, options=_nautilus_options()
+    )
+    return result
+
+
+def _reconcile_nautilus(
+    config: BacktestConfig,
+    strategy_params: dict[str, Any] | None,
+    strict: bool,
+    tolerance: float | None,
+    provider: str | None,
+) -> ReconciliationReport:
+    """Diagnostic comparison: nautilus reference vs the legacy event engine.
+
+    The nautilus result is the reference; the legacy ``event`` engine runs the
+    same strategy and params (execution assumptions dropped) as the candidate.
+    Agreement is not a gate, so ``strict=True`` is rejected.
+    """
+    # pylint: disable=import-outside-toplevel
+    from openbb_backtest.engine.reconcile import max_equity_divergence
+    from openbb_backtest.settings import DEFAULT_SETTINGS
+
+    if strict:
+        raise UnsupportedSemanticsError(
+            "reconcile with backend 'nautilus' is diagnostic only; strict=True"
+            " would make engine agreement a gate. Use strict=False.",
+            reason="reconcile_not_a_gate",
+        )
+    reference = execute_run(
+        config, strategy_params=strategy_params, nautilus=_nautilus_options()
+    )
+    legacy_params = dict(strategy_params or {})
+    legacy_params.pop("execution", None)
+    candidate = _run_legacy(
+        config.model_copy(update={"backend": "legacy"}),
+        engine="event",
+        strategy_params=legacy_params,
+        provider=provider,
+        feed=None,
+    )
+    tol = DEFAULT_SETTINGS.reconcile_tolerance if tolerance is None else tolerance
+    divergence = max_equity_divergence(reference, candidate)
+    return ReconciliationReport(
+        passed=divergence <= tol,
+        max_divergence=divergence,
+        tolerance=tol,
+        reference_engine="nautilus",
+        candidate_engine=candidate.engine_used,
+        diagnostic_only=True,
+        modeled_differences=list(MODELED_DIFFERENCES),
+    )
+
+
 # --- commands ------------------------------------------------------------
 
 
@@ -332,7 +402,10 @@ async def sweep(
 
     The shared returns matrix is computed once and reused across every grid
     combination (the core sweep performance lever); each combo's metrics are
-    returned alongside the winning combo selected by ``rank_by``.
+    returned alongside the winning combo selected by ``rank_by``. With
+    ``config.backend="nautilus"`` every combination is a reviewed trial on the
+    worker (invalid combinations are excluded but still counted) and
+    ``result.experiment`` carries the trial accounting; legacy is the default.
 
     Parameters
     ----------
@@ -351,9 +424,10 @@ async def sweep(
     OBBject[SweepResult]
         Per-combo metrics plus the best combo and its metrics.
     """
+    if resolve_backend(None, config)[0] == "nautilus":
+        return OBBject(results=_sweep_nautilus(config, param_grid, rank_by))
     from openbb_backtest.engine.vectorized import sweep as _engine_sweep
 
-    reject_nautilus_until_p17(config, "sweep")
     provider_name = resolve_provider(provider)
     feed = _build_feed(config, provider_name)
     factory = _strategy_factory(config.strategy)
@@ -399,6 +473,9 @@ def reconcile(
     The event-driven engine is the source of truth; the vectorized engine is the
     candidate under test. A divergence beyond ``tolerance`` marks the report as
     failed and, when ``strict`` is set, raises ``ReconciliationError`` instead.
+    With ``config.backend="nautilus"`` the nautilus run is the reference, the
+    legacy event engine the candidate, and the report is ``diagnostic_only``
+    (``strict=True`` is rejected).
 
     Parameters
     ----------
@@ -418,9 +495,14 @@ def reconcile(
     OBBject[ReconciliationReport]
         Whether the engines agreed and the largest equity divergence observed.
     """
+    if resolve_backend(None, config)[0] == "nautilus":
+        return OBBject(
+            results=_reconcile_nautilus(
+                config, strategy_params, strict, tolerance, provider
+            )
+        )
     from openbb_backtest.engine.reconcile import reconcile as _engine_reconcile
 
-    reject_nautilus_until_p17(config, "reconcile")
     provider_name = resolve_provider(provider)
     strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
     feed = _build_feed(config, provider_name)

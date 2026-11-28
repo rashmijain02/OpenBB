@@ -27,7 +27,6 @@ from typing import TYPE_CHECKING
 from openbb_backtest.errors import (
     BackendSelectionError,
     EngineSelectionError,
-    UnsupportedSemanticsError,
 )
 from openbb_backtest.models import BackendSource, BacktestConfig, BacktestResult
 from openbb_backtest.settings import DEFAULT_SETTINGS
@@ -131,22 +130,6 @@ def resolve_backend(
             + "."
         )
     return key, source
-
-
-def reject_nautilus_until_p17(config: BacktestConfig, command: str) -> None:
-    """Refuse ``nautilus`` for commands that do not route to it yet (D6).
-
-    ``sweep``, ``reconcile``, ``validate`` and ``tearsheet`` run folds or grids,
-    which reach the Nautilus backend in HFP-P17. Until then a config selecting
-    it is rejected rather than silently run on the legacy engines.
-    """
-    backend, source = resolve_backend(None, config)
-    if backend == "nautilus":
-        raise UnsupportedSemanticsError(
-            f"{command} does not support backend 'nautilus' yet (from {source});"
-            " it arrives with HFP-P17. Use backend 'legacy'.",
-            reason="backend_not_routed",
-        )
 
 
 def sanitize_result(result: BacktestResult) -> BacktestResult:

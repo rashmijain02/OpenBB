@@ -1,8 +1,8 @@
-"""Build a plan, then call ``obb.techtrade.validate`` to score its robustness.
+r"""Build a plan, then call ``obb.techtrade.validate`` to score its robustness.
 
 Live run:
 
-    .venv_win\\Scripts\\python.exe -m openbb_techtrade.examples.validate_a_plan
+    .venv_win\Scripts\python.exe -m openbb_techtrade.examples.validate_a_plan
 
 Requires the ``[validation]`` extra:
 
@@ -19,6 +19,7 @@ Demonstrates the user-visible robustness gate: WFO folds + PBO + Deflated Sharpe
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,11 @@ def main(
     absent — the example degrades to a skip notice rather than a crash so it can
     be smoke-tested on a bare install.
     """
-    from openbb import obb  # noqa: PLC0415
+    from openbb import obb as _obb  # noqa: PLC0415
+
+    # The ``techtrade`` namespace is attached at runtime by the extension, so it is
+    # not in OpenBB's static ``obb`` type; type it as Any (no behaviour change).
+    obb: Any = _obb
 
     # 1. Build a single-symbol plan.
     plan_kwargs = {"symbols": [symbol], "preset": preset, "risk": risk}
@@ -60,13 +65,17 @@ def main(
         from openbb_techtrade.validation.backtest_bridge import (  # noqa: PLC0415
             TechtradeDependencyError,
         )
-    except ImportError:  # pragma: no cover — validation module always ships in techtrade
+    except (
+        ImportError
+    ):  # pragma: no cover — validation module always ships in techtrade
         logger.error("validation module not importable; cannot continue")
         return None
 
     try:
         result = obb.techtrade.validate(
-            plan=plan, method=method, horizon_years=horizon_years,
+            plan=plan,
+            method=method,
+            horizon_years=horizon_years,
         )
     except TechtradeDependencyError as exc:
         logger.warning(
@@ -76,11 +85,13 @@ def main(
         return None
 
     report = result.results
+    dsr = getattr(report, "deflated_sharpe", float("nan"))
     logger.info(
-        "verdict=%s  pbo=%.3f  dsr=%.3f  oos_sharpe=%.3f",
+        "verdict=%s  pbo=%s  dsr=%s  oos_sharpe=%.3f",
         report.verdict,
-        getattr(report, "pbo", float("nan")),
-        getattr(report, "deflated_sharpe", float("nan")),
+        # None = undefined (nautilus backend, #1357); never shown as 0.0
+        ("undefined" if getattr(report, "pbo", None) is None else f"{report.pbo:.3f}"),
+        "undefined" if dsr is None else f"{dsr:.3f}",
         getattr(getattr(report, "oos_metrics", None), "sharpe", float("nan")),
     )
     return report
