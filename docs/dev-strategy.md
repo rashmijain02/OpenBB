@@ -43,7 +43,7 @@ Copilot CLI's main agent for Phases 1 and 3 is `.github/agents/openbb-orchestrat
 
 | ID | Decision | Effect |
 |---|---|---|
-| D1 | Model policy by role | Use the best available model suited to the task, chosen by complexity, ambiguity and risk, and name the selected model explicitly on every dispatch that accepts one. If no suitable model is available, stop and report the blocker; never silently degrade. Tool roles stay (Copilot CLI: spec and ship phases; Claude Code: execute phase) but models are never pinned to a family or tied to a tool. |
+| D1 | Model policy by role | Use the best available model suited to the task, chosen by complexity, ambiguity and risk, and name the selected model explicitly on every dispatch that accepts one. If no suitable model is available, stop and report the blocker; never silently degrade. Tool roles stay (Copilot CLI: spec and ship phases; Claude Code: execute phase) but models are never pinned to a family or tied to a tool. Suggested Claude Code tiers: see `.claude/skills/openbb-dev-cycle/SKILL.md` (Model selection). |
 | D2 | Spec location and branches | Spec Kit writes to `specs/gh-<NN>-<slug>/` (set `SPECIFY_FEATURE_DIRECTORY`). Spec Kit's `git` branching extension is not installed; Phase 2 cuts the branch. `docs/superpowers/{specs,plans}` are frozen as an archive. |
 | D3 | `tasks.md` and TodoWrite | `tasks.md` is a committed plan, not a tracker. TodoWrite is allowed only as an in-session mirror of `tasks.md` during Phase 2. Status lives on the board. |
 | D4 | Issue granularity | One sub-issue per user story (sub-issue of the parent issue), tasks as a checklist in its body. Confirm before creating more than 3 issues. |
