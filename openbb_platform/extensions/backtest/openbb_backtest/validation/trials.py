@@ -37,6 +37,7 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
@@ -45,6 +46,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
+
+#: Bounded retries when concurrent writers claim the next planned version.
+_PLANNED_CLAIM_RETRIES = 8
 
 AttemptStatus = Literal["ok", "failed", "excluded"]
 WindowPolicy = Literal["continuous", "per_fold"]
@@ -350,20 +354,37 @@ class TrialLedger:
         """``ledger.jsonl``."""
         return self.directory / "ledger.jsonl"
 
+    def _claim(self, name: str, text: str) -> None:
+        """Create ``name`` atomically and exclusively; never replace a file.
+
+        Writes a uniquely named temp file (fsynced), then ``os.link`` claims the
+        final name (``FileExistsError`` when another writer got there first) and
+        the temp is removed. Concurrent writers never share a temp name.
+        """
+        self.directory.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=self.directory, prefix=f".{name}.", suffix=".tmp"
+        )
+        tmp = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.link(tmp, self.directory / name)
+        finally:
+            tmp.unlink(missing_ok=True)
+
     def _write_once(self, name: str, payload: Any) -> None:
         path = self.directory / name
         text = canonical(payload)
-        if path.exists():
+        try:
+            self._claim(name, text)
+        except FileExistsError:
             if path.read_text(encoding="utf-8") != text:
-                raise ValueError(f"{name} already exists with different content")
-            return
-        self.directory.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        with tmp.open("w", encoding="utf-8", newline="\n") as fh:
-            fh.write(text)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
+                raise ValueError(
+                    f"{name} already exists with different content"
+                ) from None
 
     def write_spec(self, spec: Mapping[str, Any]) -> None:
         """Persist the experiment spec (write-once)."""
@@ -393,17 +414,26 @@ class TrialLedger:
         versions are never rewritten. A re-plan adding nothing writes nothing.
         The new cells of one write must share one ``base_dataset_id``.
         """
-        known = {c.trial_id for c in self.planned()}
-        fresh = [c for c in sorted(cells, key=_cell_key) if c.trial_id not in known]
-        fresh = list({c.trial_id: c for c in fresh}.values())
-        if not fresh:
-            return
-        datasets = {c.config.base_dataset_id for c in fresh}
-        if len(datasets) > 1:  # one planned version = one dataset (CODE-2b)
-            raise ValueError("a planned version must cover exactly one dataset")
-        version = len(self._planned_paths()) + 1
-        name = "planned.json" if version == 1 else f"planned.v{version}.json"
-        self._write_once(name, [c.to_json() for c in fresh])
+        for _ in range(_PLANNED_CLAIM_RETRIES):
+            known = {c.trial_id for c in self.planned()}
+            fresh = [c for c in sorted(cells, key=_cell_key) if c.trial_id not in known]
+            fresh = list({c.trial_id: c for c in fresh}.values())
+            if not fresh:
+                return
+            datasets = {c.config.base_dataset_id for c in fresh}
+            if len(datasets) > 1:  # one planned version = one dataset (CODE-2b)
+                raise ValueError("a planned version must cover exactly one dataset")
+            version = len(self._planned_paths()) + 1
+            name = "planned.json" if version == 1 else f"planned.v{version}.json"
+            try:
+                self._claim(name, canonical([c.to_json() for c in fresh]))
+                return
+            except FileExistsError:
+                continue  # another writer took this version: re-plan against it
+        raise RuntimeError(
+            "could not claim a planned list version after"
+            f" {_PLANNED_CLAIM_RETRIES} attempts (concurrent writers)"
+        )
 
     def planned_versions(self) -> list[list[Cell]]:
         """Planned cells per version, verified (fail closed on any inconsistency).

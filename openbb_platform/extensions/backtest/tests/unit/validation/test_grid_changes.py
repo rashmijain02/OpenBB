@@ -9,6 +9,7 @@ the counts and the exclusions cover only the current plan's cells.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import replace
 
 import pytest
@@ -236,3 +237,101 @@ def test_ledger_append_after_torn_tail_keeps_every_record(tmp_path):
     assert len(after) == len(before) + 1, "the new record was glued to the fragment"
     led.append(replace(before[1], attempt_no=before[1].attempt_no + 1))
     assert len(led.records()) == len(before) + 2, "the ledger became unreadable"
+
+
+# --- concurrent planned-version writers: exclusive claim, never overwrite ----
+
+
+def _racing(monkeypatch, rival_cells):
+    """Make a rival writer claim the next version between read and claim."""
+    real = TrialLedger._claim
+    state = {"fired": False, "names": []}
+
+    def claim(self, name, text):
+        state["names"].append(name)
+        if not state["fired"]:
+            state["fired"] = True
+            rival = TrialLedger(self.directory)
+            monkeypatch.setattr(TrialLedger, "_claim", real)
+            rival.write_planned(rival_cells)
+            monkeypatch.setattr(TrialLedger, "_claim", claim)
+        return real(self, name, text)
+
+    monkeypatch.setattr(TrialLedger, "_claim", claim)
+    return state
+
+
+def test_racing_planned_version_is_not_overwritten(tmp_path, monkeypatch):
+    """A rival claims v2 first: the loser lands at v3 with only its new cells."""
+    wide = wfo_cells(4, 2)
+    ids = sorted({c.config_id for c in wide})
+    base = [c for c in wide if c.config_id == ids[0]]
+    ours = [c for c in wide if c.config_id == ids[1]]
+    theirs = [c for c in wide if c.config_id == ids[2]]
+    led = _ledger(tmp_path)
+    led.write_planned(base)
+    state = _racing(monkeypatch, theirs)
+    led.write_planned(base + ours)
+    assert state["names"][:2] == ["planned.v2.json", "planned.v3.json"]
+    versions = led.planned_versions()
+    assert [{c.config_id for c in v} for v in versions] == [
+        {ids[0]},
+        {ids[2]},
+        {ids[1]},
+    ], "the rival's version was overwritten or ours lost"
+
+
+def test_racing_identical_plan_appends_nothing_extra(tmp_path, monkeypatch):
+    """A rival that planned the same new cells makes our write a no-op."""
+    wide = wfo_cells(2, 2)
+    ids = sorted({c.config_id for c in wide})
+    base = [c for c in wide if c.config_id == ids[0]]
+    new = [c for c in wide if c.config_id == ids[1]]
+    led = _ledger(tmp_path)
+    led.write_planned(base)
+    _racing(monkeypatch, new)
+    led.write_planned(base + new)
+    assert [len(v) for v in led.planned_versions()] == [len(base), len(new)]
+    assert not (led.directory / "planned.v3.json").exists()
+
+
+def test_planned_claim_fails_closed_after_bounded_retries(tmp_path, monkeypatch):
+    """A claim that always loses raises a clear error instead of looping."""
+    wide = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+
+    def always_taken(self, name, text):
+        raise FileExistsError(name)
+
+    monkeypatch.setattr(TrialLedger, "_claim", always_taken)
+    with pytest.raises(RuntimeError, match="could not claim"):
+        led.write_planned(wide)
+
+
+def test_planned_temp_files_are_unique_and_harmless(tmp_path, monkeypatch):
+    """No shared ``.tmp`` name; a stray temp never breaks version discovery."""
+    seen: list[str] = []
+    real_link = os.link
+
+    def spy(src, dst):
+        seen.append(os.path.basename(src))
+        return real_link(src, dst)
+
+    monkeypatch.setattr(os, "link", spy)
+    wide = wfo_cells(3, 1)
+    ids = sorted({c.config_id for c in wide})
+    led = _ledger(tmp_path)
+    led.write_planned([c for c in wide if c.config_id == ids[0]])
+    led.write_planned([c for c in wide if c.config_id != ids[2]])
+    led.write_spec({"a": 1})
+    led.write_spec({"a": 1})
+    assert len(seen) == len(set(seen)) == 4
+    assert not any(n in {"planned.json.tmp", "planned.v2.json.tmp"} for n in seen)
+    (led.directory / ".planned.v3.json.stray.tmp").write_text("{", "utf-8")
+    (led.directory / "planned.v3.json.tmp").write_text("{", "utf-8")
+    assert [len(v) for v in led.planned_versions()] == [1, 1]
+    assert list(led.directory.glob(".planned*")) == [
+        led.directory / ".planned.v3.json.stray.tmp"
+    ], "own temp files were left behind"
+    with pytest.raises(ValueError, match="different content"):
+        led.write_spec({"a": 2})
