@@ -25,6 +25,7 @@ from . import (
     guards,
 )
 from .protocol import ErrorCode, ProtocolError
+from .reviewed import registry
 
 LOCK_NAME = ".heavy.lock"
 MAX_SESSIONS = 50_000
@@ -251,6 +252,28 @@ def nautilus_engine(
     )
 
 
+def _assert_executable(binding: registry.Binding | None) -> None:
+    """Fail closed on reviewed semantics this runner does not implement yet.
+
+    Fill-at-open, sizing, staging and settlement arrive with #1356 T03; until
+    then only buy-and-hold filled at the decision close (as in #1355) with zero
+    fees may run, never an approximation of anything else.
+    """
+    if binding is None:
+        return
+    execution = binding.execution
+    if (
+        binding.strategy_id != "buy_and_hold"
+        or execution.fill_timing != "same_close"
+        or execution.fees != "zero"
+    ):
+        raise ProtocolError(
+            ErrorCode.CONFIG,
+            "execution_not_executable: reviewed but not yet runnable "
+            f"({binding.strategy_id}, {execution.fill_timing}, fees={execution.fees})",
+        )
+
+
 def run(
     body: dict[str, Any],
     *,
@@ -270,6 +293,7 @@ def run(
                 ErrorCode.MODULE_ORIGIN, "nautilus_trader is not importable"
             ) from exc
     adm = admission.admit_run(req, root / "datasets", fixed_precision)
+    _assert_executable(adm.binding)
     deadline = guards.Deadline(
         req.deadline_seconds, **({"on_expire": on_deadline} if on_deadline else {})
     )
@@ -277,9 +301,9 @@ def run(
         spec = _load_spec(adm)
         result = (engine or nautilus_engine)(spec)
         books = account(spec, result)
-    return {
+    report = {
         "dataset_id": req.dataset_id,
-        "strategy": req.strategy,
+        "strategy": req.strategy or (adm.binding.strategy_id if adm.binding else None),
         "venue": req.venue,
         "symbol": spec.symbol,
         "engine": {"name": result.name, "version": result.version},
@@ -290,3 +314,8 @@ def run(
         "final_equity": books["equity"][-1],
         **books,
     }
+    if adm.binding is not None:
+        report["binding"] = registry.run_binding(
+            adm.binding, req.dataset_id, result.version
+        )
+    return report
