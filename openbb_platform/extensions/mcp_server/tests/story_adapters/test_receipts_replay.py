@@ -12,6 +12,7 @@ Synthetic data only; every store lives in ``tmp_path``.
 import importlib.util
 import json
 import sqlite3
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -416,3 +417,216 @@ def test_legacy_reprepare_with_new_operation_is_a_new_request(env):
     first = env.prepare(sandbox_id, "prep-first")
     second = env.prepare(sandbox_id, "prep-second")
     assert second["request_id"] != first["request_id"]
+
+
+# --- Concurrency and re-prepare outcome (#1341 review fixes) ----------------
+
+
+def _outcome(env, run_id):
+    response = env.client.get(f"/api/v1/story/runs/{run_id}/outcome")
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _checkpoint_all(env, run_id):
+    stages = env.client.get(f"/api/v1/story/runs/{run_id}").json()["stage_status"]
+    for stage_id in stages:
+        version = env.client.get(f"/api/v1/story/runs/{run_id}").json()["state_version"]
+        response = env.client.post(
+            f"/api/v1/story/runs/{run_id}/checkpoint",
+            json={
+                "expected_version": version,
+                "stage_id": stage_id,
+                "status": "succeeded",
+                "state": {"output_sha256": "b" * 64},
+            },
+        )
+        assert response.status_code == 200, response.text
+
+
+def _expire_all(env):
+    past = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+    with sqlite3.connect(env.store) as connection:
+        connection.execute(
+            "UPDATE story_paper_requests SET expires_at = ? WHERE status = 'pending'",
+            (past,),
+        )
+
+
+def _interleave(monkeypatch, module, second):
+    """Run ``second`` in a thread at the first ``uuid4`` call of ``module``.
+
+    The first delivery has claimed its logical key and is about to create its
+    row; the second delivery races it. The second gets up to two seconds to
+    finish inside that window, which an unserialized prepare uses to insert
+    its own row; a serialized one stays blocked until the first commits.
+    """
+    real = module.uuid.uuid4
+    results: list = []
+    threads: list = []
+
+    def seam():
+        if not threads:
+            thread = threading.Thread(target=lambda: results.append(second()))
+            threads.append(thread)
+            thread.start()
+            thread.join(2)
+        return real()
+
+    monkeypatch.setattr(module.uuid, "uuid4", seam)
+    return results, threads
+
+
+def _prepare_raw(env, sandbox_id, operation_id):
+    return env.client.post(
+        f"/api/v1/story/paper/sandboxes/{sandbox_id}/prepare",
+        json={
+            "operation_id": operation_id,
+            "action": "submit_batch",
+            "arguments": BATCH,
+        },
+    )
+
+
+def test_concurrent_reprepare_creates_one_live_request(env, monkeypatch):
+    """Two re-issued prepares racing on one logical key leave one pending row."""
+    sandbox_id = env.sandbox(env.new_run())
+    results, threads = _interleave(
+        monkeypatch, paper, lambda: _prepare_raw(env, sandbox_id, "prep-b")
+    )
+    first = env.prepare(sandbox_id, "prep-a")
+    threads[0].join(30)
+    second = results[0]
+    pending = env.count(
+        "SELECT COUNT(*) FROM story_paper_requests WHERE status = 'pending'"
+    )
+    assert pending == 1
+    assert second.status_code == 200, second.text
+    assert second.json()["request_id"] == first["request_id"]
+    assert second.json()["replay_of"] == "prep-a"
+
+
+def test_claimed_receipt_without_owner_row_is_in_flight(env):
+    """A claim whose owner row is missing is in flight: 409, never superseded."""
+    sandbox_id = env.sandbox(env.new_run())
+    env.prepare(sandbox_id, "prep-a")
+    with sqlite3.connect(env.store) as connection:
+        connection.execute("DELETE FROM story_paper_requests")
+        connection.execute(
+            "UPDATE story_receipts SET state = 'claimed', outcome_ref = NULL"
+        )
+    response = _prepare_raw(env, sandbox_id, "prep-b")
+    assert response.status_code == 409, response.text
+    assert "outcome_uncertain" in response.json()["detail"]
+    assert env.count("SELECT COUNT(*) FROM story_paper_requests") == 0
+    assert env.count("SELECT operation_id FROM story_receipts") == "prep-a"
+
+
+def test_concurrent_job_resubmit_is_one_job(env, monkeypatch):
+    """Two re-issued submits racing on one logical key enqueue one job."""
+    from openbb_mcp_server.story_adapters import jobs as jobs_module
+
+    run_id = env.new_run()
+    real_claim = jobs_module.ReceiptLedger.claim
+    results: list = []
+    threads: list = []
+
+    def claim(self, *args, **kwargs):
+        receipt = real_claim(self, *args, **kwargs)
+        if not threads:
+            thread = threading.Thread(
+                target=lambda: results.append(env.submit(run_id, "op-b", raw=True))
+            )
+            threads.append(thread)
+            thread.start()
+            thread.join(30)
+        return receipt
+
+    monkeypatch.setattr(jobs_module.ReceiptLedger, "claim", claim)
+    first = env.submit(run_id, "op-a")
+    second = results[0]
+    assert second.status_code == 202, second.text
+    assert second.json()["job_id"] == first.job_id
+    assert env.count("SELECT COUNT(*) FROM job_run", env.jobs_db) == 1
+
+
+def test_concurrent_artifact_reissue_is_one_artifact(env, monkeypatch):
+    """A re-issue racing an unfinished first write never writes a second copy."""
+    from openbb_mcp_server.story_adapters import artifacts as artifacts_module
+
+    run_id = env.new_run()
+    retry_body = {**TABLE, "name": "positions-retry"}
+    results, threads = _interleave(
+        monkeypatch, artifacts_module, lambda: env.table(run_id, retry_body)
+    )
+    first = env.table(run_id)
+    threads[0].join(30)
+    assert first.status_code == 200, first.text
+    racing = results[0]
+    assert racing.status_code == 409, racing.text
+    assert "outcome_uncertain" in racing.json()["detail"]
+    assert len(list(env.root.rglob("*.csv"))) == 1
+    retry = env.table(run_id, retry_body)
+    assert retry.json()["ref"]["artifact_id"] == first.json()["ref"]["artifact_id"]
+
+
+def test_reprepare_after_expiry_supersedes_old_and_run_completes(env):
+    """The expired owner is superseded; applying R2 lets the run succeed."""
+    run_id = env.new_run()
+    sandbox_id = env.sandbox(run_id)
+    first = env.prepare(sandbox_id, "prep-first")
+    _expire_all(env)
+    assert _outcome(env, run_id)["outcome"] == "needs_input"
+    second = env.prepare(sandbox_id, "prep-new")
+    with sqlite3.connect(env.store) as connection:
+        row = connection.execute(
+            "SELECT status, superseded_reason FROM story_paper_requests"
+            " WHERE request_id = ?",
+            (first["request_id"],),
+        ).fetchone()
+    assert row == ("superseded", "reprepared")
+    assert env.apply(second["request_id"]).status_code == 200
+    assert _outcome(env, run_id)["outcome"] != "needs_input"
+    _checkpoint_all(env, run_id)
+    assert _outcome(env, run_id)["outcome"] == "succeeded"
+
+
+def test_changed_args_reprepare_after_expiry_does_not_strand_the_run(env):
+    """A re-prepare with other arguments also retires the expired request."""
+    run_id = env.new_run()
+    sandbox_id = env.sandbox(run_id)
+    env.prepare(sandbox_id, "prep-first")
+    _expire_all(env)
+    changed = json.loads(json.dumps(BATCH))
+    changed["tickets"] = changed["tickets"][:1]
+    second = env.prepare(sandbox_id, "prep-changed", arguments=changed)
+    assert env.apply(second["request_id"], arguments=changed).status_code == 200
+    _checkpoint_all(env, run_id)
+    assert _outcome(env, run_id)["outcome"] == "succeeded"
+
+
+@pytest.mark.parametrize("bound", [True, False])
+def test_failed_paper_request_is_never_succeeded(env, bound):
+    """A request that ended failed makes the run failed, not succeeded."""
+    run_id = env.new_run(bound=bound)
+    sandbox_id = env.sandbox(run_id)
+    env.prepare(sandbox_id, "prep-first")
+    with sqlite3.connect(env.store) as connection:
+        connection.execute("UPDATE story_paper_requests SET status = 'failed'")
+    _checkpoint_all(env, run_id)
+    body = _outcome(env, run_id)
+    assert (body["outcome"], body["reason"]) == ("failed", "request_failed")
+
+
+def test_reprepare_after_failure_lets_the_run_succeed(env):
+    """A failed request re-prepared and applied no longer fails the run."""
+    run_id = env.new_run()
+    sandbox_id = env.sandbox(run_id)
+    env.prepare(sandbox_id, "prep-first")
+    with sqlite3.connect(env.store) as connection:
+        connection.execute("UPDATE story_paper_requests SET status = 'failed'")
+    second = env.prepare(sandbox_id, "prep-retry")
+    assert "replay_of" not in second
+    assert env.apply(second["request_id"]).status_code == 200
+    _checkpoint_all(env, run_id)
+    assert _outcome(env, run_id)["outcome"] == "succeeded"

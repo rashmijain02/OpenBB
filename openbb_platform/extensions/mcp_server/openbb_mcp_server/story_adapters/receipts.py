@@ -107,31 +107,41 @@ class ReceiptLedger:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.db_path, isolation_level=None, timeout=30)
         if not self._ready:
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS story_receipts ("
-                " principal TEXT NOT NULL, logical_key TEXT NOT NULL,"
-                " tool TEXT NOT NULL, run_id TEXT NOT NULL,"
-                " workflow_ref TEXT NOT NULL, stage_id TEXT,"
-                " args_sha256 TEXT NOT NULL, operation_id TEXT NOT NULL,"
-                " outcome_ref TEXT, state TEXT NOT NULL,"
-                " deliveries INTEGER NOT NULL, created_at TEXT NOT NULL,"
-                " updated_at TEXT NOT NULL, UNIQUE (principal, logical_key))"
-            )
-            self._ready = True
+            self.create_table(connection)
         try:
             yield connection
         finally:
             connection.close()
 
+    def create_table(self, connection: sqlite3.Connection) -> None:
+        """Create ``story_receipts`` on a caller's connection to the same file."""
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS story_receipts ("
+            " principal TEXT NOT NULL, logical_key TEXT NOT NULL,"
+            " tool TEXT NOT NULL, run_id TEXT NOT NULL,"
+            " workflow_ref TEXT NOT NULL, stage_id TEXT,"
+            " args_sha256 TEXT NOT NULL, operation_id TEXT NOT NULL,"
+            " outcome_ref TEXT, state TEXT NOT NULL,"
+            " deliveries INTEGER NOT NULL, created_at TEXT NOT NULL,"
+            " updated_at TEXT NOT NULL, UNIQUE (principal, logical_key))"
+        )
+        self._ready = True
+
     def get(self, principal: str, logical_key: str) -> Receipt | None:
         """Return the receipt for one logical operation, if any."""
         with self._connect() as connection:
-            row = connection.execute(
-                f"SELECT {self._COLUMNS} FROM story_receipts"  # noqa: S608
-                " WHERE principal = ? AND logical_key = ?",
-                (principal, logical_key),
-            ).fetchone()
-        return Receipt(*row) if row else None
+            return self.get_on(connection, principal, logical_key)
+
+    def get_on(
+        self, connection: sqlite3.Connection, principal: str, logical_key: str
+    ) -> Receipt | None:
+        """``get`` on the caller's connection (inside its transaction)."""
+        row = connection.execute(
+            f"SELECT {self._COLUMNS} FROM story_receipts"  # noqa: S608
+            " WHERE principal = ? AND logical_key = ?",
+            (principal, logical_key),
+        ).fetchone()
+        return Receipt(*tuple(row)) if row else None
 
     def claim(  # pylint: disable=too-many-arguments
         self,
@@ -151,37 +161,64 @@ class ReceiptLedger:
         delivery only increments ``deliveries``. The caller compares the
         returned ``operation_id`` with its own to know whether it is a replay.
         """
-        now = _now()
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                connection.execute(
-                    f"INSERT INTO story_receipts ({self._COLUMNS})"  # noqa: S608
-                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'claimed', 0, ?, ?)"
-                    " ON CONFLICT (principal, logical_key) DO NOTHING",
-                    (
-                        principal,
-                        logical_key,
-                        tool,
-                        run_id,
-                        workflow_ref,
-                        stage_id,
-                        args_sha256,
-                        operation_id,
-                        now,
-                        now,
-                    ),
-                )
-                connection.execute(
-                    "UPDATE story_receipts SET deliveries = deliveries + 1,"
-                    " updated_at = ? WHERE principal = ? AND logical_key = ?",
-                    (now, principal, logical_key),
+                receipt = self.claim_on(
+                    connection,
+                    principal,
+                    logical_key,
+                    tool=tool,
+                    run_id=run_id,
+                    workflow_ref=workflow_ref,
+                    stage_id=stage_id,
+                    args_sha256=args_sha256,
+                    operation_id=operation_id,
                 )
                 connection.execute("COMMIT")
             except BaseException:
                 connection.execute("ROLLBACK")
                 raise
-        receipt = self.get(principal, logical_key)
+        return receipt
+
+    def claim_on(  # pylint: disable=too-many-arguments
+        self,
+        connection: sqlite3.Connection,
+        principal: str,
+        logical_key: str,
+        *,
+        tool: str,
+        run_id: str,
+        workflow_ref: str,
+        stage_id: str | None,
+        args_sha256: str,
+        operation_id: str,
+    ) -> Receipt:
+        """``claim`` inside the caller's open ``BEGIN IMMEDIATE`` transaction."""
+        now = _now()
+        connection.execute(
+            f"INSERT INTO story_receipts ({self._COLUMNS})"  # noqa: S608
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'claimed', 0, ?, ?)"
+            " ON CONFLICT (principal, logical_key) DO NOTHING",
+            (
+                principal,
+                logical_key,
+                tool,
+                run_id,
+                workflow_ref,
+                stage_id,
+                args_sha256,
+                operation_id,
+                now,
+                now,
+            ),
+        )
+        connection.execute(
+            "UPDATE story_receipts SET deliveries = deliveries + 1,"
+            " updated_at = ? WHERE principal = ? AND logical_key = ?",
+            (now, principal, logical_key),
+        )
+        receipt = self.get_on(connection, principal, logical_key)
         assert receipt is not None  # noqa: S101  # inserted or already present
         return receipt
 
@@ -196,12 +233,33 @@ class ReceiptLedger:
     ) -> None:
         """Attach the outcome (job, request or artifact ID) to its owner."""
         with self._connect() as connection:
-            connection.execute(
-                "UPDATE story_receipts SET outcome_ref = ?, state = ?,"
-                " updated_at = ? WHERE principal = ? AND logical_key = ?"
-                " AND operation_id = ?",
-                (outcome_ref, state, _now(), principal, logical_key, operation_id),
+            self.record_outcome_on(
+                connection,
+                principal,
+                logical_key,
+                operation_id=operation_id,
+                outcome_ref=outcome_ref,
+                state=state,
             )
+
+    @staticmethod
+    def record_outcome_on(  # pylint: disable=too-many-arguments
+        connection: sqlite3.Connection,
+        principal: str,
+        logical_key: str,
+        *,
+        operation_id: str,
+        outcome_ref: str,
+        state: str,
+    ) -> bool:
+        """``record_outcome`` on the caller's connection; ``True`` if still owner."""
+        cursor = connection.execute(
+            "UPDATE story_receipts SET outcome_ref = ?, state = ?,"
+            " updated_at = ? WHERE principal = ? AND logical_key = ?"
+            " AND operation_id = ?",
+            (outcome_ref, state, _now(), principal, logical_key, operation_id),
+        )
+        return cursor.rowcount == 1
 
     def supersede(
         self,
@@ -218,19 +276,37 @@ class ReceiptLedger:
         is now the owner.
         """
         with self._connect() as connection:
-            cursor = connection.execute(
-                "UPDATE story_receipts SET operation_id = ?, outcome_ref = NULL,"
-                " state = 'claimed', updated_at = ? WHERE principal = ?"
-                " AND logical_key = ? AND operation_id = ?",
-                (
-                    operation_id,
-                    _now(),
-                    principal,
-                    logical_key,
-                    previous_operation_id,
-                ),
+            return self.supersede_on(
+                connection,
+                principal,
+                logical_key,
+                previous_operation_id=previous_operation_id,
+                operation_id=operation_id,
             )
-            return cursor.rowcount == 1
+
+    @staticmethod
+    def supersede_on(
+        connection: sqlite3.Connection,
+        principal: str,
+        logical_key: str,
+        *,
+        previous_operation_id: str,
+        operation_id: str,
+    ) -> bool:
+        """``supersede`` on the caller's connection (compare-and-set)."""
+        cursor = connection.execute(
+            "UPDATE story_receipts SET operation_id = ?, outcome_ref = NULL,"
+            " state = 'claimed', updated_at = ? WHERE principal = ?"
+            " AND logical_key = ? AND operation_id = ?",
+            (
+                operation_id,
+                _now(),
+                principal,
+                logical_key,
+                previous_operation_id,
+            ),
+        )
+        return cursor.rowcount == 1
 
     def for_run(self, principal: str, run_id: str) -> list[Receipt]:
         """Every receipt of one run, oldest first."""

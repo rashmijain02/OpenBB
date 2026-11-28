@@ -375,7 +375,7 @@ class PaperStore:
         """Open the store, creating its tables on first use."""
         if not self._ready:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.db_path, isolation_level=None)
+        connection = sqlite3.connect(self.db_path, isolation_level=None, timeout=30)
         connection.row_factory = sqlite3.Row
         if not self._ready:
             connection.executescript(
@@ -639,14 +639,21 @@ def build_router(  # pylint: disable=too-many-statements
         )
 
     def _logical_replay(
-        run, request: Prepare, sandbox_id: str, digest: str
+        connection: sqlite3.Connection,
+        run,
+        request: Prepare,
+        sandbox_id: str,
+        digest: str,
     ) -> tuple[str, sqlite3.Row | None]:
         """On a bound run, return the live request a re-issued prepare made.
 
+        Runs inside the caller's ``BEGIN IMMEDIATE`` transaction, which also
+        inserts the new request, so the claim and the row commit together.
         Returns ``(logical_key, row)``; ``row`` is ``None`` when this delivery
-        owns the logical operation and should create a request. An expired,
-        failed or missing owner hands the operation to this delivery, so the
-        human is asked again with a new request and nonce.
+        owns the logical operation and should create a request. An expired or
+        failed owner hands the operation over (the caller marks it
+        superseded), so the human is asked again with a new request and nonce.
+        A claim without an owner row is in flight, never taken over.
         """
         args_sha256 = args_digest(digest, sandbox_id)
         logical_key = logical_operation_key(
@@ -656,7 +663,8 @@ def build_router(  # pylint: disable=too-many-statements
             stage_id=None,
             args_sha256=args_sha256,
         )
-        receipt: Receipt | None = receipts.claim(
+        receipt: Receipt = receipts.claim_on(
+            connection,
             principal,
             logical_key,
             tool="story_paper_prepare",
@@ -666,24 +674,53 @@ def build_router(  # pylint: disable=too-many-statements
             args_sha256=args_sha256,
             operation_id=request.operation_id,
         )
-        while receipt is not None and receipt.operation_id != request.operation_id:
-            with store.connect() as connection:
-                owner = connection.execute(
-                    "SELECT * FROM story_paper_requests"
-                    " WHERE principal = ? AND operation_id = ?",
-                    (principal, receipt.operation_id),
-                ).fetchone()
-            if owner is not None and _live(owner):
-                return logical_key, owner
-            if receipts.supersede(
-                principal,
-                logical_key,
-                previous_operation_id=receipt.operation_id,
-                operation_id=request.operation_id,
-            ):
-                break
-            receipt = receipts.get(principal, logical_key)
+        if receipt.operation_id == request.operation_id:
+            return logical_key, None
+        owner = connection.execute(
+            "SELECT * FROM story_paper_requests"
+            " WHERE principal = ? AND operation_id = ?",
+            (principal, receipt.operation_id),
+        ).fetchone()
+        if owner is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "outcome_uncertain: an earlier delivery of this prepare is still"
+                " in flight; retry shortly.",
+            )
+        if _live(owner):
+            return logical_key, owner
+        receipts.supersede_on(
+            connection,
+            principal,
+            logical_key,
+            previous_operation_id=receipt.operation_id,
+            operation_id=request.operation_id,
+        )
         return logical_key, None
+
+    def _retire_reprepared(connection: sqlite3.Connection, sandbox_id: str) -> None:
+        """Supersede this sandbox's expired or failed requests (bound runs).
+
+        A new prepare is the human being asked again: the old request can
+        never apply, and the run outcome reads the new one instead.
+        """
+        now = _now()
+        rows = connection.execute(
+            "SELECT request_id, status, expires_at FROM story_paper_requests"
+            " WHERE principal = ? AND sandbox_id = ?"
+            " AND status IN ('pending', 'failed')",
+            (principal, sandbox_id),
+        ).fetchall()
+        for row in rows:
+            if row["status"] == "failed" or (
+                datetime.fromisoformat(row["expires_at"]) <= now
+            ):
+                connection.execute(
+                    "UPDATE story_paper_requests SET status = 'superseded',"
+                    " superseded_reason = 'reprepared'"
+                    " WHERE request_id = ? AND status = ?",
+                    (row["request_id"], row["status"]),
+                )
 
     def _route(method: str, path: str, name: str):
         return getattr(router, method)(
@@ -803,62 +840,97 @@ def build_router(  # pylint: disable=too-many-statements
             raise _unprocessable(error) from error
         digest = argument_digest(request.action, arguments)
         with store.connect() as connection:
-            existing = connection.execute(
-                "SELECT * FROM story_paper_requests"
-                " WHERE principal = ? AND operation_id = ?",
-                (principal, request.operation_id),
-            ).fetchone()
-            if existing is not None:
-                if (
-                    existing["argument_sha256"] != digest
-                    or existing["sandbox_id"] != sandbox_id
-                ):
-                    raise HTTPException(
-                        status.HTTP_409_CONFLICT,
-                        f"Operation '{request.operation_id}' was already prepared"
-                        " for a different action.",
-                    )
-                return _request_view(existing)
-            logical_key = None
-            if run.binding is not None:
-                logical_key, owner = _logical_replay(run, request, sandbox_id, digest)
-                if owner is not None:
-                    return {
-                        **_request_view(owner),
-                        "replay_of": owner["operation_id"],
-                    }
-            request_id = uuid.uuid4().hex
-            now = _now()
-            connection.execute(
-                "INSERT INTO story_paper_requests (request_id, principal,"
-                " sandbox_id, run_id, action, arguments, argument_sha256,"
-                " manifest_version, expires_at, nonce, operation_id, status,"
-                " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    request_id,
-                    principal,
-                    sandbox_id,
-                    sandbox["run_id"],
-                    request.action,
-                    json.dumps(arguments, sort_keys=True),
-                    digest,
-                    run.manifest_version,
-                    (now + APPROVAL_TTL).isoformat(),
-                    secrets.token_hex(16),
-                    request.operation_id,
-                    "pending",
-                    now.isoformat(),
-                ),
+            receipts.create_table(connection)
+            # One write transaction: the logical claim, the takeover of an
+            # expired owner and the new row commit together (#1341).
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                replay = _prepare_locked(
+                    connection, run, sandbox, sandbox_id, request, arguments, digest
+                )
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+        if isinstance(replay, dict):
+            return replay
+        return _request_view(store.request(replay, principal))
+
+    def _prepare_locked(  # pylint: disable=too-many-arguments
+        connection: sqlite3.Connection,
+        run,
+        sandbox: sqlite3.Row,
+        sandbox_id: str,
+        request: Prepare,
+        arguments: dict[str, Any],
+        digest: str,
+    ) -> dict | str:
+        """Return a replayed view, or the ID of the request this call created."""
+        existing = connection.execute(
+            "SELECT * FROM story_paper_requests"
+            " WHERE principal = ? AND operation_id = ?",
+            (principal, request.operation_id),
+        ).fetchone()
+        if existing is not None:
+            if (
+                existing["argument_sha256"] != digest
+                or existing["sandbox_id"] != sandbox_id
+            ):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Operation '{request.operation_id}' was already prepared"
+                    " for a different action.",
+                )
+            return _request_view(existing)
+        logical_key = None
+        if run.binding is not None:
+            logical_key, owner = _logical_replay(
+                connection, run, request, sandbox_id, digest
             )
-        if logical_key is not None:
-            receipts.record_outcome(
+            if owner is not None:
+                return {
+                    **_request_view(owner),
+                    "replay_of": owner["operation_id"],
+                }
+            _retire_reprepared(connection, sandbox_id)
+        request_id = uuid.uuid4().hex
+        now = _now()
+        connection.execute(
+            "INSERT INTO story_paper_requests (request_id, principal,"
+            " sandbox_id, run_id, action, arguments, argument_sha256,"
+            " manifest_version, expires_at, nonce, operation_id, status,"
+            " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                request_id,
                 principal,
-                logical_key,
-                operation_id=request.operation_id,
-                outcome_ref=request_id,
-                state="prepared",
+                sandbox_id,
+                sandbox["run_id"],
+                request.action,
+                json.dumps(arguments, sort_keys=True),
+                digest,
+                run.manifest_version,
+                (now + APPROVAL_TTL).isoformat(),
+                secrets.token_hex(16),
+                request.operation_id,
+                "pending",
+                now.isoformat(),
+            ),
+        )
+        if logical_key is not None and not receipts.record_outcome_on(
+            connection,
+            principal,
+            logical_key,
+            operation_id=request.operation_id,
+            outcome_ref=request_id,
+            state="prepared",
+        ):
+            # Another delivery owns the operation now: never two live rows.
+            connection.execute(
+                "UPDATE story_paper_requests SET status = 'superseded',"
+                " superseded_reason = 'lost_claim' WHERE request_id = ?",
+                (request_id,),
             )
-        return _request_view(store.request(request_id, principal))
+        return request_id
 
     @_route("get", "/paper/requests/{request_id}", "story_paper_request")
     def story_paper_request(request_id: str) -> dict:

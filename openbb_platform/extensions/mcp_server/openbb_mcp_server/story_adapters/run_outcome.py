@@ -50,11 +50,47 @@ class JobFact:
 
 @dataclass(frozen=True)
 class RequestFact:
-    """One paper request as stored."""
+    """One paper request as stored.
+
+    ``group`` is the request's logical operation within the run (sandbox and
+    argument digest); ``None`` makes the request its own group.
+    """
 
     status: str
     expires_at: datetime
     applying_at: datetime | None
+    superseded_reason: str | None = None
+    group: str | None = None
+
+
+def latest_requests(
+    requests: Sequence[RequestFact], *, bound: bool
+) -> tuple[list[RequestFact], bool]:
+    """Return the requests that still describe the run, and an orphan flag.
+
+    On a bound run only the latest request per logical operation counts, and
+    a request superseded by a re-prepare counts only while it has no later
+    request in its sandbox. Returns ``(requests, orphaned)``, where
+    ``orphaned`` flags a re-prepared request with no successor.
+    """
+    keyed = [
+        (fact.group if bound and fact.group else f"#{index}", fact)
+        for index, fact in enumerate(requests)
+    ]
+    last = {key: index for index, (key, _) in enumerate(keyed)}
+    kept = [fact for index, (key, fact) in enumerate(keyed) if last[key] == index]
+    orphaned = False
+    for index, fact in enumerate(requests):
+        if fact.superseded_reason != "reprepared":
+            continue
+        sandbox = (fact.group or "").split(":", 1)[0]
+        successor = any(
+            (later.group or "").split(":", 1)[0] == sandbox
+            for later in requests[index + 1 :]
+        )
+        if not successor:
+            orphaned = True
+    return kept, orphaned
 
 
 class RunOutcome(BaseModel):
@@ -97,6 +133,7 @@ def _state(  # noqa: PLR0911,PLR0912  # pylint: disable=too-many-return-statemen
 ) -> tuple[OutcomeState, str | None, bool]:
     if not workflow_current:
         return "blocked", "workflow_changed", False
+    requests, orphaned = latest_requests(requests, bound=record.binding is not None)
     active = [job for job in jobs if job.status in _JOB_ACTIVE]
     applying = [fact for fact in requests if fact.status == "applying"]
     stale = [
@@ -112,6 +149,8 @@ def _state(  # noqa: PLR0911,PLR0912  # pylint: disable=too-many-return-statemen
         return "partial", "apply_uncertain", True
     if any(job.status is None for job in jobs):
         return "partial", "submission_without_job", True
+    if orphaned:
+        return "partial", "reprepare_without_successor", True
 
     def mandatory(stage_id: str | None) -> bool:
         return stage_id is None or not optional.get(stage_id, False)
@@ -124,6 +163,8 @@ def _state(  # noqa: PLR0911,PLR0912  # pylint: disable=too-many-return-statemen
         return "failed", "stage_failed", False
     if any(status == "failed" and mandatory(s) for s, status in latest.items()):
         return "failed", "job_failed", False
+    if any(fact.status == "failed" for fact in requests):
+        return "failed", "request_failed", False
     if active:
         return "waiting_job", None, False
     if applying:
@@ -216,14 +257,18 @@ def read_request_facts(
         row[1] for row in connection.execute("PRAGMA table_info(story_paper_requests)")
     }
     applying = "applying_at" if "applying_at" in columns else "NULL"
+    reason = "superseded_reason" if "superseded_reason" in columns else "NULL"
     rows = connection.execute(
-        f"SELECT status, expires_at, {applying} FROM story_paper_requests"  # noqa: S608
-        " WHERE principal = ? AND run_id = ? ORDER BY created_at",
+        f"SELECT status, expires_at, {applying}, {reason},"  # noqa: S608
+        " sandbox_id || ':' || argument_sha256 FROM story_paper_requests"
+        " WHERE principal = ? AND run_id = ? ORDER BY created_at, rowid",
         (principal, run_id),
     ).fetchall()
     return [
-        RequestFact(status, datetime.fromisoformat(expires), _parse(started))
-        for status, expires, started in rows
+        RequestFact(
+            status, datetime.fromisoformat(expires), _parse(started), why, group
+        )
+        for status, expires, started, why, group in rows
     ]
 
 

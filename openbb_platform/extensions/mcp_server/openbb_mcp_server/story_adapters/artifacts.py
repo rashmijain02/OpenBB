@@ -79,6 +79,8 @@ from openbb_mcp_server.story_adapters.registry import (
 MAX_ARTIFACT_BYTES = 4 * 1024 * 1024
 MAX_RUN_BYTES = 32 * 1024 * 1024
 MAX_ARTIFACTS_PER_RUN = 50
+# A logical claim with no record after this long lost its writer (#1341).
+CLAIM_STALE = timedelta(seconds=120)
 MAX_INLINE_CHARS = 256 * 1024
 MAX_PREVIEW_ROWS = 200
 
@@ -473,7 +475,9 @@ def build_router(  # pylint: disable=too-many-statements
 
         The artifact name is the delivery key: the first name to write these
         bytes owns the logical operation, and a re-issue under another name
-        returns its live record. An expired or missing owner hands over.
+        returns its live record. An expired or missing owner hands over. A
+        claim with no record yet is in flight: ``409 outcome_uncertain`` until
+        it lands, or until ``CLAIM_STALE`` passes (its writer died).
         """
         receipt = receipts.claim(
             principal,
@@ -485,7 +489,21 @@ def build_router(  # pylint: disable=too-many-statements
             args_sha256=args_sha256,
             operation_id=request.name,
         )
-        if receipt.operation_id == request.name or receipt.outcome_ref is None:
+        if receipt.operation_id == request.name:
+            return None
+        if receipt.outcome_ref is None:
+            claimed = datetime.fromisoformat(receipt.updated_at)
+            if _now() - claimed < CLAIM_STALE or not receipts.supersede(
+                principal,
+                logical_key,
+                previous_operation_id=receipt.operation_id,
+                operation_id=request.name,
+            ):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "outcome_uncertain: an earlier write of this artifact is still"
+                    " in flight; retry shortly.",
+                )
             return None
         try:
             return store.get(principal, run.run_id, receipt.outcome_ref)

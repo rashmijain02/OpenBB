@@ -265,7 +265,9 @@ def test_route_reports_stale_applying_as_partial_uncertain(env):
     """An applying row older than APPLY_STALE is partial + uncertain (D6)."""
     run_id = env.new_run()
     _, request_id = env.sandbox_and_request(run_id)
-    stale = (datetime.now(timezone.utc) - APPLY_STALE - timedelta(seconds=5)).isoformat()
+    stale = (
+        datetime.now(timezone.utc) - APPLY_STALE - timedelta(seconds=5)
+    ).isoformat()
     with sqlite3.connect(env.store) as connection:
         connection.execute(
             "UPDATE story_paper_requests SET status = 'applying', applying_at = ?"
@@ -336,4 +338,43 @@ def test_approve_helper_still_signs(env):
     _, request_id = env.sandbox_and_request(run_id)
     assert paper_approve.approve_request(
         request_id, db_path=env.store, confirm=lambda _summary: True
+    )
+
+
+def _bound(stages):
+    return _record(stages).model_copy(update={"binding": object()})
+
+
+def test_only_latest_request_per_logical_key_counts_on_bound_runs():
+    """An expired request followed by an applied one for the same key is done."""
+    requests = [
+        RequestFact("pending", EARLIER, None, None, "sb:aaa"),
+        RequestFact("applied", LATER, NOW, None, "sb:aaa"),
+    ]
+    bound = _derive_record(_bound(DONE), requests)
+    assert bound.outcome == "succeeded"
+    legacy = _derive_record(_record(DONE), requests)
+    assert legacy.outcome == "needs_input"
+
+
+def test_reprepared_request_without_successor_is_partial_uncertain():
+    """A request superseded by a re-prepare that never landed is not success."""
+    requests = [RequestFact("superseded", EARLIER, None, "reprepared", "sb:aaa")]
+    body = _derive_record(_bound(DONE), requests)
+    assert (body.outcome, body.reason, body.uncertain) == (
+        "partial",
+        "reprepare_without_successor",
+        True,
+    )
+
+
+def _derive_record(record, requests):
+    return derive_outcome(
+        record,
+        optional=OPTIONAL,
+        workflow_current=True,
+        jobs=[],
+        requests=requests,
+        artifacts_valid=True,
+        now=NOW,
     )
