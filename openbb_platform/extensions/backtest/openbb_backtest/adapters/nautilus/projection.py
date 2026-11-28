@@ -14,7 +14,7 @@ from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from typing import Any
 
 import numpy as np
-from openbb_nautilus_worker.reviewed import registry
+from openbb_nautilus_worker.reviewed import booking, registry
 
 from openbb_backtest.errors import BackendUnavailableError
 from openbb_backtest.models import (
@@ -56,34 +56,60 @@ def _check_binding(body: dict[str, Any], binding: registry.Binding) -> dict[str,
     return expected
 
 
-def _walk(body: dict[str, Any], sessions: list[str], start: Decimal):
-    """Re-derive per-session cash and the position from the reported fills."""
+def _walk(body: dict[str, Any], sessions: list[str], start: Decimal, symbols):
+    """Re-derive per-session cash and positions from the reported fills.
+
+    Notionals are booked with the declared engine rule (plan section 2.5), so
+    the re-derived cash must equal the worker's figure exactly at cents.
+    """
     index = {s: i for i, s in enumerate(sessions)}
     by_session: list[list[dict[str, Any]]] = [[] for _ in sessions]
     for fill in body["fills"]:
         quantity = fill["quantity"]
+        fill.setdefault("symbol", symbols[0] if len(symbols) == 1 else None)
         if fill["session"] not in index or fill["side"] not in _SIDES:
             raise _bad("a fill names an unknown session or side")
+        if fill["symbol"] not in symbols:
+            raise _bad("a fill names an unknown symbol")
         if not isinstance(quantity, int) or quantity <= 0:
             raise _bad("a fill quantity is not a positive whole number")
         if Decimal(str(fill["commission"])) < 0 or Decimal(str(fill["price"])) <= 0:
             raise _bad("a fill has a negative commission or non-positive price")
         by_session[index[fill["session"]]].append(fill)
-    cash, position, cash_curve = start, 0, []
+    cash, cash_curve = start, []
+    positions = dict.fromkeys(symbols, 0)
+    held_curve = []
     for fills in by_session:
         for fill in fills:
             sign = _SIDES[fill["side"]]
-            notional = fill["quantity"] * Decimal(str(fill["price"]))
-            cash += -sign * notional - Decimal(str(fill["commission"]))
-            position += sign * fill["quantity"]
+            booked = booking.notional(fill["quantity"], Decimal(str(fill["price"])))
+            cash += sign * -booked - Decimal(str(fill["commission"]))
+            positions[fill["symbol"]] += sign * fill["quantity"]
+            if positions[fill["symbol"]] < 0 or (cash < 0 < sign):
+                raise _bad("the ledger went negative")
         cash_curve.append(cash)
-    if position != body["quantity"]:
-        raise _bad("fills do not add up to the reported quantity")
-    if cash < 0 or position < 0:
+        held_curve.append(dict(positions))
+    reported = body.get("positions", {symbols[0]: body.get("quantity")})
+    if positions != reported:
+        raise _bad("fills do not add up to the reported positions")
+    if cash < 0:
         raise _bad("the ledger went negative")
     if _cents(cash) != _cents(body["cash"]):
         raise _bad("cash re-derived from fills disagrees with the worker")
-    return cash_curve, position, by_session
+    return cash_curve, held_curve, by_session
+
+
+def _check_marks(body, equity, cash_curve, held_curve, symbols) -> None:
+    """Exact marks (cash + qty x close, HALF_EVEN) must equal the curve."""
+    closes = body.get("closes")
+    if closes is None:
+        return
+    for i, (eq, cash, held) in enumerate(zip(equity, cash_curve, held_curve)):
+        exact = cash + sum(
+            (held[s] * Decimal(str(closes[s][i])) for s in symbols), Decimal(0)
+        )
+        if booking.mark(exact) != eq:
+            raise _bad("equity disagrees with the exact marks of the fills")
 
 
 def _metrics(equity: list[Decimal], start: Decimal, exposure: list[float]):
@@ -132,6 +158,8 @@ def _provenance(  # pylint: disable=too-many-arguments
         execution_sha256=binding.execution_sha256,
         binding_sha256=bound["binding_sha256"],
         execution=binding.execution.canonical(),
+        booking_residual=body.get("booking_residual"),
+        warnings=[str(w) for w in body.get("warnings", [])],
     )
 
 
@@ -153,9 +181,9 @@ def _project(  # pylint: disable=too-many-locals
     if start != config.initial_cash:
         raise _bad("starting cash differs from the config")
     bound = _check_binding(body, binding)
-    symbol = str(body["symbol"])
-    cash_curve, position, by_session = _walk(body, sessions, start)
-
+    symbols = [str(s) for s in body.get("symbols") or [body["symbol"]]]
+    cash_curve, held_curve, by_session = _walk(body, sessions, start, symbols)
+    _check_marks(body, equity, cash_curve, held_curve, symbols)
     curve, exposure = [], []
     for session, eq, cash in zip(sessions, equity, cash_curve):
         weight = float((eq - cash) / eq) if eq != 0 else 0.0
@@ -168,7 +196,7 @@ def _project(  # pylint: disable=too-many-locals
     trades = [
         Trade(
             timestamp=_utc(session),
-            symbol=symbol,
+            symbol=fill["symbol"],
             side=fill["side"],
             quantity=Decimal(fill["quantity"]),
             price=Decimal(str(fill["price"])),
@@ -178,19 +206,25 @@ def _project(  # pylint: disable=too-many-locals
         for session, fills in zip(sessions, by_session)
         for fill in fills
     ]
-    positions = (
-        [
+    closes = body.get("closes") or {}
+    positions = []
+    for sym, qty in held_curve[-1].items():
+        if not qty:
+            continue
+        value = (
+            _cents(qty * Decimal(str(closes[sym][-1])))
+            if sym in closes
+            else equity[-1] - _cents(cash_curve[-1])
+        )
+        positions.append(
             PositionSnapshot(
                 date=curve[-1].date,
-                symbol=symbol,
-                quantity=Decimal(position),
-                market_value=equity[-1] - _cents(cash_curve[-1]),
-                weight=exposure[-1],
+                symbol=sym,
+                quantity=Decimal(qty),
+                market_value=value,
+                weight=float(value / equity[-1]) if equity[-1] else 0.0,
             )
-        ]
-        if position
-        else []
-    )
+        )
     return BacktestResult(
         equity_curve=curve,
         trades=trades,
@@ -214,8 +248,8 @@ def to_backtest_result(  # pylint: disable=too-many-arguments
 ) -> BacktestResult:
     """Project a worker ``run`` body; raise ``BackendUnavailableError`` if bad.
 
-    The body is the single-instrument report of the #1355 runner plus its
-    ``fills``; multi-instrument bodies arrive with #1356 T03.
+    The body is the worker report: per-symbol ``positions``, ``closes`` and
+    ``fills`` (#1356 T03), or the single-instrument #1355 keys.
     """
     try:
         return _project(

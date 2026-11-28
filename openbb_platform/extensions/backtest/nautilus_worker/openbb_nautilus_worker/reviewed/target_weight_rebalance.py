@@ -7,6 +7,10 @@ shared whole-share rule. Sizing, staging and booking are shared reviewed code
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from decimal import Decimal
+
+from . import sizing
 from .hashing import digest
 from .params import TargetWeightRebalanceParams
 from .spec import StrategySpec, SupportedAssumptions
@@ -34,6 +38,10 @@ CODE_FILES = (
     "reviewed/spec.py",
     "reviewed/params.py",
     "reviewed/hashing.py",
+    "reviewed/sizing.py",
+    "reviewed/staging.py",
+    "reviewed/booking.py",
+    "reviewed/host.py",
 )
 
 
@@ -51,3 +59,15 @@ def build_spec() -> StrategySpec:
 def universe(params: TargetWeightRebalanceParams) -> tuple[str, ...]:
     """Symbols the strategy trades, in symbol (sorted) order."""
     return tuple(sorted(params.weights))
+
+
+def decide(
+    params: TargetWeightRebalanceParams,
+    session: int,
+    equity: Decimal,
+    closes: Mapping[str, Decimal],
+) -> dict[str, int] | None:
+    """Re-target the weights at sessions 0, N, 2N, ... (decision at the close)."""
+    if session % params.rebalance_every_sessions != 0:
+        return None
+    return sizing.weight_targets(params.weights, equity, closes)

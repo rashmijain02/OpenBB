@@ -54,16 +54,16 @@ REVIEW_LEDGER: tuple[Pin, ...] = (
     Pin(
         "buy_and_hold",
         "1.0.0",
-        "5d12da1cb7c8d322bb245c40a7dace11451a53cc9c227b308e76436cd2ada3e2",
+        "d11ec2d5bc48cf04bf33b85c6b0cd6ecabae13118409dd0450c144202e0028d1",
         "2154e944794a16b4465e64b0798fa95c932eae6839f587c550c4ddd725dddc66",
-        "0a29f46bff89902d73e49047443fa201ad4422526d1b8f39db3e92d2b467dcef",
+        "c08541e7d1398d15482f1f190c08e0b732f253ddc41536817d9f2c4cb30b260c",
     ),
     Pin(
         "target_weight_rebalance",
         "1.0.0",
-        "3a74a9a9207061562048f5f9fc2b5983215cf69dd3089c3fbd603ed99beb0e0c",
+        "2e52e63b2b2e62a88a29dc96e737eb23a525d5f5dcf21cae3c48a633347f9f6e",
         "611597da61879e314df15f3441e17d59c66bf04417f98ff499786b5fc98a3a3e",
-        "f9d85d8550bc7a5a73d6b692d3303c443ab9cec705ff15f475adea9792c1c778",
+        "7d07d0ea95933afcfed00284d58acca2a59c8ef3b3ae0c76decfed29ed4f14ed",
     ),
 )
 

@@ -71,7 +71,7 @@ def _body(binding=None, **override):
         "strategy": "buy_and_hold",
         "venue": "SIM",
         "symbol": ORACLE["symbol"],
-        "engine": {"name": "fake-fill-at-close", "version": "0"},
+        "engine": {"name": "fake-event-replay", "version": "0"},
         "fixed_precision": 9,
         "bars_sha256": "b" * 64,
         "sessions": ORACLE["sessions"],
@@ -184,7 +184,7 @@ def test_provenance_binds_all_hashes():
     assert prov.execution_sha256 == base.execution_sha256
     assert prov.binding_sha256 == _body(base)["binding"]["binding_sha256"]
     assert (prov.dataset_id, prov.bars_sha256) == ("d" * 64, "b" * 64)
-    assert (prov.engine_name, prov.engine_version) == ("fake-fill-at-close", "0")
+    assert (prov.engine_name, prov.engine_version) == ("fake-event-replay", "0")
     assert prov.execution["fill_timing"] == "same_close"
 
     other_params = _binding({"symbols": ["BHX", "ZZZ"]})
@@ -283,7 +283,8 @@ def test_golden_cli_fake_runtime_matches_literals(tmp_path, capsys):
     args += ["--runtime", "fake", "--worker-command-json", cmd, "--format", "json"]
     assert golden.main(args) == 0
     rep = json.loads(capsys.readouterr().out)
-    assert rep["passed"] is True and rep["qualified"] is False
+    row = rep["cases"]["buy_and_hold_oracle"]
+    assert rep["passed"] is True and row["qualified"] is False
     bad = {**ORACLE, "expected": {**ORACLE["expected"], "cash": "0.01"}}
     path = tmp_path / "bad.json"
     path.write_text(json.dumps(bad), "utf-8")

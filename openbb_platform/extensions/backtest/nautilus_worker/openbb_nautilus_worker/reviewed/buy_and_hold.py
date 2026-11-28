@@ -7,6 +7,10 @@ shared reviewed code (added in T03) listed in ``code_files``.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from decimal import Decimal
+
+from . import sizing
 from .hashing import digest
 from .params import BuyAndHoldParams
 from .spec import StrategySpec, SupportedAssumptions
@@ -34,6 +38,10 @@ CODE_FILES = (
     "reviewed/spec.py",
     "reviewed/params.py",
     "reviewed/hashing.py",
+    "reviewed/sizing.py",
+    "reviewed/staging.py",
+    "reviewed/booking.py",
+    "reviewed/host.py",
 )
 
 
@@ -51,3 +59,15 @@ def build_spec() -> StrategySpec:
 def universe(params: BuyAndHoldParams) -> tuple[str, ...]:
     """Symbols the strategy trades."""
     return tuple(params.symbols)
+
+
+def decide(
+    params: BuyAndHoldParams,
+    session: int,
+    equity: Decimal,
+    closes: Mapping[str, Decimal],
+) -> dict[str, int] | None:
+    """Decide once, at the first close: an equal whole-share split of equity."""
+    if session != 0:
+        return None
+    return sizing.equal_targets(tuple(params.symbols), equity, closes)

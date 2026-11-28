@@ -271,7 +271,7 @@ class WorkerClient:  # pylint: disable=too-many-instance-attributes
         # ``fees`` default (the worker rejects it; fees come from execution).
         return self.call(
             "run",
-            req.model_dump(exclude_unset=True),
+            req.model_dump(mode="json", exclude_unset=True),
             timeout=req.deadline_seconds + DEADLINE_GRACE_SECONDS,
         )
 

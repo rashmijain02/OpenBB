@@ -11,6 +11,10 @@ import pytest
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
+# Test helpers shared with the facade's fake worker (``fake_engine``).
+_TESTS = os.path.join(_ROOT, "tests")
+if _TESTS not in sys.path:
+    sys.path.insert(0, _TESTS)
 
 
 def pytest_configure(config):
@@ -45,6 +49,16 @@ ORACLE_PATH = os.path.join(
 def oracle_fixture():
     """Load the hand-computed buy-and-hold oracle (#1355), shared with facade tests."""
     with open(ORACLE_PATH, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+CASH_CASES_PATH = os.path.join(os.path.dirname(ORACLE_PATH), "cash_cases.json")
+
+
+@pytest.fixture(name="cash_cases")
+def cash_cases_fixture():
+    """Load the hand-computed cash cases (#1356 T03), shared with facade tests."""
+    with open(CASH_CASES_PATH, encoding="utf-8") as fh:
         return json.load(fh)
 
 

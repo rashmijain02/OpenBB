@@ -1,0 +1,144 @@
+{
+  "source": "hand-computed",
+  "description": "Independent cash cases for #1356 (plan section 2.6). Every expected value was computed by hand from the bars below; no code writes this file and there is no regeneration path. Bars are [open, close] per session. Zero fees and T+1 unless noted.",
+  "sessions": ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-08"],
+  "cases": {
+    "c1": {
+      "title": "buy-and-hold, next_open, gap-up shortfall",
+      "strategy": "buy_and_hold",
+      "params": {"symbols": ["AAA"]},
+      "execution": {"fill_timing": "next_open"},
+      "initial_cash": "10000.00",
+      "bars": {"AAA": [["100.00", "100.00"], ["101.00", "102.00"], ["103.00", "101.00"], ["100.00", "104.00"]]},
+      "expected": {
+        "positions": {"AAA": 99},
+        "cash": "1.00",
+        "equity": ["10000.00", "10099.00", "10000.00", "10297.00"],
+        "trades": [[1, "AAA", "buy", 99, "101.00", "0.00"]],
+        "booking_residual": "0.00",
+        "warnings": ["orders_pending_at_end"]
+      }
+    },
+    "c1p": {
+      "title": "buy-and-hold, same_close",
+      "strategy": "buy_and_hold",
+      "params": {"symbols": ["AAA"]},
+      "execution": {"fill_timing": "same_close"},
+      "initial_cash": "10000.00",
+      "bars": {"AAA": [["100.00", "100.00"], ["101.00", "102.00"], ["103.00", "101.00"], ["100.00", "104.00"]]},
+      "expected": {
+        "positions": {"AAA": 100},
+        "cash": "0.00",
+        "equity": ["10000.00", "10200.00", "10100.00", "10400.00"],
+        "trades": [[0, "AAA", "buy", 100, "100.00", "0.00"]],
+        "booking_residual": "0.00",
+        "warnings": []
+      }
+    },
+    "c2": {
+      "title": "rebalance 50/50 every 2 sessions, next_open, T+1",
+      "strategy": "target_weight_rebalance",
+      "params": {"weights": {"AAA": "0.5", "BBB": "0.5"}, "rebalance_every_sessions": 2},
+      "execution": {"fill_timing": "next_open", "settlement": "T+1"},
+      "initial_cash": "10000.00",
+      "bars": {
+        "AAA": [["100.00", "100.00"], ["100.00", "120.00"], ["120.00", "120.00"], ["120.00", "120.00"], ["120.00", "120.00"]],
+        "BBB": [["50.00", "50.00"], ["50.00", "40.00"], ["40.00", "40.00"], ["40.00", "40.00"], ["44.00", "44.00"]]
+      },
+      "expected": {
+        "positions": {"AAA": 41, "BBB": 124},
+        "cash": "24.00",
+        "equity": ["10000.00", "10000.00", "10000.00", "10000.00", "10400.00"],
+        "trades": [
+          [1, "AAA", "buy", 50, "100.00", "0.00"],
+          [1, "BBB", "buy", 100, "50.00", "0.00"],
+          [3, "AAA", "sell", 9, "120.00", "0.00"],
+          [4, "BBB", "buy", 24, "44.00", "0.00"]
+        ],
+        "booking_residual": "0.00",
+        "warnings": ["orders_pending_at_end"]
+      }
+    },
+    "c2b": {
+      "title": "c2 with T+2 settlement",
+      "strategy": "target_weight_rebalance",
+      "params": {"weights": {"AAA": "0.5", "BBB": "0.5"}, "rebalance_every_sessions": 2},
+      "execution": {"fill_timing": "next_open", "settlement": "T+2"},
+      "initial_cash": "10000.00",
+      "bars": {
+        "AAA": [["100.00", "100.00"], ["100.00", "120.00"], ["120.00", "120.00"], ["120.00", "120.00"], ["120.00", "120.00"]],
+        "BBB": [["50.00", "50.00"], ["50.00", "40.00"], ["40.00", "40.00"], ["40.00", "40.00"], ["44.00", "44.00"]]
+      },
+      "expected": {
+        "positions": {"AAA": 41, "BBB": 100},
+        "cash": "1080.00",
+        "equity": ["10000.00", "10000.00", "10000.00", "10000.00", "10400.00"],
+        "trades": [
+          [1, "AAA", "buy", 50, "100.00", "0.00"],
+          [1, "BBB", "buy", 100, "50.00", "0.00"],
+          [3, "AAA", "sell", 9, "120.00", "0.00"]
+        ],
+        "booking_residual": "0.00",
+        "warnings": ["orders_pending_at_end"]
+      }
+    },
+    "c3a": {
+      "title": "booking tie exactly representable, precision 3",
+      "strategy": "buy_and_hold",
+      "params": {"symbols": ["DDD"]},
+      "execution": {"fill_timing": "next_open"},
+      "initial_cash": "30.00",
+      "bars": {"DDD": [["20.000", "20.000"], ["20.125", "20.115"]]},
+      "expected": {
+        "positions": {"DDD": 1},
+        "cash": "9.87",
+        "equity": ["30.00", "29.98"],
+        "trades": [[1, "DDD", "buy", 1, "20.125", "0.00"]],
+        "booking_residual": "-0.005",
+        "warnings": []
+      }
+    },
+    "c3b": {
+      "title": "booking tie not representable in binary",
+      "strategy": "buy_and_hold",
+      "params": {"symbols": ["EEE"]},
+      "execution": {"fill_timing": "next_open"},
+      "initial_cash": "1.50",
+      "bars": {"EEE": [["1.000", "1.000"], ["1.005", "1.005"]]},
+      "expected": {
+        "positions": {"EEE": 1},
+        "cash": "0.50",
+        "equity": ["1.50", "1.50"],
+        "trades": [[1, "EEE", "buy", 1, "1.005", "0.00"]],
+        "booking_residual": "0.005",
+        "warnings": []
+      }
+    },
+    "c4": {
+      "title": "taker fee 10 bps limits the buy",
+      "strategy": "buy_and_hold",
+      "params": {"symbols": ["FFF"]},
+      "execution": {"fill_timing": "next_open", "fees": "taker_bps", "taker_bps": "10"},
+      "initial_cash": "1000.00",
+      "bars": {"FFF": [["100.00", "100.00"], ["99.99", "99.99"]]},
+      "expected": {
+        "positions": {"FFF": 9},
+        "cash": "99.19",
+        "equity": ["1000.00", "999.10"],
+        "trades": [[1, "FFF", "buy", 9, "99.99", "0.90"]],
+        "booking_residual": "0.00",
+        "warnings": ["orders_pending_at_end"]
+      }
+    }
+  },
+  "planner_cases": {
+    "c6": {
+      "title": "staging order: buys fill in symbol order against settled cash",
+      "settled": "100.00",
+      "held": {"AAA": 0, "BBB": 0},
+      "targets": {"BBB": 1, "AAA": 1},
+      "prices": {"AAA": "60.00", "BBB": "60.00"},
+      "expected_orders": [["AAA", "buy", 1]]
+    }
+  }
+}
