@@ -931,3 +931,38 @@ def test_story_run_backtest_output_keys(monkeypatch):
     assert out["provenance"]["backend"] == "legacy"
     assert out["provenance"]["backend_source"] == "default"
     assert len(out["equity_curve"]) == len(sessions)
+
+
+#: Literal digest of ``_OLD_BACKTEST`` computed with the pre-#1356 models
+#: (``d19636c1c``): a re-submitted operation id must keep its digest.
+_OLD_BACKTEST = {
+    "config": {
+        "strategy": "buy_and_hold",
+        "universe": ["AAA"],
+        "start": "2024-01-02",
+        "end": "2024-03-28",
+        "initial_cash": "10000",
+    },
+    "engine": "vector",
+}
+_OLD_BACKTEST_DIGEST = (
+    "eb3ed21646e3ad76af4e4cee631ac8e03443a700f3f102c3c725d1a087b34950"
+)
+
+
+def test_story_backtest_old_payload_digest_unchanged():
+    """Unset new config fields are not dumped, so the old digest is stable."""
+    pytest.importorskip("openbb_backtest")
+    model = story_job_kinds.payload_model("story.backtest")
+    dumped = model.model_validate(_OLD_BACKTEST).model_dump(mode="json")
+    assert "backend" not in dumped["config"]
+    assert "strategy_version" not in dumped["config"]
+    digest = story_job_kinds.payload_digest("run-1", "story.backtest", None, dumped)
+    assert digest == _OLD_BACKTEST_DIGEST
+    # a payload that sets the new field is a different submission
+    newer = {**_OLD_BACKTEST, "config": {**_OLD_BACKTEST["config"], "backend": "legacy"}}
+    dumped = model.model_validate(newer).model_dump(mode="json")
+    assert dumped["config"]["backend"] == "legacy"
+    assert story_job_kinds.payload_digest(
+        "run-1", "story.backtest", None, dumped
+    ) != _OLD_BACKTEST_DIGEST

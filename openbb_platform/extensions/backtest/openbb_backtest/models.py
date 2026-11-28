@@ -14,7 +14,13 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from openbb_core.provider.abstract.data import Data
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 EngineName = Literal["vectorized", "event", "auto"]
 BackendName = Literal["legacy", "nautilus"]
@@ -100,6 +106,10 @@ class Bar(Data):
     )
 
 
+#: Optional #1356 config fields omitted from dumps while unset.
+_NEW_OPTIONAL_FIELDS = ("backend", "strategy_version")
+
+
 class BacktestConfig(Data):
     """Top-level backtest configuration."""
 
@@ -132,6 +142,21 @@ class BacktestConfig(Data):
         max_length=32,
         description="Reviewed strategy version (nautilus backend only).",
     )
+
+    @model_serializer(mode="wrap")
+    def _omit_unset_new_fields(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        """Leave the #1356 fields out while ``None`` (pre-#1356 dumps unchanged).
+
+        A dumped config feeds submission digests (``story.backtest``); an old
+        payload must keep its digest across the upgrade.
+        """
+        data = handler(self)
+        for name in _NEW_OPTIONAL_FIELDS:
+            if data.get(name, 0) is None:
+                del data[name]
+        return data
 
     @model_validator(mode="after")
     def _check(self) -> BacktestConfig:
