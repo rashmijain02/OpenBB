@@ -336,19 +336,29 @@ def read_gateway_facts(
     gen = loaded.get("general_settings")
     gen = gen if isinstance(gen, dict) else {}
     tml = lset.get("turn_off_message_logging")
-    sp = gen.get("store_prompts_in_spend_logs")
     return GatewayFacts(
         aliases=aliases,
         fallbacks=fallbacks,
         num_retries=retries,
         callbacks=callbacks,
         turn_off_message_logging=tml if isinstance(tml, bool) else None,
-        set_verbose=lset.get("set_verbose") is True,
-        store_prompts_in_spend_logs=sp if isinstance(sp, bool) else None,
+        set_verbose=_toggle_on(lset, "set_verbose"),
+        store_prompts_in_spend_logs=_toggle_on(gen, "store_prompts_in_spend_logs"),
         secrets={k: _secret(gen.get(k)) for k in SECRET_KEYS},
         unvetted_keys=_unvetted(loaded),
         config_issues=_config_issues(loaded),
     )
+
+
+def _toggle_on(block: dict[str, Any], key: str) -> bool | None:
+    """``None`` if absent, ``False`` only for YAML ``false``; anything else counts as on.
+
+    litellm 1.106.6 reads these leniently: ``store_prompts_in_spend_logs`` accepts the
+    string ``"true"`` in any case and module settings such as ``set_verbose`` are set with
+    ``setattr(litellm, key, value)``, so any truthy value enables them."""
+    if key not in block:
+        return None
+    return block[key] is not False
 
 
 def _section(loaded: dict[str, Any], name: str) -> dict[str, Any]:
@@ -388,7 +398,7 @@ def _config_issues(loaded: dict[str, Any]) -> list[str]:
             gen.get("allow_client_side_credentials") is True,
             "client_side_credentials_allowed",
         ),
-        (gen.get("store_model_in_db") is True, "models_stored_in_db"),
+        (_toggle_on(gen, "store_model_in_db"), "models_stored_in_db"),
     )
     return [reason for value, reason in checks if value]
 

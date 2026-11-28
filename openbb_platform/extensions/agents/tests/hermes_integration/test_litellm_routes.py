@@ -733,3 +733,44 @@ def test_api_base_with_userinfo_is_not_local(tmp_path, base):
     facts, verdict = _verdict(tmp_path, cfg)
     alias = next(a for a in facts.aliases if a.name == ALIAS)
     assert "api_base_userinfo" in alias.reasons and verdict.blocked
+
+
+# --- logging toggles are on unless absent or exactly false (#1338 N2) -------------------
+
+
+@pytest.mark.parametrize("value", ["true", "True", "TRUE", "yes", 1, None])
+@pytest.mark.parametrize(
+    ("dotted", "reason"),
+    [
+        (
+            "general_settings.store_prompts_in_spend_logs",
+            "prompts_stored_in_spend_logs",
+        ),
+        ("litellm_settings.set_verbose", "verbose_logging_enabled"),
+        ("general_settings.store_model_in_db", "models_stored_in_db"),
+    ],
+)
+def test_logging_toggle_not_exactly_false_blocks(tmp_path, dotted, reason, value):
+    cfg = _local_cfg()
+    _with(dotted, value)(cfg)
+    _, verdict = _verdict(tmp_path, cfg)
+    assert reason in verdict.reasons, verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "dotted",
+    [
+        "general_settings.store_prompts_in_spend_logs",
+        "litellm_settings.set_verbose",
+        "general_settings.store_model_in_db",
+    ],
+)
+def test_logging_toggle_absent_or_false_is_admitted(tmp_path, dotted):
+    cfg = _local_cfg()
+    _with(dotted, False)(cfg)
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked is False, verdict.reasons
+    section, key = dotted.split(".")
+    cfg[section].pop(key)
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked is False, verdict.reasons
