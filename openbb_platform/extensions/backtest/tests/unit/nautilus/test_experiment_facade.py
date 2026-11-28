@@ -23,7 +23,6 @@ import pytest
 from openbb_backtest.adapters.nautilus import backend, experiment, export as ex, golden
 from openbb_backtest.adapters.nautilus.client import WorkerClient, worker_env
 from openbb_backtest.data.calendars import sessions_in_range
-from openbb_backtest.errors import UnsupportedSemanticsError
 from openbb_backtest.models import BacktestConfig
 from openbb_backtest.routers import run_router as rr, validate_router as vr
 from openbb_backtest.validation.trials import CellOutcome
@@ -466,8 +465,20 @@ class _Killed(BaseException):
     """Simulated kill of the dispatching process (not caught by dispatch)."""
 
 
+def _assert_matrix_from(out, the_plan, other_plan) -> None:
+    """Every matrix row belongs to ``the_plan``'s dataset generation only."""
+    rows = out.assembly.matrix.rows
+    new_cfgs = {c.config_id for c in the_plan.cells}
+    old_cfgs = {c.config_id for c in other_plan.cells}
+    assert rows and {r[0] for r in rows} == new_cfgs
+    assert not new_cfgs & old_cfgs
+    assert {c.config.base_dataset_id for c in the_plan.cells} == {
+        the_plan.base_dataset_id
+    }
+
+
 def test_refresh_between_failed_attempt_and_retry(tmp_path, snap, snap_changed):
-    """CODE-2: a refresh after a failed attempt reuses the ledger; N keeps it."""
+    """CODE-2b: a retry after a refresh completes on the new data; N keeps it."""
     combos = experiment.expand_grid({"weights": GRID["weights"][:2]}, BASE)
     plan_a, config, opts_a = _refresh_plan(tmp_path, snap, "a", combos)
     calls: list[int] = []
@@ -490,25 +501,23 @@ def test_refresh_between_failed_attempt_and_retry(tmp_path, snap, snap_changed):
         ("failed", "process")
     ]
     assert records[0]["base_dataset_id"] == plan_a.base_dataset_id
-    # the failed config on the old data still counts; the refreshed ones add
-    assert out.summary.n_trials_dsr == 1 + 2
-    assert out.summary.status == "mixed_dataset"
-    assert out.summary.matrix_sha256 is None and out.assembly.matrix is None
-    assert out.summary.n_planned == 2 + 2
+    # the failed config is the same configuration on the new data: one trial
+    assert out.summary.n_trials_dsr == 2
+    assert out.summary.status == "ok" and out.summary.matrix_complete
+    assert out.summary.n_planned == 2 and out.summary.n_ok == 2
+    _assert_matrix_from(out, plan_b, plan_a)
     ledger_dir = tmp_path / "runs" / "experiments" / plan_a.experiment_id
     assert (ledger_dir / "planned.v2.json").exists()
-    with pytest.raises(UnsupportedSemanticsError, match="mixed_dataset"):
-        experiment.validation_report(
-            out,
-            experiment.fold_plan(
-                experiment.session_calendar(config), "wfo", "continuous"
-            ),
-            experiment.session_calendar(config),
-        )
+    report = experiment.validation_report(
+        out,
+        experiment.fold_plan(experiment.session_calendar(config), "wfo", "continuous"),
+        experiment.session_calendar(config),
+    )
+    assert report.experiment.n_trials_dsr == 2 and report.experiment.status == "ok"
 
 
 def test_rerun_after_refresh_keeps_prior_configs_in_n(tmp_path, snap, snap_changed):
-    """CODE-2: configs tried on the old data stay in N; mixed_dataset via run()."""
+    """CODE-2b: a complete rerun on refreshed data validates on the new data only."""
     combos = experiment.expand_grid({"weights": GRID["weights"][:2]}, BASE)
     plan_a, config, opts_a = _refresh_plan(tmp_path, snap, "a", combos)
     before = experiment.run(plan_a, config, opts_a)
@@ -519,12 +528,23 @@ def test_rerun_after_refresh_keeps_prior_configs_in_n(tmp_path, snap, snap_chang
     after = experiment.run(plan_b, config, opts_b)
     assert after.summary.experiment_id == before.summary.experiment_id
     assert after.appended == 2
-    assert after.summary.n_trials_dsr == 4, "N lost the configs tried on old data"
-    assert after.summary.status == "mixed_dataset"
+    assert after.summary.n_trials_dsr == 2, "a refresh inflated N"
+    assert after.summary.status == "ok" and after.summary.matrix_complete
+    assert after.summary.matrix_sha256 != before.summary.matrix_sha256
+    _assert_matrix_from(after, plan_b, plan_a)
     assert (ledger_dir / "planned.json").read_bytes() == planned_v1
+    calendar = experiment.session_calendar(config)
+    folds = experiment.fold_plan(calendar, "wfo", "continuous")
+    report = experiment.validation_report(after, folds, calendar)
+    assert report.experiment.n_trials_dsr == 2 and report.experiment.status == "ok"
     again = experiment.run(plan_b, config, opts_b)
-    assert again.appended == 0 and again.summary.n_trials_dsr == 4
+    assert again.appended == 0 and again.summary.n_trials_dsr == 2
+    assert again.summary.matrix_sha256 == after.summary.matrix_sha256
     assert not (ledger_dir / "planned.v3.json").exists()
+    # back on the first dataset: its generation is complete, nothing re-runs
+    back = experiment.run(plan_a, config, opts_a)
+    assert back.appended == 0 and back.summary.n_trials_dsr == 2
+    assert back.summary.matrix_sha256 == before.summary.matrix_sha256
 
 
 # --- grid bounds are checked before any expansion (security MEDIUM) ----------

@@ -18,6 +18,7 @@ from openbb_backtest.validation.trials import (
     TrialLedger,
     dispatch,
     n_trials_dsr,
+    returns_sha256,
 )
 from scipy.stats import norm
 
@@ -105,21 +106,129 @@ def test_failed_and_excluded_configs_count_in_n(tmp_path):
         selection_statistics(a.matrix, 1)
 
 
-def test_changed_dataset_is_new_trial(tmp_path):
-    cells = wfo_cells(2, 1)
+def _regen(cells, dataset_id):
+    """Return the same cells on a refreshed dataset (a new generation)."""
+    return [
+        replace(c, config=replace(c.config, base_dataset_id=dataset_id)) for c in cells
+    ]
+
+
+def test_refresh_same_configs_keeps_n_and_uses_new_generation(tmp_path):
+    """CODE-2b: same configs on refreshed data are not new trials; matrix is new."""
+    cells = wfo_cells(2, 2)
     led = _ledger(tmp_path)
     dispatch(led, cells, ok_executor)
     before = assemble(led.planned(), led.records())
     assert before.n_trials_dsr == 2 and before.status == "ok"
-    changed = replace(
-        cells[0], config=replace(cells[0].config, base_dataset_id="9" * 64)
+    fresh = _regen(cells, "9" * 64)
+    assert {c.config_id for c in fresh}.isdisjoint({c.config_id for c in cells})
+    assert {c.config.config_key for c in fresh} == {c.config.config_key for c in cells}
+    assert dispatch(led, fresh, ok_executor) == 4
+    assert (led.directory / "planned.v2.json").exists()
+    after = assemble(led.planned(), led.records())
+    assert after.n_trials_dsr == 2, "a refresh inflated N"
+    assert after.status == "ok" and after.matrix_complete and after.n_planned == 4
+    assert after.matrix.config_ids == sorted({c.config_id for c in fresh})
+    assert {r[0] for r in after.matrix.rows} == {c.config_id for c in fresh}
+    assert after.matrix.sha256 != before.matrix.sha256
+    # the old generation is still assemblable on request, never mixed in
+    old = assemble(led.planned(), led.records(), dataset_id="f" * 64)
+    assert old.matrix.sha256 == before.matrix.sha256 and old.n_trials_dsr == 2
+
+
+def test_refresh_dropped_config_still_counts_in_n(tmp_path):
+    """A config tried (and failed) only on the old dataset still counts."""
+    cells = wfo_cells(3, 2)
+    cfgs = sorted({c.config_id for c in cells})
+
+    def reject_last(cell, attempt_no):
+        if cell.config_id == cfgs[2]:
+            return CellOutcome(
+                status="excluded", error_code="admission", reason="admission_rejected"
+            )
+        return ok_executor(cell, attempt_no)
+
+    led = _ledger(tmp_path)
+    assert n_trials_dsr([], planned=cells) == 3  # planned counts before any attempt
+    dispatch(led, cells, reject_last)
+    assert assemble(led.planned(), led.records()).n_trials_dsr == 3
+    kept = [c for c in cells if c.config_id != cfgs[2]]
+    fresh = _regen(kept, "9" * 64)
+    dispatch(led, fresh, ok_executor)
+    a = assemble(led.planned(), led.records(), external_trials=5)
+    assert a.n_trials_dsr == 3 + 5
+    assert a.status == "ok" and a.matrix_complete and not a.exclusions
+    assert a.matrix.config_ids == sorted({c.config_id for c in fresh})
+    st = selection_statistics(a.matrix, a.n_trials_dsr)
+    assert st.n_trials == 8
+
+
+def test_latest_generation_incomplete_behaves_as_incomplete(tmp_path):
+    """A complete old generation never stands in for an incomplete new one."""
+    cells = wfo_cells(2, 2)
+    led = _ledger(tmp_path)
+    dispatch(led, cells, ok_executor)
+    fresh = _regen(cells, "9" * 64)
+    first = sorted(fresh, key=lambda c: (c.config_id, c.window.ordinal))[0]
+    dispatch(led, fresh, ok_executor, only=[first.trial_id])
+    a = assemble(led.planned(), led.records())
+    assert a.n_trials_dsr == 2 and a.n_planned == 4 and a.n_ok == 1
+    assert a.status == "incomplete" and not a.matrix_complete
+    assert {e["reason"] for e in a.exclusions} == {"incomplete_windows"}
+    assert {e["config_id"] for e in a.exclusions} == {c.config_id for c in fresh}
+    assert a.matrix is None  # no fully ok config in the new generation
+
+
+def test_mixed_datasets_in_one_planned_version_fail_closed(tmp_path):
+    """A planned version mixing datasets is a corrupted ledger: fail closed."""
+    import json
+
+    cells = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+    with pytest.raises(ValueError, match="exactly one dataset"):
+        dispatch(led, cells + _regen(cells[:1], "9" * 64), ok_executor)
+    assert not led.planned_path.exists()
+    dispatch(led, cells, ok_executor)
+    mixed = _regen(cells[:1], "8" * 64) + _regen(cells[1:], "9" * 64)
+    (led.directory / "planned.v2.json").write_text(
+        json.dumps([c.to_json() for c in mixed]), encoding="utf-8"
     )
-    assert changed.config_id != cells[0].config_id
-    led2 = _ledger(tmp_path / "b")
-    dispatch(led2, cells + [changed], ok_executor)
-    after = assemble(led2.planned(), led2.records())
-    assert after.n_trials_dsr == 3
-    assert after.status == "mixed_dataset" and after.matrix is None
+    with pytest.raises(ValueError, match="mixes base datasets"):
+        led.planned()
+    with pytest.raises(ValueError, match="mixes base datasets"):
+        dispatch(led, cells, ok_executor)
+
+
+def test_attempt_disagreeing_with_planned_dataset_is_mixed(tmp_path):
+    """An attempt recorded under another dataset than its cell: no matrix."""
+    cells = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+    dispatch(led, cells, ok_executor)
+    recs = led.records()
+    bad = replace(recs[0], base_dataset_id="9" * 64, attempt_id="7" * 64)
+    a = assemble(led.planned(), recs + [bad])
+    assert a.status == "mixed_dataset" and a.matrix is None
+    assert a.n_trials_dsr == 2
+
+
+def test_conflict_in_old_generation_still_fails_closed(tmp_path):
+    """A refresh never forgets detected nondeterminism."""
+    cells = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+    dispatch(led, cells, ok_executor)
+    rec = led.records()[0]
+    other = replace(
+        rec,
+        attempt_id="6" * 64,
+        attempt_no=2,
+        returns=rec.returns[:-1],
+        result_sha256=None,
+    )
+    led.append(replace(other, result_sha256=returns_sha256(other.returns)))
+    dispatch(led, _regen(cells, "9" * 64), ok_executor)
+    a = assemble(led.planned(), led.records())
+    assert a.status == "failed_closed" and a.matrix is None
+    assert {"config_id": rec.config_id, "reason": "conflict"} in a.exclusions
 
 
 def test_conflicting_ok_attempts_fail_closed(tmp_path):

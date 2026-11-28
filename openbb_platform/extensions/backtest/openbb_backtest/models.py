@@ -300,9 +300,12 @@ class SweepPoint(Data):
 class ExperimentSummary(Data):
     """Trial accounting for a Nautilus sweep / validate experiment (#1357).
 
-    ``n_trials_dsr`` counts every attempted configuration (failed and excluded
-    included; retries never add) plus ``external_trials``. Any exclusion makes
-    ``matrix_complete`` false, which caps the verdict at ``fragile``.
+    ``n_trials_dsr`` counts every distinct configuration planned on any dataset
+    generation (failed and excluded included; retries and re-runs of the same
+    configuration on refreshed data never add) plus ``external_trials``. The
+    cell counts and the matrix cover the current dataset generation only. Any
+    exclusion makes ``matrix_complete`` false, which caps the verdict at
+    ``fragile``.
     """
 
     experiment_id: str = Field(description="sha256 of the experiment spec.")

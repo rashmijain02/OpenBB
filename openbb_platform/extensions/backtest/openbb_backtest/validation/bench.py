@@ -21,8 +21,9 @@ Failure injection (all deterministic):
   plan and in ``N`` as ``admission_rejected``.
 - ``changed_data`` (fake only): the first scenario is re-planned over bars with
   one close changed. The experiment id is dataset-independent (CODE-2), so the
-  same ledger gains the new dataset's cells: ``N`` grows (changed data adds)
-  and the assembly reports ``mixed_dataset`` with no matrix.
+  same ledger gains a new dataset generation (CODE-2b): ``N`` is unchanged (the
+  same configurations are not new trials) and the matrix is rebuilt from the
+  new generation only, so its hash changes and the experiment stays usable.
 """
 
 from __future__ import annotations
@@ -266,9 +267,11 @@ def _changed_data(
         "experiment_id_same": row["experiment_id"] == first["experiment_id"],
         "n_before": first["n_trials_dsr"],
         "n_after": row["n_trials_dsr"],
-        "n_grew": row["n_trials_dsr"] > first["n_trials_dsr"],
+        "n_unchanged": row["n_trials_dsr"] == first["n_trials_dsr"],
         "status": row["status"],
+        "status_before": first["status"],
         "matrix_sha256": row["matrix_sha256"],
+        "matrix_changed": row["matrix_sha256"] != first["matrix_sha256"],
         "attempts": row["attempts"],
     }
 

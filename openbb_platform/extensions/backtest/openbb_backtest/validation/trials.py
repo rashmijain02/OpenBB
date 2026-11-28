@@ -10,11 +10,17 @@ over canonical JSON (sorted keys, no whitespace, ``Decimal`` as string):
 - ``trial_id`` = ``config_id`` + window; ``attempt_id`` = trial + attempt number +
   spawn nonce.
 
-Counting rules ("never understate", plan §2.3): ``N`` = distinct attempted
-``config_id`` (failed and excluded count; retries never add; changed data is a
-new config) + ``external_trials``. Two ``ok`` attempts that disagree fail the
-experiment closed. Only transient errors are retried. Nothing in the ledger is
-ever deleted or overwritten.
+Counting rules ("never understate", plan §2.3): ``N`` = distinct
+configurations by their dataset-independent ``config_key``, over every planned
+generation (failed, excluded and admission-rejected count; retries never add;
+the same configuration re-run on refreshed data never adds, CODE-2b) +
+``external_trials``. Two ``ok`` attempts that disagree fail the experiment
+closed. Only transient errors are retried. Nothing in the ledger is ever
+deleted or overwritten.
+
+Dataset generations (CODE-2b): every planned version holds the cells of one
+``base_dataset_id``; a generation is all planned cells of one dataset. The
+return matrix comes from one generation only (see ``matrix.assemble``).
 """
 
 from __future__ import annotations
@@ -96,6 +102,18 @@ class ConfigIdentity:  # pylint: disable=too-many-instance-attributes
     def config_id(self) -> str:
         """Content hash of every binding field (window excluded)."""
         return sha256_canonical({"v": _CONFIG_V, **asdict(self)})
+
+    @property
+    def config_key(self) -> str:
+        """Hash of every identity field except ``base_dataset_id`` (CODE-2b).
+
+        The same configuration re-run on refreshed data keeps its key, so it
+        is one trial for ``N``. The hash is the dataset-independent experiment
+        spec entry, so changing it changes every ``experiment_id``.
+        """
+        fields = asdict(self)
+        del fields["base_dataset_id"]
+        return sha256_canonical(fields)
 
     @classmethod
     def from_binding(  # pylint: disable=too-many-arguments
@@ -312,7 +330,7 @@ class TrialLedger:
         """Persist the experiment spec (write-once)."""
         self._write_once("spec.json", dict(spec))
 
-    def _planned_versions(self) -> list[Path]:
+    def _planned_paths(self) -> list[Path]:
         """``planned.json`` then ``planned.v2.json`` .. in order (fail closed)."""
         if not self.planned_path.exists():
             if any(self.directory.glob("planned.v*.json")):
@@ -334,28 +352,48 @@ class TrialLedger:
         that adds cells (CODE-2: refreshed data gives new configuration ids)
         writes only the new cells to the next ``planned.v<k>.json``; earlier
         versions are never rewritten. A re-plan adding nothing writes nothing.
+        The new cells of one write must share one ``base_dataset_id``.
         """
         known = {c.trial_id for c in self.planned()}
         fresh = [c for c in sorted(cells, key=_cell_key) if c.trial_id not in known]
         fresh = list({c.trial_id: c for c in fresh}.values())
         if not fresh:
             return
-        version = len(self._planned_versions()) + 1
+        datasets = {c.config.base_dataset_id for c in fresh}
+        if len(datasets) > 1:  # one planned version = one dataset (CODE-2b)
+            raise ValueError("a planned version must cover exactly one dataset")
+        version = len(self._planned_paths()) + 1
         name = "planned.json" if version == 1 else f"planned.v{version}.json"
         self._write_once(name, [c.to_json() for c in fresh])
 
-    def planned(self) -> list[Cell]:
-        """Every planned cell over all versions, verified against its hashes."""
-        out: list[Cell] = []
+    def planned_versions(self) -> list[list[Cell]]:
+        """Planned cells per version, verified (fail closed on any inconsistency).
+
+        Raises :class:`ValueError` for a tampered cell, a trial planned twice,
+        or a version whose cells disagree on ``base_dataset_id`` (a version is
+        written from one plan, hence one dataset: CODE-2b).
+        """
+        out: list[list[Cell]] = []
         seen: set[str] = set()
-        for path in self._planned_versions():
+        for path in self._planned_paths():
+            version: list[Cell] = []
             for data in json.loads(path.read_text("utf-8")):
                 cell = Cell.from_json(data)
                 if cell.trial_id in seen:
                     raise ValueError("duplicate trial in planned list versions")
                 seen.add(cell.trial_id)
-                out.append(cell)
+                version.append(cell)
+            if len({c.config.base_dataset_id for c in version}) > 1:
+                raise ValueError(
+                    f"inconsistent ledger: {path.name} mixes base datasets"
+                    " (mixed_dataset)"
+                )
+            out.append(version)
         return out
+
+    def planned(self) -> list[Cell]:
+        """Every planned cell over all versions, in version order."""
+        return [cell for version in self.planned_versions() for cell in version]
 
     def append(self, record: AttemptRecord) -> None:
         """Append one attempt record (refused before the planned list exists)."""
@@ -457,11 +495,27 @@ def cell_state(
     )
 
 
-def n_trials_dsr(records: Iterable[AttemptRecord], external_trials: int = 0) -> int:
-    """``N`` for DSR: distinct attempted configurations (any status) + external."""
+def n_trials_dsr(
+    records: Iterable[AttemptRecord],
+    external_trials: int = 0,
+    *,
+    planned: Iterable[Cell] = (),
+) -> int:
+    """``N`` for DSR: distinct configurations ever planned or attempted + external.
+
+    A configuration is its dataset-independent ``config_key`` (CODE-2b): the
+    same configuration planned on several dataset generations is one trial,
+    and a configuration planned only on an old dataset still counts. Every
+    status counts (failed, excluded, admission-rejected, pending). An attempt
+    whose cell is not in ``planned`` counts by its ``config_id`` (never less).
+    """
     if external_trials < 0:
         raise ValueError("external_trials must be >= 0")
-    return len({r.config_id for r in records}) + int(external_trials)
+    key_of = {c.config_id: c.config.config_key for c in planned}
+    keys = set(key_of.values()) | {
+        key_of.get(r.config_id, r.config_id) for r in records
+    }
+    return len(keys) + int(external_trials)
 
 
 @dataclass

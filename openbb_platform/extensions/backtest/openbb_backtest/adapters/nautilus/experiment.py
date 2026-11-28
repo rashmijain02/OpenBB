@@ -162,13 +162,6 @@ def _rejected_identity(
     )
 
 
-def _dataset_free_key(ident: ConfigIdentity) -> str:
-    """Hash of every identity field except ``base_dataset_id`` (CODE-2)."""
-    fields = asdict(ident)
-    del fields["base_dataset_id"]
-    return sha256_canonical(fields)
-
-
 def _span(config: BacktestConfig, first: str, last: str) -> BacktestConfig:
     """``config`` restricted to the sessions ``first`` .. ``last`` (ISO)."""
     return config.model_copy(
@@ -264,16 +257,17 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         if cid in by_cfg:  # equivalent params normalise to one configuration
             continue
         by_cfg[cid] = combo
-        config_keys.add(_dataset_free_key(ident))
+        config_keys.add(ident.config_key)
         if why is None:
             bindings[cid] = binding
         else:
             rejected[cid] = why
         cells.extend(Cell(config=ident, window=w) for w in wins)
-    # CODE-2: the experiment is keyed on a dataset-independent spec, so a data
-    # refresh re-opens the same ledger and appends cells (rule 2: changed data
-    # adds to N; rule 4: mixed datasets yield no matrix) instead of a new,
-    # empty experiment that would forget the configurations already tried.
+    # CODE-2/2b: the experiment is keyed on a dataset-independent spec, so a
+    # data refresh re-opens the same ledger and appends one new dataset
+    # generation instead of a new, empty experiment that would forget the
+    # configurations already tried. N counts distinct config keys over every
+    # generation; the matrix comes from this plan's generation only.
     spec = {
         "v": _EXPERIMENT_V,
         "command": command,
@@ -455,6 +449,7 @@ def run(  # pylint: disable=too-many-arguments
         ledger.records(),
         external_trials=the_plan.external_trials,
         max_attempts=bounds.max_attempts,
+        dataset_id=the_plan.base_dataset_id,
     )
     summary = ExperimentSummary(
         experiment_id=the_plan.experiment_id,

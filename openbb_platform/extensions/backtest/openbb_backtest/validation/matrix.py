@@ -150,34 +150,62 @@ _REASON_BY_CODE: Mapping[str, str] = {
 }
 
 
-def assemble(  # pylint: disable=too-many-locals,too-many-branches
+def _inconsistent(planned: Sequence[Cell], records: Sequence[AttemptRecord]) -> bool:
+    """Return whether an attempt disagrees with its planned cell on the dataset."""
+    dataset_of = {c.trial_id: c.config.base_dataset_id for c in planned}
+    return any(
+        r.trial_id in dataset_of and r.base_dataset_id != dataset_of[r.trial_id]
+        for r in records
+    )
+
+
+def assemble(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments
     planned: Sequence[Cell],
     records: Sequence[AttemptRecord],
     *,
     external_trials: int = 0,
     max_attempts: int = 2,
+    dataset_id: str | None = None,
 ) -> Assembly:
     """Fold a planned list and its attempts into an :class:`Assembly`.
 
+    Dataset generations (CODE-2b): the matrix, the cell counts and the
+    exclusions cover only the generation of ``dataset_id`` (default: the
+    dataset of the last planned cell, i.e. the latest planned version), so a
+    data refresh never mixes datasets in one matrix and never leaves the
+    experiment unusable. ``N`` counts every configuration of every generation
+    (:func:`n_trials_dsr`).
+
     Order-independent in ``records``. Matrix columns are configurations whose
     every planned window is ``ok``; every other configuration is excluded with a
-    reason, and any exclusion makes the matrix incomplete. A conflict fails the
-    experiment closed; mixed base datasets yield no matrix. ``N`` always counts
-    every attempted configuration.
+    reason, and any exclusion makes the matrix incomplete. A conflict in any
+    generation fails the experiment closed (nondeterminism is never forgotten
+    by a refresh); an attempt that disagrees with its planned cell on the
+    dataset (a corrupted ledger) yields ``mixed_dataset`` and no matrix.
     """
-    n = n_trials_dsr(records, external_trials)
-    states = [
-        cell_state(c.trial_id, c.config_id, records, max_attempts) for c in planned
+    n = n_trials_dsr(records, external_trials, planned=planned)
+    if dataset_id is None and planned:
+        dataset_id = planned[-1].config.base_dataset_id
+    all_states = [
+        (c, cell_state(c.trial_id, c.config_id, records, max_attempts)) for c in planned
     ]
+    old_conflicts = sorted(
+        {
+            c.config_id
+            for c, st in all_states
+            if st.state == "conflict" and c.config.base_dataset_id != dataset_id
+        }
+    )
+    current = [
+        (c, st) for c, st in all_states if c.config.base_dataset_id == dataset_id
+    ]
+    states = [st for _c, st in current]
     counts = {
         s: sum(1 for st in states if st.state == s)
         for s in ("ok", "failed", "excluded")
     }
-    datasets = {r.base_dataset_id for r in records} | {
-        c.config.base_dataset_id for c in planned
-    }
     by_cfg: dict[str, list[Any]] = {}
-    for cell, st in zip(planned, states):
+    for cell, st in current:
         by_cfg.setdefault(cell.config_id, []).append((cell, st))
     exclusions: list[dict[str, str]] = []
     good: list[str] = []
@@ -198,11 +226,15 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches
             else:
                 reason = "incomplete_windows"
             exclusions.append({"config_id": cfg, "reason": reason})
+    # A conflict on an older dataset still fails closed; list it.
+    for cfg in old_conflicts:
+        conflict = True
+        exclusions.append({"config_id": cfg, "reason": "conflict"})
     # Attempts for configurations outside the plan still count in N; list them.
-    for cfg in sorted({r.config_id for r in records} - set(by_cfg)):
+    for cfg in sorted({r.config_id for r in records} - {c.config_id for c in planned}):
         exclusions.append({"config_id": cfg, "reason": "incomplete_windows"})
     base: dict[str, Any] = {
-        "n_planned": len(planned),
+        "n_planned": len(current),
         "n_ok": counts["ok"],
         "n_failed": counts["failed"],
         "n_excluded": counts["excluded"],
@@ -214,7 +246,7 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches
         return Assembly(
             status="failed_closed", matrix=None, matrix_complete=False, **base
         )
-    if len(datasets) > 1:
+    if _inconsistent(planned, records):
         return Assembly(
             status="mixed_dataset", matrix=None, matrix_complete=False, **base
         )
