@@ -98,13 +98,12 @@ conflicts that only emerge from implementation.
 
 ## Model Selection
 
-Use `gpt-5.6-sol` for every implementer, reviewer, fixer, and final
-whole-branch review subagent, regardless of task size or complexity.
-
-Always specify `gpt-5.6-sol` explicitly when dispatching a subagent. Do not
-rely on the session default, select a cheaper tier, use an alias, or fall back
-to another provider. If `gpt-5.6-sol` is unavailable, stop and report the
-blocker.
+Follow the canonical model policy in [`docs/dev-strategy.md`](../../../docs/dev-strategy.md) (D1):
+use the best available model suited to the task, chosen by complexity,
+ambiguity and risk, and name the selected model explicitly on every dispatch
+that accepts one. Do not rely on the session default. If no suitable model is
+available, stop and report the blocker; never silently degrade. No model
+family or model ID is required.
 
 ## Handling Implementer Status
 
