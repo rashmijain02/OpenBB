@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..projection import scan_text
+from ._text import clean_text
 
 if TYPE_CHECKING:
     from .register import PublicSource, Register
@@ -306,8 +307,6 @@ def section_code(text: str) -> str | None:
     scanned, so a secret or user path split by an HTML comment or a
     zero-width character cannot evade the scan yet reach the excerpt.
     """
-    from .index import clean_text  # pylint: disable=import-outside-toplevel
-
     forms = (text, clean_text(text))
     if any(_USER_PATH.search(f) for f in forms):
         return "private_path_excluded"

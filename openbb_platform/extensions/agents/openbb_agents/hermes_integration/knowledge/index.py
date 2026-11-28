@@ -26,6 +26,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from ._text import clean_text
 from .corpus import Corpus, path_code
 
 ANSWER_CONTRACT_VERSION = 1
@@ -86,9 +87,6 @@ _IDENT = re.compile(
     r"|[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)(?![\w-])"
 )
 _DEFINITION = re.compile(r"^\s*(?:\|\s*|[-*]\s+)?(?:\*\*|`)?(?P<ident>[^\s|*`:]+)")
-_HTML_COMMENT = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
-_INVISIBLE = re.compile(r"[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]")
-_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 _INSTRUCTION = re.compile(
     r"(?im)(?:^\s*(?:system|assistant|developer|user)\s*:"
     r"|\bignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+instructions"
@@ -137,13 +135,6 @@ class QueryRejected(ValueError):
     def __init__(self, code: str) -> None:
         super().__init__(code)
         self.code = code
-
-
-def clean_text(text: str) -> str:
-    """Strip HTML comments, zero-width/bidi and control characters."""
-    text = _HTML_COMMENT.sub("", text)
-    text = _INVISIBLE.sub("", text)
-    return _CONTROL.sub("", text)
 
 
 def instruction_like(text: str) -> bool:
