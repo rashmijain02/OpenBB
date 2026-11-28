@@ -23,8 +23,10 @@ import pytest
 from openbb_backtest.adapters.nautilus import backend, experiment, export as ex, golden
 from openbb_backtest.adapters.nautilus.client import WorkerClient, worker_env
 from openbb_backtest.data.calendars import sessions_in_range
+from openbb_backtest.errors import UnsupportedSemanticsError
 from openbb_backtest.models import BacktestConfig
 from openbb_backtest.routers import run_router as rr, validate_router as vr
+from openbb_backtest.validation.trials import CellOutcome
 from openbb_nautilus_worker.catalog_build import DATA_ROOT_ENV
 
 START, END = "2024-01-02", "2024-03-28"
@@ -361,7 +363,8 @@ def test_reconcile_nautilus_is_diagnostic(tmp_path, monkeypatch, snap):
 
 
 SMALL = Path(__file__).parents[1] / "validation" / "fixtures" / "experiment_small.json"
-SMALL_EXPERIMENT_ID = "b39311fb551569931d303f94a25836598d8462b81ccf96ee9e6b7fe57ac1c8af"
+# experiment/2 (CODE-2): keyed on the dataset-independent spec.
+SMALL_EXPERIMENT_ID = "1da3e2f7c3bb575d06d80bdca653ee0ab0b248f83e1c849f1872a14db69b39e5"
 SMALL_MATRIX_SHA = "aeb710591c644eea1cfccd4d431cd42de4d54cd9c5d4ff7f0fae050f36191c11"
 
 
@@ -422,3 +425,103 @@ def test_classify_unsupported_semantics_is_excluded():
         UnsupportedSemanticsError("x", reason="universe_mismatch")
     )
     assert (out.status, out.reason) == ("excluded", "unsupported_semantics")
+
+
+# --- CODE-2: the ledger is keyed on a dataset-independent spec ---------------
+
+
+@pytest.fixture(scope="module")
+def snap_changed(tmp_path_factory) -> Path:
+    """Snapshot the same bars with one close changed (a data refresh)."""
+    bars = _bars()
+    row = bars["AAA"][len(SESSIONS) // 2]
+    row[1] = f"{Decimal(row[1]) + Decimal('0.50'):.2f}"
+    path = tmp_path_factory.mktemp("snap_changed") / "snap"
+    golden._snapshot({"bars": bars}, SESSIONS, path)  # pylint: disable=protected-access
+    return path
+
+
+def _refresh_plan(tmp: Path, snap: Path, name: str, combos):
+    """Options on their own data root but the shared ``tmp/runs`` ledger root."""
+    opts = _options(tmp / name, snap)
+    opts = backend.NautilusOptions(**{**opts.__dict__, "runs_root": tmp / "runs"})
+    config = _config()
+    folds = experiment.fold_plan(
+        experiment.session_calendar(config), "wfo", "continuous"
+    )
+    the_plan = experiment.plan(
+        config,
+        combos,
+        folds.windows,
+        command="validate",
+        method="wfo",
+        policy="continuous",
+        fold_params=folds.fold_params,
+        options=opts,
+    )
+    return the_plan, config, opts
+
+
+class _Killed(BaseException):
+    """Simulated kill of the dispatching process (not caught by dispatch)."""
+
+
+def test_refresh_between_failed_attempt_and_retry(tmp_path, snap, snap_changed):
+    """CODE-2: a refresh after a failed attempt reuses the ledger; N keeps it."""
+    combos = experiment.expand_grid({"weights": GRID["weights"][:2]}, BASE)
+    plan_a, config, opts_a = _refresh_plan(tmp_path, snap, "a", combos)
+    calls: list[int] = []
+
+    def fail_then_die(cell, attempt_no):
+        calls.append(attempt_no)
+        if attempt_no == 1:
+            return CellOutcome(status="failed", error_code="process", reason="crash")
+        raise _Killed
+
+    with pytest.raises(_Killed):
+        experiment.run(plan_a, config, opts_a, executor=fail_then_die)
+    assert calls == [1, 2]
+    plan_b, config, opts_b = _refresh_plan(tmp_path, snap_changed, "b", combos)
+    assert plan_b.base_dataset_id != plan_a.base_dataset_id, "data did not change"
+    assert plan_b.experiment_id == plan_a.experiment_id, "refresh opened a new ledger"
+    out = experiment.run(plan_b, config, opts_b)
+    records = _ledger(tmp_path, plan_a.experiment_id)
+    assert [(r["status"], r["error_code"]) for r in records[:1]] == [
+        ("failed", "process")
+    ]
+    assert records[0]["base_dataset_id"] == plan_a.base_dataset_id
+    # the failed config on the old data still counts; the refreshed ones add
+    assert out.summary.n_trials_dsr == 1 + 2
+    assert out.summary.status == "mixed_dataset"
+    assert out.summary.matrix_sha256 is None and out.assembly.matrix is None
+    assert out.summary.n_planned == 2 + 2
+    ledger_dir = tmp_path / "runs" / "experiments" / plan_a.experiment_id
+    assert (ledger_dir / "planned.v2.json").exists()
+    with pytest.raises(UnsupportedSemanticsError, match="mixed_dataset"):
+        experiment.validation_report(
+            out,
+            experiment.fold_plan(
+                experiment.session_calendar(config), "wfo", "continuous"
+            ),
+            experiment.session_calendar(config),
+        )
+
+
+def test_rerun_after_refresh_keeps_prior_configs_in_n(tmp_path, snap, snap_changed):
+    """CODE-2: configs tried on the old data stay in N; mixed_dataset via run()."""
+    combos = experiment.expand_grid({"weights": GRID["weights"][:2]}, BASE)
+    plan_a, config, opts_a = _refresh_plan(tmp_path, snap, "a", combos)
+    before = experiment.run(plan_a, config, opts_a)
+    assert before.summary.status == "ok" and before.summary.n_trials_dsr == 2
+    ledger_dir = tmp_path / "runs" / "experiments" / plan_a.experiment_id
+    planned_v1 = (ledger_dir / "planned.json").read_bytes()
+    plan_b, config, opts_b = _refresh_plan(tmp_path, snap_changed, "b", combos)
+    after = experiment.run(plan_b, config, opts_b)
+    assert after.summary.experiment_id == before.summary.experiment_id
+    assert after.appended == 2
+    assert after.summary.n_trials_dsr == 4, "N lost the configs tried on old data"
+    assert after.summary.status == "mixed_dataset"
+    assert (ledger_dir / "planned.json").read_bytes() == planned_v1
+    again = experiment.run(plan_b, config, opts_b)
+    assert again.appended == 0 and again.summary.n_trials_dsr == 4
+    assert not (ledger_dir / "planned.v3.json").exists()

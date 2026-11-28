@@ -25,7 +25,7 @@ from __future__ import annotations
 import itertools
 import logging
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -59,7 +59,7 @@ from . import backend, projection, strategies
 
 logger = logging.getLogger(__name__)
 
-_EXPERIMENT_V = "experiment/1"
+_EXPERIMENT_V = "experiment/2"
 #: Fixed precision of the event-replay fake worker (``fake_run_worker.py``).
 _FAKE_PRECISION = 9
 
@@ -149,6 +149,13 @@ def _rejected_identity(
     )
 
 
+def _dataset_free_key(ident: ConfigIdentity) -> str:
+    """Hash of every identity field except ``base_dataset_id`` (CODE-2)."""
+    fields = asdict(ident)
+    del fields["base_dataset_id"]
+    return sha256_canonical(fields)
+
+
 def _span(config: BacktestConfig, first: str, last: str) -> BacktestConfig:
     """``config`` restricted to the sessions ``first`` .. ``last`` (ISO)."""
     return config.model_copy(
@@ -178,6 +185,8 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         raise ValueError("external_trials must be >= 0")
     if not combos:
         raise ValueError("an experiment needs at least one configuration")
+    if not windows:
+        raise ValueError("an experiment needs at least one window")
     cash = backend._check_config(config)  # pylint: disable=protected-access
     # pylint: disable-next=protected-access
     export = options.export or backend._default_export(options)
@@ -193,8 +202,6 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
             resolved.append((dict(combo), params, binding, None))
         except (ProtocolError, UnsupportedSemanticsError) as exc:
             resolved.append((dict(combo), params, execution, type(exc).__name__))
-    if not windows:
-        raise ValueError("an experiment needs at least one window")
     lo = min(w.sessions[0] for w in windows)
     hi = max(w.sessions[-1] for w in windows)
     first = next((b for _c, _p, b, why in resolved if why is None), None)
@@ -224,6 +231,7 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
     by_cfg: dict[str, dict[str, Any]] = {}
     bindings: dict[str, Any] = {}
     rejected: dict[str, str] = {}
+    config_keys: set[str] = set()
     for combo, params, binding, why in resolved:
         if why is None:
             ident = ConfigIdentity.from_binding(binding, **bound)
@@ -233,22 +241,30 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         if cid in by_cfg:  # equivalent params normalise to one configuration
             continue
         by_cfg[cid] = combo
+        config_keys.add(_dataset_free_key(ident))
         if why is None:
             bindings[cid] = binding
         else:
             rejected[cid] = why
         cells.extend(Cell(config=ident, window=w) for w in wins)
+    # CODE-2: the experiment is keyed on a dataset-independent spec, so a data
+    # refresh re-opens the same ledger and appends cells (rule 2: changed data
+    # adds to N; rule 4: mixed datasets yield no matrix) instead of a new,
+    # empty experiment that would forget the configurations already tried.
     spec = {
         "v": _EXPERIMENT_V,
         "command": command,
         "backend": "nautilus",
         "strategy": config.strategy,
         "strategy_version": config.strategy_version,
+        "universe": sorted(config.universe),
+        "cash": cash,
         "method": method,
         "policy": policy,
         "fold_params": dict(fold_params),
         "external_trials": int(external_trials),
-        "trial_ids": sorted(c.trial_id for c in cells),
+        "config_keys": sorted(config_keys),
+        "windows": [sha256_canonical(asdict(w)) for w in wins],
     }
     return Plan(
         experiment_id=sha256_canonical(spec),

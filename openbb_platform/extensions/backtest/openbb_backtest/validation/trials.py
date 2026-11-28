@@ -312,19 +312,50 @@ class TrialLedger:
         """Persist the experiment spec (write-once)."""
         self._write_once("spec.json", dict(spec))
 
+    def _planned_versions(self) -> list[Path]:
+        """``planned.json`` then ``planned.v2.json`` .. in order (fail closed)."""
+        if not self.planned_path.exists():
+            if any(self.directory.glob("planned.v*.json")):
+                raise ValueError("planned list versions without planned.json")
+            return []
+        paths = [self.planned_path]
+        extra = sorted(self.directory.glob("planned.v*.json"))
+        for version in range(2, len(extra) + 2):
+            path = self.directory / f"planned.v{version}.json"
+            if not path.exists():
+                raise ValueError("planned list versions are not contiguous")
+            paths.append(path)
+        return paths
+
     def write_planned(self, cells: Sequence[Cell]) -> None:
-        """Persist the planned cell list (write-once, before any dispatch)."""
-        self._write_once(
-            "planned.json", [c.to_json() for c in sorted(cells, key=_cell_key)]
-        )
+        """Persist the planned cells before any dispatch (append-only, versioned).
+
+        The first plan is ``planned.json``. A re-plan of the same experiment
+        that adds cells (CODE-2: refreshed data gives new configuration ids)
+        writes only the new cells to the next ``planned.v<k>.json``; earlier
+        versions are never rewritten. A re-plan adding nothing writes nothing.
+        """
+        known = {c.trial_id for c in self.planned()}
+        fresh = [c for c in sorted(cells, key=_cell_key) if c.trial_id not in known]
+        fresh = list({c.trial_id: c for c in fresh}.values())
+        if not fresh:
+            return
+        version = len(self._planned_versions()) + 1
+        name = "planned.json" if version == 1 else f"planned.v{version}.json"
+        self._write_once(name, [c.to_json() for c in fresh])
 
     def planned(self) -> list[Cell]:
-        """Return the planned cells, verified against their hashes."""
-        if not self.planned_path.exists():
-            return []
-        return [
-            Cell.from_json(c) for c in json.loads(self.planned_path.read_text("utf-8"))
-        ]
+        """Every planned cell over all versions, verified against its hashes."""
+        out: list[Cell] = []
+        seen: set[str] = set()
+        for path in self._planned_versions():
+            for data in json.loads(path.read_text("utf-8")):
+                cell = Cell.from_json(data)
+                if cell.trial_id in seen:
+                    raise ValueError("duplicate trial in planned list versions")
+                seen.add(cell.trial_id)
+                out.append(cell)
+        return out
 
     def append(self, record: AttemptRecord) -> None:
         """Append one attempt record (refused before the planned list exists)."""

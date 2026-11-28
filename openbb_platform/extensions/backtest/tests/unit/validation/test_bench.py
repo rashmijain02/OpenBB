@@ -148,9 +148,13 @@ def test_bench_failure_injections(tmp_path, clean):
     for row in rep["scenarios"]:
         assert row["matrix_complete"] is False
         assert {e["reason"] for e in row["exclusions"]} == {"admission_rejected"}
-    assert rep["changed_data"]["experiment_id_changed"] is True
-    assert rep["changed_data"]["matrix_changed"] is True
-    assert rep["changed_data"]["n_equal"] is True
+    # CODE-2: same experiment, the refreshed data adds configurations to N
+    changed = rep["changed_data"]
+    assert changed["experiment_id_same"] is True
+    assert changed["n_grew"] is True
+    assert (changed["n_before"], changed["n_after"]) == (3, 6)
+    assert changed["status"] == "mixed_dataset"
+    assert changed["matrix_sha256"] is None
     assert (
         rep["scenarios"][0]["experiment_id"] != clean["scenarios"][0]["experiment_id"]
     )

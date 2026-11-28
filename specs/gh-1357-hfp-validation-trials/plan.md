@@ -43,7 +43,10 @@ legacy backend: unchanged code path and numbers (summary field None)
   `base_dataset_id` = neutral export of the full experiment range from the same `Bundle`: changed data ⇒ new config_id.
 - `window = {policy, method, fold_params_sha256, ordinal, start_session, end_session, session_count, sessions_sha256}`.
 - `trial_id = sha256(canon{"v":"trial/1", config_id, window})`; `attempt_id = sha256(trial_id, attempt_no, spawn_nonce_sha256)`.
-- `experiment_id = sha256(canon(ExperimentSpec))`; the planned cell list (trial ids) is written first, so completeness is checkable.
+- `experiment_id = sha256(canon(ExperimentSpec))`, where the spec is dataset-independent (strategy, universe, cash, method,
+  policy, fold params, windows, external trials, and each config identity minus `base_dataset_id`). The planned cell list
+  (trial ids) is written first, so completeness is checkable; a re-plan on refreshed data appends its new cells as
+  `planned.v<k>.json` (earlier versions are never rewritten), so N keeps every config tried and assembly reports `mixed_dataset`.
 - `AttemptRecord{attempt_id, trial_id, attempt_no, status: ok|failed|excluded, error_code (protocol.ErrorCode / FailedLayer),
   reason, result_sha256, window_dataset_id, binding_sha256, started_at, ended_at}`. Nothing is ever deleted or overwritten.
 
@@ -234,3 +237,4 @@ T02 (pure stats + independent fixtures; no routing)  ->  T01 (ledger, matrix, ex
 - **D6:** legacy numbers stay unchanged in P17. The legacy findings F1–F6 are recorded in this plan as the follow-up list for the P18 cutover. The lead has already created 3 issues this session (the D6 limit), so the `type-bug` issue for F1–F6 is filed only after owner confirmation.
 - **Reference values:** do NOT pin paper numbers recalled from memory. Use a value only if it is verified against the paper's public text (a read-only fetch is fine) and cited with page or section. Otherwise compute the expected value independently from the closed-form definition with its stated inputs, and show the derivation in the fixture. Never derive it from the code under test.
 - **Ordering:** T02, then T01, then T03, in one PR.
+- **CODE-2:** ledger keyed on dataset-independent spec; changed data adds planned cells.

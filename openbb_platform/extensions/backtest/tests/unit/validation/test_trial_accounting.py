@@ -218,8 +218,34 @@ def test_planned_written_before_first_attempt(tmp_path):
         return ok_executor(cell, attempt_no)
 
     dispatch(led, cells, check)
-    with pytest.raises(ValueError, match="different content"):
-        led.write_planned(cells[:1])
+    first = led.planned_path.read_bytes()
+    led.write_planned(cells[:1])  # nothing new: no rewrite, no new version
+    assert led.planned_path.read_bytes() == first
+    assert not list(led.directory.glob("planned.v*.json"))
+
+
+def test_replan_appends_planned_version_never_rewrites(tmp_path):
+    """CODE-2: new cells go to planned.v2.json; planned.json is never rewritten."""
+    cells = wfo_cells(2, 1)
+    led = _ledger(tmp_path)
+    led.write_planned(cells[:1])
+    first = led.planned_path.read_bytes()
+    led.write_planned(cells)
+    assert led.planned_path.read_bytes() == first
+    v2 = led.directory / "planned.v2.json"
+    assert v2.exists() and cells[1].trial_id in v2.read_text("utf-8")
+    assert cells[0].trial_id not in v2.read_text("utf-8")
+    assert [c.trial_id for c in led.planned()] == [c.trial_id for c in cells[:2]]
+    # fail closed on a gap in the versions or a duplicated trial
+    (led.directory / "planned.v4.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(ValueError, match="contiguous"):
+        led.planned()
+    (led.directory / "planned.v4.json").unlink()
+    (led.directory / "planned.v3.json").write_text(
+        v2.read_text("utf-8"), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="duplicate"):
+        led.planned()
 
 
 def _dsr_reference(sr, n, v, skew, kurt, t):

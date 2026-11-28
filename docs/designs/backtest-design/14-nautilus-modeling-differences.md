@@ -142,3 +142,7 @@ runs two reviewed strategies over a seeded synthetic bundle (756 sessions, two s
 CPCV(6,2), both window policies, and prints counts, codes and timings only. `--inject-kill K`,
 `--inject-fail-once`, `--inject-reject` and `--inject-changed-data` add deterministic failure
 injection. Timings are reported, never asserted. The native run (`--runtime native`) is a LIVE step.
+
+The WFO layout copies the legacy `_run_folds` split: train = T//2 and test = step = T//4
+sessions, which always gives 2 folds (378 train / 189 test sessions for T = 756), not 4. The fold
+logic itself is unchanged in P17.
