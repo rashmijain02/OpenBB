@@ -75,7 +75,7 @@ def _manifest(home: Path) -> dict[str, str]:
 
 def _current_sid() -> str:
     out = subprocess.run(
-        [WHOAMI, "/user", "/fo", "csv", "/nh"],
+        [WHOAMI, "/user", "/FO", "CSV", "/NH"],
         capture_output=True,
         text=True,
         check=True,

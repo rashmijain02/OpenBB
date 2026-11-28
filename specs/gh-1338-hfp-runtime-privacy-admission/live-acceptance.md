@@ -131,7 +131,7 @@ Preconditions: L2 done (<qual-home> exists, pinned runtime); the owner's own Her
 3. Before the ACE: hermes_preflight --profile <owner profile> --hermes-config <qual-home>\config.yaml `
      --skills-root <qual-home>\skills --skills-quarantine <qual-quarantine> --probe none --format text
                                     Expect: skills failed_layer=skills, detail contains admitted_dir_writable
-4. $sid = (whoami /user /fo csv /nh).Split(',')[-1].Trim('"')
+4. $sid = (whoami /USER /FO CSV /NH).Split(',')[-1].Trim('"')
    icacls <qual-home>\skills /deny "*${sid}:(OI)(CI)(WD,AD,WEA,WA,DC)"
                                     (Do NOT add D: denying DELETE on files also denies reads for this user.)
 5. Re-run step 3.                   Expect: skills level=admitted detail=skills_admitted: n=<count>

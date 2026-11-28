@@ -367,7 +367,9 @@ def project(
     if "aggregate_buckets" in requested:
         aggregates = artifact.get("aggregates") or {}
         names, n = _vetted(aggregates, lambda a: vetted_name(a, AGGREGATE_NAMES))
-        values["aggregate_buckets"] = {a: bucket(aggregates[a], count=a in COUNT_AGGREGATES) for a in names}
+        values["aggregate_buckets"] = {
+            a: bucket(aggregates[a], count=a in COUNT_AGGREGATES) for a in names
+        }
         emitted.update(names)
         dropped += n
     if "as_of" in requested:
