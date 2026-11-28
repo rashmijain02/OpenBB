@@ -146,7 +146,9 @@ def test_result_roundtrip_equivalence():
     ts = datetime(2020, 6, 1, tzinfo=timezone.utc)
     result = BacktestResult(
         equity_curve=[
-            EquityPoint(date=ts, equity=Decimal("100000"), cash=Decimal("0"), exposure=1.0)
+            EquityPoint(
+                date=ts, equity=Decimal("100000"), cash=Decimal("0"), exposure=1.0
+            )
         ],
         trades=[
             Trade(
@@ -269,7 +271,9 @@ def test_tearsheet_models_carry_no_money_or_decimal_fields():
             # Scalar (non-list, non-submodel) fields must be in the allowed set.
             origin = typing.get_origin(ann)
             if origin is None and isinstance(ann, type) and not _is_data_model(ann):
-                assert issubclass(ann, allowed_scalars), f"{model.__name__}.{name}={ann}"
+                assert issubclass(
+                    ann, allowed_scalars
+                ), f"{model.__name__}.{name}={ann}"
 
 
 def _annotation_types(ann: object) -> set:
@@ -298,3 +302,19 @@ def test_models_module_stays_import_leaf():
     # No intra-package imports beyond the models module itself.
     assert "from openbb_backtest." not in src
     assert "import openbb_backtest." not in src
+
+
+def test_config_serialization_schema_keeps_fields():
+    """The wrap serializer must not collapse the OpenAPI/MCP output schema."""
+    schema = BacktestConfig.model_json_schema(mode="serialization")
+    props = schema["properties"]
+    for name in ("strategy", "universe", "start", "end", "backend", "strategy_version"):
+        assert name in props
+    assert set(BacktestConfig.model_fields) == set(props)
+
+
+def test_result_serialization_schema_nests_full_config():
+    schema = BacktestResult.model_json_schema(mode="serialization")
+    config = schema["$defs"]["BacktestConfig"]
+    assert "strategy" in config["properties"]
+    assert "universe" in config["properties"]

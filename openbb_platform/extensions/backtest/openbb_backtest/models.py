@@ -144,13 +144,15 @@ class BacktestConfig(Data):
     )
 
     @model_serializer(mode="wrap")
-    def _omit_unset_new_fields(
+    def _omit_unset_new_fields(  # type: ignore[no-untyped-def]
         self, handler: SerializerFunctionWrapHandler
-    ) -> dict[str, Any]:
+    ):
         """Leave the #1356 fields out while ``None`` (pre-#1356 dumps unchanged).
 
         A dumped config feeds submission digests (``story.backtest``); an old
-        payload must keep its digest across the upgrade.
+        payload must keep its digest across the upgrade. Deliberately has no
+        return annotation: pydantic would otherwise replace the config's
+        serialization JSON schema with a bare ``object`` (OpenAPI/MCP contract).
         """
         data = handler(self)
         for name in _NEW_OPTIONAL_FIELDS:
