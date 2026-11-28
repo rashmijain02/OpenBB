@@ -96,6 +96,42 @@ def test_main_rejects_misspelled_policy_flags(monkeypatch, argv):
     assert excinfo.value.code == 2
 
 
+def test_main_rejects_principal_without_policy_profile(monkeypatch, capsys):
+    """--principal alone would serve ungated; it must be a usage error."""
+
+    async def fake_serve(**_kwargs):
+        raise AssertionError("server must not start")
+
+    monkeypatch.setattr(mcp_server, "_serve", fake_serve)
+    with pytest.raises(SystemExit) as excinfo:
+        mcp_server.main(["--principal", "hermes_runtime"])
+    assert excinfo.value.code == 2
+    assert "--principal requires --policy-profile" in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
+async def test_stdio_default_server_child_never_loads_hermes_integration(tmp_path):
+    """The real default stdio child has no hermes_integration module loaded."""
+    marker = tmp_path / "modules.txt"
+    script = f"""
+import sys
+from pathlib import Path
+from openbb_agents.tools import portfolio_tools
+
+def _record(*_args, **_kwargs):
+    loaded = sorted(m for m in sys.modules if m.startswith("openbb_agents.hermes_integration"))
+    Path({str(marker)!r}).write_text(repr(loaded), encoding="utf-8")
+    raise RuntimeError("probe")
+
+portfolio_tools._default_fetch = _record
+portfolio_tools._default_profile = _record
+from openbb_agents.mcp_server import main
+main(sys.argv[1:])
+"""
+    await _call_all(script, [], tmp_path / "server.err", arguments={})
+    assert marker.read_text(encoding="utf-8") == "[]"
+
+
 def test_default_mode_does_not_import_policy_module():
     """The default server path never loads the hermes policy code."""
     code = (

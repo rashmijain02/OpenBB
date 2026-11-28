@@ -335,6 +335,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--policy-profile", choices=["hermes-finance"])
     parser.add_argument("--principal")
     args = parser.parse_args(argv)
+    if args.principal is not None and args.policy_profile is None:
+        # A principal without a profile would silently serve ungated.
+        parser.error("--principal requires --policy-profile")
     logging.basicConfig(level=logging.WARNING)
     if args.policy_profile is None:
         asyncio.run(_serve())
