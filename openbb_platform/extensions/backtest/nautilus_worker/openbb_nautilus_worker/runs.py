@@ -120,11 +120,7 @@ def account(spec: RunSpec, result: EngineResult) -> dict[str, Any]:
 def _load_spec(adm: admission.Admitted) -> RunSpec:
     inst = adm.manifest.instruments[0]
     rows = sorted(
-        (
-            r
-            for r in adm.bars.to_pylist()
-            if r["symbol"] == inst.symbol
-        ),
+        (r for r in adm.bars.to_pylist() if r["symbol"] == inst.symbol),
         key=lambda r: r["ts_event"],
     )
     if not rows:
