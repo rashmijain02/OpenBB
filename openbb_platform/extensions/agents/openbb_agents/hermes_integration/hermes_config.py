@@ -9,8 +9,9 @@ from __future__ import annotations
 import ipaddress
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import urlsplit
 
 import yaml
@@ -248,14 +249,15 @@ def _entry_local(entry: Any) -> bool:
 
 
 def url_has_userinfo(url: str) -> bool:
-    """True if the authority carries userinfo, or a backslash some clients read as a slash."""
+    """Return True for userinfo in the authority, or a backslash read as a slash."""
     return "\\" in url or "@" in urlsplit(url).netloc
 
 
 def _scan_values(node: Any, path: str = "") -> list[str]:
     """Hermes expands ``${VAR}``/``${env:VAR}`` in every string (``_expand_env_vars`` at the
     pin), so an env ref can rewrite any route after this check. Block every ref outside a
-    secret-valued leaf, and userinfo in every URL-valued key."""
+    secret-valued leaf, and userinfo in every URL-valued key.
+    """
     issues: list[str] = []
     items = (
         node.items()
@@ -418,10 +420,11 @@ def _read_auxiliary(
 
 
 def managed_config_path(environ: Mapping[str, str] | None = None) -> Path | None:
-    """The managed-scope ``config.yaml`` Hermes would overlay, or ``None``.
+    """Return the managed-scope ``config.yaml`` Hermes would overlay, or ``None``.
 
     Mirrors ``get_managed_dir`` at the pin: a non-empty ``HERMES_MANAGED_DIR`` wins
-    (and yields nothing when it is not a directory), otherwise ``/etc/hermes``."""
+    (and yields nothing when it is not a directory), otherwise ``/etc/hermes``.
+    """
     env = os.environ if environ is None else environ
     override = env.get("HERMES_MANAGED_DIR", "").strip()
     directory = Path(override) if override else _DEFAULT_MANAGED_DIR
@@ -442,7 +445,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 
 def _load_managed(path: Path) -> dict[str, Any]:
-    """Managed overlay as Hermes applies it; unlike Hermes, a malformed file fails closed."""
+    """Load the overlay as Hermes applies it; a malformed file fails closed here."""
     loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8-sig"))
     if loaded is None:
         return {}
@@ -456,7 +459,8 @@ def _load_managed(path: Path) -> dict[str, Any]:
 def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
     """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
 
-    Raises ``OSError``/``ValueError`` when either file is unusable."""
+    Raises ``OSError``/``ValueError`` when either file is unusable.
+    """
     loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
         raise ValueError("hermes config is not a mapping")

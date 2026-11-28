@@ -187,10 +187,11 @@ def _alias_name(value: Any, limit: int = 64) -> str:
 
 
 def _canonical_name(value: Any) -> bool:
-    """A string with no surrounding whitespace and no control characters.
+    """Return True for a string with no surrounding whitespace or control characters.
 
     The report name is normalised, so a non-canonical raw name could be shown as (or
-    hide behind) the private alias; it blocks instead of being normalised."""
+    hide behind) the private alias; it blocks instead of being normalised.
+    """
     return (
         isinstance(value, str)
         and value == value.strip()
@@ -300,7 +301,7 @@ def _fallback_pairs(value: Any) -> list[tuple[str, list[str]]]:
 
 
 def _model_entries(raw: Any) -> tuple[list[dict[str, Any]], list[str]]:
-    """Mapping entries of ``model_list``; any other shape is a blocking issue, not a crash."""
+    """Return mapping entries of ``model_list``; other shapes are issues, not crashes."""
     if raw is None:
         return [], []
     if not isinstance(raw, list):
@@ -387,7 +388,8 @@ def _toggle_on(block: dict[str, Any], key: str) -> bool | None:
 
     litellm 1.106.6 reads these leniently: ``store_prompts_in_spend_logs`` accepts the
     string ``"true"`` in any case and module settings such as ``set_verbose`` are set with
-    ``setattr(litellm, key, value)``, so any truthy value enables them."""
+    ``setattr(litellm, key, value)``, so any truthy value enables them.
+    """
     if key not in block:
         return None
     return block[key] is not False
