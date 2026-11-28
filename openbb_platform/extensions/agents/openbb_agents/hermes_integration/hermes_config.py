@@ -40,7 +40,6 @@ CONSUMED_KEYS = (
 HARMLESS_TOP_LEVEL = frozenset(
     {
         "_config_version",
-        "agent",
         "approvals",
         "attachments",
         "checkpoints",
@@ -80,10 +79,14 @@ HARMLESS_TOP_LEVEL = frozenset(
     }
 )
 # Top-level keys this policy reads and polices (pinned plus legacy routing keys).
+# ``agent``, ``skills`` and ``curator`` carry the skill-writer switches the skill
+# reader consumes (#1339-T02); they are vetted by shape here.
 POLICED_TOP_LEVEL = frozenset(
     {
+        "agent",
         "auth",
         "auxiliary",
+        "curator",
         "custom_providers",
         "delegation",
         "fallback_model",
@@ -94,6 +97,7 @@ POLICED_TOP_LEVEL = frozenset(
         "model_aliases",
         "platforms",
         "providers",
+        "skills",
         "smart_model_routing",
         "telemetry",
     }
@@ -579,6 +583,37 @@ def _scan_surfaces(loaded: dict[str, Any]) -> tuple[list[str], list[str]]:
     return unvetted, issues
 
 
+# Shape checks for the skill-writer keys (#1339-T02). The skills component judges
+# the values; the route policy only refuses shapes the skill reader would ignore.
+_SKILL_BOOL_KEYS = (
+    "skills.project_discovery",
+    "skills.inline_shell",
+    "curator.enabled",
+    "auxiliary.background_review.enabled",
+)
+_SKILL_LIST_KEYS = ("skills.external_dirs", "agent.disabled_toolsets")
+
+
+def _scan_skill_keys(loaded: dict[str, Any]) -> list[str]:
+    issues = [
+        f"{section}_unparsed"
+        for section in ("agent", "skills", "curator")
+        if section in loaded and not isinstance(loaded[section], dict)
+    ]
+    for key in _SKILL_BOOL_KEYS:
+        value = _get(loaded, key)
+        if value is not None and not isinstance(value, bool):
+            issues.append(f"{key.replace('.', '_')}_not_bool")
+    for key in _SKILL_LIST_KEYS:
+        value = _get(loaded, key)
+        if value is not None and not isinstance(value, (str, list)):
+            issues.append(f"{key.replace('.', '_')}_not_list")
+    create_dir = _get(loaded, "skills.create_dir")
+    if create_dir is not None and not isinstance(create_dir, str):
+        issues.append("skills_create_dir_not_str")
+    return issues
+
+
 def _scan_misc(loaded: dict[str, Any]) -> list[str]:
     issues: list[str] = []
     if _set(loaded.get("fallback_model")):  # legacy single fallback route
@@ -722,6 +757,7 @@ def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
         ],
         route_issues=[
             *_scan_misc(loaded),
+            *_scan_skill_keys(loaded),
             *_scan_delegation(loaded),
             *_scan_providers(loaded),
             *surf_issues,

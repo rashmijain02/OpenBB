@@ -20,6 +20,7 @@ import pytest
 import yaml
 from openbb_agents.hermes_integration import hermes_config, skills_admission
 from openbb_agents.hermes_integration.hermes_preflight import main
+from openbb_agents.hermes_integration.profile import load_profile
 from openbb_agents.hermes_integration.skills_admission import (
     TIER_CREATE_DIR,
     TIER_EXTERNAL,
@@ -160,9 +161,55 @@ def test_finance_safe_skill_facts_are_explicitly_off(tmp_path):
     assert "skills" in facts.disabled_toolsets
 
 
+def _route_reasons(config: Path) -> list[str]:
+    facts = hermes_config.read_route_facts(config)
+    profile = load_profile(PROFILE)
+    return hermes_config.evaluate_route(facts, profile).reasons
+
+
 def test_finance_safe_route_still_admitted_with_background_review_block(tmp_path):
     facts = hermes_config.read_route_facts(_safe_config(tmp_path))
-    assert facts.auxiliary["background_review"] == "custom"
+    assert facts.auxiliary["background_review"].provider == "custom"
+    reasons = _route_reasons(_safe_config(tmp_path))
+    # The skill-writer keys are vetted by the fail-closed route policy (#1338 fix).
+    assert not [r for r in reasons if r.startswith("unvetted_key:")], reasons
+    assert not [r for r in reasons if r.split("_")[0] in SKILL_SECTIONS], reasons
+
+
+SKILL_SECTIONS = ("agent", "skills", "curator", "auxiliary")
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reason"),
+    [
+        ({"skills": "on"}, "skills_unparsed"),
+        ({"curator": ["x"]}, "curator_unparsed"),
+        ({"agent": 1}, "agent_unparsed"),
+        ({"curator.enabled": "false"}, "curator_enabled_not_bool"),
+        ({"skills.inline_shell": 0}, "skills_inline_shell_not_bool"),
+        ({"skills.project_discovery": "no"}, "skills_project_discovery_not_bool"),
+        (
+            {"auxiliary.background_review.enabled": "off"},
+            "auxiliary_background_review_enabled_not_bool",
+        ),
+        ({"skills.external_dirs": {"a": 1}}, "skills_external_dirs_not_list"),
+        ({"agent.disabled_toolsets": 3}, "agent_disabled_toolsets_not_list"),
+        ({"skills.create_dir": ["x"]}, "skills_create_dir_not_str"),
+    ],
+)
+def test_route_policy_refuses_skill_key_shapes_the_reader_ignores(
+    tmp_path, overrides, reason
+):
+    data = yaml.safe_load((HERMES / "config-finance-safe.yaml").read_text("utf-8"))
+    for dotted, value in overrides.items():
+        node = data
+        *parents, leaf = dotted.split(".")
+        for part in parents:
+            node = node[part]
+        node[leaf] = value
+    out = tmp_path / "config.yaml"
+    out.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert reason in _route_reasons(out)
 
 
 # --- admission ---------------------------------------------------------------------
