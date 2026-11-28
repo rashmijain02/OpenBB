@@ -296,3 +296,27 @@ code/security/privacy reviews on the PR diff vs `portfolio` (security mandatory:
 - **`worker_unavailable` (T03):** a run card reads it while the run is not terminal, a job has been `queued` for more
   than 60 s, and no worker heartbeat is that recent (a busy worker still beats). The card keeps polling. The clock is
   injectable (`StoryBackend(clock=...)`).
+- **Fix round (lead, 2026-11-28):**
+  - **F1:** the card's approval in-flight entry clears on settle (only a running request is shared). A `bad_nonce`
+    re-reads the plan for a fresh nonce and enables Approve again. One plan card per `plan_id` per page; a repeat
+    marker renders a pointer and sends no GET.
+  - **F2:** the sidecar's principal is `story_principal_for` of the MCP server's own `server_auth`, read from the same
+    source the server reads (`OPENBB_MCP_SERVER_AUTH` over `mcp_settings.json`, nothing written). Without usable
+    credentials the sidecar exits 4 `principal_unpaired` before binding; `--check` runs only that preflight. The
+    in-process constant secret is no longer used by the sidecar.
+  - **F3:** `WorkflowStarted` carries `marker` `[[hfp:run:<id>]]`. An approved plan card polls `GET /plans/<id>` with
+    the run-card backoff until `run_id` appears (stops on started/expired/gone; a pending plan is never polled), then
+    mounts the run card. The journeys rely on that path and inject no run marker.
+  - **F4:** `test_hfp_cards_js.py` runs `node --test` on the card suite inside pytest; it skips with a reason when
+    `node` is missing.
+  - **F5:** `mountRun` checks and sets `mounted[run_id]`, so a reload never starts a second poller for one run.
+  - **F6:** a repeat `story_workflow_start` of a started plan returns its run and job ids (`replay_of`) before the
+    expiry and manifest-sha re-checks.
+  - **H1:** verified that two concurrent starts cannot leave an orphan run: the plan's binding key makes
+    `RunStore.create` create-once in one `BEGIN IMMEDIATE` transaction. The losing start now reports `replay_of`. A
+    forced-interleave test asserts one run, one binding, one job.
+  - **H4:** journey egress accounting allows only the pinned shell's CDN assets by exact URL
+    (`PINNED_SHELL_ASSETS`); any other aborted request fails the journey.
+  - **H6:** the workflow worker runs the catalog-admitted document for the plan's `workflow_id`, never a file picked by
+    name, and fails closed on an id mismatch (`workflow_not_admitted`) or a digest other than the plan's
+    `workflow_manifest_sha256` (`workflow_changed`).
