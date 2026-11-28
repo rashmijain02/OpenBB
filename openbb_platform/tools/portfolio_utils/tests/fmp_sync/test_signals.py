@@ -36,17 +36,23 @@ socket.socket.connect = lambda self, address: _no()
 from portfolio_utils.fmp_sync import dispatcher
 from portfolio_utils.fmp_sync.admission import Admission
 
+ready = Path(sys.argv[1])
+phase = sys.argv[2]
+
 def _admit(dmap, **_kw):
+    if phase == "admit":  # interrupted before the warm's own handler exists
+        ready.write_text("ready", encoding="utf-8")
+        time.sleep(3)
     return Admission(True, "ADMITTED", symbols=("AAA", "BBB"),
                      counts={"requested": 2, "skipped": 0},
                      target=dmap.target, target_class=dmap.target_class)
 
 dispatcher.admit = _admit
-ready = Path(sys.argv[1])
 fake = types.ModuleType("portfolio_utils.fetch_position_history")
 
 def _warm(*, should_cancel, **_kw):
-    ready.write_text("ready", encoding="utf-8")
+    if phase == "warm":
+        ready.write_text("ready", encoding="utf-8")
     end = time.monotonic() + 60
     while time.monotonic() < end:
         if should_cancel():
@@ -60,7 +66,7 @@ fake.check_portfolio_app_readiness = lambda *_a: {}
 fake._resolve_api_key = lambda: "k"
 sys.modules["portfolio_utils.fetch_position_history"] = fake
 from portfolio_utils.fmp_sync.__main__ import main
-sys.exit(main(sys.argv[2:]))
+sys.exit(main(sys.argv[3:]))
 """
 
 
@@ -88,17 +94,21 @@ def _interrupt(proc: subprocess.Popen) -> None:
         proc.send_signal(signal.SIGINT)
 
 
+@pytest.mark.parametrize("phase", ["warm", "admit"])
 def test_console_break_through_main_writes_cancelled_receipt(
-    tmp_path, child_env, python_exe
+    tmp_path, child_env, python_exe, phase
 ):
-    """Ctrl+Break (Windows) / SIGINT mid-warm -> CANCELLED run file + end receipt."""
+    """Ctrl+Break (Windows) / SIGINT mid-warm or mid-admission -> CANCELLED.
+
+    The run file and the end receipt are written either way.
+    """
     script = tmp_path / "child.py"
     script.write_text(CHILD, encoding="utf-8")
     ready = tmp_path / "ready"
     argv = ["prices", "--execute", "--receipt", "--map", str(_map(tmp_path))]
     flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     proc = subprocess.Popen(  # noqa: S603
-        [python_exe, str(script), str(ready), *argv],
+        [python_exe, str(script), str(ready), phase, *argv],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
