@@ -131,3 +131,13 @@ class StepResult:
     error: str | None = None
     # SHA-256 of the screenshot file, for future baseline diff (P2-10)
     screenshot_sha256: str | None = None
+    #: A verdict other than OK / FAIL, e.g. ``GALLERY-ONLY (API-verified)``
+    #: (#1274). Only set on a step that did not fail.
+    status: str | None = None
+
+    @property
+    def verdict(self) -> str:
+        """Return ``FAIL``, the special ``status``, or ``OK``."""
+        if not self.ok:
+            return "FAIL"
+        return self.status or "OK"

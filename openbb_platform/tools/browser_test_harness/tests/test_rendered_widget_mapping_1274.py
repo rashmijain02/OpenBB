@@ -185,6 +185,8 @@ def test_cli_flags_reach_the_workspace_driver(tmp_path: Path) -> None:
             str(tmp_path),
             "--dashboard",
             "Techtrade Trading Desk",
+            "--managed-credentials",
+            str(tmp_path / "creds.secrets"),
         ]
     )
     kwargs = workspace_driver_kwargs(args)
@@ -196,6 +198,7 @@ def test_cli_flags_reach_the_workspace_driver(tmp_path: Path) -> None:
         "headless": True,
         "profile_dir": tmp_path,
         "dashboard_name": "Techtrade Trading Desk",
+        "managed_credentials_path": tmp_path / "creds.secrets",
     }
 
 
@@ -208,3 +211,143 @@ def test_cli_headed_and_defaults() -> None:
     assert "headless" not in kwargs and "backend_url" not in kwargs
     with pytest.raises(SystemExit):
         build_parser().parse_args(["--story", "portfolio", "--headless", "--headed"])
+
+
+def test_profile_dir_inside_the_repository_is_refused(tmp_path: Path) -> None:
+    """A logged-in browser profile must never live in the checkout (PRIVACY-2)."""
+    from openbb_browser_test_harness.drivers.workspace_driver import (  # noqa: PLC0415
+        WorkspaceDriver,
+        WorkspaceDriverError,
+    )
+
+    repo = Path(__file__).resolve().parents[4]
+    with pytest.raises(WorkspaceDriverError, match="outside the repository"):
+        WorkspaceDriver(profile_dir=repo / ".dev-cycle" / "tmp" / "chrome_profile")
+    assert (
+        WorkspaceDriver(profile_dir=tmp_path / "profile").profile_dir.name == "profile"
+    )
+
+
+class _LazyGridPage:
+    """Fake page whose grid items mount only after they are scrolled into view.
+
+    Self-hosted Workspace (re-run evidence, 1280x720) mounts the card of an
+    off-screen grid item only when it scrolls on screen; until then the item
+    has no ``widget-<id>`` class, title or body.
+    """
+
+    def __init__(self, cards: dict[str, tuple[str, str]]) -> None:
+        self.cards = cards  # uid -> (backend id, title)
+        self.mounted: set[str] = set()
+        self.scrolled: list[str] = []
+        self.viewport: dict | None = None
+
+    async def evaluate(self, _source: str) -> list[dict]:
+        out = []
+        for uid, (wid, title) in self.cards.items():
+            live = uid in self.mounted
+            out.append(
+                {
+                    "uid": uid,
+                    "widget_ids": [wid] if live else [],
+                    "title": title if live else "",
+                    "width": 600,
+                    "height": 300,
+                    "body_text": 40 if live else 0,
+                    "plots": 1 if live else 0,
+                    "tables": 1 if live else 0,
+                }
+            )
+        return out
+
+    def locator(self, selector: str) -> _LazyGridPage._Loc:
+        return _LazyGridPage._Loc(self, selector)
+
+    class _Loc:
+        def __init__(self, page: _LazyGridPage, selector: str) -> None:
+            self.page, self.selector = page, selector
+
+        @property
+        def first(self) -> _LazyGridPage._Loc:
+            return self
+
+        async def scroll_into_view_if_needed(self, **_kwargs: object) -> None:
+            uid = self.selector.split('"')[1]
+            self.page.scrolled.append(uid)
+            self.page.mounted.add(uid)
+
+
+def _lazy_driver(page: _LazyGridPage, tmp_path: Path):
+    from openbb_browser_test_harness.drivers.workspace_driver import (  # noqa: PLC0415
+        WorkspaceDriver,
+    )
+
+    driver = WorkspaceDriver(profile_dir=tmp_path / "p", widget_settle_s=0.0)
+    driver._page = page  # pylint: disable=protected-access
+    return driver
+
+
+@pytest.mark.asyncio
+async def test_off_screen_widget_is_scrolled_into_view_and_judged(
+    tmp_path: Path,
+) -> None:
+    """An unmounted grid item is scrolled on screen, then matched and judged."""
+    page = _LazyGridPage(
+        {
+            "u-1": ("pi_symbol_context", "Symbol Context Bar"),
+            "u-2": ("pi_xray_sector", "X-Ray - Sector Weights"),
+        }
+    )
+    driver = _lazy_driver(page, tmp_path)
+    selector = _sel("pi/xray/sector")
+    item, how = await driver._await_widget(selector)  # pylint: disable=protected-access
+    assert how == "card-class" and item is not None and item.uid == "u-2"
+    assert "u-2" in page.scrolled
+    assert judge_rendered(selector, item) == (True, True)
+
+
+@pytest.mark.asyncio
+async def test_widget_absent_after_scrolling_every_item_still_fails(
+    tmp_path: Path,
+) -> None:
+    """Scrolling never turns an absent widget into an OK."""
+    page = _LazyGridPage({"u-1": ("pi_symbol_context", "Symbol Context Bar")})
+    driver = _lazy_driver(page, tmp_path)
+    selector = _sel("pi/xray/sector")
+    item, how = await driver._await_widget(selector)  # pylint: disable=protected-access
+    assert (item, how) == (None, "none")
+    assert step_verdict(selector, *judge_rendered(selector, item))[0] is False
+
+
+def test_driver_default_viewport_is_large() -> None:
+    """The default viewport mounts more cards than Playwright's 1280x720."""
+    from openbb_browser_test_harness.drivers.workspace_driver import (  # noqa: PLC0415
+        WorkspaceDriver,
+    )
+
+    viewport = WorkspaceDriver().viewport
+    assert viewport and viewport["width"] >= 1600 and viewport["height"] >= 1200
+
+
+class _HeaderOnlyPage(_LazyGridPage):
+    """Cards show their header off screen but mount the body only on screen."""
+
+    async def evaluate(self, source: str) -> list[dict]:
+        out = await super().evaluate(source)
+        for record in out:
+            wid, title = self.cards[record["uid"]]
+            record["widget_ids"], record["title"] = [wid], title
+        return out
+
+
+@pytest.mark.asyncio
+async def test_matched_widget_is_scrolled_into_view_before_judging(
+    tmp_path: Path,
+) -> None:
+    """A matched card whose body is not mounted is scrolled on screen first."""
+    page = _HeaderOnlyPage({"u-9": ("tt_segment_movers", "Techtrade - Segment Movers")})
+    driver = _lazy_driver(page, tmp_path)
+    selector = _sel("tt/scan/segment-movers")
+    item, how = await driver._await_widget(selector)  # pylint: disable=protected-access
+    assert how == "card-class" and page.scrolled == ["u-9"]
+    assert judge_rendered(selector, item) == (True, True)

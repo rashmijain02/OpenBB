@@ -16,7 +16,7 @@ from .drivers import (
     StandaloneDriver,
     WorkspaceDriver,
 )
-from .report import write_report_json, write_report_md
+from .report import summarize, write_report_json, write_report_md
 from .steps import Step, StepResult
 from .stories import STORIES
 
@@ -46,6 +46,8 @@ def workspace_driver_kwargs(args: argparse.Namespace) -> dict[str, object]:
         kwargs["profile_dir"] = args.profile_dir
     if args.dashboard:
         kwargs["dashboard_name"] = args.dashboard
+    if args.managed_credentials is not None:
+        kwargs["managed_credentials_path"] = args.managed_credentials
     return kwargs
 
 
@@ -103,7 +105,7 @@ async def _run_story(  # pylint: disable=too-many-locals
     try:
         for step in story.steps:
             result = await driver.run_step(step)  # type: ignore[attr-defined]
-            status = "OK" if result.ok else "FAIL"
+            status = result.verdict
             print(f"  [{status}] {step.id} - {result.duration_ms}ms")
             results.append(result)
     finally:
@@ -113,9 +115,12 @@ async def _run_story(  # pylint: disable=too-many-locals
     write_report_md(out_dir / "report.md", story, results, steps_by_id)
     write_report_json(out_dir / "report.json", story, results, steps_by_id)
 
-    passed = sum(1 for r in results if r.ok)
-    failed = sum(1 for r in results if not r.ok)
-    print(f"\n{passed}/{len(results)} steps passed ({failed} failed)")
+    counts = summarize(results)
+    failed = counts["fail"]
+    print(
+        f"\n{len(results)} steps: {counts['ok']} OK, {failed} FAIL, "
+        f"{counts['gallery_only']} GALLERY-ONLY (API-verified)"
+    )
     print(f"Reports written to {out_dir.resolve()}")
 
     return 0 if failed == 0 else 1
@@ -190,7 +195,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--profile-dir",
         type=Path,
         default=None,
-        help="Persistent Chromium profile directory (workspace mode).",
+        help=(
+            "Persistent Chromium profile directory (workspace mode). It holds a "
+            "logged-in session: keep it outside the repository (default "
+            "~/.openbb_browser_test_harness/chrome_profile)."
+        ),
     )
     parser.add_argument(
         "--app-name",
@@ -204,6 +213,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--dashboard",
         default=None,
         help="Visible name of the Workspace dashboard to open after login.",
+    )
+    parser.add_argument(
+        "--managed-credentials",
+        type=Path,
+        default=None,
+        help=(
+            "Self-hosted Workspace managed credential file (default: "
+            "third_party/workspace/backend-api/backend/"
+            "workspace-admin-credentials.secrets under the current directory)."
+        ),
     )
     return parser
 

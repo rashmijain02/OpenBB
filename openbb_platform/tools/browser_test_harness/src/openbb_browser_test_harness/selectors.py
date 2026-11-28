@@ -492,3 +492,38 @@ def load_widget_tabs() -> dict[str, dict[str, str]]:
             for item in tab.get("layout") or []:
                 tabs.setdefault(str(item.get("i")), str(tab.get("name") or ""))
     return out
+
+
+#: Step verdict for a gallery-only widget verified through the backend.
+GALLERY_ONLY = "GALLERY-ONLY (API-verified)"
+
+#: Story widgets that no app tab places (#1274 lead decision). Workspace only
+#: offers them in the widget gallery, so a workspace run verifies their story
+#: steps through the backend and reports ``GALLERY-ONLY``. Do not list a
+#: placed widget here: a placed widget must be seen on its tab.
+GALLERY_ONLY_WIDGETS: frozenset[str] = frozenset(
+    {
+        "pi_charting",
+        "pi_company_filings",
+        "pi_earnings_transcripts",
+        "pi_insider_trading",
+        "pi_institutional_ownership",
+        "pi_management_team",
+        "pi_price_performance",
+        "pi_stock_ownership",
+        "pi_stock_splits",
+        "tt_execute_paper_status",
+    }
+)
+
+
+def placed_widget_ids() -> frozenset[str]:
+    """Return every widget id an ``apps.json`` tab places, in any app."""
+    return frozenset(
+        widget_id for tabs in load_widget_tabs().values() for widget_id in tabs
+    )
+
+
+def is_gallery_only(widget_id: str) -> bool:
+    """Return True for a listed widget that no app tab places."""
+    return widget_id in GALLERY_ONLY_WIDGETS and widget_id not in placed_widget_ids()

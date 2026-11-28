@@ -192,11 +192,43 @@ def test_selection_reason_explains_skip(workflows: list) -> None:
         ("desktop/**", "desktopx/a", False),
         ("feat/pi-*", "feat/pi-release", True),
         ("[ab]x", "bx", True),
+        # ``**/`` also matches zero directories (#1274 review CODE-1).
+        ("src/**/*.md", "src/README.md", True),
+        ("src/**/*.md", "src/a/b/README.md", True),
+        ("src/**/*.md", "srcx/README.md", False),
+        ("**/README.md", "README.md", True),
+        ("**/README.md", "docs/README.md", True),
+        ("**/README.md", "docs/xREADME.md", False),
     ],
 )
 def test_github_glob(pattern: str, path: str, expected: bool) -> None:
     """GitHub filter globs: ``*`` stops at ``/``, ``**`` crosses it."""
     assert local_ci.github_glob_match(pattern, path) is expected
+
+
+@pytest.mark.parametrize(
+    ("patterns", "path", "expected"),
+    [
+        (["src/**", "!src/**/*.md"], "src/README.md", False),
+        (["src/**", "!src/**/*.md"], "src/a/README.md", False),
+        (["src/**", "!src/**/*.md"], "src/a.py", True),
+        (["**", "!**/README.md"], "README.md", False),
+        (["**", "!**/README.md", "README.md"], "README.md", True),
+    ],
+)
+def test_filter_negation_with_zero_directory_globstar(
+    patterns: list[str], path: str, expected: bool
+) -> None:
+    """A ``!`` pattern with ``**/`` excludes files at depth zero too."""
+    assert local_ci._filter_hits(patterns, path) is expected  # noqa: SLF001
+
+
+def test_markdown_lint_mounts_the_tree_read_only(tmp_path: Path) -> None:
+    """The markdown-lint container sees the tree read-only, with no network."""
+    argv = local_ci.markdown_lint_docker_argv("docker", tmp_path)
+    mounts = [argv[i + 1] for i, arg in enumerate(argv) if arg == "-v"]
+    assert mounts == [f"{tmp_path}:/github/workspace:ro"]
+    assert argv[argv.index("--network") + 1] == "none"
 
 
 def test_jobs_option_filters_by_key_glob(workflows: list) -> None:

@@ -2704,16 +2704,17 @@ def _validate_segment(segment: str) -> str:
     return normalized
 
 
+def _no_snapshot_message(context: str | None = None) -> str:
+    """Return the no-snapshot message; demo-only mode says why (#1274)."""
+    where = f" ({context})" if context else ""
+    if pv.demo_mode() == "only":
+        return f"No EOD snapshot available{where} — {_SNAPSHOT_DEMO_ONLY}."
+    return f"No EOD snapshot available{where} — run the post-close snapshot job."
+
+
 def _loud_empty_rows(context: str) -> list[dict]:
     """Return a single-row loud-empty marker when no snapshot is available."""
-    return [
-        {
-            "note": (
-                f"No EOD snapshot available ({context}) — "
-                "run the post-close snapshot job."
-            )
-        }
-    ]
+    return [{"note": _no_snapshot_message(context)}]
 
 
 def _fresh_empty_rows(context: str) -> list[dict]:
@@ -2930,7 +2931,7 @@ def tt_scan_export(request: Request) -> str:
     empty_message = (
         "Latest EOD snapshot completed with no materialized plans."
         if snapshots
-        else "No EOD snapshot available — run the post-close snapshot job."
+        else _no_snapshot_message()
     )
     return (
         "### Export Plans\n\n"
@@ -3424,7 +3425,7 @@ def tt_position_signal_card(request: Request, symbol: str = "AAPL") -> str:
         message = (
             _fresh_empty_rows(f"signal symbol={sym}")[0]["note"]
             if snapshots
-            else "No EOD snapshot available — run the post-close snapshot job."
+            else _no_snapshot_message()
         )
         return (
             f"## {sym} — Active Signal\n\n{_snapshot_markdown_header(meta)}\n\n"
@@ -3458,7 +3459,7 @@ def tt_position_plan_card(request: Request, symbol: str = "AAPL") -> str:
         message = (
             _fresh_empty_rows(f"plan symbol={sym}")[0]["note"]
             if snapshots
-            else "No EOD snapshot available — run the post-close snapshot job."
+            else _no_snapshot_message()
         )
         return (
             f"## {sym} — Trading Plan\n\n{_snapshot_markdown_header(meta)}\n\n"
@@ -3825,6 +3826,11 @@ def tt_execute_paper_status_markdown(request: Request) -> str:
     rather than an error — same discipline as the JSON version.
     """
     _require_auth(request)
+    if pv.demo_mode() == "only":
+        # PI_DEMO_MODE=only (#1274): never open the operator's paper engine
+        # (MySQL by default), so no real cash, positions or P&L can show.
+        pv.mark_unavailable(_PAPER_DEMO_ONLY)
+        return f"## Paper Trading Engine\n\n**Unavailable:** {_PAPER_DEMO_ONLY}."
 
     # pylint: disable=import-outside-toplevel
     try:
@@ -3879,6 +3885,11 @@ def tt_execute_paper_status_markdown(request: Request) -> str:
 
 _PAPER_UNREACHABLE = (
     "the paper engine is unreachable (check PI_PAPER_ENGINE and its database)"
+)
+#: Paper-status reason in ``PI_DEMO_MODE=only`` (#1274).
+_PAPER_DEMO_ONLY = (
+    "PI_DEMO_MODE=only: the operator paper engine is not read, and there is "
+    "no sample paper account"
 )
 
 
@@ -4648,6 +4659,16 @@ def tt_execute_paper_status(request: Request) -> dict:
     state, not an error.
     """
     _require_auth(request)
+    if pv.demo_mode() == "only":
+        # PI_DEMO_MODE=only (#1274): the operator paper engine is not opened.
+        return {
+            "account": None,
+            "positions": [],
+            "pending_order_count": 0,
+            "filled_order_count": 0,
+            "data_state": DataState.UNAVAILABLE.value,
+            "note": _PAPER_DEMO_ONLY,
+        }
 
     # pylint: disable=import-outside-toplevel
     try:

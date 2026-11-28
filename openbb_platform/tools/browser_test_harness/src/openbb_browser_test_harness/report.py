@@ -12,6 +12,15 @@ from pathlib import Path
 from .steps import Step, StepResult, Story
 
 
+def summarize(results: list[StepResult]) -> dict[str, int]:
+    """Count OK, FAIL and GALLERY-ONLY verdicts (#1274)."""
+    return {
+        "ok": sum(1 for r in results if r.verdict == "OK"),
+        "fail": sum(1 for r in results if r.verdict == "FAIL"),
+        "gallery_only": sum(1 for r in results if r.verdict not in ("OK", "FAIL")),
+    }
+
+
 def write_report_json(
     out_path: Path,
     story: Story,
@@ -26,12 +35,14 @@ def write_report_json(
         "total_steps": len(results),
         "passed": sum(1 for r in results if r.ok),
         "failed": sum(1 for r in results if not r.ok),
+        "verdicts": summarize(results),
         "steps": [
             {
                 "step_id": r.step_id,
                 "human_title": steps_by_id[r.step_id].human_title,
                 "notebook_ref": steps_by_id[r.step_id].notebook_ref,
                 "ok": r.ok,
+                "verdict": r.verdict,
                 "duration_ms": r.duration_ms,
                 "screenshot_path": r.screenshot_path,
                 "screenshot_sha256": r.screenshot_sha256,
@@ -52,21 +63,22 @@ def write_report_md(
     steps_by_id: dict[str, Step],
 ) -> None:
     """Human-readable report."""
-    passed = sum(1 for r in results if r.ok)
-    failed = sum(1 for r in results if not r.ok)
+    counts = summarize(results)
+    failed = counts["fail"]
     lines: list[str] = [
         f"# {story.title} — Test Report",
         "",
         f"**Generated:** {datetime.now(timezone.utc).isoformat()}",
         "",
-        f"**Steps:** {len(results)} total, {passed} passed, {failed} failed",
+        f"**Steps:** {len(results)} total, {counts['ok']} OK, {failed} FAIL, "
+        f"{counts['gallery_only']} GALLERY-ONLY (API-verified)",
         "",
         "| Step | Status | Duration | Notebook |",
         "|---|---|---:|---|",
     ]
     for r in results:
         step = steps_by_id[r.step_id]
-        badge = "✅" if r.ok else "❌"
+        badge = {"OK": "✅", "FAIL": "❌"}.get(r.verdict, r.verdict)
         lines.append(
             f"| `{r.step_id}` — {step.human_title} | {badge} | "
             f"{r.duration_ms}ms | {step.notebook_ref} |"

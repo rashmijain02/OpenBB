@@ -33,14 +33,16 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from ..redact import assert_screenshot_clean
 from ..selectors import (
+    GALLERY_ONLY,
     RENDERED_WIDGETS_JS,
     RenderedWidget,
     WidgetSelector,
+    is_gallery_only,
     judge_rendered,
     load_widget_tabs,
     match_rendered,
@@ -50,6 +52,10 @@ from ..steps import ActionKind, Step, StepResult
 
 if TYPE_CHECKING:
     from playwright.async_api import BrowserContext, Page, Playwright
+
+
+#: Checkout root (``src/openbb_browser_test_harness/drivers`` -> repo).
+_REPO_ROOT = Path(__file__).resolve().parents[6]
 
 
 class WorkspaceDriverError(RuntimeError):
@@ -168,6 +174,12 @@ class WorkspaceDriver:
     dashboard_name: str | None = None
     #: How long a step waits for its widget to render (seconds, #1274).
     widget_settle_s: float = 15.0
+    #: Browser viewport (#1274 re-run): Workspace mounts only on-screen cards,
+    #: and Playwright's 1280x720 default leaves most of a tab unmounted. Each
+    #: widget is also scrolled into view before it is judged.
+    viewport: dict[str, int] | None = field(
+        default_factory=lambda: {"width": 1600, "height": 1200}
+    )
 
     #: If None, spawn a fresh uvicorn on a random ephemeral 127.0.0.1 port
     #: (#1789). If set, attach to an existing backend.
@@ -201,6 +213,15 @@ class WorkspaceDriver:
             )
         self._spawn_backend = self.backend_url is None
         self._resolved_backend_url = self.backend_url
+        # A profile holds a logged-in session; it must never be committable
+        # (#1274 review PRIVACY-2).
+        repo = _REPO_ROOT.resolve()
+        profile = Path(self.profile_dir).expanduser().resolve()
+        if profile == repo or repo in profile.parents:
+            raise WorkspaceDriverError(
+                "The browser profile must live outside the repository "
+                "(default ~/.openbb_browser_test_harness/chrome_profile)."
+            )
 
     async def _spawn_widget_backend(self) -> str:
         """Spawn uvicorn on a random ephemeral port; return the base URL.
@@ -301,6 +322,8 @@ class WorkspaceDriver:
         # Workspace UI knows where to send widget requests (#1789).
         pages = self._context.pages
         self._page = pages[0] if pages else await self._context.new_page()
+        if self.viewport:
+            await self._page.set_viewport_size(self.viewport)
         target_url = self.workspace_url
         if self._resolved_backend_url:
             sep = "&" if "?" in target_url else "?"
@@ -470,7 +493,8 @@ class WorkspaceDriver:
         rendered: RenderedWidget | None = None
         matched_by = "n/a"
         tab: str | None = None
-        if selector is not None:
+        gallery = selector is not None and is_gallery_only(selector.widget_id)
+        if selector is not None and not gallery:
             tab = await self._open_widget_tab(selector)
             rendered, matched_by = await self._await_widget(selector)
 
@@ -499,7 +523,7 @@ class WorkspaceDriver:
 
         widget_visible: object = "n/a"
         not_blank: object = "n/a"
-        if selector is not None:
+        if selector is not None and not gallery:
             widget_visible, not_blank = judge_rendered(selector, rendered)
 
         duration_ms = int((time.monotonic() - start) * 1000)
@@ -517,7 +541,16 @@ class WorkspaceDriver:
         if step.action == ActionKind.NAVIGATE:
             observations["current_url"] = self._page.url
 
-        ok, error = step_verdict(selector, widget_visible, not_blank)
+        status: str | None = None
+        if gallery:
+            # No app tab places this widget (#1274 lead decision): verify the
+            # story step through the backend; never claim it was seen.
+            ok, observed, error = await self._api_verify(step)
+            observations["gallery_only"] = True
+            observations["api_status_code"] = observed
+            status = GALLERY_ONLY if ok else None
+        else:
+            ok, error = step_verdict(selector, widget_visible, not_blank)
 
         return StepResult(
             step_id=step.id,
@@ -527,7 +560,19 @@ class WorkspaceDriver:
             observations=observations,
             error=error,
             screenshot_sha256=screenshot_sha,
+            status=status,
         )
+
+    async def _api_verify(self, step: Step) -> tuple[bool, int | None, str | None]:
+        """Call the step's endpoint on the widget backend (gallery-only steps)."""
+        import httpx  # pylint: disable=import-outside-toplevel
+
+        if not self._resolved_backend_url:
+            return False, None, "gallery_only_api: no backend URL"
+        async with httpx.AsyncClient(
+            base_url=self._resolved_backend_url, timeout=self.step_timeout_s * 3
+        ) as client:
+            return await api_verify_step(client, step)
 
     async def _rendered_widgets(self) -> list[RenderedWidget]:
         """Read one record per rendered grid item from the live DOM."""
@@ -562,15 +607,85 @@ class WorkspaceDriver:
     async def _await_widget(
         self, selector: WidgetSelector
     ) -> tuple[RenderedWidget | None, str]:
-        """Poll the DOM until the widget renders content or the settle time ends."""
+        """Find, scroll into view and poll the widget until it renders content.
+
+        Workspace mounts a card only when its grid item is on screen, so an
+        unmatched widget is searched for by scrolling every not-yet-mounted
+        grid item into view once (#1274 re-run). A matched widget is scrolled
+        into view before it is judged. A widget still unmatched after the
+        scan stays unseen, which fails the step.
+        """
         assert self._page is not None
         deadline = time.monotonic() + self.widget_settle_s
+        scanned = False
+        scrolled: set[str] = set()
         while True:
-            item, how = match_rendered(selector, await self._rendered_widgets())
+            items = await self._rendered_widgets()
+            item, how = match_rendered(selector, items)
+            if item is None and not scanned:
+                scanned = True
+                item, how = await self._scan_for_widget(selector, items, scrolled)
+            if item is not None and item.uid not in scrolled:
+                await self._scroll_into_view(item.uid)
+                scrolled.add(item.uid)
+                item, how = match_rendered(selector, await self._rendered_widgets())
             visible, not_blank = judge_rendered(selector, item)
             if (visible and not_blank) or time.monotonic() >= deadline:
                 return item, how
             await asyncio.sleep(0.5)
+
+    async def _scroll_into_view(self, uid: str) -> None:
+        """Scroll one grid item on screen so Workspace mounts its card."""
+        assert self._page is not None
+        safe = uid.replace('"', r"\"")
+        with contextlib.suppress(Exception):
+            await self._page.locator(
+                f'[data-widget-id="{safe}"]'
+            ).first.scroll_into_view_if_needed(timeout=5000)
+            await asyncio.sleep(0.3)
+
+    async def _scan_for_widget(
+        self,
+        selector: WidgetSelector,
+        items: list[RenderedWidget],
+        scrolled: set[str],
+    ) -> tuple[RenderedWidget | None, str]:
+        """Scroll each unmounted grid item into view until the widget matches."""
+        for pending in items:
+            if pending.widget_ids or pending.title or pending.uid in scrolled:
+                continue
+            await self._scroll_into_view(pending.uid)
+            scrolled.add(pending.uid)
+            item, how = match_rendered(selector, await self._rendered_widgets())
+            if item is not None:
+                return item, how
+        return None, "none"
+
+
+async def api_verify_step(
+    client: Any, step: Step
+) -> tuple[bool, int | None, str | None]:
+    """Return ``(ok, status_code, error)`` for one step called on the backend.
+
+    Passes when the endpoint answers the step's ``expected_status``. The body
+    is not echoed (it can hold widget data); only the status is reported.
+    """
+    path = step.endpoint or ""
+    path = path if path.startswith("/") else f"/{path}"
+    try:
+        response = await client.get(path, params=step.params)
+    except Exception as exc:  # noqa: BLE001 - any transport failure fails the step
+        return False, None, f"gallery_only_api: {type(exc).__name__}"
+    if response.status_code != step.expected_status:
+        return (
+            False,
+            response.status_code,
+            (
+                f"gallery_only_api: expected_status={step.expected_status} "
+                f"got_status={response.status_code}"
+            ),
+        )
+    return True, response.status_code, None
 
 
 def step_verdict(

@@ -330,6 +330,11 @@ def _glob_regex(pattern: str) -> str:
     i = 0
     while i < len(pattern):
         char = pattern[i]
+        if pattern.startswith("**/", i):
+            # ``**/`` is zero or more whole directories (GitHub/minimatch).
+            out.append("(?:.*/)?")
+            i += 3
+            continue
         if pattern.startswith("**", i):
             out.append(".*")
             i += 2
@@ -747,6 +752,21 @@ def _bind(func: Callable[[Path, str], str], venv: Path) -> Callable[[str], str]:
     return lambda name: func(venv, name)
 
 
+def markdown_lint_docker_argv(docker: str, tree: Path) -> list[str]:
+    """Return the markdown-lint ``docker run`` prefix: read-only tree, no network."""
+    return [
+        docker,
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "-v",
+        f"{tree}:/github/workspace:ro",
+        "-w",
+        "/github/workspace",
+    ]
+
+
 def _markdown_lint(ctx: Context, sel: Selected) -> Result:
     docker = shutil.which("docker")
     if not docker or run_cmd([docker, "info"], cwd=ctx.tree, timeout=60)[0] != 0:
@@ -757,18 +777,7 @@ def _markdown_lint(ctx: Context, sel: Selected) -> Result:
     )
     image = step["uses"].removeprefix("docker://")
     args = str((step.get("with") or {}).get("args", "")).split()
-    mount = f"{ctx.tree}:/github/workspace"
-    argv = [
-        docker,
-        "run",
-        "--rm",
-        "--network",
-        "none",
-        "-v",
-        mount,
-        "-w",
-        "/github/workspace",
-    ]
+    argv = markdown_lint_docker_argv(docker, ctx.tree)
     return run_steps(
         ctx,
         sel.key,

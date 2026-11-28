@@ -61,11 +61,28 @@ set (the CLI sets it per story), the driver first clicks the tab that holds
 the widget in `apps.json`. `tests/fixtures/workspace_dom_selfhosted.html`
 is the synthetic DOM the mapping is unit-tested on.
 
+Workspace mounts a card only when its grid item is on screen. The driver
+uses a 1600x1200 viewport and scrolls each widget's grid item into view
+(and, to find an unmatched widget, every not-yet-mounted item) before it
+judges it; a widget still unseen after that fails the step.
+
+Some story widgets are not placed on any app tab and exist only in the
+Workspace widget gallery (`selectors.GALLERY_ONLY_WIDGETS`). Their steps are
+verified through the backend (status code only) and reported as
+`GALLERY-ONLY (API-verified)`, counted apart from OK and FAIL. A test keeps
+every story widget either placed in `apps.json` or on that list.
+
 ```powershell
 python -m openbb_browser_test_harness.run --story techtrade --mode workspace `
   --workspace-url http://127.0.0.1:1420 --backend-url http://127.0.0.1:6120 `
-  --headless --profile-dir .dev-cycle/browser-acceptance/tmp/chrome_profile
+  --headless --profile-dir "$env:TEMP\obb-harness-profile"
 ```
+
+A browser profile holds a logged-in Workspace session (cookies). Keep it
+**outside the repository**: use the default
+`~/.openbb_browser_test_harness/chrome_profile/` (omit `--profile-dir`) or a
+temporary directory, and delete a temporary profile after the run. Never
+point `--profile-dir` inside the checkout, where it could be committed.
 
 `--headed` (the default) shows Chromium; `--app-name` overrides the app
 whose tabs are opened; `--dashboard "<visible name>"` opens the dashboard

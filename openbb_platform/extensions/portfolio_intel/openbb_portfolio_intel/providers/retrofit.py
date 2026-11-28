@@ -205,6 +205,30 @@ def _lookup(key: tuple[str, ...]) -> tuple[bool, bool, Any]:
         return True, ok, value
 
 
+def _fresh_exception(cached: BaseException) -> BaseException:
+    """Return a new exception equal to a cached failure, without its traceback.
+
+    Re-raising the cached object would append every hit's frames to its
+    shared ``__traceback__`` (#1274 review CODE-2). A shallow copy keeps the
+    type, ``args`` and attributes (``status_code``) but no traceback, cause
+    or context; an exception that cannot be copied is rebuilt from its type
+    and args, and only as a last resort is the cached object reused with its
+    traceback cleared.
+    """
+    try:
+        fresh = copy.copy(cached)
+    except Exception:  # noqa: BLE001 - exotic constructor signatures
+        try:
+            fresh = type(cached)(*cached.args)
+        except Exception:  # noqa: BLE001
+            return cached.with_traceback(None)
+    if fresh is cached:
+        return cached.with_traceback(None)
+    fresh.__traceback__ = None
+    fresh.__cause__ = fresh.__context__ = None
+    return fresh
+
+
 def _cached_dispatch(endpoint: str, family: str, tier: str, **kwargs: Any) -> Any:
     """Dispatch one tier call through the short-TTL result cache."""
     if provider_cache_ttl() <= 0:
@@ -213,13 +237,14 @@ def _cached_dispatch(endpoint: str, family: str, tier: str, **kwargs: Any) -> An
     hit, ok, value = _lookup(key)
     if hit:
         if not ok:
-            raise value
+            raise _fresh_exception(value)
         return copy.deepcopy(value)
     try:
         result = _dispatch(tier, family, **kwargs)
     except Exception as exc:
         if not _is_auth_failure(exc):
-            _store(key, False, exc, provider_cache_negative_ttl())
+            # Keep a traceback-free copy: the raised object keeps growing.
+            _store(key, False, _fresh_exception(exc), provider_cache_negative_ttl())
         raise
     ttl = provider_cache_negative_ttl() if _is_empty(result) else provider_cache_ttl()
     _store(key, True, copy.deepcopy(result), ttl)

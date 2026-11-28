@@ -8,6 +8,12 @@ hermetic subprocess (``_demo_only_probe.py``) whose network, pymysql,
 fmp_cached, tier-dispatch, health-probe and snapshot-store seams record each
 attempt. A ``fallback`` control run proves the seams are not vacuous.
 
+Two ``only`` runs are made: one with the sqlite ``PI_PAPER_*`` overrides the
+other hermetic probes use, and one with the operator defaults
+(``PI_PAPER_ENGINE=mysql``) so the paper-status widgets cannot reach the
+operator's MySQL paper account (review PRIVACY-1). The control run also uses
+the defaults and must record a MySQL call, so the test discriminates.
+
 HOME is a sentinel temp dir that already holds a ``.portfolio_intel/
 snapshot.db`` that is not a database, so opening it would also be visible.
 """
@@ -39,15 +45,20 @@ def _hermetic_env(home: Path, **extra: str) -> dict[str, str]:
     return module.hermetic_env(home, sys.path, **extra)
 
 
-def _run(home: Path, mode: str) -> dict[str, Any]:
+def _run(home: Path, mode: str, *, paper_overrides: bool = True) -> dict[str, Any]:
     store = home / ".portfolio_intel"
     store.mkdir(parents=True)
     (store / "snapshot.db").write_bytes(SENTINEL)
     output = home / "demo-only.json"
+    env = _hermetic_env(home, PI_DEMO_MODE=mode)
+    if not paper_overrides:
+        # Operator defaults: PI_PAPER_ENGINE unset means the MySQL engine.
+        env.pop("PI_PAPER_ENGINE", None)
+        env.pop("PI_PAPER_DB", None)
     completed = subprocess.run(  # noqa: S603 - fixed interpreter + in-repo probe
         [sys.executable, str(PROBE), "run", str(output)],
         cwd=home,
-        env=_hermetic_env(home, PI_DEMO_MODE=mode),
+        env=env,
         capture_output=True,
         text=True,
         timeout=900,
@@ -68,9 +79,14 @@ def _only(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     return _run(tmp_path_factory.mktemp("only"), "only")
 
 
+@pytest.fixture(scope="module", name="only_default_paper")
+def _only_default_paper(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+    return _run(tmp_path_factory.mktemp("only-mysql"), "only", paper_overrides=False)
+
+
 @pytest.fixture(scope="module", name="fallback")
 def _fallback(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
-    return _run(tmp_path_factory.mktemp("fallback"), "fallback")
+    return _run(tmp_path_factory.mktemp("fallback"), "fallback", paper_overrides=False)
 
 
 def _by_kind(calls: list[list[str]]) -> dict[str, list[str]]:
@@ -88,7 +104,24 @@ def test_control_run_shows_the_seams_record_real_calls(
     """In ``fallback`` mode the same seams see tier, MySQL and probe calls."""
     kinds = _by_kind(fallback["calls"])
     assert fallback["mode"] == "fallback"
-    assert {"tier", "health_probe", "snapshot_store"} <= set(kinds), sorted(kinds)
+    assert {"tier", "health_probe", "snapshot_store", "mysql"} <= set(kinds), sorted(
+        kinds
+    )
+    # The operator-default paper engine is a MySQL read (PRIVACY-1 control).
+    assert "tt_execute_paper_status" in kinds["mysql"]
+
+
+def test_demo_only_with_operator_paper_defaults_reads_no_mysql(
+    only_default_paper: dict[str, Any],
+) -> None:
+    """Without the sqlite overrides no widget reaches MySQL or fmp_cached."""
+    kinds = _by_kind(only_default_paper["calls"])
+    assert not {"mysql", "fmp_cached"} & set(kinds), kinds
+    assert _by_kind(only_default_paper["calls"]) == {}
+    paper = only_default_paper["responses"]["tt_execute_paper_status"]
+    assert paper["status"] == 200 and paper["state"] == "unavailable"
+    raw = only_default_paper["responses"]["tt_execute_paper_status[json]"]
+    assert raw["status"] == 200
 
 
 def test_demo_only_mode_makes_no_provider_cache_or_store_call(

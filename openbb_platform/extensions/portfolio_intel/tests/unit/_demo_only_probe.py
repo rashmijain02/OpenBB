@@ -7,8 +7,9 @@ and dotenv guards of ``_workspace_endpoint_probe.py`` and wraps every seam a
 widget could use to reach outside data, recording each attempt:
 
 - ``socket`` / ``dns``: a socket connect or DNS lookup (still refused);
-- ``mysql``: ``pymysql.connect`` (raises ``OperationalError``);
-- ``fmp_cached``: the fmp_cached MySQL pool and every fmp_cached fetcher;
+- ``mysql``: ``pymysql.connect`` (raises ``OperationalError``) and the
+  fmp_cached MySQL pool (the paper engine's default backend);
+- ``fmp_cached``: every fmp_cached fetcher (its MySQL pool is ``mysql``);
 - ``tier``: ``providers.retrofit._dispatch`` (a provider tier call);
 - ``health_probe``: the provider-health reachability probe;
 - ``snapshot_store``: the operator EOD snapshot store factory;
@@ -111,7 +112,8 @@ def _wrap_fmp_cached() -> None:
     from openbb_fmp_cached.utils import database
 
     def _pool(*_args: Any, **_kwargs: Any) -> Any:
-        _record("fmp_cached", "connection_pool")
+        # The fmp_cached pool is a MySQL connection (paper engine, caches).
+        _record("mysql", "fmp_cached_pool")
         raise BlockedCall("fmp_cached pool blocked in demo-only probe")
 
     database.get_connection_pool = _pool
@@ -188,6 +190,8 @@ def _requests(widgets: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
                 out.append((f"{widget_id}[{key}]", path, {**params, key: NON_DEMO}))
         if widget.get("type") == "chart":
             out.append((f"{widget_id}[raw]", path, {**params, "raw": "true"}))
+    # The JSON twin of the paper-status widget (PRIVACY-1).
+    out.append(("tt_execute_paper_status[json]", "/tt/execute/paper-status", {}))
     return out
 
 
