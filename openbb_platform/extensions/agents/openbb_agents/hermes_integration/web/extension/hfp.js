@@ -13,6 +13,12 @@
  * stops at a terminal outcome or `run_unavailable`. The last open run id is kept in
  * the extension-owned storage, so a reloaded page observes the same run again; it
  * never re-sends a chat turn or starts anything.
+ *
+ * One card per id per page: a second marker of a plan or run already shown renders a
+ * pointer and sends nothing. An approved plan card polls `GET /plans/<id>` with the
+ * same backoff until the agent's start gives it a `run_id`, then mounts the run card.
+ * A `bad_nonce` approval (another tab read the plan later) re-reads the plan for a
+ * fresh nonce and enables Approve again.
  */
 (function (root, factory) {
   "use strict";
@@ -93,6 +99,7 @@
       },
       getWorkflows: function () { return call("GET", "/workflows"); },
       // One request per plan while it is in flight: a double click sends once.
+      // A settled request is forgotten, so a later Approve sends again.
       approve: function (card) {
         if (!card || !PLAN_ID.test(card.plan_id) || !card.approval_nonce) {
           return Promise.resolve({ ok: false, code: "bad_nonce" });
@@ -102,6 +109,9 @@
           inflight[key] = call("POST", "/plans/" + key + "/approve", {
             plan_sha256: card.plan_sha256,
             approval_nonce: card.approval_nonce,
+          }).then(function (res) {
+            delete inflight[key];
+            return res;
           });
         }
         return inflight[key];
@@ -109,10 +119,10 @@
     };
   }
 
-  // Poll a run card until its outcome is terminal; returns a stop function.
-  // Waits 2 s, then doubles while the card is unchanged, up to 10 s; any change
-  // (an outcome step, a reconnect after `sidecar_unreachable`) resets it to 2 s.
-  function pollRun(client, runId, onCard, opts) {
+  // Poll `read()` until `isDone(res)`; returns a stop function. Waits 2 s, then
+  // doubles while `signature(res)` is unchanged, up to 10 s; any change (an outcome
+  // step, a reconnect after `sidecar_unreachable`) resets it to 2 s.
+  function poll(read, onRes, isDone, signature, opts) {
     var o = opts || {};
     var wait = o.setTimeout || setTimeout;
     var delay = 0;
@@ -120,15 +130,14 @@
     var stopped = false;
     function tick() {
       if (stopped) { return; }
-      client.getRun(runId).then(function (res) {
+      read().then(function (res) {
         if (stopped) { return; }
-        onCard(res);
-        var done = res.ok ? res.data && TERMINAL[res.data.outcome] : FINAL[res.code];
-        if (done) {
+        onRes(res);
+        if (isDone(res)) {
           if (o.onTerminal) { o.onTerminal(res); }
           return;
         }
-        var sig = res.ok ? "ok:" + res.data.outcome + ":" + (res.data.code || "") : "err:" + res.code;
+        var sig = signature(res);
         delay = sig === last ? Math.min(POLL_MAX_MS, delay * 2) : POLL_MIN_MS;
         last = sig;
         wait(tick, delay);
@@ -136,6 +145,33 @@
     }
     tick();
     return function () { stopped = true; };
+  }
+
+  // Poll a run card until its outcome is terminal or the run is unavailable.
+  function pollRun(client, runId, onCard, opts) {
+    return poll(
+      function () { return client.getRun(runId); },
+      onCard,
+      function (res) { return res.ok ? !!(res.data && TERMINAL[res.data.outcome]) : !!FINAL[res.code]; },
+      function (res) { return res.ok ? "ok:" + res.data.outcome + ":" + (res.data.code || "") : "err:" + res.code; },
+      opts
+    );
+  }
+
+  // Poll an approved plan until it names its run or stops being approved (started,
+  // expired, gone). A pending plan is never polled: each of its reads mints a new
+  // nonce. Transport errors keep polling.
+  var PLAN_FINAL = { plan_not_found: 1, plan_expired: 1, plan_superseded: 1 };
+  function pollPlan(client, planId, onCard, opts) {
+    return poll(
+      function () { return client.getPlan(planId); },
+      onCard,
+      function (res) {
+        return res.ok ? !!res.data.run_id || res.data.state !== "approved" : !!PLAN_FINAL[res.code];
+      },
+      function (res) { return res.ok ? "ok:" + res.data.state : "err:" + res.code; },
+      opts
+    );
   }
 
   // Extension-owned storage (hermesExt handle); every access is best effort.
@@ -196,9 +232,24 @@
     target.appendChild(box);
   }
 
+  // A second marker of a card already on the page: a pointer, no request.
+  function renderPointer(doc, target, id) {
+    var box = el(doc, "div", "hfp-card hfp-pointer", "card_shown_above");
+    box.setAttribute("data-hfp-ref", id);
+    target.appendChild(box);
+  }
+
   // Mount a polling run card; the run id is remembered until it is terminal.
+  // A run already polled on this page (`opts.mounted`) gets a pointer and null.
   function mountRun(doc, target, client, runId, opts) {
     var o = opts || {};
+    if (o.mounted) {
+      if (o.mounted[runId]) {
+        renderPointer(doc, target, runId);
+        return null;
+      }
+      o.mounted[runId] = 1;
+    }
     rememberRun(o.storage, runId);
     var poll = {};
     Object.keys(o).forEach(function (k) { poll[k] = o[k]; });
@@ -217,7 +268,24 @@
     return runId ? mountRun(doc, target, client, runId, opts) : null;
   }
 
-  function renderPlan(doc, target, client, card, opts) {
+  function mountRunSlot(doc, box, client, runId, opts) {
+    var runBox = el(doc, "div", "hfp-run-slot");
+    box.appendChild(runBox);
+    return mountRun(doc, runBox, client, runId, opts);
+  }
+
+  // After approval: wait (GET /plans/<id>) for the agent's start, then show the run.
+  function watchPlan(doc, box, client, planId, opts) {
+    var o = opts || {};
+    return pollPlan(client, planId, function (res) {
+      if (res.ok) {
+        box.setAttribute("data-hfp-state", res.data.state);
+        if (res.data.run_id) { mountRunSlot(doc, box, client, res.data.run_id, o); }
+      }
+    }, { setTimeout: o.setTimeout });
+  }
+
+  function renderPlan(doc, target, client, card, opts, notice) {
     target.textContent = "";
     var box = el(doc, "div", "hfp-card hfp-plan");
     box.setAttribute("data-hfp-plan", card.plan_id);
@@ -235,29 +303,57 @@
       button.addEventListener("click", function () {
         button.disabled = true;
         client.approve(card).then(function (res) {
+          if (!res.ok && res.code === "bad_nonce") {
+            // A later read replaced the nonce: re-read for a fresh one.
+            loadPlan(doc, target, client, card.plan_id, opts, "bad_nonce");
+            return;
+          }
           status.textContent = res.ok ? res.data.result : res.code;
           status.setAttribute("data-hfp-code", res.ok ? res.data.result : res.code);
           if (res.ok) {
             box.setAttribute("data-hfp-state", res.data.card.state);
+            watchPlan(doc, box, client, card.plan_id, opts);
           }
         });
       });
       box.appendChild(button);
     } else if (card.run_id) {
-      var runBox = el(doc, "div", "hfp-run-slot");
-      box.appendChild(runBox);
-      mountRun(doc, runBox, client, card.run_id, opts);
+      mountRunSlot(doc, box, client, card.run_id, opts);
+    } else if (card.state === "approved") {
+      watchPlan(doc, box, client, card.plan_id, opts);
+    }
+    if (notice) {
+      status.textContent = notice;
+      status.setAttribute("data-hfp-code", notice);
     }
     box.appendChild(status);
     box.appendChild(el(doc, "div", "hfp-note", "paper_approval_terminal_only"));
     target.appendChild(box);
   }
 
-  function mountPlan(doc, target, client, planId, opts) {
+  function loadPlan(doc, target, client, planId, opts, notice) {
     return client.getPlan(planId).then(function (res) {
-      if (res.ok) { renderPlan(doc, target, client, res.data, opts); } else { renderError(doc, target, res.code); }
+      if (res.ok) {
+        renderPlan(doc, target, client, res.data, opts, notice);
+      } else {
+        renderError(doc, target, res.code);
+      }
       return res;
     });
+  }
+
+  // One plan card per plan id per page (`opts.mounted`); a repeat marker gets a
+  // pointer and sends nothing (every read of a pending plan mints a new nonce).
+  function mountPlan(doc, target, client, planId, opts) {
+    var o = opts || {};
+    if (o.mounted) {
+      if (o.mounted[planId]) {
+        renderPointer(doc, target, planId);
+        return Promise.resolve(null);
+      }
+      o.mounted[planId] = 1;
+    }
+    return loadPlan(doc, target, client, planId, o);
   }
 
   // Starter list: a click pre-fills the composer; nothing is ever sent (W4).
@@ -293,7 +389,7 @@
   function scan(win, client, opts) {
     var doc = win.document;
     var o = opts || {};
-    var mounted = o.mounted || {};
+    if (!o.mounted) { o.mounted = {}; }
     var nodes = doc.querySelectorAll(".msg-body, .message-content, [data-hfp-scan]");
     Array.prototype.forEach.call(nodes, function (node) {
       if (node.getAttribute("data-hfp-mounted")) { return; }
@@ -305,8 +401,7 @@
         node.appendChild(slot);
         if (f.kind === "plan") {
           mountPlan(doc, slot, client, f.id, o);
-        } else if (!mounted[f.id]) {
-          mounted[f.id] = 1;
+        } else {
           mountRun(doc, slot, client, f.id, o);
         }
       });
@@ -333,7 +428,6 @@
     var resume = function () {
       var resumed = lastRun(opts.storage);
       if (!resumed || opts.mounted[resumed] || !win.document.body) { return; }
-      opts.mounted[resumed] = 1;
       var slot = el(win.document, "div", "hfp-root hfp-resume");
       win.document.body.appendChild(slot);
       resumeRun(win.document, slot, client, opts);
@@ -350,6 +444,7 @@
     codeFor: codeFor,
     createClient: createClient,
     pollRun: pollRun,
+    pollPlan: pollPlan,
     POLL_MIN_MS: POLL_MIN_MS,
     POLL_MAX_MS: POLL_MAX_MS,
     lastRun: lastRun,

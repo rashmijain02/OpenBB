@@ -229,3 +229,190 @@ test("a mounted run is remembered for resume until it is terminal", async (t) =>
   stop();
   assert.equal(H.lastRun(storage), RUN);
 });
+
+// ---- fix round (#1342): approval recovery, dedupe, plan -> run card -------------
+
+// A DOM stand-in whose `textContent = ""` clears children, with clickable nodes.
+function richDoc() {
+  function node(tag) {
+    let text = "";
+    const n = {
+      tag, children: [], attrs: {}, listeners: {}, disabled: false, className: "",
+      appendChild(c) { this.children.push(c); },
+      setAttribute(k, v) { this.attrs[k] = v; },
+      addEventListener(t, f) { this.listeners[t] = f; },
+    };
+    Object.defineProperty(n, "textContent", {
+      get: () => text,
+      set: (v) => { text = v; if (v === "") { n.children = []; } },
+    });
+    return n;
+  }
+  return { createElement: node };
+}
+
+function findAll(root, pred, out = []) {
+  if (pred(root)) { out.push(root); }
+  (root.children || []).forEach((c) => findAll(c, pred, out));
+  return out;
+}
+
+const byClass = (cls) => (n) => (n.className || "").split(" ").includes(cls);
+const SHA = "c".repeat(64);
+
+function pendingCard(nonce) {
+  return {
+    status: 200,
+    body: {
+      plan_id: PLAN, state: "pending", plan_sha256: SHA, workflow_id: "synthetic.basket_xray",
+      version: "1", can_approve: true, approval_nonce: nonce, run_id: null, stages: [],
+    },
+  };
+}
+
+function planCard(state, runId) {
+  return {
+    status: 200,
+    body: {
+      plan_id: PLAN, state, plan_sha256: SHA, workflow_id: "synthetic.basket_xray",
+      version: "1", can_approve: false, approval_nonce: null, run_id: runId, stages: [],
+    },
+  };
+}
+
+// Route fake: answers by method + path, so call order between routes does not matter.
+function routeFetch(routes) {
+  const calls = [];
+  const fn = (url, init) => {
+    calls.push({ url, init });
+    const key = init.method + " " + url.slice(H.PROXY_PREFIX.length);
+    const queue = routes[key];
+    if (!queue) { throw new Error("unexpected " + key); }
+    const next = queue.length > 1 ? queue.shift() : queue[0];
+    return Promise.resolve({ status: next.status, json: () => Promise.resolve(next.body) });
+  };
+  fn.calls = calls;
+  fn.count = (method, p) => calls.filter((c) => c.init.method === method && c.url === H.PROXY_PREFIX + p).length;
+  return fn;
+}
+
+test("a settled approval is forgotten: after bad_nonce the next Approve sends again", async () => {
+  const fetch = fakeFetch([
+    { status: 403, body: { error: "bad_nonce" } },
+    { status: 200, body: { result: "approved", card: { state: "approved" } } },
+  ]);
+  const client = H.createClient(fetch);
+  const card = { plan_id: PLAN, plan_sha256: SHA, approval_nonce: "d".repeat(64) };
+  assert.equal((await client.approve(card)).code, "bad_nonce");
+  const second = await client.approve({ ...card, approval_nonce: "e".repeat(64) });
+  assert.equal(fetch.calls.length, 2);
+  assert.equal(second.ok, true);
+  assert.equal(JSON.parse(fetch.calls[1].init.body).approval_nonce, "e".repeat(64));
+});
+
+test("plan card: bad_nonce re-reads the plan and Approve works with the fresh nonce", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const fetch = routeFetch({
+    ["GET /plans/" + PLAN]: [pendingCard("n".repeat(64)), pendingCard("f".repeat(64)), planCard("approved", null)],
+    ["POST /plans/" + PLAN + "/approve"]: [
+      { status: 403, body: { error: "bad_nonce" } },
+      { status: 200, body: { result: "approved", card: { state: "approved" } } },
+    ],
+  });
+  const doc = richDoc();
+  const target = doc.createElement("div");
+  await H.mountPlan(doc, target, H.createClient(fetch), PLAN, { mounted: {} });
+  findAll(target, byClass("hfp-approve"))[0].listeners.click();
+  await flush();
+  // Re-read: a new card with an enabled button and the bad_nonce notice.
+  assert.equal(fetch.count("GET", "/plans/" + PLAN), 2);
+  const button = findAll(target, byClass("hfp-approve"));
+  assert.equal(button.length, 1);
+  assert.equal(button[0].disabled, false);
+  assert.equal(findAll(target, byClass("hfp-status"))[0].attrs["data-hfp-code"], "bad_nonce");
+  button[0].listeners.click();
+  await flush();
+  const posts = fetch.calls.filter((c) => c.init.method === "POST");
+  assert.equal(posts.length, 2);
+  assert.equal(JSON.parse(posts[1].init.body).approval_nonce, "f".repeat(64));
+  assert.equal(findAll(target, byClass("hfp-status"))[0].attrs["data-hfp-code"], "approved");
+});
+
+test("one plan card per plan id: a repeat marker renders a pointer and sends nothing", async () => {
+  const fetch = routeFetch({ ["GET /plans/" + PLAN]: [pendingCard("n".repeat(64))] });
+  const doc = richDoc();
+  const opts = { mounted: {} };
+  const first = doc.createElement("div");
+  const second = doc.createElement("div");
+  await H.mountPlan(doc, first, H.createClient(fetch), PLAN, opts);
+  await H.mountPlan(doc, second, H.createClient(fetch), PLAN, opts);
+  assert.equal(fetch.calls.length, 1, "a second GET would mint a new nonce");
+  assert.equal(findAll(second, byClass("hfp-pointer"))[0].attrs["data-hfp-ref"], PLAN);
+  assert.equal(findAll(second, byClass("hfp-plan")).length, 0);
+});
+
+test("approved plan card polls the plan until the run starts, then mounts the run card", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const storage = fakeStorage({});
+  const fetch = routeFetch({
+    ["GET /plans/" + PLAN]: [pendingCard("n".repeat(64)), planCard("approved", null), planCard("started", RUN)],
+    ["POST /plans/" + PLAN + "/approve"]: [{ status: 200, body: { result: "approved", card: { state: "approved" } } }],
+    ["GET /runs/" + RUN]: [{ status: 200, body: { run_id: RUN, plan_id: PLAN, outcome: "running" } }],
+  });
+  const doc = richDoc();
+  const target = doc.createElement("div");
+  await H.mountPlan(doc, target, H.createClient(fetch), PLAN, { mounted: {}, storage });
+  findAll(target, byClass("hfp-approve"))[0].listeners.click();
+  await flush();
+  assert.equal(fetch.count("GET", "/plans/" + PLAN), 2, "first watch read right after approval");
+  assert.equal(fetch.count("GET", "/runs/" + RUN), 0);
+  t.mock.timers.tick(2000);
+  await flush();
+  assert.equal(fetch.count("GET", "/plans/" + PLAN), 3);
+  const run = findAll(target, (n) => n.attrs["data-hfp-run"] === RUN);
+  assert.equal(run.length, 1, "run card mounted inside the plan card");
+  assert.equal(H.lastRun(storage), RUN);
+  // The plan poll stopped once the run was named; only the run card polls now.
+  t.mock.timers.tick(60000);
+  await flush();
+  assert.equal(fetch.count("GET", "/plans/" + PLAN), 3);
+});
+
+test("plan polling stops when the plan expires; a pending plan card never polls", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const fetch = routeFetch({ ["GET /plans/" + PLAN]: [planCard("approved", null), planCard("approved", null), planCard("expired", null)] });
+  const doc = richDoc();
+  await H.mountPlan(doc, doc.createElement("div"), H.createClient(fetch), PLAN, { mounted: {} });
+  await flush();
+  t.mock.timers.tick(2000);
+  await flush();
+  t.mock.timers.tick(60000);
+  await flush();
+  assert.equal(fetch.count("GET", "/plans/" + PLAN), 3);
+  const again = routeFetch({ ["GET /plans/" + PLAN]: [pendingCard("n".repeat(64))] });
+  await H.mountPlan(doc, doc.createElement("div"), H.createClient(again), PLAN, {});
+  t.mock.timers.tick(60000);
+  await flush();
+  assert.equal(again.calls.length, 1, "a pending plan card does not poll");
+});
+
+test("after reload a resumed run is not polled again by its plan card", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const storage = fakeStorage({ last_run_id: RUN });
+  const fetch = routeFetch({
+    ["GET /plans/" + PLAN]: [planCard("started", RUN)],
+    ["GET /runs/" + RUN]: [{ status: 200, body: { run_id: RUN, plan_id: PLAN, outcome: "running" } }],
+  });
+  const doc = richDoc();
+  const opts = { mounted: {}, storage };
+  const client = H.createClient(fetch);
+  H.resumeRun(doc, doc.createElement("div"), client, opts);
+  const target = doc.createElement("div");
+  await H.mountPlan(doc, target, client, PLAN, opts);
+  await flush();
+  assert.equal(fetch.count("GET", "/runs/" + RUN), 1, "one poller per run");
+  assert.equal(findAll(target, byClass("hfp-pointer"))[0].attrs["data-hfp-ref"], RUN);
+  t.mock.timers.tick(2000);
+  await flush();
+  assert.equal(fetch.count("GET", "/runs/" + RUN), 2);
+});
