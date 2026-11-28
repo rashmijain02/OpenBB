@@ -525,3 +525,47 @@ def test_rerun_after_refresh_keeps_prior_configs_in_n(tmp_path, snap, snap_chang
     again = experiment.run(plan_b, config, opts_b)
     assert again.appended == 0 and again.summary.n_trials_dsr == 4
     assert not (ledger_dir / "planned.v3.json").exists()
+
+
+# --- grid bounds are checked before any expansion (security MEDIUM) ----------
+
+
+def test_expand_grid_rejects_astronomical_grid_before_expanding():
+    """Grid size is a product of axis lengths, checked before expansion."""
+    import time
+
+    from openbb_backtest.validation.trials import ExperimentTooLargeError
+
+    grid = {f"p{i}": list(range(10)) for i in range(60)}  # 10**60 combinations
+    started = time.perf_counter()
+    with pytest.raises(ExperimentTooLargeError, match="experiment_too_large"):
+        experiment.expand_grid(grid, BASE)
+    assert time.perf_counter() - started < 1.0, "the grid was expanded"
+    assert len(experiment.expand_grid({"a": list(range(64))})) == 64  # at the cap
+    with pytest.raises(ExperimentTooLargeError):
+        experiment.expand_grid({"a": list(range(65))})
+
+
+def test_plan_rejects_too_many_combos_before_export(tmp_path, snap):
+    """plan() enforces the bounds before resolution or any export."""
+    from openbb_backtest.validation.trials import ExperimentTooLargeError
+
+    exports: list = []
+    opts = _options(tmp_path, snap, exports=exports)
+    config = _config()
+    folds = experiment.fold_plan(
+        experiment.session_calendar(config), "wfo", "continuous"
+    )
+    combos = [{**BASE, "rebalance_every_sessions": k} for k in range(1, 66)]
+    with pytest.raises(ExperimentTooLargeError, match="experiment_too_large"):
+        experiment.plan(
+            config,
+            combos,
+            folds.windows,
+            command="validate",
+            method="wfo",
+            policy="continuous",
+            fold_params=folds.fold_params,
+            options=opts,
+        )
+    assert exports == [], "a dataset was exported for an oversized plan"

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import date
@@ -48,6 +49,7 @@ from openbb_backtest.validation.trials import (
     CellOutcome,
     ConfigIdentity,
     Executor,
+    ExperimentTooLargeError,
     TrialLedger,
     Window,
     WindowPolicy,
@@ -67,8 +69,19 @@ _FAKE_PRECISION = 9
 def expand_grid(
     param_grid: Mapping[str, Sequence[Any]], base: Mapping[str, Any] | None = None
 ) -> list[dict[str, Any]]:
-    """Cartesian product of ``param_grid`` over ``base`` (legacy sweep order)."""
+    """Cartesian product of ``param_grid`` over ``base`` (legacy sweep order).
+
+    The grid size (product of the axis lengths) is checked against
+    ``experiment_max_configs`` *before* anything is expanded, so an oversized
+    grid fails closed with :class:`ExperimentTooLargeError` in constant time.
+    """
     names = list(param_grid)
+    size = math.prod(len(param_grid[n]) for n in names)
+    limit = DEFAULT_SETTINGS.experiment_max_configs
+    if size > limit:
+        raise ExperimentTooLargeError(
+            f"experiment_too_large: {size} configs exceeds {limit}"
+        )
     return [
         {**dict(base or {}), **dict(zip(names, values))}
         for values in itertools.product(*(param_grid[n] for n in names))
@@ -187,6 +200,16 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         raise ValueError("an experiment needs at least one configuration")
     if not windows:
         raise ValueError("an experiment needs at least one window")
+    limits = _bounds()
+    if (
+        len(combos) > limits.max_configs
+        or len(combos) * len(windows) > limits.max_cells
+    ):
+        raise ExperimentTooLargeError(  # before resolution, export or spawn
+            f"experiment_too_large: {len(combos)} configs / "
+            f"{len(combos) * len(windows)} cells exceeds "
+            f"{limits.max_configs} / {limits.max_cells}"
+        )
     cash = backend._check_config(config)  # pylint: disable=protected-access
     # pylint: disable-next=protected-access
     export = options.export or backend._default_export(options)
@@ -587,8 +610,6 @@ def validation_report(  # pylint: disable=too-many-locals
     ``None`` with its reason code (CODE-1), never 0.0.
     """
     # pylint: disable=import-outside-toplevel
-    import math
-
     from openbb_backtest.analytics import compute_metrics
     from openbb_backtest.models import FoldResult, ValidationReport
     from openbb_backtest.validation import min_backtest_length
