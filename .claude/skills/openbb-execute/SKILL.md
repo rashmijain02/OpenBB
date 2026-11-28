@@ -106,4 +106,4 @@ When `superpowers:finishing-a-development-branch` offers merge, PR or discard op
   never yfinance.
 - Never read brokerage exports directly; keep credentials and personal paths out of code, logs
   and the handoff. Notebooks are committed stripped.
-- Never commit to `portfolio`, `portfolio_validations` or `develop`; never merge into them.
+- Never commit to `portfolio`, `portfolio_validations` or `develop`; never merge locally into them.

@@ -14,7 +14,7 @@ applies them lives in the canonical skill
 | 2. Repo, Dev Strategy v4 | `openbb-spec`, `openbb-issues`, `openbb-ship` | [`.github/skills/`](../../.github/skills/) | Copilot CLI | Phases 1 and 3, small-fix route |
 | 2. Repo, Dev Strategy v4 | `openbb-execute` | [`.claude/skills/openbb-execute/`](../../.claude/skills/openbb-execute/SKILL.md) | Claude Code | Phase 2, tricky-bug/refactor route |
 | 2. Repo, Dev Strategy v4 | `speckit-*` | `.github/skills/` and `.claude/skills/` | both | Spec Kit commands |
-| 2. Repo | `openbb-dev-cycle` (new) | [`.claude/skills/openbb-dev-cycle/`](../../.claude/skills/openbb-dev-cycle/SKILL.md) | both | **Canonical** router, gates, authority profiles, env traps |
+| 2. Repo | `openbb-dev-cycle` | [`.claude/skills/openbb-dev-cycle/`](../../.claude/skills/openbb-dev-cycle/SKILL.md) | both | **Canonical** router, gates, authority profiles, env traps |
 | 2. Repo (legacy) | `/openbb-dev-cycle` command | [`.claude/commands/openbb-dev-cycle.md`](../../.claude/commands/openbb-dev-cycle.md) | Claude Code | Thin pointer to the canonical skill |
 | 2. Repo | Model policy for Copilot | [`.github/instructions/agent-model.instructions.md`](../../.github/instructions/agent-model.instructions.md) | Copilot | Matches D1 |
 | 3. Helpers | `scripts/pi_claim.py` | [`scripts/pi_claim.py`](../../scripts/pi_claim.py) | both | Targets `rashmijain02` Project 1; safe to run |
@@ -28,7 +28,7 @@ applies them lives in the canonical skill
 | G2 | Overlapping entry points (`/openbb-dev-cycle` command, `openbb-execute`, `.github/skills/openbb-*`, user-level skill); none canonical for Claude-only routes. | `.claude/skills/openbb-dev-cycle/SKILL.md` is canonical; the others link to it. |
 | G3 | The owner's operating model was not in the repo. | OM1–OM9 below; D14 in `docs/dev-strategy.md`. |
 | G4 | No CI or workflow runs `deploy/windows` Pester tests or `services/windows` .NET tests. The Windows installer shipped with 5+ defects (#1311, Windows service install cannot reach a healthy state). | Gate checklist in the canonical skill requires them locally when those paths change. Adding them to local CI is follow-up work. |
-| G5 | No gate guidance for PowerShell/Pester (needs pwsh 7 with Pester 4.10; Windows PowerShell 5.1 only has Pester 3.4), .NET tests, or live acceptance that needs admin/UAC. | Gate checklist plus a human-in-the-loop live-acceptance template in the canonical skill. |
+| G5 | No gate guidance for PowerShell/Pester (needs pwsh 7 with Pester 4.10.1; Windows PowerShell 5.1 only has Pester 3.4), .NET tests, or live acceptance that needs admin/UAC. | Gate checklist plus a human-in-the-loop live-acceptance template in the canonical skill. |
 | G6 | No route for ops or design-only work. | "Ops / design-only" route in the canonical skill. |
 | G7 | Environment traps were tribal knowledge (no global git identity on the dev host; worktree imports resolving to the main checkout; PowerShell here-strings piped to `git commit -F -`; Black 88 vs ruff 122). | "Environment traps" in the canonical skill. |
 
@@ -45,7 +45,7 @@ Owner decision, 2026-11-27. These rules are canonical here; other documents link
 | OM5 | Group meaningful related issues into one branch and PR before running long CI (local CI, full suites, live acceptance), so expensive gates run once per batch. |
 | OM6 | Claude models are approved for Claude Code execution (D1). |
 | OM7 | The lead may merge into `portfolio` once the local code, security and privacy reviews and local CI are clean on the PR diff against `portfolio`. |
-| OM8 | Local CI (`scripts/local_ci.py --merged-with origin/portfolio`) is the permanent merge gate, not GitHub Actions. Until it lands on `portfolio`, run the gate checklist in the canonical skill by hand. |
+| OM8 | Local CI (`scripts/local_ci.py --merged-with origin/portfolio`) is the permanent merge gate, not GitHub Actions. Local CI is always a merge gate: until it lands on `portfolio`, the lead runs, locally, every GitHub Actions job the PR's changed files would trigger (commands from `.github/workflows/*.yml`), posts the evidence in a PR comment, and names any job that cannot be reproduced (never counted as passed). No merge without that evidence. |
 | OM9 | Up to 2–3 implementer slots and 2–3 review slots run in parallel; the lead serializes merges. |
 
 OM1–OM5 are new on 2026-11-27; OM6–OM9 were already standing owner decisions and are recorded

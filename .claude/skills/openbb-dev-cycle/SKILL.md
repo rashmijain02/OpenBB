@@ -53,11 +53,9 @@ Exactly one profile is active. If unsure, it is owner-interactive.
 | Promotion PRs (`portfolio_validations → portfolio`, `portfolio → develop`) | Only on the owner's explicit request for that exact PR | Same; never delegated |
 | Local merge into `portfolio`, `portfolio_validations`, `develop` | Never | Never |
 
-**Lead-delegated mechanics** (OM2–OM5): the lead never edits feature code. For each issue it
-dispatches one fresh subagent with a brief of at most what fits in 100K tokens: issue number,
-worktree path and branch, files to read, gates to run, authority granted. The subagent works only
-in `.worktrees/<slug>-gh-<NN>`, reports PR URL, SHA and open questions, and is retired after its PR
-review comments are handled.
+**Lead-delegated mechanics:** one fresh subagent per issue in its own worktree, lead orchestrates only (OM2–OM5); see [`docs/dev-cycle/STATE.md#operating-model`](../../../docs/dev-cycle/STATE.md#operating-model).
+
+Never push, open PRs, or write issues or comments to `prajoria/*`, `openbq-org/*`, `OpenBB-finance/*` or any upstream; `upstream` remotes are fetch-only.
 
 ## 4. Gates
 
@@ -68,11 +66,11 @@ alone do not pass a gate.
 |---|---|
 | Python | Focused pytest with `.venv_portfolio` (see §6 for worktrees); `black --check` and `ruff check` on changed files; the plan's real-path check (`openbb-execute` step 5) |
 | Docs / skills only | `uvx codespell@2.4.1 <files>`; every repo path and link in the diff resolves; no absolute user paths, usernames or secrets |
-| PowerShell (`deploy/windows/**`) | Pester under **pwsh 7 with Pester 4.10**: `pwsh -NoProfile -Command "Import-Module Pester -RequiredVersion 4.10.1; Invoke-Pester deploy/windows/tests -EnableExit"`. Windows PowerShell 5.1 ships Pester 3.4 and is not a valid runner. |
+| PowerShell (`deploy/windows/**`) | Pester under **pwsh 7 with Pester 4.10.1**: `pwsh -NoProfile -Command "Import-Module Pester -RequiredVersion 4.10.1; Invoke-Pester deploy/windows/tests -EnableExit"`. Windows PowerShell 5.1 ships Pester 3.4 and is not a valid runner. |
 | .NET (`services/windows/**`) | `dotnet test services/windows/OpenBB.ServiceHost/tests/OpenBB.ServiceHost.Tests` (builds the test child too) |
 | Anything needing admin/UAC or a real service/browser | Live acceptance, human in the loop (template below) |
 | Every PR before merge | Local code, security and privacy reviews (`local-code-review`, `local-security-review`, `local-privacy-review`; in Claude Code `/code-review` and `/security-review` cover the first two) on the PR diff vs its base; every finding fixed or filed |
-| Every batch before merge | Local CI: `scripts/local_ci.py --merged-with origin/portfolio` (OM8). Until it is on `portfolio`, run the rows above by hand and say so in the PR. |
+| Every batch before merge | Local CI: `scripts/local_ci.py --merged-with origin/portfolio` (OM8). Until `scripts/local_ci.py` is on `portfolio`, the lead runs, locally, every GitHub Actions job the PR's changed files would trigger (commands from `.github/workflows/*.yml`), posts the evidence in a PR comment, and names in that comment any job that cannot be reproduced (never counted as passed). No merge without that evidence. |
 
 No CI workflow runs the Pester or .NET suites (STATE.md gap G4), so they are mandatory locally when
 those paths change.
@@ -114,7 +112,7 @@ issues into one branch and PR first, then run them.
   changed package dirs (for example `openbb_platform/extensions/<ext>`) so tests import the
   worktree code, not the main checkout.
 - **Line length.** CI Black uses 88 columns; `ruff.toml` allows 122. Always run `black --check`.
-- **Pester version.** See §4: pwsh 7 + Pester 4.10, never Windows PowerShell 5.1.
+- **Pester version.** See §4: pwsh 7 + Pester 4.10.1, never Windows PowerShell 5.1.
 
 ## 7. Sync to user-level copies
 
