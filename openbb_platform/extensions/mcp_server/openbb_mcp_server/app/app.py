@@ -59,6 +59,7 @@ from openbb_mcp_server.adapters.portfolio_intel import (
     compose_portfolio_intel_app,
 )
 from openbb_mcp_server.app.auth import TokenAuthProvider, get_auth_provider
+from openbb_mcp_server.app.owner_principal import effective_story_principal
 from openbb_mcp_server.models.category_index import CategoryIndex
 from openbb_mcp_server.models.mcp_config import (
     ArgumentDefinitionModel,
@@ -899,9 +900,7 @@ def create_mcp_server(
         Should be a valid FastMCP.server.auth.AuthProvider instance,
         or an object accepted by the `auth` parameter of FastMCP initialization.
     owner_principal: str | None
-        In-process only: the recorded owner a jobs worker acts for (#1342).
-        It replaces the principal derived from ``auth`` (which must still be
-        effective token credentials); never set from a request.
+        In-process owner a jobs worker acts for; see ``owner_principal`` (#1342).
 
     Returns
     -------
@@ -951,12 +950,7 @@ def create_mcp_server(
         if isinstance(auth_provider, TokenAuthProvider) and auth_provider.server_auth
         else None
     )
-    if owner_principal is not None:
-        if story_principal is None:
-            raise RuntimeError(
-                "owner_principal needs effective token credentials (#1342)."
-            )
-        story_principal = owner_principal
+    story_principal = effective_story_principal(story_principal, owner_principal)
 
     source_app = _compose_profile_adapters(
         fastapi_app,
