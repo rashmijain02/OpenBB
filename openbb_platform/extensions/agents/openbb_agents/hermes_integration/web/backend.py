@@ -11,7 +11,9 @@ action.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +34,13 @@ from openbb_mcp_server.story_adapters.registry import (
 from openbb_mcp_server.story_adapters.run_outcome import RunOutcome, read_submissions
 from openbb_mcp_server.story_adapters.story_job_kinds import SubmissionLedger
 
+# A job queued this long with no worker heartbeat as recent is ``worker_unavailable``.
+QUEUE_TIMEOUT = timedelta(seconds=60)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 @dataclass(frozen=True)
 class RunFacts:
@@ -42,6 +51,7 @@ class RunFacts:
     outcome: RunOutcome | None
     jobs: list[tuple[str, str]]
     artifacts: list[tuple[str, str, str]]
+    worker_unavailable: bool = False
 
 
 class StoryBackend:
@@ -55,12 +65,14 @@ class StoryBackend:
         artifact_root: Path,
         service: JobService,
         workflow_dir: Path | None = None,
+        clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         if not principal:
             raise ValueError("StoryBackend requires a principal")
         self.principal = principal
         self.store_path = store_path
         self.service = service
+        self._clock = clock
         self.workflows = WorkflowCatalog(
             workflow_dir if workflow_dir is not None else default_workflow_dir()
         )
@@ -128,6 +140,7 @@ class StoryBackend:
         except (HTTPException, sqlite3.Error, OSError, ValueError):
             outcome = None
         jobs: list[tuple[str, str]] = []
+        queued_since: list[datetime] = []
         try:
             with sqlite3.connect(self.store_path, timeout=30) as connection:
                 submissions = read_submissions(connection, self.principal, run_id)
@@ -137,9 +150,13 @@ class StoryBackend:
             if job_id is None:
                 continue
             try:
-                jobs.append((job_id, str(self.service.get_run(job_id).status)))
+                job = self.service.get_run(job_id)
             except KeyError:
                 jobs.append((job_id, "unknown"))
+                continue
+            jobs.append((job_id, str(job.status)))
+            if str(job.status) == "queued":
+                queued_since.append(job.available_at or job.created_at)
         plan = self.plans.by_run(run_id)
         if plan is not None and plan.principal != self.principal:
             plan = None
@@ -156,4 +173,19 @@ class StoryBackend:
             outcome=outcome,
             jobs=jobs,
             artifacts=artifacts,
+            worker_unavailable=self._worker_unavailable(queued_since),
         )
+
+    def _worker_unavailable(self, queued_since: list[datetime]) -> bool:
+        """Report a job waiting past ``QUEUE_TIMEOUT`` with no worker beat since.
+
+        A busy worker still heartbeats, so a long queue alone is not an outage.
+        """
+        now = self._clock()
+        if not any(now - since > QUEUE_TIMEOUT for since in queued_since):
+            return False
+        try:
+            age = self.service.health(now).worker_heartbeat_age_seconds
+        except (sqlite3.Error, OSError, ValueError):
+            return True
+        return age is None or age > QUEUE_TIMEOUT.total_seconds()

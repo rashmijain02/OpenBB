@@ -21,6 +21,7 @@ UnavailableCode = Literal[
     "plan_not_found",
     "run_unavailable",
     "outcome_unavailable",
+    "worker_unavailable",
 ]
 PAPER_APPROVAL = "paper_approval_terminal_only"
 # Outcomes after which the run card stops polling.
@@ -85,10 +86,13 @@ def run_card(  # pylint: disable=too-many-arguments
     outcome: RunOutcome | None,
     jobs: Iterable[tuple[str, str]],
     artifacts: Iterable[tuple[str, str, str]],
+    worker_unavailable: bool = False,
 ) -> dict[str, Any]:
     """Build the run/outcome card.
 
-    ``ok`` is true for ``succeeded`` only (never ``partial``).
+    ``ok`` is true for ``succeeded`` only (never ``partial``). A non-terminal
+    run whose job waits with no live worker reads ``worker_unavailable``; the
+    card keeps polling, since a worker may come back.
     """
     base: dict[str, Any] = {
         "kind": "run",
@@ -113,12 +117,15 @@ def run_card(  # pylint: disable=too-many-arguments
             "ok": False,
             "terminal": False,
         }
+    terminal = outcome.outcome in TERMINAL_OUTCOMES
+    stalled = worker_unavailable and not terminal
     return {
         **base,
-        "state": "available",
+        "state": "unavailable" if stalled else "available",
+        **({"code": "worker_unavailable"} if stalled else {}),
         "outcome": outcome.outcome,
         "ok": outcome.outcome == "succeeded",
-        "terminal": outcome.outcome in TERMINAL_OUTCOMES,
+        "terminal": terminal,
         "uncertain": outcome.uncertain,
         "reason": _code(outcome.reason),
         "workflow_current": outcome.workflow_current,

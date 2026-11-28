@@ -73,8 +73,13 @@ def stack(tmp_path, monkeypatch):
     token_file = tmp_path / "state" / "sidecar-auth" / "openbb-hfp.token"
     token_file.parent.mkdir(parents=True)
     token_file.write_text(token, encoding="utf-8")
+    clock: list[datetime] = []  # empty: real time; else the injected "now"
     backend = StoryBackend(
-        principal=PRINCIPAL, store_path=store, artifact_root=root, service=service
+        principal=PRINCIPAL,
+        store_path=store,
+        artifact_root=root,
+        service=service,
+        clock=lambda: clock[0] if clock else datetime.now(timezone.utc),
     )
     guarded = sidecar.create_app(
         sidecar.SidecarConfig(
@@ -89,6 +94,8 @@ def stack(tmp_path, monkeypatch):
         "store": store,
         "jobs_db": jobs_db,
         "worker": JobWorker(service=service, worker_id="test-worker"),
+        "service": service,
+        "clock": clock,
     }
 
 
@@ -328,3 +335,39 @@ def test_cards_map_every_outcome_state(state):
         artifacts=[],
     )
     assert (missing["code"], missing["ok"]) == ("outcome_unavailable", False)
+
+
+def test_worker_unavailable_after_queue_timeout(stack):
+    """A job queued > 60 s with no worker heartbeat reads ``worker_unavailable``."""
+    card = stack["side"].get(f"/plans/{_preview(stack)['plan_id']}").json()
+    assert _approve(stack, card).status_code == 200
+    started = (
+        stack["story"].post(f"/api/v1/story/plans/{card['plan_id']}/start", json={})
+    ).json()
+    (created,) = _rows(
+        stack["jobs_db"],
+        "SELECT COALESCE(available_at, created_at) FROM job_run WHERE run_id = ?",
+        started["job_id"],
+    )
+    queued_at = datetime.fromisoformat(created[0])
+    path = f"/runs/{started['run_id']}"
+    stack["clock"].append(queued_at + timedelta(seconds=59))
+    fresh = stack["side"].get(path).json()
+    assert fresh["state"] == "available" and "code" not in fresh
+    stack["clock"][0] = queued_at + timedelta(seconds=61)
+    stalled = stack["side"].get(path).json()
+    assert (stalled["state"], stalled["code"]) == ("unavailable", "worker_unavailable")
+    assert stalled["ok"] is False and stalled["terminal"] is False
+    assert stalled["jobs"] == [{"job_id": started["job_id"], "status": "queued"}]
+    # A worker that beats (busy, not dead) clears it; the job is still queued.
+    stack["service"].heartbeat("busy-worker", queued_at + timedelta(seconds=60))
+    alive = stack["side"].get(path).json()
+    assert alive["state"] == "available" and "code" not in alive
+    # Once the heartbeat is stale too, the card reads unavailable again.
+    stack["clock"][0] = queued_at + timedelta(seconds=125)
+    assert stack["side"].get(path).json()["code"] == "worker_unavailable"
+    # A terminal run never reads worker_unavailable.
+    stack["clock"].clear()
+    stack["worker"].run_once()
+    done = stack["side"].get(path).json()
+    assert done["outcome"] == "succeeded" and done["state"] == "available"

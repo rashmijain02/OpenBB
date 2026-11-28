@@ -142,6 +142,7 @@ def _routes(config: SidecarConfig) -> FastAPI:  # noqa: C901
                 outcome=facts.outcome,
                 jobs=facts.jobs,
                 artifacts=facts.artifacts,
+                worker_unavailable=facts.worker_unavailable,
             ),
         )
 
