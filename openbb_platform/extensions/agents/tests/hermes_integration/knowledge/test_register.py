@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
+import ast
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -422,15 +425,100 @@ def test_tax_pointer_rows_are_pointer_only(repo):
 # --- the committed register guards the real file -----------------------------
 
 
+REPO_ROOT = Path(register.__file__).resolve().parents[6]
+GENERATOR = REPO_ROOT / "scripts" / "build_public_sources_register.py"
+
+
 def test_committed_register_validates():
+    """Schema plus every pin at ``reviewed_commit``; stable under later HEAD edits.
+
+    HEAD drift is deliberately not asserted here (``--no-drift``): a later PR
+    that edits a registered document must not fail this unrelated suite. The
+    ``--check`` CLI keeps drift detection for operators of this feature.
+    """
     reg = register.load_register(register.DEFAULT_REGISTER)
     assert len(reg.sources) > 0
-    repo_root = Path(register.__file__).resolve().parents[6]
-    report = register.check(reg, repo_root)
+    report = register.check(reg, REPO_ROOT, drift=False)
     assert report.ok, [
         line for line in report.lines if not line.startswith(("status=", "kind="))
     ]
+    assert not any(line.startswith("excluded") for line in report.lines)
     for src in reg.sources:
         assert corpus.path_code(src.path) is None, src.source_id
         if src.status == "implemented":
             assert src.status_evidence != "none"
+
+
+def test_check_no_drift_mode_ignores_head_drift_only(repo, write_register, capsys):
+    repo.write("docs/designs/pin.md", "# Pin\n\nreviewed text v1\n")
+    reviewed = repo.commit()
+    blob = repo.blob("docs/designs/pin.md")
+    path = write_register(
+        register_doc(reviewed, [row("pin", "docs/designs/pin.md", blob)])
+    )
+    args = ["--check", "--register", str(path), "--repo", str(repo.root)]
+    repo.write("docs/designs/pin.md", "# Pin\n\nlater edit\n")
+    repo.commit("edit")
+    assert register.main(args) == 1
+    capsys.readouterr()
+    assert register.main([*args, "--no-drift"]) == 0
+    out = capsys.readouterr().out
+    assert "flag=revision_drift n=1" in out  # still reported, not failing
+    assert "drift_gate=off" in out and "result=ok" in out
+
+    # --no-drift never hides a pin that is wrong at the reviewed commit.
+    bad = write_register(
+        register_doc(reviewed, [row("pin", "docs/designs/pin.md", "c" * 40)])
+    )
+    assert (
+        register.main(
+            ["--check", "--no-drift", "--register", str(bad), "--repo", str(repo.root)]
+        )
+        == 1
+    )
+    assert "code=blob_mismatch" in capsys.readouterr().out
+
+
+def _load_generator():
+    spec = importlib.util.spec_from_file_location(
+        "build_public_sources_register", GENERATOR
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_generator_reproduces_committed_register(tmp_path, capsys):
+    gen = _load_generator()
+    reg = register.load_register(register.DEFAULT_REGISTER)
+    expected = register.DEFAULT_REGISTER.read_bytes().replace(b"\r\n", b"\n")
+    rendered = gen.render(REPO_ROOT, reg.reviewed_commit)
+    assert rendered.encode("utf-8") == expected
+    assert gen.render(REPO_ROOT, reg.reviewed_commit) == rendered  # deterministic
+    assert gen.main(["--check"]) == 0
+    edited = tmp_path / "public_sources.json"
+    doc = json.loads(expected)
+    doc["sources"][0]["status"] = "implemented"
+    edited.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    assert gen.main(["--check", "--output", str(edited)]) == 1
+    out = capsys.readouterr().out
+    assert "result=stale" in out
+
+
+def test_generator_uses_read_only_git_only():
+    tree = ast.parse(GENERATOR.read_text(encoding="utf-8"))
+    verbs = set()
+    git_read_calls = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = getattr(node.func, "id", None) or getattr(node.func, "attr", "")
+        if name == "_git":
+            first = node.args[1] if len(node.args) > 1 else None
+            assert isinstance(first, ast.Constant), "git verb must be a literal"
+            verbs.add(first.value)
+        git_read_calls += name == "git_read"
+    assert verbs == {"rev-parse", "ls-tree", "cat-file"}, verbs
+    assert git_read_calls == 1  # the single hardened wrapper
+    assert "subprocess" not in GENERATOR.read_text(encoding="utf-8")

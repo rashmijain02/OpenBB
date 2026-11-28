@@ -140,6 +140,11 @@ def _git(repo: Path, *args: str) -> bytes | None:
     return result.stdout
 
 
+def git_read(repo: Path, *args: str) -> bytes | None:
+    """Run one hardened read-only git command (``None`` on any failure)."""
+    return _git(repo, *args)
+
+
 def repo_root(start: Path) -> Path | None:
     """Return the work-tree root containing ``start`` (``None`` outside git)."""
     out = _git(start, "rev-parse", "--show-toplevel")

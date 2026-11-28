@@ -13,7 +13,10 @@ ignored files cannot enter.
 ``python -m openbb_agents.hermes_integration.knowledge.register --check`` validates
 the committed register against the repository and prints identifiers, codes and
 counts only (never document text). Exit 0 clean, 1 on any exclusion, scan hit
-or HEAD drift, 2 on an invalid register, 3 on usage errors.
+or HEAD drift, 2 on an invalid register, 3 on usage errors. ``--no-drift``
+reports HEAD drift without failing (pins at ``reviewed_commit`` are still
+verified); the repository test suite uses that mode. Re-pinning is reproducible
+with ``scripts/build_public_sources_register.py``.
 """
 
 from __future__ import annotations
@@ -204,8 +207,14 @@ class CheckReport:
     lines: tuple[str, ...]
 
 
-def check(reg: Register, repo: Path) -> CheckReport:
-    """Build the corpus and summarise it without any document text."""
+def check(reg: Register, repo: Path, *, drift: bool = True) -> CheckReport:
+    """Build the corpus and summarise it without any document text.
+
+    With ``drift=False`` HEAD drift is still reported but does not fail the
+    check; every pin must still resolve at ``reviewed_commit``. That mode is
+    what the repository test suite uses, so a later PR that edits a
+    registered document does not fail an unrelated suite.
+    """
     built = corpus.build_corpus(reg, repo)
     lines = [
         f"register sources={len(reg.sources)} reviewed_commit={reg.reviewed_commit[:12]}"
@@ -227,10 +236,11 @@ def check(reg: Register, repo: Path) -> CheckReport:
             lines.append(
                 f"excluded_section id={exc.source_id}#{exc.anchor} code={exc.code}"
             )
-    drift = [d.source_id for d in built.documents if d.head_drift]
-    lines.append(f"flag=revision_drift n={len(drift)}")
-    lines += [f"drift id={sid}" for sid in drift]
-    ok = not built.exclusions and not drift and bool(built.documents)
+    drifted = [d.source_id for d in built.documents if d.head_drift]
+    lines.append(f"flag=revision_drift n={len(drifted)}")
+    lines += [f"drift id={sid}" for sid in drifted]
+    lines.append(f"drift_gate={'on' if drift else 'off'}")
+    ok = not built.exclusions and not (drift and drifted) and bool(built.documents)
     if not built.documents:
         lines.append("loud_empty admitted=0")
     lines.append(f"result={'ok' if ok else 'fail'}")
@@ -247,6 +257,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--register", type=Path, default=DEFAULT_REGISTER)
     parser.add_argument("--repo", type=Path, default=None)
+    parser.add_argument(
+        "--no-drift",
+        action="store_true",
+        help="report HEAD drift without failing (pins are still verified)",
+    )
     try:
         args = parser.parse_args(argv)
     except SystemExit:
@@ -272,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if repo is None:
         _out("register_error code=repo_not_found")
         return 2
-    report = check(reg, repo)
+    report = check(reg, repo, drift=not args.no_drift)
     for line in report.lines:
         _out(line)
     return 0 if report.ok else 1
