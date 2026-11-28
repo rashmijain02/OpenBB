@@ -29,7 +29,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from portfolio_utils.fmp_sync import datasets, fundamentals, integrity, sessions
+from portfolio_utils.fmp_sync import (
+    datasets,
+    fundamentals,
+    integrity,
+    ops_observe,
+    sessions,
+)
 from portfolio_utils.fmp_sync.checks import (
     CheckResult,
     CheckState,
@@ -91,11 +97,12 @@ CORE_DB_CHECKS = (
 )
 PRICE_CHECKS = ("prices.freshness", "prices.null_partition", "prices.duplicates")
 DB_CHECKS = (*CORE_DB_CHECKS, *PRICE_CHECKS)
-CHECK_GROUPS = ("readiness", "integrity", "fundamentals")
+CHECK_GROUPS = ("readiness", "integrity", "fundamentals", "ops")
 _GROUP_IDS = {
     "readiness": PRICE_CHECKS,
     "integrity": integrity.INTEGRITY_CHECKS,
     "fundamentals": ("fundamentals.profile_price",),
+    "ops": (),  # file metadata only; never depends on the database
 }
 
 
@@ -250,6 +257,10 @@ def evaluate(  # pylint: disable=too-many-arguments
     exclusions: int = 0,
     dry_run: bool = False,
     checks: Sequence[str] = ("readiness",),
+    ops_policy: ops_observe.OpsPolicy | Mapping[str, Any] | None = None,
+    disk_usage_fn: Callable[[str], Any] | None = None,
+    ops_state_root: Path | None = None,
+    ops_attested: bool = False,
 ) -> ReadinessReport:
     """Evaluate calendar, session, table and price checks for ``symbols``.
 
@@ -286,6 +297,16 @@ def evaluate(  # pylint: disable=too-many-arguments
         )
     if "fundamentals" in groups:
         report.checks.extend(fundamentals.json_blob_sources())
+    if "ops" in groups:
+        report.checks.extend(
+            ops_observe.evaluate(
+                ops_policy,
+                now=now,
+                **({"disk_usage_fn": disk_usage_fn} if disk_usage_fn else {}),
+                state_root=ops_state_root,
+                attested=ops_attested,
+            )
+        )
     skip = "DRY_RUN_NO_DB" if dry_run or connect_fn is None else None
     if not symbols and skip is None:
         skip = "NO_SYMBOLS"
@@ -689,6 +710,7 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
     connect_fn: Callable[[], Any] | None = None,
     state_root: Path | None = None,
     checks: Sequence[str] = ("readiness",),
+    disk_usage_fn: Callable[[str], Any] | None = None,
 ) -> AuditResult:
     """Dry-run (no socket) or read-only audit; never takes the target lock, never writes data."""
     # pylint: disable=import-outside-toplevel
@@ -702,8 +724,19 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
     try:
         locking.resolve_lock_database(dmap.target)
         pol = ReadinessPolicy(**(getattr(dmap, "readiness", None) or {}))
+        ops_pol = ops_observe.OpsPolicy(**(getattr(dmap, "ops", None) or {}))
     except ValueError:
         return _result(run_id, mode, "BLOCKED_CONFIG", 40, "INVALID_CONFIG")
+    root = None
+    if mode == "read_only":
+        root = locking.validate_state_root(
+            state_root
+            or (
+                Path(dmap.state_root)
+                if dmap.state_root
+                else locking.default_state_root()
+            )
+        )
     symbols: list[str] = []
     exclusions = 0
 
@@ -732,6 +765,10 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
         exclusions=exclusions,
         dry_run=mode == "dry_run",
         checks=checks,
+        ops_policy=ops_pol,
+        disk_usage_fn=disk_usage_fn,
+        ops_state_root=root,
+        ops_attested=bool(getattr(dmap, "ops_attest_ref", None)),
     )
     db = next((c for c in report.checks if c.check_id == "db.session"), None)
     outcome, code = "OK", 0
@@ -750,15 +787,7 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
         state_counts(report.checks),
         report,
     )
-    if mode == "read_only":
-        root = locking.validate_state_root(
-            state_root
-            or (
-                Path(dmap.state_root)
-                if dmap.state_root
-                else locking.default_state_root()
-            )
-        )
+    if root is not None:
         written = state.atomic_write_json(
             root / "runs" / f"{run_id}.json", result.run_payload()
         )

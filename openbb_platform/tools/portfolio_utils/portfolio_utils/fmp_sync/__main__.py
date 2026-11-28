@@ -88,7 +88,7 @@ def _aware(value: str) -> datetime:
 
 
 def _checks(value: str) -> tuple[str, ...]:
-    groups = ("readiness", "integrity", "fundamentals")
+    groups = ("readiness", "integrity", "fundamentals", "ops")
     names = (
         groups
         if value.strip() == "all"
@@ -96,7 +96,7 @@ def _checks(value: str) -> tuple[str, ...]:
     )
     if not names or any(n not in groups for n in names):
         raise argparse.ArgumentTypeError(
-            "--checks takes readiness, integrity, fundamentals or all"
+            "--checks takes readiness, integrity, fundamentals, ops or all"
         )
     return names
 
@@ -128,7 +128,7 @@ def _parser() -> argparse.ArgumentParser:
         "--checks",
         type=_checks,
         default=("readiness",),
-        help="comma list of readiness,integrity,fundamentals, or all",
+        help="comma list of readiness,integrity,fundamentals,ops, or all",
     )
     lock = sub.add_parser("lock", help="target lock status")
     lock.add_argument("--status", action="store_true", required=True)

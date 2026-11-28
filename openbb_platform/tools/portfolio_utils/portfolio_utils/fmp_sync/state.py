@@ -48,6 +48,8 @@ HISTORY_KEYS = (
     "sent",
 )
 _ACL_WINERROR = 5
+# The wrapper cannot see Hermes delivery: it is never inferred and never re-runs.
+DELIVERY_UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True)
@@ -219,6 +221,42 @@ def _read_status(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def read_status(state_root: Path) -> dict[str, Any] | None:
+    """Return the last persisted ``status.json`` (``None`` when absent or unreadable)."""
+    return _read_status(Path(state_root) / STATUS_NAME)
+
+
+def record_heartbeat(state_root: Path, *, now: datetime | None = None) -> bool:
+    """Stamp ``last_heartbeat_utc`` only; the sync watermarks are never touched."""
+    root = Path(state_root)
+    current = _read_status(root / STATUS_NAME)
+    if current is None:
+        return False
+    current["last_heartbeat_utc"] = _iso(now or utcnow())
+    return atomic_write_json(root / STATUS_NAME, current).ok
+
+
+def _watermarks(
+    previous: dict[str, Any], outcome: FmpSyncOutcome, stamp: str
+) -> dict[str, Any]:
+    """Per-job watermarks; only a successful execute run advances the sync session."""
+    marks: dict[str, Any] = {}
+    if previous.get("last_heartbeat_utc") is not None:
+        marks["last_heartbeat_utc"] = previous["last_heartbeat_utc"]
+    executed = outcome.mode == "execute"
+    marks["last_attempt_utc"] = stamp if executed else previous.get("last_attempt_utc")
+    session = previous.get("last_successful_sync_session")
+    if executed and outcome.outcome is Outcome.OK and outcome.target_session:
+        session = max(filter(None, (session, outcome.target_session)))
+    marks["last_successful_sync_session"] = session
+    validated = executed and outcome.data_status in ("VALIDATED", "WARN")
+    marks["last_validation_utc"] = (
+        stamp if validated else previous.get("last_validation_utc")
+    )
+    marks["delivery_state"] = DELIVERY_UNKNOWN
+    return marks
+
+
 def record_start(
     state_root: Path, run_id: str, mode: str, *, now: datetime | None = None
 ) -> bool:
@@ -278,6 +316,7 @@ def record_end(  # pylint: disable=too-many-locals
         "ended_utc": stamp,
         "data_status": outcome.data_status,
         "since_utc": stamp if transition else (previous or {}).get("since_utc", stamp),
+        **_watermarks(previous or {}, outcome, stamp),
     }
     result = atomic_write_json(
         root / STATUS_NAME, snapshot, replace_fn=replace_fn, sleep_fn=sleep_fn

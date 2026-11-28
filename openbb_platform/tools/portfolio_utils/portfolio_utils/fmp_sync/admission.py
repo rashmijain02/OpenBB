@@ -81,6 +81,8 @@ _TRANSPORT_KEYS = _DRIFT_KEYS - {"FMP_API_KEY", "FMP_CACHED_API_KEY"}
 _AUTO_CREATE = "FMP_CACHE_AUTO_CREATE_DB"
 EXIT_ADMITTED = 0
 EXIT_POLICY = 40
+EXIT_INFRA = 30
+_MYSQL_DOWN = frozenset({2002, 2003, 2006, 2013, 2055})
 
 TargetClass = Literal["disposable", "production"]
 Mode = Literal["dry_run", "execute"]
@@ -118,6 +120,9 @@ class DeploymentMap(_Strict):
     mysql_port: int | None = Field(default=None, gt=0, lt=65536)
     # Readiness / audit policy (#1345); validated by ``readiness.ReadinessPolicy``.
     readiness: dict[str, Any] | None = None
+    # Backup/binlog/disk paths for ops observability (#1345); private, never logged.
+    # Validated by ``ops_observe.OpsPolicy``.
+    ops: dict[str, Any] | None = None
 
 
 class UniverseManifest(_Strict):
@@ -152,8 +157,10 @@ class Admission:
 
     @property
     def exit_code(self) -> int:
-        """Business exit code: 0 admitted, 40 policy/config block."""
-        return EXIT_ADMITTED if self.admitted else EXIT_POLICY
+        """Business exit code: 0 admitted, 30 infra, 40 policy/config block."""
+        if self.admitted:
+            return EXIT_ADMITTED
+        return EXIT_INFRA if self.code == "FAILED_INFRA" else EXIT_POLICY
 
 
 class _Blocked(Exception):
@@ -383,6 +390,25 @@ def _check_database(  # pylint: disable=too-many-arguments
     return category
 
 
+def _check_disk(dmap: DeploymentMap, layers, disk_usage_fn) -> None:
+    """Execute admission only: a measurably CRITICAL data volume blocks (reads stay allowed)."""
+    if not dmap.ops:
+        return
+    # pylint: disable-next=import-outside-toplevel
+    from portfolio_utils.fmp_sync import ops_observe
+
+    try:
+        policy = ops_observe.OpsPolicy(**dmap.ops)
+    except ValueError as exc:
+        raise _Blocked(
+            "BLOCKED_CONFIG", layers.CONFIG.value, "OPS_CONFIG_INVALID"
+        ) from exc
+    if ops_observe.data_volume_critical(
+        policy, *([disk_usage_fn] if disk_usage_fn else [])
+    ):
+        raise _Blocked("BLOCKED_POLICY", layers.CONFIG.value, "DISK_CRITICAL")
+
+
 def _probe_session(target: str, layers, connect_fn) -> None:
     database = layers.DATABASE.value
     conn = None
@@ -393,6 +419,9 @@ def _probe_session(target: str, layers, connect_fn) -> None:
         row = cursor.fetchone()
         cursor.close()
     except Exception as exc:  # noqa: BLE001  pylint: disable=broad-exception-caught
+        args = getattr(exc, "args", ())
+        if args and args[0] in _MYSQL_DOWN:
+            raise _Blocked("FAILED_INFRA", database, "MYSQL_UNAVAILABLE") from exc
         raise _Blocked("BLOCKED_DATABASE", database, "SESSION_CHECK_FAILED") from exc
     finally:
         if conn is not None:
@@ -462,6 +491,7 @@ def admit(  # pylint: disable=too-many-arguments,too-many-locals
     connect_fn: Callable[[], Any] | None = None,
     dotenv_path: Path | None = None,
     now: datetime | None = None,
+    disk_usage_fn: Callable[[str], Any] | None = None,
 ) -> Admission:
     """Run every admission layer in order; the first failure wins."""
     env = os.environ if env is None else env
@@ -511,6 +541,7 @@ def admit(  # pylint: disable=too-many-arguments,too-many-locals
             dmap, profile, layers, env, requested_class=requested_class, prov=prov
         )
         if mode == "execute":
+            _check_disk(dmap, layers, disk_usage_fn)
             _probe_session(
                 dmap.target,
                 layers,

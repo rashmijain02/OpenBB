@@ -29,11 +29,11 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from portfolio_utils.fmp_sync import locking
+from portfolio_utils.fmp_sync import locking, recovery, sessions, state
 from portfolio_utils.fmp_sync.admission import (
     DeploymentMap,
     Mode,
@@ -184,6 +184,7 @@ class _Ctx:  # pylint: disable=too-many-instance-attributes
         self.failed: list[str] = []
         self.deferred: list[str] = []
         self.data_status = "UNVALIDATED"
+        self.target_session: str | None = None
 
     def outcome(self, outcome: Outcome, *findings: str) -> FmpSyncOutcome:
         return FmpSyncOutcome(
@@ -199,6 +200,7 @@ class _Ctx:  # pylint: disable=too-many-instance-attributes
             manifest_sha256=self.manifest_sha,
             source_sha=self.dmap.source_sha,
             failed_layer=self.layer,
+            target_session=self.target_session,
             findings=(*self.findings, *findings),
             counts=self.counts,
             budget=self.budget,
@@ -273,6 +275,9 @@ def _warm(  # pylint: disable=too-many-arguments,too-many-locals
                 ]
             )
             return {}
+        target = result.get("target_date") if isinstance(result, dict) else None
+        if isinstance(target, str) and len(target) == 10:
+            ctx.target_session = target
         status = result.get("data_status") if isinstance(result, dict) else None
         if status in DATA_STATUSES:
             ctx.data_status = status
@@ -395,6 +400,8 @@ def run_prices(  # pylint: disable=too-many-arguments,too-many-locals,too-many-r
         state_root = locking.validate_state_root(
             Path(dmap.state_root) if dmap.state_root else locking.default_state_root()
         )
+        if not dry:
+            _plan_catch_up(ctx, state_root, now_fn)
         outcome = _locked_run(
             ctx,
             state_root,
@@ -431,6 +438,18 @@ def run_prices(  # pylint: disable=too-many-arguments,too-many-locals,too-many-r
             update={"findings": (*outcome.findings, "RUN_FILE_WRITE_FAILED")}
         )
     return outcome
+
+
+def _plan_catch_up(ctx: _Ctx, state_root: Path, now_fn: Callable[[], float]) -> None:
+    """Coalesce missed scheduled fires into this one run (a finding, no extra sends)."""
+    now = datetime.fromtimestamp(now_fn(), tz=timezone.utc)
+    try:
+        plan = recovery.plan_catch_up(
+            state.read_status(state_root), now=now, calendar=sessions.xnys_for(now)
+        )
+    except Exception:  # noqa: BLE001  pylint: disable=broad-exception-caught
+        return  # planning must never block the run itself
+    ctx.findings.extend(plan.findings)
 
 
 def _locked_run(  # pylint: disable=too-many-arguments
