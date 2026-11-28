@@ -32,8 +32,10 @@ from openbb_backtest.errors import (  # noqa: E402
     UnsupportedSemanticsError,
 )
 from openbb_backtest.models import BacktestConfig  # noqa: E402
-from openbb_backtest.routers import run_router as rr  # noqa: E402
-from openbb_backtest.routers import validate_router as vr  # noqa: E402
+from openbb_backtest.routers import (
+    run_router as rr,  # noqa: E402
+    validate_router as vr,  # noqa: E402
+)
 from openbb_nautilus_worker.protocol import ErrorCode, ProtocolError  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
@@ -355,3 +357,41 @@ def test_notebook_backtest_calls_still_bind():
         assert "backend" not in kwargs, (name, attr)
         seen += 1
     assert seen >= 3, "no obb.backtest.* calls found: the scan is broken"
+
+
+def test_reviewed_only_typed_error_in_fresh_process_without_worker_path():
+    """A fresh process lacking the worker dir on PYTHONPATH gets the typed error."""
+    import os
+    import subprocess
+    import sys
+
+    import openbb_backtest
+
+    backtest_root = str(Path(openbb_backtest.__file__).resolve().parents[1])
+    code = "\n".join(
+        [
+            "import asyncio, sys",
+            "from datetime import date",
+            "assert not any('nautilus_worker' in p for p in sys.path), sys.path",
+            "from openbb_backtest.errors import UnsupportedSemanticsError",
+            "from openbb_backtest.models import BacktestConfig",
+            "from openbb_backtest.routers import run_router as rr",
+            "cfg = BacktestConfig(strategy='target_weight_rebalance',",
+            "    universe=['AAA'], start=date(2024, 1, 2), end=date(2024, 3, 1))",
+            "try:",
+            "    asyncio.run(rr.run(cfg))",
+            "except UnsupportedSemanticsError as exc:",
+            "    print('typed', exc.reason)",
+            "except BaseException as exc:",
+            "    print('other', type(exc).__name__)",
+        ]
+    )
+    env = dict(os.environ, PYTHONPATH=backtest_root, PYTHONDONTWRITEBYTECODE="1")
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert out.stdout.strip() == "typed reviewed_only_strategy", out.stdout + out.stderr

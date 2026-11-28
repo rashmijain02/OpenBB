@@ -108,6 +108,11 @@ def _reviewed_only(name: str) -> bool:
     Loads the built-in strategies and entry-point plugins first, exactly as the
     legacy resolution that follows would.
     """
+    # Lazy imports keep Nautilus optional (C0415 intended for this whole block).
+    # pylint: disable=import-outside-toplevel
+    # The adapter import puts the worker source dir on sys.path; it must precede
+    # the worker import below (a fresh process has no other path to the worker).
+    import openbb_backtest.adapters.nautilus  # noqa: F401  # pylint: disable=unused-import
     from openbb_backtest.registry import list_strategies
     from openbb_backtest.strategies import discovery
 
@@ -190,6 +195,7 @@ def execute_run(  # pylint: disable=too-many-arguments
                 " vectorized engine is legacy-only); use engine='auto'.",
                 reason="engine_backend_conflict",
             )
+        # pylint: disable-next=import-outside-toplevel  # lazy: keeps Nautilus optional
         from openbb_backtest.adapters.nautilus import backend as nautilus_backend
 
         result = nautilus_backend.run(
