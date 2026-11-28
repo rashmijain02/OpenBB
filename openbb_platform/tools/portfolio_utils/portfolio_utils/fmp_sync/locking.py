@@ -37,7 +37,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 IS_WINDOWS = sys.platform == "win32"
 if IS_WINDOWS:
@@ -126,19 +126,32 @@ def _inside_git_checkout(path: Path) -> bool:
     return any((candidate / ".git").exists() for candidate in (path, *path.parents))
 
 
-def validate_state_root(root: Path) -> Path:
-    """Return the resolved root, or raise :class:`LockRootRejected`."""
-    raw = str(root)
-    if raw.startswith(("\\\\", "//")):
+def _resolve(path: Path) -> Path:
+    return path.resolve()
+
+
+def _reject_network(path: Path) -> None:
+    if str(path).startswith(("\\\\", "//")):
         raise LockRootRejected("lock root on a network (UNC) path is refused")
-    resolved = Path(os.path.abspath(raw))
     if IS_WINDOWS:
-        drive = resolved.drive
-        if drive.startswith("\\\\"):
+        drive = path.drive
+        if drive.startswith(("\\\\", "//")):
             raise LockRootRejected("lock root on a network (UNC) path is refused")
         if drive and _drive_type(drive + "\\") == DRIVE_REMOTE:
             raise LockRootRejected("lock root on a network drive is refused")
-    resolved = resolved.resolve()
+
+
+def validate_state_root(root: Path) -> Path:
+    """Return the resolved root, or raise :class:`LockRootRejected`.
+
+    The network checks run before and again after ``resolve()``: a junction,
+    symlink or ``subst`` drive can point a local-looking path at a share.
+    """
+    _reject_network(Path(str(root)))
+    resolved = Path(os.path.abspath(str(root)))
+    _reject_network(resolved)
+    resolved = _resolve(resolved)
+    _reject_network(resolved)
     if _inside_git_checkout(resolved):
         raise LockRootRejected("lock root inside a git checkout is refused")
     return resolved
@@ -334,20 +347,51 @@ def target_lock(
         key_lock.release()
 
 
+def _pid_alive(pid: Any) -> bool:
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    if not IS_WINDOWS:  # pragma: no cover
+        try:
+            os.kill(pid, 0)
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+        return True
+    import ctypes  # pylint: disable=import-outside-toplevel
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.OpenProcess.restype = ctypes.c_void_p
+    handle = k32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ctypes.get_last_error() == 5  # exists but not ours to open
+    try:
+        code = ctypes.c_ulong()
+        ok = k32.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code))
+        return bool(ok) and code.value == 259  # STILL_ACTIVE
+    finally:
+        k32.CloseHandle(ctypes.c_void_p(handle))
+
+
 def lock_status(
     database: str | None, *, root: Path | None = None
 ) -> Literal["free", "busy", "held"]:
-    """Probe the lock without taking ownership (no owner file is written)."""
+    """Report the lock state without touching the byte lock (never contends).
+
+    Reads the owner record: an unended record whose process is alive is
+    ``busy``. Taking the byte lock even briefly could make a run that starts
+    at that instant see ``SKIPPED_BUSY``. The record is written just after the
+    byte lock is taken, so a run in its first milliseconds (or one whose owner
+    write failed, ``OWNER_WRITE_FAILED``) can read as ``free``; this command is
+    informational and never gates a run.
+    """
     target = resolve_lock_database(database)
     path = lock_path(target, validate_state_root(root or default_state_root()))
     key = str(path).lower()
-    if key in _HELD:
-        return "held"
-    fd = _open_lock_file(path)
-    try:
-        if not _os_try_lock(fd):
-            return "busy"
-        _os_unlock(fd)
-        return "free"
-    finally:
-        os.close(fd)
+    with _REGISTRY_LOCK:
+        if key in _HELD:
+            return "held"
+    owner = _read_owner(path)
+    if owner and not owner.get("ended_utc") and _pid_alive(owner.get("pid")):
+        return "busy"
+    return "free"

@@ -151,7 +151,11 @@ def test_acl_denied_distinct_code(tmp_path):
         raise PermissionError(13, "denied", None, 5)
 
     result = state.atomic_write_json(
-        tmp_path / "s.json", {}, replace_fn=acl, sleep_fn=lambda _s: None
+        tmp_path / "s.json",
+        {},
+        replace_fn=acl,
+        sleep_fn=lambda _s: None,
+        acl_probe=lambda _p: True,
     )
     assert not result.ok and result.code == "STATE_ACL_DENIED"
 

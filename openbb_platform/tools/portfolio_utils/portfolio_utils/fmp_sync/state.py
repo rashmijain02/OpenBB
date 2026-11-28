@@ -17,6 +17,7 @@ import contextlib
 import hashlib
 import json
 import os
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -83,8 +84,46 @@ def fingerprint(outcome: FmpSyncOutcome) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 
-def _failure_code(error: OSError | None) -> str:
-    if getattr(error, "winerror", None) == _ACL_WINERROR:
+def acl_denies_replace(path: Path) -> bool:
+    """Return True only when an ACL or the read-only flag forbids replacing ``path``.
+
+    ``os.replace`` onto a file another process holds open without
+    ``FILE_SHARE_DELETE`` also fails with WinError 5, so WinError 5 alone is not
+    proof of an ACL denial. Probe: opening the target for ``DELETE`` with full
+    sharing fails with ERROR_ACCESS_DENIED (5) for an ACL denial and with
+    ERROR_SHARING_VIOLATION (32) for a transient open handle.
+    """
+    if sys.platform != "win32":
+        return False
+    if path.exists() and not os.access(path, os.W_OK):
+        return True  # read-only attribute
+    import ctypes  # pylint: disable=import-outside-toplevel
+    from ctypes import wintypes  # pylint: disable=import-outside-toplevel
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = k32.CreateFileW
+    create.restype = wintypes.HANDLE
+    create.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    # DELETE access; FILE_SHARE_READ|WRITE|DELETE; OPEN_EXISTING; BACKUP_SEMANTICS
+    handle = create(str(path), 0x00010000, 0x7, None, 3, 0x02000000, None)
+    if handle in (None, wintypes.HANDLE(-1).value):
+        return ctypes.get_last_error() == _ACL_WINERROR
+    k32.CloseHandle(handle)
+    return False
+
+
+def _failure_code(
+    error: OSError | None, path: Path, acl_probe: Callable[[Path], bool]
+) -> str:
+    if getattr(error, "winerror", None) == _ACL_WINERROR and acl_probe(path):
         return "STATE_ACL_DENIED"
     return "STATE_REPLACE_FAILED"
 
@@ -96,6 +135,7 @@ def atomic_write_json(
     replace_fn: Callable[[Any, Any], Any] = os.replace,
     sleep_fn: Callable[[float], Any] = time.sleep,
     attempts: int = REPLACE_ATTEMPTS,
+    acl_probe: Callable[[Path], bool] = acl_denies_replace,
 ) -> PersistResult:
     """Write ``payload`` to ``path`` via a temp file and a retried ``os.replace``."""
     path = Path(path)
@@ -122,7 +162,7 @@ def atomic_write_json(
     finally:
         with contextlib.suppress(OSError):
             tmp.unlink()  # our own temp file only; the target is never unlinked
-    return PersistResult(False, _failure_code(last), made)
+    return PersistResult(False, _failure_code(last, path, acl_probe), made)
 
 
 def read_history(path: Path) -> tuple[list[dict[str, Any]], tuple[str, ...]]:

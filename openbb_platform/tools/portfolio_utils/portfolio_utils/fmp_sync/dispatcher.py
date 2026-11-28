@@ -60,7 +60,9 @@ from portfolio_utils.fmp_sync.outcome import (
 
 WARMER_MODULE = "portfolio_utils.fetch_position_history"
 DEFAULT_ACCOUNT_LABEL = "default"
-_DEFER_REASONS = frozenset({"QUOTA", "RATE_LIMIT", "PLAN", "AUTH", "DEADLINE"})
+_DEFER_REASONS = frozenset(
+    {"QUOTA", "RATE_LIMIT", "PLAN", "AUTH", "DEADLINE", "LEDGER"}
+)
 _REASON_OUTCOME = {
     "PLAN": Outcome.BLOCKED_PLAN,
     "AUTH": Outcome.BLOCKED_AUTH,
@@ -171,6 +173,9 @@ def _classify(
             Outcome.BLOCKED_EGRESS,
             "ACCOUNTING_GAP" if reason == "ACCOUNTING_GAP" else "EGRESS_DENIED",
         )
+    if reason == "LEDGER":
+        ctx.layer = "budget"
+        return ctx.outcome(Outcome.FAILED_INFRA, "LEDGER_UNREADABLE")
     if reason == "AUTH":
         ctx.layer = "auth"
     if reason in _REASON_OUTCOME:
@@ -321,6 +326,10 @@ def run_prices(  # pylint: disable=too-many-arguments,too-many-locals,too-many-r
         if limits is None:
             ctx.layer = "config"
             return ctx.outcome(Outcome.BLOCKED_POLICY, code or "LIMITS_MISSING")
+    elif dmap.legacy_selector:
+        # The legacy selector reads the symbol list from MySQL; a dry run opens none.
+        ctx.layer = "config"
+        return ctx.outcome(Outcome.BLOCKED_POLICY, "LEGACY_SELECTOR_REQUIRES_EXECUTE")
     try:
         locking.resolve_lock_database(dmap.target)
     except ValueError:

@@ -132,7 +132,7 @@ def ensure_market_holidays(start_year: int, end_year: int, database: str | None 
     from openbb_fmp_cached.utils.database import DatabaseConfig
 
     try:
-        from populate_market_holidays import compute_us_holidays
+        from portfolio_utils.populate_market_holidays import compute_us_holidays
     except Exception as e:
         print(f"  WARNING: Could not import holiday pre-step helper: {e}")
         return

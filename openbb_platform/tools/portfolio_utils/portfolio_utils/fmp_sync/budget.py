@@ -44,11 +44,15 @@ DEFAULT_MYSQL_PORT = 3306
 DEFAULT_RETRY_AFTER_S = 60.0
 MAX_SEND_TIMEOUT_S = 60.0
 DEADLINE_RESERVE_S = 5.0
-_LABEL = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+ACCOUNT_LABEL_PATTERN = r"^[A-Za-z0-9_\-]{1,64}$"  # no dots or separators
+_LABEL = re.compile(ACCOUNT_LABEL_PATTERN)
 _LEDGER_LOCK_WAIT_S = 2.0
 
 LIMITS_MISSING = "LIMITS_MISSING"
 LIMITS_INVALID = "LIMITS_INVALID"
+
+
+LEDGER_UNREADABLE = "ledger_unreadable"
 
 
 class BudgetExhausted(RuntimeError):
@@ -119,11 +123,24 @@ def _atomic_write_json(path: Path, data: dict) -> None:
 
 
 def _read_json(path: Path) -> dict:
+    """Read a ledger file; a missing file is empty, anything unreadable fails closed.
+
+    Counters are never reset: a corrupt or unreadable ledger raises
+    ``BudgetExhausted("ledger_unreadable")`` and is left untouched.
+    """
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        raw = path.read_bytes()
+    except FileNotFoundError:
         return {}
-    return data if isinstance(data, dict) else {}
+    except OSError as exc:
+        raise BudgetExhausted(LEDGER_UNREADABLE) from exc
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:  # includes UnicodeDecodeError
+        raise BudgetExhausted(LEDGER_UNREADABLE) from exc
+    if not isinstance(data, dict):
+        raise BudgetExhausted(LEDGER_UNREADABLE)
+    return data
 
 
 class BudgetLedger:
@@ -137,7 +154,7 @@ class BudgetLedger:
         *,
         now_fn: Callable[[], float] = time.time,
     ):
-        if not _LABEL.match(account_label):
+        if not _LABEL.fullmatch(account_label):
             raise ValueError("invalid account label")
         self.dir = Path(state_root) / "budget" / account_label
         self.limits = limits
@@ -422,7 +439,10 @@ class TransportGuard:
         try:
             self.ledger.reserve()
         except BudgetExhausted as exc:
-            self.cancel.mark("RATE_LIMIT" if exc.kind == "defer" else "QUOTA")
+            if exc.kind == LEDGER_UNREADABLE:
+                self.cancel.mark("LEDGER")
+            else:
+                self.cancel.mark("RATE_LIMIT" if exc.kind == "defer" else "QUOTA")
             raise
         self.stats["reserved"] += 1
         kwargs["timeout"] = self._cap_timeout(kwargs.get("timeout"), remaining)

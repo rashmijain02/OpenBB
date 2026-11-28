@@ -44,6 +44,8 @@ from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 
+from portfolio_utils.fmp_sync.budget import ACCOUNT_LABEL_PATTERN
+
 logger = logging.getLogger(__name__)
 
 OLD_COPY_DB = "openbb_fmp_cache"
@@ -55,6 +57,10 @@ GLOBAL_SYMBOL_CAP = 500
 WARMER_MODULE = "portfolio_utils.fetch_position_history"
 ORIGIN_MODULES = ("portfolio_utils", "openbb_fmp_cached", "openbb_agents")
 _DB_ENV_PREFIXES = ("DB_", "MYSQL_", "FMP_CACHE_")
+# Transport and state keys a warmer import or .env must not change either.
+_DRIFT_KEYS = frozenset(
+    {"HTTPS_PROXY", "HTTP_PROXY", "REQUESTS_CA_BUNDLE", "FMP_SYNC_STATE_ROOT"}
+)
 _AUTO_CREATE = "FMP_CACHE_AUTO_CREATE_DB"
 EXIT_ADMITTED = 0
 EXIT_POLICY = 40
@@ -84,7 +90,7 @@ class DeploymentMap(_Strict):
     state_root: str | None = None
     # Consumed by later tasks (budget, render); validated here so the map is one schema.
     limits: dict[str, int] | None = None
-    account_label: str | None = None
+    account_label: str | None = Field(default=None, pattern=ACCOUNT_LABEL_PATTERN)
     hermes_timezone: str | None = None
     # Python minor of the sync process itself (e.g. "3.12"); separate from the
     # Hermes runtime pin in the profile. When set, admission checks the sync
@@ -172,7 +178,11 @@ def _load_hermes() -> SimpleNamespace:
 
 
 def _db_env(env: Mapping[str, str]) -> dict[str, str]:
-    snap = {k: v for k, v in env.items() if k.upper().startswith(_DB_ENV_PREFIXES)}
+    snap = {
+        k: v
+        for k, v in env.items()
+        if k.upper().startswith(_DB_ENV_PREFIXES) or k.upper() in _DRIFT_KEYS
+    }
     # The warmer's import does setdefault(FMP_CACHE_AUTO_CREATE_DB, "false").
     if snap.get(_AUTO_CREATE, "false").lower() == "false":
         snap.pop(_AUTO_CREATE, None)
