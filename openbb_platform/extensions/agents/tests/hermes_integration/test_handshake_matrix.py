@@ -802,3 +802,72 @@ def test_route_policy_blocks_loopback_provider_not_profile_gateway(
 ):
     verdict = _mutated_verdict(tmp_path, mutate)
     assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+# --- managed-scope config.yaml overlay (#1338 minor c) ----------------------------------
+
+
+def _managed_dir(tmp_path, data) -> Path:
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "config.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
+    return managed
+
+
+def test_managed_config_path_follows_hermes_managed_dir(tmp_path, monkeypatch):
+    managed = _managed_dir(tmp_path, {"model": {"default": ALIAS}})
+    monkeypatch.setenv("HERMES_MANAGED_DIR", str(managed))
+    assert hermes_config.managed_config_path() == managed / "config.yaml"
+    monkeypatch.setenv("HERMES_MANAGED_DIR", str(tmp_path / "absent"))
+    assert hermes_config.managed_config_path() is None
+
+
+@pytest.mark.parametrize(
+    ("managed", "reason"),
+    [
+        ({"model": {"base_url": HOSTED}}, "base_url_not_loopback"),
+        ({"model": "hosted-model"}, "model_not_private_alias"),
+        (
+            {"auxiliary": {"vision": {"provider": "auto"}}},
+            "auxiliary_vision_provider_not_custom",
+        ),
+        (
+            {"fallback_providers": [{"provider": "openrouter"}]},
+            "fallback_providers_set",
+        ),
+    ],
+)
+def test_managed_overlay_is_deep_merged_over_user_config(tmp_path, managed, reason):
+    path = _managed_dir(tmp_path, managed) / "config.yaml"
+    facts = hermes_config.read_route_facts(
+        _config(tmp_path, "config-finance-safe.yaml"), managed=path
+    )
+    verdict = hermes_config.evaluate_route(facts, _profile(PLACEHOLDER))
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_managed_overlay_keeps_user_siblings(tmp_path):
+    path = _managed_dir(tmp_path, {"model": {"default": ALIAS}, "display": None})
+    path = path / "config.yaml"
+    facts = hermes_config.read_route_facts(
+        _config(tmp_path, "config-finance-safe.yaml"), managed=path
+    )
+    verdict = hermes_config.evaluate_route(facts, _profile(PLACEHOLDER))
+    assert verdict.blocked is False, verdict.reasons
+
+
+def test_cli_reads_managed_scope_config(tmp_path, capsys, monkeypatch):
+    managed = _managed_dir(tmp_path, {"model": {"base_url": HOSTED}})
+    monkeypatch.setenv("HERMES_MANAGED_DIR", str(managed))
+    code = main(
+        [
+            "--profile",
+            str(_cli_profile(tmp_path, PLACEHOLDER)),
+            "--hermes-config",
+            str(_config(tmp_path, "config-finance-safe.yaml")),
+        ]
+    )
+    report = json.loads(capsys.readouterr().out)
+    route = next(c for c in report["components"] if c["name"] == "route")
+    assert code == 2 and route["failed_layer"] == "route"
+    assert "base_url_not_loopback" in route["detail"]

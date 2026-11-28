@@ -166,8 +166,10 @@ def _check_route(
                 detail="no_local_route: no verified local backend bound (see #1338 T03)",
             )
         ], None
+    # Hermes deep-merges a managed-scope config.yaml over the user config at load time.
+    managed = hermes_config.managed_config_path()
     try:
-        facts = hermes_config.read_route_facts(config)
+        facts = hermes_config.read_route_facts(config, managed)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         return [
             ComponentReport(
@@ -186,6 +188,7 @@ def _check_route(
         name="hermes_config",
         level=HealthLevel.CONFIGURED,
         presence={"model_api_key": facts.api_key},
+        detail="managed_scope_merged" if managed is not None else "",
     )
     if verdict.blocked:
         route = ComponentReport(

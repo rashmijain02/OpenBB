@@ -7,9 +7,10 @@ and URL credentials are dropped. Nothing here imports or runs Hermes.
 from __future__ import annotations
 
 import ipaddress
+import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from urllib.parse import urlsplit
 
 import yaml
@@ -138,6 +139,8 @@ _SECRET_LEAF = re.compile(r"(?:^|_)(?:api_key|key|token|password|secret)$")
 _LABEL = re.compile(r"[^A-Za-z0-9_.-]")
 
 _LOOPBACK_NAMES = {"localhost"}
+# Managed-scope directory default at the pin (``hermes_cli/managed_scope.py``).
+_DEFAULT_MANAGED_DIR = Path("/etc/hermes")
 
 
 def is_loopback_host(host: str | None) -> bool:
@@ -414,11 +417,51 @@ def _read_auxiliary(
     return routes, unvetted, issues
 
 
-def read_route_facts(path: Path) -> RouteFacts:
-    """Read routing facts from ``path``; raises ``OSError``/``ValueError`` when unusable."""
+def managed_config_path(environ: Mapping[str, str] | None = None) -> Path | None:
+    """The managed-scope ``config.yaml`` Hermes would overlay, or ``None``.
+
+    Mirrors ``get_managed_dir`` at the pin: a non-empty ``HERMES_MANAGED_DIR`` wins
+    (and yields nothing when it is not a directory), otherwise ``/etc/hermes``."""
+    env = os.environ if environ is None else environ
+    override = env.get("HERMES_MANAGED_DIR", "").strip()
+    directory = Path(override) if override else _DEFAULT_MANAGED_DIR
+    path = directory / "config.yaml"
+    return path if directory.is_dir() and path.is_file() else None
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Hermes ``_deep_merge``: dicts recurse, ``None`` over a dict is ignored."""
+    result = dict(base)
+    for key, value in override.items():
+        over_dict = isinstance(result.get(key), dict)
+        if over_dict and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        elif not (over_dict and value is None):
+            result[key] = value
+    return result
+
+
+def _load_managed(path: Path) -> dict[str, Any]:
+    """Managed overlay as Hermes applies it; unlike Hermes, a malformed file fails closed."""
+    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8-sig"))
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError("managed hermes config is not a mapping")
+    if isinstance(loaded.get("model"), str):  # bare ``model: x`` means model.default
+        loaded = {**loaded, "model": {"default": loaded["model"]}}
+    return loaded
+
+
+def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
+    """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
+
+    Raises ``OSError``/``ValueError`` when either file is unusable."""
     loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
         raise ValueError("hermes config is not a mapping")
+    if managed is not None:
+        loaded = _deep_merge(loaded, _load_managed(managed))
     host, port, base_path, scheme = _split(_get(loaded, "model.base_url"))
     aux, aux_unvetted, aux_issues = _read_auxiliary(loaded.get("auxiliary"))
     surf_unvetted, surf_issues = _scan_surfaces(loaded)

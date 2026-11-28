@@ -36,6 +36,8 @@ def isolated_home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
     monkeypatch.setenv("HERMES_HOME", str(home / "hermes"))
+    # No managed-scope overlay unless a test supplies one (never the real /etc/hermes).
+    monkeypatch.setenv("HERMES_MANAGED_DIR", str(tmp_path / "no-managed-scope"))
     return home
 
 
