@@ -725,7 +725,7 @@ def test_alias_names_are_stripped_of_control_chars_and_capped(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "base", ["http://hosted.invalid\@127.0.0.1:8080/v1", "http://u@127.0.0.1:8080/v1"]
+    "base", ["http://hosted.invalid\\@127.0.0.1:8080/v1", "http://u@127.0.0.1:8080/v1"]
 )
 def test_api_base_with_userinfo_is_not_local(tmp_path, base):
     cfg = _local_cfg()

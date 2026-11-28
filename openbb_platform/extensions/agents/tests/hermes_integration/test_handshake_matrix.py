@@ -749,7 +749,11 @@ def test_cli_unreadable_hermes_config_is_config_layer(tmp_path, capsys):
             "env_ref:model.base_url",
         ),
         (
-            _set_path("model.base_url", "http://hosted.invalid\@127.0.0.1:4000/v1"),
+            _set_path("model.base_url", "http://hosted.invalid\\@127.0.0.1:4000/v1"),
+            "url_userinfo:model.base_url",
+        ),
+        (
+            _set_path("model.base_url", "http://127.0.0.1\\.hosted.invalid:4000/v1"),
             "url_userinfo:model.base_url",
         ),
         (_set_path("model.provider", "${PROVIDER}"), "env_ref:model.provider"),
@@ -847,7 +851,9 @@ def test_managed_overlay_is_deep_merged_over_user_config(tmp_path, managed, reas
 
 
 def test_managed_overlay_keeps_user_siblings(tmp_path):
-    path = _managed_dir(tmp_path, {"model": {"default": ALIAS}, "display": None})
+    # A bare ``model`` string sets model.default only, and ``None`` over a user
+    # mapping is ignored, as in Hermes ``_merge_managed_overlay`` / ``_deep_merge``.
+    path = _managed_dir(tmp_path, {"model": ALIAS, "auth": None})
     path = path / "config.yaml"
     facts = hermes_config.read_route_facts(
         _config(tmp_path, "config-finance-safe.yaml"), managed=path
