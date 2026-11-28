@@ -41,15 +41,15 @@ ORACLE_PATH = os.path.join(
 )
 
 
-@pytest.fixture
-def oracle():
+@pytest.fixture(name="oracle")
+def oracle_fixture():
     """Load the hand-computed buy-and-hold oracle (#1355), shared with facade tests."""
     with open(ORACLE_PATH, encoding="utf-8") as fh:
         return json.load(fh)
 
 
-@pytest.fixture
-def make_dataset(oracle):
+@pytest.fixture(name="make_dataset")
+def make_dataset_fixture(oracle):
     """Build a content-addressed neutral dataset from the oracle under ``root``.
 
     Returns ``build(root, *, precision=2) -> dataset_id``. ``root`` is the
