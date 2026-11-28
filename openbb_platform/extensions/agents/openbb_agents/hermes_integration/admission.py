@@ -31,6 +31,7 @@ REJECTION_CODES = (
     "access_not_granted",
     "access_understated",
     "access_unclassified",
+    "access_denied_by_policy",
     "capability_unresolved",
     "tool_absent",
     "schema_drift",
@@ -126,6 +127,7 @@ def _check_access(
     supported_access_versions: Collection[int],
     allowed_access: Collection[str] | None,
     tool_access: Mapping[str, Collection[str]],
+    denied_tools: Collection[str] = (),
 ) -> list[Rejection]:
     version = manifest.access_version
     vocabulary = ACCESS_VOCABULARIES.get(version)
@@ -142,14 +144,22 @@ def _check_access(
         elif allowed_access is not None and pin.access not in allowed_access:
             found.append(_reject("access_not_granted", f"{name}: {pin.access}"))
         else:
-            found.extend(_check_reviewed_class(name, pin.access, pin, tool_access))
+            found.extend(
+                _check_reviewed_class(name, pin.access, pin, tool_access, denied_tools)
+            )
     return found
 
 
 def _check_reviewed_class(
-    name: str, declared: str, pin: Any, tool_access: Mapping[str, Collection[str]]
+    name: str,
+    declared: str,
+    pin: Any,
+    tool_access: Mapping[str, Collection[str]],
+    denied_tools: Collection[str] = (),
 ) -> list[Rejection]:
     """Refuse a pin declaring less than the tool's reviewed access class."""
+    if f"{pin.server}:{pin.tool}" in denied_tools:
+        return [_reject("access_denied_by_policy", f"{name}: denied by policy")]
     real = tool_access.get(f"{pin.server}:{pin.tool}")
     if not real:
         return [_reject("access_unclassified", f"{name}: no reviewed access class")]
@@ -188,28 +198,34 @@ def admit_workflow(
     supported_access_versions: Collection[int] = frozenset({1}),
     allowed_access: Collection[str] | None = None,
     tool_access: Mapping[str, Collection[str]] | None = None,
+    denied_tools: Collection[str] | None = None,
 ) -> WorkflowAdmission:
     """Decide whether ``document`` may run; never raises.
 
     ``live_tools`` maps ``"<server>:<tool>"`` to the SHA-256 of the live tool's
     canonical input schema. A same-named tool on another server never counts.
     ``tool_access`` maps ``"<server>:<tool>"`` to its reviewed access classes;
-    it defaults to the reviewed capability policy (``tool_access`` module).
+    it defaults to the reviewed capability policy (``tool_access`` module), as
+    does ``denied_tools`` (tools whose disposition the policy denies).
     """
     try:
         if tool_access is None:
             # pylint: disable-next=import-outside-toplevel
             from openbb_agents.hermes_integration.tool_access import (
-                reviewed_tool_access,
+                reviewed_tool_policy,
             )
 
-            tool_access = reviewed_tool_access()
+            reviewed = reviewed_tool_policy()
+            tool_access = reviewed.classes
+            if denied_tools is None:
+                denied_tools = reviewed.denied
         return _admit(
             document,
             live_tools,
             supported_access_versions,
             allowed_access,
             tool_access,
+            denied_tools or (),
         )
     except Exception:  # pylint: disable=broad-exception-caught
         # Fail closed on anything unforeseen (RecursionError, bad live_tools...).
@@ -227,6 +243,7 @@ def _admit(
     supported_access_versions: Collection[int],
     allowed_access: Collection[str] | None,
     tool_access: Mapping[str, Collection[str]],
+    denied_tools: Collection[str] = (),
 ) -> WorkflowAdmission:
     rejections = _scan_notebook_dependencies(document)
     if not isinstance(document, Mapping):
@@ -239,7 +256,13 @@ def _admit(
         return WorkflowAdmission(False, None, None, tuple(rejections))
 
     rejections.extend(
-        _check_access(manifest, supported_access_versions, allowed_access, tool_access)
+        _check_access(
+            manifest,
+            supported_access_versions,
+            allowed_access,
+            tool_access,
+            denied_tools,
+        )
     )
     rejections.extend(_check_capabilities(manifest, live_tools))
     try:

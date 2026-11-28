@@ -323,3 +323,83 @@ def test_v2_only_literal_is_unknown_under_v1_and_unmapped_under_v2(
         shipped_document, live_tools=live_tools, supported_access_versions={1, 2}
     )
     assert codes(under_v2) == {"access_unmapped"}
+
+
+# --- Re-review N3: whole-tool classification and the disposition decision.
+
+
+class _Decision:
+    def __init__(self, access_class, disposition="direct"):
+        self.access_class = access_class
+        self.disposition = disposition
+
+
+class _SyntheticPolicy:
+    """Synthetic reviewed policy: ``classify_operation`` by (method, path)."""
+
+    def __init__(self, table):
+        self.table = table
+
+    def classify_operation(
+        self, scope, method, path
+    ):  # pylint: disable=unused-argument
+        outcome = self.table[(method, path)]
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+
+def _row(tool, method, path):
+    return {"scope": "s", "mcp_tool": tool, "method": method, "path": path}
+
+
+def test_one_unclassifiable_row_leaves_the_whole_tool_unclassified():
+    """A tool is never left with a partial class when any of its rows fails."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_agents.hermes_integration.tool_access import derive_tool_policy
+
+    policy = _SyntheticPolicy(
+        {
+            ("GET", "/a"): _Decision("provider_read"),
+            ("POST", "/a"): ValueError("ambiguous"),
+            ("GET", "/b"): _Decision("provider_read"),
+        }
+    )
+    rows = [_row("a", "GET", "/a"), _row("a", "POST", "/a"), _row("b", "GET", "/b")]
+    result = derive_tool_policy(policy, rows, {"platform": "s"})
+    assert "platform:a" not in result.classes
+    assert result.classes["platform:b"] == {"provider_read"}
+    assert not result.denied
+
+
+def test_a_denied_disposition_makes_the_tool_unadmittable():
+    """Any non-admittable row disposition denies the tool; the rest is unaffected."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_agents.hermes_integration.tool_access import derive_tool_policy
+
+    policy = _SyntheticPolicy(
+        {
+            ("GET", "/a"): _Decision("provider_read", "direct"),
+            ("POST", "/a"): _Decision("financial_mutation", "restricted"),
+            ("GET", "/b"): _Decision("provider_read", "workspace_indirect"),
+        }
+    )
+    rows = [_row("a", "GET", "/a"), _row("a", "POST", "/a"), _row("b", "GET", "/b")]
+    result = derive_tool_policy(policy, rows, {"platform": "s"})
+    assert result.denied == {"platform:a"}
+    assert "platform:a" not in result.classes
+    assert "platform:b" in result.classes
+
+
+def test_admission_rejects_a_policy_denied_tool(shipped_document, live_tools):
+    tool_access = {key: {"provider_read"} for key in live_tools}
+    admission = admit_workflow(
+        shipped_document,
+        live_tools=live_tools,
+        tool_access=tool_access,
+        denied_tools={"platform:story_concentration"},
+    )
+    assert codes(admission) == {"access_denied_by_policy"}
+    assert admit_workflow(
+        shipped_document, live_tools=live_tools, tool_access=tool_access
+    ).admitted
