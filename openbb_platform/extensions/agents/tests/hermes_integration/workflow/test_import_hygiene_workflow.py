@@ -35,6 +35,9 @@ FORBIDDEN_PREFIXES = (
     "papermill",
 )
 NOTEBOOK_SUFFIX = ".ipy" + "nb"
+# Reviewed exceptions: a synthetic notebook path the #1378 adversarial probe
+# writes into a temporary repo only (never read from the real tree).
+ALLOWED_LITERALS = {"adversarial.py": {"docs/examples/adv_pangolin.ipynb"}}
 
 
 def _hits(module_name: str) -> bool:
@@ -106,7 +109,21 @@ def test_production_paths_are_found():
     assert {"workflow.py", "admission.py", "workflow_admit.py", "registry.py"} <= names
 
 
+def _unallowed(path: Path) -> list[str]:
+    allowed = ALLOWED_LITERALS.get(path.name, set())
+    return [v for v in violations(path.read_text("utf-8")) if v not in allowed]
+
+
 def test_runtime_modules_never_import_notebook_code():
     """No production workflow module imports notebook, script or Jupyter code."""
-    offenders = {path.name: violations(path.read_text("utf-8")) for path in PRODUCTION}
+    offenders = {path.name: _unallowed(path) for path in PRODUCTION}
     assert {name: hits for name, hits in offenders.items() if hits} == {}
+
+
+def test_allowlist_entries_are_still_used():
+    """A stale allowlist entry fails, so exceptions cannot outlive their use."""
+    by_name = {path.name: path for path in PRODUCTION}
+    for name, literals in ALLOWED_LITERALS.items():
+        assert name in by_name, f"allowlisted module {name} is gone"
+        found = set(violations(by_name[name].read_text("utf-8")))
+        assert literals <= found, f"stale allowlist entry in {name}: {literals - found}"
