@@ -1,7 +1,8 @@
 # Live acceptance steps (owner-run)
 
-Status: partial. Sections for #1338 T02 (step L2), T03 (step L3) and #1339 T02 (step L4) are written. L1 and L5 stay in
-`plan.md` section 4 until their code lands. Nothing here is executed by agents.
+Status: partial. Sections for #1338 T02 (step L2), T03 (step L3) and #1339 T02 (step L4) and T03 (step L5) are
+written. L1 stays in `plan.md` section 4 until its code lands. Nothing here is executed by agents, except the
+synthetic-home scan in L5 step 3, which the plan allows.
 
 ## L2: #1338 T02, Hermes/WebUI and provider handshake matrix
 
@@ -158,3 +159,45 @@ Notes for the owner:
   `skill_view` (upstream subtracts disabled toolsets at tool granularity). How admitted skills then load (for
   example `skills.auto_load` or slash commands) is not verified at the pin; step 7 and T03 / HFP-P05 confirm it.
 - `skills.external_dirs` must be empty for P0. Hash-pinned external dirs are not implemented.
+
+## L5: #1339 T03, one end-to-end Hermes turn with synthetic sentinels
+
+Code-only parts (field allowlist, re-identification denial, sentinel scanner, egress guard, the loopback model
+capture, and the in-process LiteLLM 1.106.6 Router under refused / timeout / 429 / 500 backends with key
+`disable_fallbacks`) are tested in `test_projection_routing.py` and `test_litellm_routes.py` (`requires_agents`).
+The code-only real path is `policy_probe --synthetic --projection | projection --scan-stdin` (exit 0, `hits=0`).
+This step proves the same boundary in one real Hermes turn. All data is synthetic: the sentinels are the values in
+`projection.SENTINELS` (an account, an amount and a name), never real holdings.
+
+```text
+Live acceptance for #1339 (HFP-P02 evidence projections) - normal (non-elevated) pwsh 7 window
+Preconditions: L2, L3 and L4 done in <qual-home>; the LiteLLM proxy runs the admitted finance-local config; the
+finance virtual key carries metadata {"disable_fallbacks": true}; the owner's own Hermes home is never used.
+$py = <worktree python>; $env:PYTHONPATH = <absolute path to openbb_platform\extensions\agents>
+1. Preflight: & $py -m openbb_agents.hermes_integration.hermes_preflight <the L3 arguments>
+                                    Expect: exit 0, route level=local for the finance alias
+2. In <qual-home>, one Hermes turn through the finance alias. The prompt carries only an EvidenceProjection built
+   by projection.project() from a sentinel artifact (all projection fields, principal hermes_runtime); paste its
+   JSON, never the artifact.       Expect: an answer that cites [[metric:run_...:art_...:<field>]] refs only
+3. Agent-run scan of the synthetic home (bytes, so state.db is covered):
+   Get-ChildItem <qual-home>\memories,<qual-home>\sessions,<qual-home>\logs,<qual-home>\state.db -Recurse -File |
+     ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Latin1) } |
+     & $py -m openbb_agents.hermes_integration.projection --scan-stdin
+                                    Expect: exit 0, scan_result hits=0
+4. Owner only: a count-only query on the LiteLLM request history for each sentinel value (spend logs / request
+   log table). Never print rows.  Expect: 0 for each sentinel
+5. Owner: stop the local model runtime (not the proxy), re-run the turn from step 2.
+                                    Expect: an explicit unavailable / error state; zero requests on any hosted alias
+                                    (count-only check as in step 4, by model group)
+6. Restart the local runtime; re-run step 1.
+                                    Expect: exit 0 again
+Report back: exit codes, the scan_result line from step 3, the counts from steps 4 and 5, and any Expect line
+that did not match. Never paste prompts, responses or rows.
+```
+
+Notes for the owner:
+
+- Step 5 depends on the key metadata. Without `disable_fallbacks`, a caller-supplied `fallbacks=[hosted]` request
+  field still reaches a hosted alias on an admitted config (`test_inprocess_request_level_fallback_bypasses_config_policy`).
+- Keep LiteLLM at INFO. DEBUG (`--detailed_debug`, `LITELLM_LOG=DEBUG`, `set_verbose`) writes prompts to logs even
+  with `turn_off_message_logging: true`, so the projection is the only thing that keeps sentinels out.
