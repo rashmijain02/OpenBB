@@ -72,6 +72,9 @@ def _default_timezone() -> str:
     return _DEFAULT_TIMEZONE
 
 
+_MAX_LISTED_SYMBOLS = 10
+
+
 def _bounded_warnings(messages: list[str]) -> list[str]:
     """Clamp warning count and per-message length to the JobResult limits."""
     return [message[:MAX_WARNING_LENGTH] for message in messages[:MAX_WARNING_COUNT]]
@@ -159,15 +162,26 @@ def _run_position_history_job(
             warnings=["skipped: another price-warming run holds the target lock"],
         )
 
-    if not result.readiness_ok():
+    if not result.readiness_evaluated_ok():
         # Readiness v2 maps DB problems to check states, leaving the legacy
         # missing/stale lists empty -- never report that as a successful run.
+        # Missing/stale symbols on a validated DB are warnings, not failures.
         raise RuntimeError(
             "position-history readiness not validated: data_status="
             f"{result.readiness.get('data_status', 'UNVALIDATED')}"
         )
 
     warnings = [f"{item['symbol']}: {item['error']}" for item in result.failed]
+    for label, key in (
+        ("missing price data", "missing_price_symbols"),
+        ("stale price data", "stale_price_symbols"),
+    ):
+        symbols = list(result.readiness.get(key) or [])
+        if symbols:
+            shown = ", ".join(symbols[:_MAX_LISTED_SYMBOLS])
+            more = len(symbols) - _MAX_LISTED_SYMBOLS
+            suffix = f", +{more} more" if more > 0 else ""
+            warnings.append(f"{len(symbols)} symbol(s) with {label}: {shown}{suffix}")
     if result.cancelled:
         warnings.append("run cancelled before all symbols were processed")
 

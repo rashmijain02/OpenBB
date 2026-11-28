@@ -226,3 +226,13 @@ def test_readiness_ok_rules():
     assert not ok(
         readiness={"data_status": "VALIDATED", "missing_price_symbols": ["X"]}
     ).readiness_ok()
+
+
+def test_readiness_evaluated_ok_is_status_only():
+    ok = tool.PositionHistoryWarmResult
+    assert ok(readiness={}).readiness_evaluated_ok()  # dry run
+    full = {"data_status": "VALIDATED", "missing_price_symbols": ["X"]}
+    assert ok(readiness=full).readiness_evaluated_ok()  # symbols are warnings
+    assert ok(readiness={"data_status": "WARN"}).readiness_evaluated_ok()
+    assert not ok(readiness={"data_status": "UNKNOWN"}).readiness_evaluated_ok()
+    assert not ok(readiness={"target_date": "2026-11-27"}).readiness_evaluated_ok()

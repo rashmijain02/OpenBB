@@ -550,6 +550,15 @@ class PositionHistoryWarmResult(BaseModel):
         """
         return not self.readiness or readiness_is_ready(self.readiness)
 
+    def readiness_evaluated_ok(self) -> bool:
+        """Return False only when readiness ran and the database could not be validated.
+
+        Status-only (``VALIDATED``/``WARN``): missing or stale symbols do not fail
+        the legacy job, they are reported as warnings. An empty ``readiness``
+        (dry run) was not evaluated and is not a failure.
+        """
+        return not self.readiness or self.readiness.get("data_status") in _READY_STATUSES
+
     def to_summary(self) -> dict[str, Any]:
         """Return a bounded, JSON-safe summary suitable for a core ``JobResult``."""
         readiness_summary: dict[str, Any] = {}
