@@ -61,17 +61,26 @@ from openbb_mcp_server.story_adapters.artifact_render import (
     render_workbook,
     workbook_view,
 )
+from openbb_mcp_server.story_adapters.receipts import (
+    ReceiptLedger,
+    args_digest,
+    logical_operation_key,
+    run_workflow_ref,
+)
 from openbb_mcp_server.story_adapters.registry import (
     RunStore,
     WorkflowCatalog,
     default_store_path,
     default_workflow_dir,
+    ensure_run_open,
     ensure_workflow_current,
 )
 
 MAX_ARTIFACT_BYTES = 4 * 1024 * 1024
 MAX_RUN_BYTES = 32 * 1024 * 1024
 MAX_ARTIFACTS_PER_RUN = 50
+# A logical claim with no record after this long lost its writer (#1341).
+CLAIM_STALE = timedelta(seconds=120)
 MAX_INLINE_CHARS = 256 * 1024
 MAX_PREVIEW_ROWS = 200
 
@@ -227,8 +236,10 @@ class ArtifactStore:
                 " WHERE principal = ? AND run_id = ? AND name = ?",
                 (principal, run_id, name),
             ).fetchone()
+        digest = hashlib.sha256(payload).hexdigest()
+        identity = (digest, kind, media_type, stage_id, timedelta(days=retention_days))
         if taken:
-            raise ArtifactConflict(f"Run already has an artifact named '{name}'.")
+            return self._redelivered(principal, run_id, name, identity)
         if count >= MAX_ARTIFACTS_PER_RUN:
             raise ArtifactTooLarge(
                 f"A run holds at most {MAX_ARTIFACTS_PER_RUN} artifacts."
@@ -248,7 +259,7 @@ class ArtifactStore:
                 run_id=run_id,
                 artifact_id=artifact_id,
                 media_type=media_type,
-                sha256=hashlib.sha256(payload).hexdigest(),
+                sha256=digest,
                 size_bytes=len(payload),
             ),
             name=name,
@@ -276,15 +287,46 @@ class ArtifactStore:
                         record.model_dump_json(),
                     ),
                 )
-        except sqlite3.IntegrityError as error:
+        except sqlite3.IntegrityError:
             final.unlink()
-            raise ArtifactConflict(
-                f"Run already has an artifact named '{name}'."
-            ) from error
+            # A concurrent identical delivery won the name: same answer as a
+            # sequential one (the first record, or a 409 for other content).
+            return self._redelivered(principal, run_id, name, identity)
         except BaseException:
             final.unlink()
             raise
         return record
+
+    @staticmethod
+    def _identity(record: ArtifactRecord) -> tuple:
+        """Return what makes two deliveries of one artifact identical."""
+        return (
+            record.ref.sha256,
+            record.kind,
+            record.ref.media_type,
+            record.stage_id,
+            record.expires_at - record.created_at,
+        )
+
+    def _redelivered(
+        self, principal: str, run_id: str, name: str, identity: tuple
+    ) -> ArtifactRecord:
+        """Return the first record for an identical re-delivery, else conflict.
+
+        Identical means the same bytes, kind, media type, stage and retention
+        (#1341, D1): a lost reply retried returns the original artifact. Any
+        other content under a taken name stays a ``409``; nothing is replaced.
+        """
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT record FROM story_artifacts"
+                " WHERE principal = ? AND run_id = ? AND name = ?",
+                (principal, run_id, name),
+            ).fetchone()
+        existing = ArtifactRecord.model_validate_json(row[0]) if row else None
+        if existing is None or self._identity(existing) != identity:
+            raise ArtifactConflict(f"Run already has an artifact named '{name}'.")
+        return existing
 
     def get(self, principal: str, run_id: str, artifact_id: str) -> ArtifactRecord:
         """Return the record, if this principal's run holds a live artifact."""
@@ -424,6 +466,55 @@ def build_router(  # pylint: disable=too-many-statements
     workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
     authenticated = [Depends(AuthService().auth_hook)]
+    receipts = ReceiptLedger(store.db_path)
+
+    def _logical_replay(
+        run, request: WriteRequest, logical_key: str, args_sha256: str
+    ) -> ArtifactRecord | None:
+        """On a bound run, return the record a re-issued write already made.
+
+        The artifact name is the delivery key: the first name to write these
+        bytes owns the logical operation, and a re-issue under another name
+        returns its live record. An expired or missing owner hands over. A
+        claim with no record yet is in flight: ``409 outcome_uncertain`` until
+        it lands, or until ``CLAIM_STALE`` passes (its writer died).
+        """
+        receipt = receipts.claim(
+            principal,
+            logical_key,
+            tool="story_artifact",
+            run_id=run.run_id,
+            workflow_ref=run_workflow_ref(run),
+            stage_id=request.stage_id,
+            args_sha256=args_sha256,
+            operation_id=request.name,
+        )
+        if receipt.operation_id == request.name:
+            return None
+        if receipt.outcome_ref is None:
+            claimed = datetime.fromisoformat(receipt.claimed_at)
+            if _now() - claimed < CLAIM_STALE or not receipts.supersede(
+                principal,
+                logical_key,
+                previous_operation_id=receipt.operation_id,
+                operation_id=request.name,
+            ):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "outcome_uncertain: an earlier write of this artifact is still"
+                    " in flight; retry shortly.",
+                )
+            return None
+        try:
+            return store.get(principal, run.run_id, receipt.outcome_ref)
+        except (ArtifactNotFound, ArtifactExpired):
+            receipts.supersede(
+                principal,
+                logical_key,
+                previous_operation_id=receipt.operation_id,
+                operation_id=request.name,
+            )
+            return None
 
     def _owned_run(run_id: str, *, mutating: bool = False):
         try:
@@ -436,6 +527,7 @@ def build_router(  # pylint: disable=too-many-statements
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
         if mutating:
             ensure_workflow_current(record, workflow_catalog)
+            ensure_run_open(record)
         return record
 
     def _write(
@@ -458,8 +550,26 @@ def build_router(  # pylint: disable=too-many-statements
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)[:2000]
             ) from error
+        logical_key = None
+        if run.binding is not None:
+            args_sha256 = args_digest(
+                hashlib.sha256(payload).hexdigest(),
+                kind,
+                media_type,
+                request.retention_days,
+            )
+            logical_key = logical_operation_key(
+                tool="story_artifact",
+                run_id=run_id,
+                workflow_ref=run_workflow_ref(run),
+                stage_id=request.stage_id,
+                args_sha256=args_sha256,
+            )
+            replayed = _logical_replay(run, request, logical_key, args_sha256)
+            if replayed is not None:
+                return replayed
         try:
-            return store.write(
+            record = store.write(
                 principal,
                 run_id,
                 story_id=run.story_id,
@@ -473,6 +583,15 @@ def build_router(  # pylint: disable=too-many-statements
             )
         except _ERRORS as error:
             raise _http(error) from error
+        if logical_key is not None:
+            receipts.record_outcome(
+                principal,
+                logical_key,
+                operation_id=request.name,
+                outcome_ref=record.ref.artifact_id,
+                state="written",
+            )
+        return record
 
     @router.post(
         "/runs/{run_id}/artifacts/table",

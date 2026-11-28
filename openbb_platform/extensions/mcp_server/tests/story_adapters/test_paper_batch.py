@@ -372,3 +372,63 @@ def test_unknown_fields_are_rejected(harness):
     """The batch schema is closed."""
     assert harness.preview({**BATCH, "broker": "live"}).status_code == 422
     assert paper_batch.MAX_TICKETS == 50
+
+
+# --- Mutating-route gates (#1341 CODE-4) -------------------------------------
+
+
+def _workflow_client(tmp_path):
+    import shutil
+
+    from .test_cancel_semantics import FILE, MANIFESTS as WF_MANIFESTS, SHIPPED
+
+    store = tmp_path / "runs.sqlite"
+    root = tmp_path / "artifacts"
+    workflows = tmp_path / "workflows"
+    if not workflows.exists():
+        workflows.mkdir()
+        shutil.copy(SHIPPED / FILE, workflows / FILE)
+    common = {"principal": "alice", "store_path": store}
+    app = compose_story_registry_app(
+        FastAPI(), manifest_dir=WF_MANIFESTS, workflow_dir=workflows, **common
+    )
+    app = compose_story_paper_batch_app(
+        app, artifact_root=root, workflow_dir=workflows, **common
+    )
+    return TestClient(app), workflows / FILE
+
+
+def _workflow_run(client):
+    from .test_cancel_semantics import WORKFLOW
+
+    response = client.post("/api/v1/story/runs", json={"story_id": WORKFLOW})
+    assert response.status_code == 200, response.text
+    return response.json()["run_id"]
+
+
+def test_batch_artifacts_refuse_a_cancelled_run(tmp_path):
+    """story_paper_batch_artifacts is a mutation: a cancelled run is 409."""
+    client, _ = _workflow_client(tmp_path)
+    run_id = _workflow_run(client)
+    from openbb_mcp_server.story_adapters.registry import RunStore
+
+    RunStore(tmp_path / "runs.sqlite").request_cancel("alice", run_id)
+    response = client.post(
+        f"/api/v1/story/runs/{run_id}/paper/batch_artifacts", json=BATCH
+    )
+    assert response.status_code == 409, response.text
+    assert "run_cancelled" in response.json()["detail"]
+    assert not list((tmp_path / "artifacts").rglob("*.csv"))
+
+
+def test_batch_artifacts_refuse_a_drifted_workflow(tmp_path):
+    """A run whose workflow document changed cannot gain batch artifacts."""
+    client, path = _workflow_client(tmp_path)
+    run_id = _workflow_run(client)
+    path.write_text(path.read_text("utf-8").replace("Synthetic", "Drifted", 1), "utf-8")
+    client, _ = _workflow_client(tmp_path)
+    response = client.post(
+        f"/api/v1/story/runs/{run_id}/paper/batch_artifacts", json=BATCH
+    )
+    assert response.status_code == 409, response.text
+    assert not list((tmp_path / "artifacts").rglob("*.csv"))

@@ -246,6 +246,10 @@ def test_reads_and_cancel_stay_open_after_change(env):
     cancelled = changed.post(f"{base}/jobs/{job_id}/cancel")
     assert cancelled.status_code == 200, cancelled.text
     assert cancelled.json()["outcome"] == "cancelled"
+    # Run-level cancel is a stop, not a mutation: it stays open too.
+    run_cancel = changed.post(f"{base}/cancel")
+    assert run_cancel.status_code == 200, run_cancel.text
+    assert run_cancel.json()["run_state"] == "cancelled"
 
 
 def test_legacy_runs_are_unaffected(env):

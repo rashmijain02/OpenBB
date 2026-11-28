@@ -1,0 +1,6 @@
+name: openbb-story-binding
+version: 1.0.0
+description: "Binds Hermes sessions and cron executions to OpenBB story runs by setting hashed run-binding and delivery keys on the story mutation tools (story_run_create, story_job_submit, story_paper_prepare). Raw Hermes IDs never leave the process."
+author: "rashmijain02 (OpenBB fork, #1341)"
+provides_hooks:
+  - pre_tool_call

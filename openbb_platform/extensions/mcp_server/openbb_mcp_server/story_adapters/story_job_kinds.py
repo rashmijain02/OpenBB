@@ -583,6 +583,11 @@ def _execute(kind: str, context: JobContext, params: StoryJobParams) -> JobResul
     run = RunStore(db_path).get(params.principal, params.run_id)
     if run is None:
         raise UnauthorizedStoryJob("The story run no longer exists.")
+    if run.cancel_requested_at is not None:
+        # story_run_cancel won the race with the claim: run nothing (#1341).
+        raise UnauthorizedStoryJob(
+            "run_cancelled: the story run was cancelled before this job started."
+        )
     payload = spec.payload().model_validate(params.payload)
     engine = globals()[spec.engine]
     result = _json_safe(engine(payload))

@@ -24,6 +24,16 @@ WORKFLOW_DIR = Path(__file__).resolve().parent / "workflows"
 _ID = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
 # Catalog pins use the logical server name ``platform`` for the in-process app.
 _PROFILE_SERVER = {"portfolio-ops": "platform"}
+# Fixed credential of the in-process server; it never leaves this process.
+_IN_PROCESS_SECRET = "x" * 32
+
+
+def in_process_principal(name: str) -> str:
+    """Return the story principal ``build_server(principal=name)`` writes runs as."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_mcp_server.app.app import story_principal_for
+
+    return story_principal_for((name, _IN_PROCESS_SECRET))
 
 
 def build_server(profile: str = "portfolio-ops", principal: str = "workflow-admit"):
@@ -41,7 +51,7 @@ def build_server(profile: str = "portfolio-ops", principal: str = "workflow-admi
             "default_skills_dir": None,
         }
     )
-    return create_mcp_server(settings, app, auth=(principal, "x" * 32))
+    return create_mcp_server(settings, app, auth=(principal, _IN_PROCESS_SECRET))
 
 
 async def server_tool_hashes(server, profile: str = "portfolio-ops") -> dict[str, str]:
