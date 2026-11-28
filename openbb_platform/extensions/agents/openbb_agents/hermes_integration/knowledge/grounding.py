@@ -81,6 +81,13 @@ def _claims(answer: str) -> list[str]:
     return [c for c in claims if re.search(r"[A-Za-z0-9]", _ANY_CITE.sub("", c))]
 
 
+def _prose_mislabel(text: str, status: Any) -> bool:
+    prose = _LABEL.sub("", text)
+    if status != "implemented" and _CLAIMS_DONE.search(prose):
+        return True
+    return status == "implemented" and bool(_CLAIMS_PLANNED.search(prose))
+
+
 def _segment_codes(
     segment: str, cite: str, hit: Mapping[str, Any] | None, claim_cites: set[str]
 ) -> set[str]:
@@ -93,10 +100,7 @@ def _segment_codes(
     status = hit.get("status")
     if labels and labels[-1].group("status") != status:
         codes.add("status_mislabel")
-    prose = _LABEL.sub("", segment)
-    if status != "implemented" and _CLAIMS_DONE.search(prose):
-        codes.add("status_mislabel")
-    if status == "implemented" and _CLAIMS_PLANNED.search(prose):
+    if _prose_mislabel(segment, status):
         codes.add("status_mislabel")
     successors = set(hit.get("superseded_by") or ())
     superseded = status == "superseded" or bool(successors)
@@ -140,11 +144,18 @@ def check_answer(
             continue
         claim_cites = {m.group(0) for m in found}
         start = 0
+        last_hit: Mapping[str, Any] | None = None
         for match in found:
             cite = match.group(0)
             segment = claim[start : match.start()]
             start = match.end()
             hit = hits.get(cite) if CITE_RE.fullmatch(cite) else None
             codes |= _segment_codes(segment, cite, hit, claim_cites)
+            last_hit = hit
+        # Prose after the final cite is still a claim about that source.
+        if last_hit is not None and _prose_mislabel(
+            claim[start:], last_hit.get("status")
+        ):
+            codes.add("status_mislabel")
     ordered = tuple(c for c in _ORDER if c in codes)
     return GroundingVerdict(ordered or ("ok",))

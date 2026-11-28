@@ -97,6 +97,16 @@ def test_proposed_vs_implemented_distinguished(idx):
     assert _codes(
         f"The reader is planned (implemented, repo_plan) {s_cite}.", shipped
     ) == ("status_mislabel",)
+    # prose AFTER the last cite is checked against that cite's status
+    assert _codes(f"Beta (proposed, repo_plan) {cite} is already implemented.", out) == (
+        "status_mislabel",
+    )
+    assert _codes(
+        f"The reader (implemented, repo_plan) {s_cite} is planned.", shipped
+    ) == ("status_mislabel",)
+    assert _codes(
+        f"Beta (proposed, repo_plan) {cite} is proposed, not implemented.", out
+    ) == ("ok",)
 
 
 def test_authority_missing(idx):
