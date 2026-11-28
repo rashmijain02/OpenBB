@@ -1063,3 +1063,47 @@ def test_create_denied_and_tables_missing_reraises_the_original_error(precreate)
     db = _NoCreateDb(":memory:", precreate=precreate)
     with pytest.raises(StoreDataError, match="1142"):
         Store(db).create_tables()
+
+
+# --- /code-review (high) round 8 on PR #1308 ---------------------------------------
+
+TEN_K_ARGS = {
+    "endpoint": "financial-reports-form-10-k-json",
+    "symbol": "AAPL",
+    "year": 2024,
+    "period": "FY",
+}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"Error Message":"Limit Reach . Please upgrade your plan"}',
+        b"<html>maintenance</html>",
+    ],
+    ids=["fmp-error-object", "html-page"],
+)
+def test_error_body_under_200_is_never_stored_as_a_document(env, body):
+    svc, fmp, store, clock = env
+    fmp.docs["/financial-reports-json"] = UpstreamResponse(200, body)
+    first = _get(svc, "statements", TEN_K_ARGS)
+    assert first.response.body == body, "rendered as FMP sent it"
+    assert store.dump("fmp_mcp_document") == []
+    clock.advance(hours=1)
+    _get(svc, "statements", TEN_K_ARGS)
+    assert len(fmp.calls) == 2, "an error body is retried, not kept forever"
+
+
+def test_error_body_under_200_does_not_replace_a_stored_document(env):
+    svc, fmp, store, clock = env
+    args = {"endpoint": "financial-reports-dates", "symbol": "AAPL"}
+    good = b'[{"symbol":"AAPL","fiscalYear":2024}]'
+    fmp.docs["/financial-reports-dates"] = UpstreamResponse(200, good)
+    _get(svc, "statements", args)
+    clock.advance(days=2)
+    fmp.docs["/financial-reports-dates"] = UpstreamResponse(
+        200, b'{"Error Message":"x"}'
+    )
+    again = _get(svc, "statements", args)
+    assert (again.state, again.response.body) == ("stale", good)
+    assert [r["body"] for r in store.dump("fmp_mcp_document")] != [], "kept"

@@ -106,6 +106,30 @@ def _fresh(stored: StoredResponse | None, now: dt.datetime) -> bool:
     )
 
 
+_ERROR_KEYS = ("Error Message", "error")
+
+
+def _is_error_body(path: str, body: bytes) -> bool:
+    """Return True for a 200 body that is not a storable answer.
+
+    FMP and its CDN can answer 200 with an error object or an HTML page. Such
+    a body is rendered as sent but never stored, so it cannot be served as
+    ``cached`` forever. The 10-K xlsx endpoint is binary by design.
+    """
+    if path.endswith("-xlsx"):
+        return False
+    text = body.decode("utf-8", "replace")
+    if text.startswith("﻿"):
+        text = text[1:]
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        return True
+    return isinstance(parsed, dict) and any(
+        isinstance(parsed.get(k), str) for k in _ERROR_KEYS
+    )
+
+
 def _object_rows(body: bytes) -> list[dict[str, Any]]:
     try:
         rows = json.loads(body)
@@ -356,6 +380,12 @@ class StoreBackedUpstream:
             # server renders it ("Bad request for tool ...: <FMP message>").
             return FetchResult(
                 resp, "unavailable", "fmp", now, f"upstream-{resp.status}"
+            )
+        if _is_error_body(call.path, resp.body):
+            return (
+                self._from_store(stored, "stale", "upstream-error-body")
+                if stored
+                else FetchResult(resp, "live", "fmp", now)
             )
         if resp.body.strip() in _EMPTY_BODIES and persistent and stored is not None:
             # A transient empty answer must not hide the last good copy: serve
