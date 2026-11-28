@@ -604,7 +604,7 @@ def test_route_policy_blocks_every_unread_routing_key(tmp_path, mutate, reason):
     "mutate",
     [
         _set_path("smart_model_routing", {"enabled": False}),
-        _set_path("providers", {"local": {"base_url": "http://127.0.0.1:8080/v1"}}),
+        _set_path("providers", {"local": {"base_url": "http://127.0.0.1:4000/v1"}}),
         _set_path("mcp_servers", {"openbb": {"command": "uvx"}}),
         _set_path("display", {"compact": True}),
         _set_path("delegation.backend", "default"),
@@ -779,3 +779,26 @@ def test_route_policy_blocks_delegation_request_overrides(tmp_path):
         tmp_path, _set_path("delegation.request_overrides", {"base_url": HOSTED})
     )
     assert "delegation_request_overrides_set" in verdict.reasons, verdict.reasons
+
+
+# --- provider entries must be the profile gateway (#1338 minor b) -----------------------
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (
+            _set_path("providers", {"local": {"base_url": "http://127.0.0.1:8080/v1"}}),
+            "providers_local_not_profile_gateway",
+        ),
+        (
+            _set_path("custom_providers", [{"base_url": "http://localhost:9/v1"}]),
+            "custom_providers_0_not_profile_gateway",
+        ),
+    ],
+)
+def test_route_policy_blocks_loopback_provider_not_profile_gateway(
+    tmp_path, mutate, reason
+):
+    verdict = _mutated_verdict(tmp_path, mutate)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons

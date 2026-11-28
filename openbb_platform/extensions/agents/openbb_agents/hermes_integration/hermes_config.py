@@ -185,6 +185,10 @@ class RouteFacts(BaseModel):
     delegation_fallback_providers: int = 0
     auxiliary: dict[str, AuxRoute] = Field(default_factory=dict)
     adopt_external_logins: bool | None = None
+    # ``providers``/``custom_providers`` label -> (host, port) of each URL it names.
+    provider_endpoints: dict[str, list[tuple[str | None, int | None]]] = Field(
+        default_factory=dict
+    )
     # Fail-closed findings from keys outside the main route (labels, never values).
     unvetted_keys: list[str] = Field(default_factory=list)
     route_issues: list[str] = Field(default_factory=list)
@@ -266,6 +270,28 @@ def _scan_values(node: Any, path: str = "") -> list[str]:
             if leaf in (*_URL_KEYS, "api_base") and url_has_userinfo(value):
                 issues.append(f"url_userinfo:{safe_label(here, 80)}")
     return issues
+
+
+def _provider_endpoints(
+    loaded: dict[str, Any],
+) -> dict[str, list[tuple[str | None, int | None]]]:
+    """Endpoints of every ``providers``/``custom_providers`` entry, by reason label."""
+    entries: list[tuple[str, Any]] = []
+    providers = loaded.get("providers")
+    if isinstance(providers, dict):
+        entries += [(f"providers_{safe_label(n)}", e) for n, e in providers.items()]
+    custom = loaded.get("custom_providers")
+    if isinstance(custom, list):
+        entries += [(f"custom_providers_{i}", e) for i, e in enumerate(custom)]
+    out: dict[str, list[tuple[str | None, int | None]]] = {}
+    for label, entry in entries:
+        if isinstance(entry, dict):
+            out[label] = [
+                _split(entry[k])[:2]
+                for k in _URL_KEYS
+                if isinstance(entry.get(k), str) and entry[k]
+            ]
+    return out
 
 
 def _scan_top_level(loaded: dict[str, Any]) -> list[str]:
@@ -413,6 +439,7 @@ def read_route_facts(path: Path) -> RouteFacts:
         ),
         auxiliary=aux,
         adopt_external_logins=adopt if isinstance(adopt, bool) else None,
+        provider_endpoints=_provider_endpoints(loaded),
         unvetted_keys=[*_scan_top_level(loaded), *aux_unvetted, *surf_unvetted],
         route_issues=[
             *_scan_misc(loaded),
@@ -464,6 +491,12 @@ def evaluate_route(facts: RouteFacts, profile: FinanceRuntimeProfile) -> RouteVe
     if facts.delegation_fallback_providers:
         reasons.append("delegation_fallback_providers_set")
     reasons += _aux_reasons(facts, profile, (gw_host, gw_port))
+    # A named provider is selectable per request; even on loopback it must be the gateway.
+    reasons += [
+        f"{label}_not_profile_gateway"
+        for label, endpoints in sorted(facts.provider_endpoints.items())
+        if any(ep != (gw_host, gw_port) for ep in endpoints)
+    ]
     if facts.adopt_external_logins is not False:
         reasons.append("adopt_external_logins_enabled")
     reasons += facts.route_issues
