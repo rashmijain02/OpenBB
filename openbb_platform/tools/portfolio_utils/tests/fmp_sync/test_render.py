@@ -170,3 +170,18 @@ def test_child_python_is_the_venv_python(rig):
     (venv / "Scripts" / "python.exe").unlink()
     with pytest.raises(render.RenderError, match="venv python"):
         _plan(rig)
+
+
+@pytest.mark.parametrize(
+    ("grace", "deadline"),
+    [(0.0, None), (120.0, None), (500.0, None), (30.0, 3580.0)],
+)
+def test_grace_must_fit_the_margin_and_hermes_timeout(
+    rig, monkeypatch, grace, deadline
+):
+    """Grace below the 120 s margin; deadline + grace under the Hermes timeout."""
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", grace)
+    if deadline is not None:
+        monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", deadline)
+    with pytest.raises(render.RenderError):
+        render.render_wrapper(rig["map"])

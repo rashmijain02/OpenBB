@@ -312,7 +312,7 @@ def _pid_alive(pid: int) -> bool:
     return locking._pid_alive(pid)  # pylint: disable=protected-access
 
 
-def _start_holding_wrapper(real, child_env, python_exe):
+def _start_holding_wrapper(real, child_env, python_exe, flags=0):
     root = render.effective_state_root(real["map"])
     lock = locking.lock_path(
         locking.resolve_lock_database(DISPOSABLE_DB),
@@ -328,6 +328,7 @@ def _start_holding_wrapper(real, child_env, python_exe):
         stderr=subprocess.PIPE,
         text=True,
         env=child_env,
+        creationflags=flags,
     )
     end = time.monotonic() + 60
     while not ready.exists() and proc.poll() is None and time.monotonic() < end:
@@ -377,14 +378,15 @@ def test_child_ignoring_cancel_is_killed_after_grace(
 ):
     """Deadline -> cancel file -> grace -> hard kill of the job; lock freed."""
     monkeypatch.setattr(render, "WRAPPER_DEADLINE_S", 4.0)
-    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 3.0)
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 6.0)
     proc, holder_pid, root = _start_holding_wrapper(real, child_env, python_exe)
     try:
-        started = time.monotonic()
+        started = time.monotonic()  # child ready: at most ~2 s after wrapper start
         out, _ = proc.communicate(timeout=60)
         assert proc.returncode == 5
         assert out.strip() == "fmp_cache_prices: killed after grace"
-        assert time.monotonic() - started >= 2.5, "killed before the grace period"
+        # deadline 4 s + grace 6 s, minus start-up slack; no grace would be ~3 s
+        assert time.monotonic() - started >= 7.0, "killed before the grace period"
         assert (root / "cancel").is_dir(), "no cooperative cancel was requested"
         assert _lock_freed(root)
         assert not _pid_alive(holder_pid)
@@ -612,3 +614,28 @@ def test_main_rejects_malformed_run_id(bad, tmp_path):
         main(
             ["prices", "--dry-run", "--map", str(tmp_path / "m.json"), "--run-id", bad]
         )
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows console control event")
+def test_second_ctrl_break_kills_without_waiting_for_grace(
+    real, child_env, python_exe, monkeypatch
+):
+    """First Ctrl+Break asks politely; a second one kills the job at once."""
+    monkeypatch.setattr(render, "WRAPPER_GRACE_S", 60.0)
+    flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    proc, holder_pid, root = _start_holding_wrapper(real, child_env, python_exe, flags)
+    try:
+        started = time.monotonic()
+        try:
+            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+            time.sleep(1.0)
+            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+        except OSError:
+            pytest.skip("no shared console to deliver the control event")
+        out, _ = proc.communicate(timeout=45)
+        assert time.monotonic() - started < 30, "waited for the full grace"
+        assert proc.returncode == 5
+        assert out.strip() == "fmp_cache_prices: killed after grace"
+        assert _lock_freed(root)
+    finally:
+        _cleanup(proc, holder_pid)
