@@ -1,0 +1,24 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "house-trading-by-name",
+  "name": "Pelosi",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "8c9af926df760c251476aebd659fdf0b60c3cdbce43bff1dc34f5802e1cbc179",
+ "hosted_text_len": 63269,
+ "rest_path": "/house-trades-by-name",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3784666b981957a7eaee4ddfa6b0dbbb7b474a923ae70a0d4bf436d275ff968b",
+ "rest_body_len": 77652,
+ "json_equal": true,
+ "compact_equal": true
+}

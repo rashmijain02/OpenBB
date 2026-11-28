@@ -1,0 +1,25 @@
+{
+ "tool": "insiderTrades",
+ "arguments": {
+  "endpoint": "latest-insider-trade",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "490cea5f4f7f711c7ee2ffb15afe6714e99f780da359813d07101aa00e459a2c",
+ "hosted_text_len": 961,
+ "rest_path": "/insider-trading/latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "805d852be81bd32554d1bbf457c3f6664eca3b5c38bf736a5cb62b234f96f26c",
+ "rest_body_len": 1166,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020acd92cf4fc23014c7effc15cbce8cb5ddd66ddc5062e24f8c102fc643dd2a34b0767685498cffbb5d471151bca8898725dd7bdff7deb7af9fbb8ee3bce8cf71dc6a5d3c8885db77dccbdbd3b1db6da38f6cc1f87448146d320820ec41e8a1c0e69524bc229962821f16495a0aa9749f63366f1400002d427180ac22134549f8fa3d0f008ee2187c3166b22ecd988137a889ccada2a2d95232c56835aa39cdb502c32849f61d5c91c2548f0ba666ce19c9c97684ee3b7a6c8a6523c899a49912d2a649f6b464156b1c8ce49055a5687f8c152b6a8b46f294b7a72639dcae52c8c29a0f3fdb9e6cae68bc87110cadf752b2ac2902bd2400f863dddadee7581485e0ce58896c6e7b2fa579ce995265d5f7fdbaae7bbaac37152b7f20b3195bd1caa7f994483f278af866e1bede3c0cd3004608611005094e77429e7ed936e8319ed3e7de4c15ae1ef6dafd8aa3eb9b8ba35fe008a6df7214c451000e7204c330c038fd0947308dc243189d2f28e3ce89ee3aff971ced78df62f477046d966d80c12841897e41104718c09d9061c804f718eadcbf01da8fbcce8e040000",
+ "hosted_text": "[{\"symbol\":\"MVIS\",\"filingDate\":\"2026-11-23\",\"transactionDate\":\"2026-11-23\",\"reportingCik\":\"0002022732\",\"companyCik\":\"0000065770\",\"transactionType\":\"A-Award\",\"securitiesOwned\":61588,\"reportingName\":\"Smith Jada\",\"typeOfOwner\":\"director\",\"acquisitionOrDisposition\":\"A\",\"directOrIndirect\":\"D\",\"formType\":\"4\",\"securitiesTransacted\":45148,\"price\":0.8306,\"securityName\":\"Common Stock\",\"url\":\"https://www.sec.gov/Archives/edgar/data/65770/000149315226053869/0001493152-26-053869-index.htm\"},{\"symbol\":\"PRLB\",\"filingDate\":\"2026-11-23\",\"transactionDate\":\"2026-11-19\",\"reportingCik\":\"0002037530\",\"companyCik\":\"0001443669\",\"transactionType\":\"A-Award\",\"securitiesOwned\":1954,\"reportingName\":\"Klein Frank\",\"typeOfOwner\":\"director\",\"acquisitionOrDisposition\":\"A\",\"directOrIndirect\":\"D\",\"formType\":\"4\",\"securitiesTransacted\":1954,\"price\":0,\"securityName\":\"Common Stock\",\"url\":\"https://www.sec.gov/Archives/edgar/data/1443669/000162828026075601/0001628280-26-075601-index.htm\"}]"
+}

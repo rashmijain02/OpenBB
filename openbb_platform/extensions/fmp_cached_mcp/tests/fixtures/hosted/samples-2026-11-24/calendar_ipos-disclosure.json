@@ -1,0 +1,23 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "ipos-disclosure",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "2403d0e6fd6fc028d28e79a3b302f0cab4c966d9adfc2f0afbba420e862b5560",
+ "hosted_text_len": 3610617,
+ "rest_path": "/ipos-disclosure",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "04cf5192374734ce435d4a1b0aafcd53ffa15c4aa5c13d8374891d920f071ee7",
+ "rest_body_len": 4356874,
+ "json_equal": true,
+ "compact_equal": true
+}

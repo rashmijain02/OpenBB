@@ -1,0 +1,230 @@
+{
+ "cases": [
+  {
+   "label": "invalid_enum_value",
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "no-such"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool quote: [\n  {\n    \"received\": \"no-such\",\n    \"code\": \"invalid_enum_value\",\n    \"options\": [\n      \"aftermarket-quote\",\n      \"aftermarket-trade\",\n      \"batch-aftermarket-quote\",\n      \"batch-aftermarket-trade\",\n      \"batch-quote\",\n      \"batch-quote-short\",\n      \"quote\",\n      \"quote-change\",\n      \"quote-short\"\n    ],\n    \"path\": [\n      \"endpoint\"\n    ],\n    \"message\": \"Invalid enum value. Expected 'aftermarket-quote' | 'aftermarket-trade' | 'batch-aftermarket-quote' | 'batch-aftermarket-trade' | 'batch-quote' | 'batch-quote-short' | 'quote' | 'quote-change' | 'quote-short', received 'no-such'\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 2
+   }
+  },
+  {
+   "label": "invalid_type_string",
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "quote",
+    "symbol": 5
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool quote: [\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"string\",\n    \"received\": \"number\",\n    \"path\": [\n      \"symbol\"\n    ],\n    \"message\": \"Expected string, received number\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 3
+   }
+  },
+  {
+   "label": "invalid_type_number",
+   "tool": "statements",
+   "arguments": {
+    "endpoint": "income-statement",
+    "symbol": "AAPL",
+    "limit": "2"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool statements: [\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"number\",\n    \"received\": \"string\",\n    \"path\": [\n      \"limit\"\n    ],\n    \"message\": \"Expected number, received string\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 4
+   }
+  },
+  {
+   "label": "invalid_type_array",
+   "tool": "news",
+   "arguments": {
+    "endpoint": "search-stock-news",
+    "symbols": "AAPL"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool news: [\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"string\",\n    \"path\": [\n      \"symbols\"\n    ],\n    \"message\": \"Expected array, received string\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 5
+   }
+  },
+  {
+   "label": "unrecognized_keys",
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "quote",
+    "symbol": "AAPL",
+    "bogus": 1
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "[{\"symbol\":\"AAPL\",\"name\":\"Apple Inc.\",\"price\":349.08,\"changePercentage\":1.90332,\"change\":6.52,\"volume\":56997299,\"dayLow\":345.4422,\"dayHigh\":352.6,\"yearHigh\":360.83,\"yearLow\":243.42,\"marketCap\":5072900376000,\"priceAvg50\":341.8072,\"priceAvg200\":303.2406,\"exchange\":\"NASDAQ\",\"open\":347.78,\"previousClose\":342.56,\"timestamp\":1795467601}]"
+      }
+     ]
+    },
+    "jsonrpc": "2.0",
+    "id": 6
+   }
+  },
+  {
+   "label": "missing_endpoint",
+   "tool": "quote",
+   "arguments": {},
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool quote: [\n  {\n    \"expected\": \"'aftermarket-quote' | 'aftermarket-trade' | 'batch-aftermarket-quote' | 'batch-aftermarket-trade' | 'batch-quote' | 'batch-quote-short' | 'quote' | 'quote-change' | 'quote-short'\",\n    \"received\": \"undefined\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"endpoint\"\n    ],\n    \"message\": \"Required\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 7
+   }
+  },
+  {
+   "label": "multiple_issues",
+   "tool": "quote",
+   "arguments": {
+    "symbol": 5,
+    "bogus": 1
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool quote: [\n  {\n    \"expected\": \"'aftermarket-quote' | 'aftermarket-trade' | 'batch-aftermarket-quote' | 'batch-aftermarket-trade' | 'batch-quote' | 'batch-quote-short' | 'quote' | 'quote-change' | 'quote-short'\",\n    \"received\": \"undefined\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"endpoint\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"string\",\n    \"received\": \"number\",\n    \"path\": [\n      \"symbol\"\n    ],\n    \"message\": \"Expected string, received number\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 8
+   }
+  },
+  {
+   "label": "invalid_type_boolean",
+   "tool": "chart",
+   "arguments": {
+    "endpoint": "intraday-1-min",
+    "symbol": "AAPL",
+    "extended": "yes"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Input validation error: Invalid arguments for tool chart: [\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"boolean\",\n    \"received\": \"string\",\n    \"path\": [\n      \"extended\"\n    ],\n    \"message\": \"Expected boolean, received string\"\n  }\n]"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 9
+   }
+  },
+  {
+   "label": "unknown_tool",
+   "tool": "no_such_tool",
+   "arguments": {
+    "endpoint": "x"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "MCP error -32602: Tool no_such_tool not found"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 10
+   }
+  },
+  {
+   "label": "fmp_missing_param",
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "quote"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "Bad request for tool \"quote\" (endpoint /quote): Query Error: Invalid or missing query parameter - symbol"
+      }
+     ],
+     "isError": true
+    },
+    "jsonrpc": "2.0",
+    "id": 11
+   }
+  },
+  {
+   "label": "fmp_unknown_symbol",
+   "tool": "quote",
+   "arguments": {
+    "endpoint": "quote",
+    "symbol": "ZZZZNOTREAL123"
+   },
+   "response": {
+    "result": {
+     "content": [
+      {
+       "type": "text",
+       "text": "{\"status\":\"not_found\",\"endpoint\":\"quote\",\"provided\":\"symbol=\\\"ZZZZNOTREAL123\\\"\",\"message\":\"No data returned for quote with symbol=\\\"ZZZZNOTREAL123\\\". The identifier may not exist, or may have no data for this endpoint. Use the 'search' tool to verify the symbol/cik/name.\"}"
+      }
+     ]
+    },
+    "jsonrpc": "2.0",
+    "id": 12
+   }
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "house-trading",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bcb86685366a6cfae3f1c2ec51ffbc09bb955219c7d732a650c1874726e9ccab",
+ "hosted_text_len": 856,
+ "rest_path": "/house-trades",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "89a80ab9d781873be430f2394c07304d51dcf11d9c7c571308bdf7616f9bcc64",
+ "rest_body_len": 1061,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020acd925f4fc23014c5dff914cdc22363edc890f146987f084609e89331a674451ab6b6693b0c317e77dbc91808099af8e0c396eddcb3bb736f7f4f0d00deed0580a737f95c645e1f7883c1e4d66b6d55cab1a1a3c4e94308118ca2aa94324d32a10b45136b718610865d1f213f4495c728cc35268609fedd84ba9569c1943677382fcb97692567b8568758d34a178b05235b2fd82fd8404631625ce966047721c41ba7ca8933298ada8eb5a626a19a28265dc0727429330a469cb4810f8622cf05073323c8eae0a3878d2cff7f50315b715228b2dc4b857351f0325313b5ec066de3268aec13ac1c044b6670768d19d7f76baa42081f67e5c6af70563722360efdeab45b11e32bf7be3446ea7e10d447a27d9251b56a2fddc4ed57b10e6431cf18797196401ae5cb74a1037718f6063bdd5e8cda56f26ce38fd66fa818db493abdf83c15303e4b05f46178928aa93845c5788939c7c75c4c05382ced93311ca08b2332122a294fdd767f02c7dfc010553444f03fd11023d4edc4f10e86c6f3279520e5de25040000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"senateID\":\"C001055\",\"disclosureDate\":\"2026-11-21\",\"transactionDate\":\"2026-11-16\",\"firstName\":\"Ed\",\"lastName\":\"Case\",\"office\":\"Ed Case\",\"district\":\"HI01\",\"owner\":\"Spouse\",\"assetDescription\":\"Apple Inc. - Common Stock\",\"assetType\":\"Stock\",\"type\":\"Purchase\",\"amount\":\"$1,001 - $15,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20036891.pdf\"},{\"symbol\":\"AAPL\",\"senateID\":\"K000389\",\"disclosureDate\":\"2026-11-09\",\"transactionDate\":\"2026-10-02\",\"firstName\":\"Ro\",\"lastName\":\"Khanna\",\"office\":\"Ro Khanna\",\"district\":\"CA17\",\"owner\":\"Dependent\",\"assetDescription\":\"Apple Inc\",\"assetType\":\"Stock\",\"type\":\"Purchase\",\"amount\":\"$15,001 - $50,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/9116399.pdf\"}]"
+}

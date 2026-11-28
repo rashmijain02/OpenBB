@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "intraday-4-hour",
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5a3e70d89ba8053580ad7a094313a2c3d06859fe21c438164259ac92928e8d75",
+ "hosted_text_len": 210,
+ "rest_path": "/historical-chart/4hour",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "f99d51025641579e6e14f5ad82f524465877b75c83ca6af1fcf305c142f88028",
+ "rest_body_len": 295,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7dcf3b0ec2301045d13eabb05c27a3f1f8efad200a0416413218895f81d83b8e314d8228a6397ac59d55c7d8b31c637cb7b9461e18272433083110322183c480c8fbcf249fe3a94ca452e04db3941f9510f497c6c37eac66c0aa66db942fb122816d76cfe9769c9048582d842afceaff16a1ff5da4099c9d1529d07e56a415c86551f9c62d928cd1525a372575eb37d84dd1a427010000",
+ "hosted_text": "[{\"date\":\"2026-11-20 13:30:00\",\"open\":344.96,\"low\":340.56,\"high\":346.74,\"close\":342.7,\"volume\":22175114},{\"date\":\"2026-11-20 09:30:00\",\"open\":352.87,\"low\":344.59,\"high\":354.34,\"close\":344.98,\"volume\":26653378}]"
+}

@@ -1,0 +1,27 @@
+{
+ "tool": "crypto",
+ "arguments": {
+  "endpoint": "cryptocurrency-historical-price-eod-light",
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d844d982ebe8073ae309b259643290e0578fd352d8deeeb3943d988f505d9545",
+ "hosted_text_len": 312,
+ "rest_path": "/historical-price-eod/light",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "aee69b93952156276d2a44c0503f214f802dedc6f858f410875aaeb5da92b397",
+ "rest_body_len": 433,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dcdbb0ec2300c85e1bd4f11656e2b3b761c8711780360420cdc06a45645dc248478771a010b99e87096ff0cdfb230e6d1cf187bbeb79baeb12363c7f3c96236b5e5bbefd6977daa0e9c54889583ef733c1db6e9f2aaea6af9d45bd75cdb940502100272d4fe7996ff53187f29c108504b6611b130a022cb504b338b20599859401ec981521c6a85cc6255aa81328b3d8a06c1109255ac5ec56ebb8db1010000",
+ "hosted_text": "[{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-20\",\"price\":58882.6,\"volume\":60703101498},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-19\",\"price\":61900.66,\"volume\":33464018146},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-18\",\"price\":63000.61,\"volume\":30351320839},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-17\",\"price\":64883.03,\"volume\":34516876177}]"
+}

@@ -1,0 +1,27 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "index-intraday-1-hour",
+  "symbol": "^GSPC",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "476eed62471b3aeb2bc3745d372b341343703ea01906a36871d1e083193dee51",
+ "hosted_text_len": 764,
+ "rest_path": "/historical-chart/1hour",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3f8573ccc2ed0efa032f30411d2c320d63be82abf5aa93e53658e578287185fd",
+ "rest_body_len": 1059,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8dd2cb4ec3301005d03d5f1165dd8ee6e9f1f457100b0415452a0489d702f1ef24256a1bbb812cbcb9ba96ce787c7dd5345ffd699af6fef66ddb6e9a9691d39a68cdd8906d043788edeab7d2bd6c9ffb4a0a25701dc37df739643933a43466bbc787dda168064a6378b7ef5eb7879432a88de947b77f7f1a627754f190d4e7dfabbf5d3ae34a0248535748006be9ca0a962b97f2e9fad165c2a2895d16b8e4a2cb911248f15e83d579ea723405f7ca755e3dba24473f06072d70f18c8b05924c5c8e68d51e1d45a15ce3612aad549c523f85fa0215cda89c40a85051453a6f9d4cfd441a254a51298c0517a0f0328a18217b814a0418856b523cb9066df5b3d0dc23d0fe6761ccb00c4162ca2214c8a52a32a44a3558cd4b5616ca26fd9f1f5857373f8d5166b523040000",
+ "hosted_text": "[{\"date\":\"2026-11-20 15:30:00\",\"open\":6941.74,\"low\":6882.66,\"high\":6955.41,\"close\":6918.45,\"volume\":770437936},{\"date\":\"2026-11-20 14:30:00\",\"open\":6963.01,\"low\":6939.24,\"high\":6984.58,\"close\":6942.01,\"volume\":532346273},{\"date\":\"2026-11-20 13:30:00\",\"open\":7016.34,\"low\":6963.72,\"high\":7054.77,\"close\":6963.72,\"volume\":389984291},{\"date\":\"2026-11-20 12:30:00\",\"open\":7023.63,\"low\":7005.66,\"high\":7034.1,\"close\":7016.4,\"volume\":326605447},{\"date\":\"2026-11-20 11:30:00\",\"open\":7071.31,\"low\":7016,\"high\":7071.31,\"close\":7023.49,\"volume\":404195230},{\"date\":\"2026-11-20 10:30:00\",\"open\":7120.87,\"low\":7061.09,\"high\":7120.87,\"close\":7071.3,\"volume\":505779905},{\"date\":\"2026-11-20 09:30:00\",\"open\":7150.39,\"low\":7103.8,\"high\":7198.67,\"close\":7120.57,\"volume\":831853346}]"
+}

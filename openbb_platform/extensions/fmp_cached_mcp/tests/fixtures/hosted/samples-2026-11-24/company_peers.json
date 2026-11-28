@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "peers",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "623cf24222d185a452025d0eeb79eabd467edd463cbf057ba6f5ccf635f820b7",
+ "hosted_text_len": 983,
+ "rest_path": "/stock-peers",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3dba3d67fad4198e94af0d2cfad693ae9dffc624f604d6eaaaf2daf8be6aaedf",
+ "rest_body_len": 1284,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7d93c16e1b211086ef790ae4b3856080017a8bdcc6896ab9513787b4550f748d6c642f6c77d795dcaaef5e9ca452eb0d7be0c2207ddfccfc7cb922e4573e84ccfa53f32d1d666fc88c3100c969f579367f2ed5a9695d3cad5de3cff565f2dde0f7e42ed6f4ef93b60bf5b908400dbcdc35fb61e1da7ca90db768c120d85cf93d7f158aa834a3efab0274b524ef0ebe1eba1443ddbfcae6520063977010209991c894cad5225f3066942e375ded5ce79fe9e4ad1b1c79f0f52ea643da9ec822d139590d9bb1511e87d09746ca1a238462824feb209675aee3de77790a31fd704348b127abd084c16f460a5c503552400e4a226a045e544026c06685d2466e8fee7b88e5e651502e2fc1c66a850c956450061bc3c404b8daf9f8331ff2d0b9d8f7b97b729b0e9b10b77dd946d9d10cb4cdb1cc999848c5fde2e3cd4d41e3de45d73fe5e11f7ad7a6ee6921a33d180aea52410272a5ac12a2bc86eac3fa536910299ec8b24bc7768a0c9a9a1199a30091bf0530d06574b55e95baaf5cd31fe3f6bf4f598e82a2c047519059c0a2525a9aa2c2e3ddf5a2a4f0185c6ac254eb39faa3ce2dcfb11616b51067ead5d73fdf130fd604050000",
+ "hosted_text": "[{\"symbol\":\"002241.SZ\",\"companyName\":\"Goertek Inc.\",\"price\":22.82,\"mktCap\":78196928629},{\"symbol\":\"066570.KS\",\"companyName\":\"LG Electronics Inc.\",\"price\":143200,\"mktCap\":23240846055200},{\"symbol\":\"300857.SZ\",\"companyName\":\"Sharetronic Data Technology Co., Ltd.\",\"price\":122.37,\"mktCap\":59883350310},{\"symbol\":\"300866.SZ\",\"companyName\":\"Anker Innovations Limited\",\"price\":113.57,\"mktCap\":61254667621},{\"symbol\":\"603296.SS\",\"companyName\":\"Huaqin Co., Ltd.\",\"price\":63.14,\"mktCap\":89756065402},{\"symbol\":\"688036.SS\",\"companyName\":\"Shenzhen Transsion Holdings Co., Ltd.\",\"price\":59,\"mktCap\":67919620000},{\"symbol\":\"PCRFF\",\"companyName\":\"Panasonic Holdings Corporation\",\"price\":18.25,\"mktCap\":42615595331},{\"symbol\":\"SONY\",\"companyName\":\"Sony Group Corporation\",\"price\":27.85,\"mktCap\":163230842027},{\"symbol\":\"SSNLF\",\"companyName\":\"Samsung Electronics Co., Ltd.\",\"price\":65.21,\"mktCap\":843089655748},{\"symbol\":\"XIACF\",\"companyName\":\"Xiaomi Corporation\",\"price\":3.55,\"mktCap\":91329396733}]"
+}

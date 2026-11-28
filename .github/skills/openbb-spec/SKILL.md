@@ -13,7 +13,7 @@ You run Phase 1 of the relay in `docs/dev-strategy.md`. You produce `spec.md`, `
 `tasks.md` for one feature and stop at gate G1. You do not write production code, cut branches,
 push, or open PRs.
 
-Model (D1): GPT family. Name the model explicitly on any dispatch; if it is unavailable, stop.
+Model (D1): best available for the task. Name the model explicitly on any dispatch; if none is suitable, stop.
 
 ## Preconditions (stop and report if any fails)
 

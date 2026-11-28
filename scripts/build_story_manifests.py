@@ -22,7 +22,6 @@ Rerun after a notebook changes, review the diff, and commit the result:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import re
 import sys
@@ -779,6 +778,7 @@ async def _tool_schemas(names: set[str]) -> dict[str, str]:
     from openbb_core.api.rest_api import app
     from openbb_mcp_server.app.app import create_mcp_server
     from openbb_mcp_server.models.settings import MCPSettings
+    from openbb_mcp_server.utils.schema_digest import tool_input_schema_sha256
 
     settings = MCPSettings.model_validate(
         {
@@ -792,10 +792,7 @@ async def _tool_schemas(names: set[str]) -> dict[str, str]:
     schemas = {}
     for tool in await server.list_tools():
         if tool.name in names:
-            canonical = json.dumps(
-                tool.parameters or {}, sort_keys=True, separators=(",", ":")
-            )
-            schemas[tool.name] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            schemas[tool.name] = tool_input_schema_sha256(tool.parameters)
     missing = names - set(schemas)
     if missing:
         raise SystemExit(f"tools not emitted by portfolio-ops: {sorted(missing)}")

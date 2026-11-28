@@ -98,13 +98,7 @@ conflicts that only emerge from implementation.
 
 ## Model Selection
 
-Use `gpt-5.6-sol` for every implementer, reviewer, fixer, and final
-whole-branch review subagent, regardless of task size or complexity.
-
-Always specify `gpt-5.6-sol` explicitly when dispatching a subagent. Do not
-rely on the session default, select a cheaper tier, use an alias, or fall back
-to another provider. If `gpt-5.6-sol` is unavailable, stop and report the
-blocker.
+Model: choose per `docs/dev-cycle/model-selection.md` (Sonnet default; Opus for design or high-risk work); name it on every dispatch. Canonical: [`docs/dev-cycle/model-selection.md`](../../../docs/dev-cycle/model-selection.md) (D1 in [`docs/dev-strategy.md`](../../../docs/dev-strategy.md)). If no suitable model is available, stop and report the blocker; never silently degrade.
 
 ## Handling Implementer Status
 

@@ -1,0 +1,24 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "grades",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "aff21662df1ddaf9f2d54b878650a8230a0ac7a1ca921b0255ad25d1de6077ac",
+ "hosted_text_len": 248571,
+ "rest_path": "/grades",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "845605bd843423d0694948b7bd1703889486c9fbd865b484daa460bfafdd3438",
+ "rest_body_len": 325012,
+ "json_equal": true,
+ "compact_equal": true
+}

@@ -1,0 +1,25 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-company-screener",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "53b093d8bc4fa17ba92abf20786a68b039e7969d1808dcd1cb35da9280f52abb",
+ "hosted_text_len": 709,
+ "rest_path": "/company-screener",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "440187ffa32256185352634d9c640543d0a6eb93fa01d1223505d96612a82ba7",
+ "rest_body_len": 914,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ad5914d6b833018c7effd14c173913455d3ec26b51b85211b76bd8c1dd298dab098488c6532f6dd17ad76ac74831d2778f9bf84e7797ecf1300dedd0f8057b7e54e4bef067871fc70ef4d4f2ad36545559bd292f75655490ed68af963a0a4e695db25ad9c1d428c0884731c410807bfe6cc6ad375379c1d9496ba68c7ae5079535bd376ee52abba29b9012be91a462bc1ea31b7e396bacccc870b32489511ac9b681e10a70ea2a4b58d956aa84cc451e45ce5a7161efca3964dbf471811e2461d1fa3c7623b5a012211c1c1f8247f6307aa8a7ef934ce92f811dc49bda31264bc1bd4bbc865076dec78ad53e1eb948d1a967dcace27a85776efa43d95353f6bb74d3ffa773166561cb96c3786e64215ceb7a6e1cefd985ea3986e93f8078ae9769dac63b0d4a6d2865aa1d5359a7382318621ecbf3fd2cc782998764217bfe4887c14e00b8eb328f461f81b47e887e89223c61142e162b1b80272866110a11922ff89e4e4e51300911f5d92030000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"companyName\":\"Apple Inc.\",\"marketCap\":5072900376000,\"sector\":\"Technology\",\"industry\":\"Consumer Electronics\",\"beta\":1.089,\"price\":349.08,\"lastAnnualDividend\":1.07,\"volume\":56997299,\"avgVolume\":42969748,\"exchange\":\"NASDAQ Global Select\",\"exchangeShortName\":\"NASDAQ\",\"country\":\"US\",\"isEtf\":false,\"isFund\":false,\"isActivelyTrading\":true},{\"symbol\":\"NVDA\",\"companyName\":\"NVIDIA Corporation\",\"marketCap\":3977705000000,\"sector\":\"Technology\",\"industry\":\"Semiconductors\",\"beta\":2.247,\"price\":165.05,\"lastAnnualDividend\":0.52,\"volume\":776225888,\"avgVolume\":170462129,\"exchange\":\"NASDAQ Global Select\",\"exchangeShortName\":\"NASDAQ\",\"country\":\"US\",\"isEtf\":false,\"isFund\":false,\"isActivelyTrading\":true}]"
+}

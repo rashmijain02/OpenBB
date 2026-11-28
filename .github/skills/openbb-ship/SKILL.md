@@ -13,7 +13,7 @@ You run Phase 3 of the relay in `docs/dev-strategy.md`. Input: a feature branch 
 `specs/gh-NN-slug/handoff.md` (or, on the small-fix route, a `fix/<topic>-gh-NN` branch). Output:
 a fork-internal PR with green CI and every finding resolved, merged by the owner.
 
-Model (D1): GPT family, named explicitly on every dispatch. If unavailable, stop.
+Model (D1): best available for the task, named explicitly on every dispatch. If none is suitable, stop.
 
 Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
 `$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`.
@@ -23,7 +23,8 @@ Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their o
 Ask the user, each time, before: `git push`, `gh pr create`, `gh pr merge`, closing issues by
 hand. A "yes" covers that one action only. You may, without asking: read, run tests, run the
 local reviews, comment review triage on the PR you opened, heartbeat the claim, and set board
-Status. Never merge; the owner merges.
+Status. Never merge; the owner merges (or the lead under the lead-delegated profile, D15 in
+`docs/dev-strategy.md`; table in `.claude/skills/openbb-dev-cycle/SKILL.md` §3).
 
 **Headless runs** (`copilot -p`): Copilot CLI permission rules match only the first subcommand, so
 allowing `gh pr create` also allows `gh pr merge`. In a headless run, deny `shell(gh pr)`, write the PR

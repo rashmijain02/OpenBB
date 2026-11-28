@@ -1,0 +1,25 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "house-latest",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "4805b7b38ba381db111a5088d7960f61276e96842a0dd54c7d476a8534714a03",
+ "hosted_text_len": 902,
+ "rest_path": "/house-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "47aee755ab4ae3fa36e9abcf4d9d1f32803446a0e0123c3f3493f7748b6d7411",
+ "rest_body_len": 1107,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020acd925d4fc2301486effd15cde285268c755350b923e007469404e54263ccb174d2d0b54ddb69d0f8df6d07e3431663bcf262cbfa9eb767e7e379d841e8c33d080566963d4b1eb450d06e0fae82da42a5022ced75bddec138c68d46191a3343b834b9a65d67f1860427cd308ec3242e3d568330402c93e2bb296e96a6946963af212bc2a7e352e6b0523b6068a9cb346564e145eb015790d58c581fbae8e16511f24d50edc5a192f9ca0ec650dba58668a67c8145eb4a718a7a82d451883a32cba440432bc974e3d2ed4c15ffdf88d88538c83599ac550599cc4551d36e5c7313748977e386fbc2a583806216f83930616e5ea94e30be1b16133f03be4a445c39749e69392226a6fe3cb156995614ad566242c2a99ed627bee3fa8b7c8d54fecc1979f29648591daa716a22bf0cf7c207cde393b8eea4c025feac555131baaf62a2ef3a4a92a35f30817fc3c449251397540896ba1d5690d1271d4e3907b18d47790d6d79d64919b5f1e116293f3132a29abd3b2e3c1eb960047cc0cca1f91b324370d0ed0d405b067cbf029c065e9283f1ff43e7f86089cecee317ff5b73fe53040000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"senateID\":\"C001055\",\"disclosureDate\":\"2026-11-21\",\"transactionDate\":\"2026-11-16\",\"firstName\":\"Ed\",\"lastName\":\"Case\",\"office\":\"Ed Case\",\"district\":\"HI01\",\"owner\":\"Spouse\",\"assetDescription\":\"Apple Inc. - Common Stock\",\"assetType\":\"Stock\",\"type\":\"Purchase\",\"amount\":\"$1,001 - $15,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20036891.pdf\"},{\"symbol\":\"VZ\",\"senateID\":\"M001227\",\"disclosureDate\":\"2026-11-20\",\"transactionDate\":\"2026-11-19\",\"firstName\":\"Jennifer\",\"lastName\":\"McClellan\",\"office\":\"Jennifer McClellan\",\"district\":\"VA04\",\"owner\":\"\",\"assetDescription\":\"Verizon Communications Inc. Common Stock\",\"assetType\":\"Stock\",\"type\":\"Sale (Partial)\",\"amount\":\"$50,001 - $100,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20036883.pdf\"}]"
+}

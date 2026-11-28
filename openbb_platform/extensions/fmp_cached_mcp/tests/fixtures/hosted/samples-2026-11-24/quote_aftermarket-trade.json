@@ -1,0 +1,25 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "aftermarket-trade",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "02c0bb6befce2b947ebdd06c85078052b400ef29de34bfbc185792dc0f28018c",
+ "hosted_text_len": 74,
+ "rest_path": "/aftermarket-trade",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "5e0051a9e190db51cb43a902f31e62af1fe17a0b22b0b6cefcae96584c760e6e",
+ "rest_body_len": 105,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d8868415166722a50d0d8d450cfc4122a58529498921a9c59059230848965e6a6169724e61680c4cc2d4d4d0d8d2d4c4d0d0c0c80d2b55cb100e20f38df69000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"price\":351.49,\"tradeSize\":1,\"timestamp\":1795513855000}]"
+}

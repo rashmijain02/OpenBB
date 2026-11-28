@@ -5587,6 +5587,59 @@ def create_fmp_trading_state_table():
     return execute_query(query)
 
 
+# ---------------------------------------------------------------------------
+# fmp_cached MCP server store (#1300). Column definitions are shared with
+# openbb_fmp_cached_mcp.store (its tests assert they match). All three keep raw
+# FMP JSON; only fmp_mcp_ephemeral is prunable (see EXPIRABLE_CACHE_TABLES).
+# (Per-date series tables are deferred to #1310, series gap-fill.)
+# ---------------------------------------------------------------------------
+
+FMP_MCP_TABLE_COLUMNS: dict[str, str] = {
+    "fmp_mcp_document": (
+        "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json MEDIUMTEXT NOT NULL, "
+        "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
+        "fetched_at DATETIME NOT NULL, refresh_after DATETIME NULL"
+    ),
+    "fmp_mcp_ephemeral": (
+        "cache_key CHAR(64) NOT NULL PRIMARY KEY, tool VARCHAR(64) NOT NULL, "
+        "endpoint VARCHAR(96) NOT NULL, path VARCHAR(128) NOT NULL, query_json MEDIUMTEXT NOT NULL, "
+        "retention VARCHAR(16) NOT NULL, status SMALLINT NOT NULL, body LONGBLOB NOT NULL, "
+        "fetched_at DATETIME NOT NULL, expires_at DATETIME NOT NULL"
+    ),
+    "fmp_mcp_feed_item": (
+        "family VARCHAR(128) NOT NULL, item_id CHAR(64) NOT NULL, row_json MEDIUMTEXT NOT NULL, "
+        "fetched_at DATETIME NOT NULL, PRIMARY KEY (family, item_id)"
+    ),
+}
+
+
+def _fmp_mcp_table_creator(base_name: str):
+    def create():
+        # Unprefixed even in FMP_CACHE_TEST_MODE: the MCP store and the prune
+        # rule always use these exact names.
+        table = safe_identifier(base_name)
+        return execute_query(
+            f"CREATE TABLE IF NOT EXISTS {table} ({FMP_MCP_TABLE_COLUMNS[base_name]}) "
+            "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        )
+
+    create.__name__ = f"create_{base_name}_table"
+    create.__doc__ = f"Create {base_name} (fmp_cached MCP store, #1300)."
+    return create
+
+
+def create_fmp_mcp_tables(only: list[str] | None = None) -> dict[str, object]:
+    """Create the fmp_cached MCP store tables (#1300); idempotent.
+
+    Kept out of :data:`FLATTENED_TABLES`, whose consumers treat every entry as
+    an entity data table. The MCP server creates these on startup; operators
+    can call this to pre-create them.
+    """
+    names = only if only is not None else list(FMP_MCP_TABLE_COLUMNS)
+    return {name: _fmp_mcp_table_creator(name)() for name in names}
+
+
 # Complete table configuration for all 67 entities
 FLATTENED_TABLES = {
     "aftermarket_quote": {"schema": create_aftermarket_quote_table},
@@ -6017,6 +6070,12 @@ class CacheExpiryRule:
     partition_value: str | None = None
     test_prefixed: bool = False
     timestamp_column: str = "cached_at"
+    #: The table's timestamps are written in UTC by the application (not by the
+    #: database clock), so the cutoff is taken from UTC_TIMESTAMP() (#1309).
+    utc_clock: bool = False
+    #: The table may not exist yet (created by an optional component, e.g. the
+    #: MCP server); a missing table counts as nothing to prune, not an error.
+    optional: bool = False
 
     @property
     def label(self) -> str:
@@ -6043,6 +6102,10 @@ EXPIRABLE_CACHE_TABLES: frozenset[str] = frozenset(
         "equity_peers",
         "institutional_ownership",
         "equity_quote",
+        # fmp_cached MCP server (#1300): the only prunable MCP table. Its
+        # persistent tables (fmp_mcp_document, fmp_mcp_feed_item) are never
+        # listed here.
+        "fmp_mcp_ephemeral",
     }
 )
 
@@ -6076,6 +6139,16 @@ CACHE_EXPIRY_RULES: tuple[CacheExpiryRule, ...] = (
     CacheExpiryRule("equity_peers", 7 * _DAY_SECONDS),
     CacheExpiryRule("institutional_ownership", 7 * _DAY_SECONDS),
     CacheExpiryRule("equity_quote", 300),
+    # Each fmp_mcp_ephemeral row carries its own expiry; its reader serves a
+    # row only while now < expires_at, so the rule's TTL is 0 on that column.
+    CacheExpiryRule(
+        "fmp_mcp_ephemeral",
+        0,
+        key_columns=("cache_key",),
+        timestamp_column="expires_at",
+        utc_clock=True,
+        optional=True,
+    ),
 )
 
 
@@ -6114,9 +6187,20 @@ def describe_db_error(exc: BaseException) -> str:
     return type(exc).__name__ + (f" {code}" if code is not None else "")
 
 
-def _database_now() -> datetime:
-    """Read the database clock, the clock that stamps ``cached_at``."""
-    rows = execute_query("SELECT CURRENT_TIMESTAMP AS db_now")
+def _is_missing_table(exc: BaseException) -> bool:
+    """Return True for "table does not exist" (MySQL 1146, SQLite "no such table")."""
+    code = exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
+    return code == 1146 or "no such table" in str(exc).lower()
+
+
+def _database_now(utc: bool = False) -> datetime:
+    """Read the database clock, the clock that stamps ``cached_at``.
+
+    ``utc=True`` reads ``UTC_TIMESTAMP()`` for tables whose timestamps the
+    application writes in UTC (``fmp_mcp_ephemeral``, #1309).
+    """
+    clock = "UTC_TIMESTAMP()" if utc else "CURRENT_TIMESTAMP"
+    rows = execute_query(f"SELECT {clock} AS db_now")  # noqa: S608 (constant)
     value = rows[0]["db_now"]
     if isinstance(value, datetime):
         return value
@@ -6234,12 +6318,23 @@ def prune_expired_cache(
     }
     if not resolved:
         return report
-    now = _database_now()
+    # The database clock is read up front: if it cannot be read, nothing can be
+    # pruned and the caller sees the connection error (CLI exit 2). The UTC
+    # clock (#1309) is read per rule, so its failure is reported per table.
+    clocks: dict[bool, datetime] = {}
+    if any(not rule.utc_clock for rule, _ in resolved):
+        clocks[False] = _database_now()
     for rule, table in resolved:
-        cutoff = now - timedelta(seconds=rule.ttl_seconds)
         try:
+            if rule.utc_clock not in clocks:
+                clocks[rule.utc_clock] = _database_now(utc=rule.utc_clock)
+            cutoff = clocks[rule.utc_clock] - timedelta(seconds=rule.ttl_seconds)
             entry = _prune_rule(rule, table, cutoff, dry_run, batch_size)
         except Exception as exc:  # noqa: BLE001 - one table must not stop the rest
+            if rule.optional and _is_missing_table(exc):
+                entry = {"ttl_seconds": rule.ttl_seconds, "rows": 0, "missing": True}
+                report["tables"][rule.label] = entry
+                continue
             # Type and driver error code only: driver messages can carry the
             # host or user name, which must not reach logs or reports.
             report["errors"][rule.label] = describe_db_error(exc)

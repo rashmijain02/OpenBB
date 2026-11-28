@@ -1,0 +1,25 @@
+{
+ "tool": "etfAndMutualFunds",
+ "arguments": {
+  "endpoint": "country-weighting",
+  "symbol": "SPY"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bf5773968bba94e7ab904aebb09b172058120b57a47c2334124c51184cfcf83a",
+ "hosted_text_len": 308,
+ "rest_path": "/etf/country-weightings",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "e450b2aa3f46238732f9d2c01a409ca4d2e50b1beebb7ea9c96dab06745798ba",
+ "rest_body_len": 417,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e4fcd2bc92a24a252b05a5d0bccc92d41485e092c492d462251d887c796a667a4649406a51726a5e49627a2a48a1a5a59ea9aa1250be5607ab41c1e5992555a94539897929f88c31d033b2c4678c7346665e227e030cf1e9f74dadc84ccec76f8081093e133c8b52097bc2c0189f11d040f5cecc4b4fc9cf25ce24ae580008306f4ea1010000",
+ "hosted_text": "[{\"country\":\"United States\",\"weightPercentage\":\"99.5%\"},{\"country\":\"Switzerland\",\"weightPercentage\":\"0.29%\"},{\"country\":\"China\",\"weightPercentage\":\"0.1%\"},{\"country\":\"Mexico\",\"weightPercentage\":\"0.04%\"},{\"country\":\"Ireland\",\"weightPercentage\":\"0.03%\"},{\"country\":\"United Kingdom\",\"weightPercentage\":\"0.03%\"}]"
+}

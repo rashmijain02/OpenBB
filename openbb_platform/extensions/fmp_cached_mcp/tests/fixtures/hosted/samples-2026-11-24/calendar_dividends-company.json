@@ -1,0 +1,26 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "dividends-company",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "21304d99ea1c1e19c94ec2d7892e51ef8a1b30440e3a4d2244db5961f927a681",
+ "hosted_text_len": 418,
+ "rest_path": "/dividends",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "622ac1fd7f4d8a20957107222e872e9922a26b1f67bce8c15d43e412d94619b9",
+ "rest_body_len": 539,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa590410b82301886effe8ab173c6b74da776133a76a8737458ee0b8ca9b52c18d17f4f0985ca92e8b0cbfb3edf3b78d61e21d7e611424faed85686ce084dd3e5824e1ea95635b619072e7dc67cc6bbc66256593dffd81f942bb0acdf00d94f63669455755e95af10f42b4aefe7f925d758ea0680298fbaebc1d4e5681e91001632103289800722901db1b3783c6399b9f6bfd559d91aad71b4296f939f6440ec33f822e3a91f92d102624c0644be80ff650422966128e3663249808fbbf036772296e0781b020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-12\",\"recordDate\":\"2026-11-12\",\"paymentDate\":\"2026-11-16\",\"declarationDate\":\"2026-11-02\",\"adjDividend\":0.27,\"dividend\":0.27,\"yield\":0.30151036970243467,\"frequency\":\"Quarterly\"},{\"symbol\":\"AAPL\",\"date\":\"2026-08-10\",\"recordDate\":\"2026-08-10\",\"paymentDate\":\"2026-08-13\",\"declarationDate\":\"2026-07-30\",\"adjDividend\":0.27,\"dividend\":0.27,\"yield\":0.3438655680269902,\"frequency\":\"Quarterly\"}]"
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "workflow_id": "synthetic.concentration_review",
+  "version": "1.0.0",
+  "access_version": 1,
+  "title": "Synthetic concentration review",
+  "capabilities": {
+    "platform:story_concentration": {
+      "server": "platform",
+      "tool": "story_concentration",
+      "schema_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "access": "analysis"
+    },
+    "platform:story_construction_targets": {
+      "server": "platform",
+      "tool": "story_construction_targets",
+      "schema_sha256": "e70b26b88a8da15134ed7b0943d68eca7139c40f2b369c86a08e95cea336e5d1",
+      "access": "analysis"
+    },
+    "platform:story_run_checkpoint": {
+      "server": "platform",
+      "tool": "story_run_checkpoint",
+      "schema_sha256": "f4788a8a81d670ab781587bb0fc37650b31b2fe43a7dd8e5e71664104a8ae46c",
+      "access": "artifact"
+    },
+    "platform:story_run_create": {
+      "server": "platform",
+      "tool": "story_run_create",
+      "schema_sha256": "3f847daaa6c38d4a61eec28bd415bca9263a55aa0938b9450b6bb5cb152af111",
+      "access": "artifact"
+    }
+  },
+  "stages": [
+    {
+      "id": "concentration",
+      "title": "Measure concentration of a weight map",
+      "kind": "analysis",
+      "depends_on": [],
+      "capabilities": [
+        "platform:story_concentration"
+      ],
+      "inputs": [],
+      "outputs": [
+        "concentration_result"
+      ],
+      "optional": false
+    },
+    {
+      "id": "construction",
+      "title": "Derive construction targets from the weights",
+      "kind": "analysis",
+      "depends_on": [
+        "concentration"
+      ],
+      "capabilities": [
+        "platform:story_construction_targets"
+      ],
+      "inputs": [
+        {
+          "name": "concentration",
+          "output": "concentration_result",
+          "from_stage": "concentration"
+        }
+      ],
+      "outputs": [
+        "construction_result"
+      ],
+      "optional": false
+    },
+    {
+      "id": "checkpoint",
+      "title": "Checkpoint the results against this workflow digest",
+      "kind": "state",
+      "depends_on": [
+        "construction"
+      ],
+      "capabilities": [
+        "platform:story_run_checkpoint"
+      ],
+      "inputs": [
+        {
+          "name": "construction",
+          "output": "construction_result",
+          "from_stage": "construction"
+        }
+      ],
+      "outputs": [
+        "workflow_state"
+      ],
+      "optional": false
+    }
+  ],
+  "input_schemas": {},
+  "artifact_schemas": {},
+  "limitations": [
+    "Pure arithmetic on a caller-supplied weight map; no provider data is read.",
+    "Synthetic reference workflow; real portfolio workflows ship separately."
+  ]
+}

@@ -1,0 +1,15 @@
+# Synthetic unsafe shape (#1338-T03): local finance-private alias, but message
+# logging is on, a callback exports requests and prompts are stored in spend logs.
+# Key names verified against litellm 1.106.6.
+model_list:
+  - model_name: finance-private
+    litellm_params:
+      model: openai/local-finance-model
+      api_base: http://127.0.0.1:PORT_LOCAL/v1
+litellm_settings:
+  turn_off_message_logging: false
+  success_callback: [langfuse]
+  callbacks: [custom_callbacks.handler]
+general_settings:
+  master_key: os.environ/SYNTHETIC_MASTER_KEY_ENV
+  store_prompts_in_spend_logs: true

@@ -34,7 +34,6 @@ import hmac
 import json
 import os
 import re
-import secrets
 import sqlite3
 import uuid
 from collections.abc import Iterator
@@ -57,7 +56,21 @@ from pydantic import (
 )
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
-from openbb_mcp_server.story_adapters.registry import RunStore, default_store_path
+from openbb_mcp_server.story_adapters.paper_replay import (
+    ReplayContext,
+    prepare_locked,
+)
+from openbb_mcp_server.story_adapters.receipts import (
+    ReceiptLedger,
+)
+from openbb_mcp_server.story_adapters.registry import (
+    RunStore,
+    WorkflowCatalog,
+    default_store_path,
+    default_workflow_dir,
+    ensure_run_open,
+    ensure_workflow_current,
+)
 
 APPROVAL_KEY_ENV = "OPENBB_STORY_APPROVAL_KEY"
 PAPER_ROOT_ENV = "OPENBB_STORY_PAPER_ROOT"
@@ -361,7 +374,7 @@ class PaperStore:
         """Open the store, creating its tables on first use."""
         if not self._ready:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.db_path, isolation_level=None)
+        connection = sqlite3.connect(self.db_path, isolation_level=None, timeout=30)
         connection.row_factory = sqlite3.Row
         if not self._ready:
             connection.executescript(
@@ -379,6 +392,16 @@ class PaperStore:
                 " result TEXT, error TEXT, created_at TEXT NOT NULL,"
                 " UNIQUE (principal, operation_id));"
             )
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(story_paper_requests)")
+            }
+            # #1341: nullable, so older rows and outstanding approvals stay valid.
+            for column in ("superseded_reason", "applying_at"):
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE story_paper_requests ADD COLUMN {column} TEXT"
+                    )
             self._ready = True
         try:
             yield connection
@@ -511,6 +534,41 @@ class Apply(_Strict):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
+def withdraw_pending_requests(
+    db_path: Path, principal: str, run_id: str
+) -> dict[str, int]:
+    """Withdraw a run's ``pending`` requests; count ``applying`` ones left alone.
+
+    Used by ``story_run_cancel`` (#1341). A withdrawn request can never be
+    applied: apply only claims ``pending`` rows. An ``applying`` request is
+    never touched, because its engine call may already have taken effect.
+    """
+    counts = {"withdrawn": 0, "applying": 0}
+    if not db_path.exists():
+        return counts
+    connection = sqlite3.connect(db_path, isolation_level=None, timeout=30)
+    try:
+        has_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table'"
+            " AND name = 'story_paper_requests'"
+        ).fetchone()
+        if has_table is None:
+            return counts
+        counts["withdrawn"] = connection.execute(
+            "UPDATE story_paper_requests SET status = 'withdrawn'"
+            " WHERE principal = ? AND run_id = ? AND status = 'pending'",
+            (principal, run_id),
+        ).rowcount
+        counts["applying"] = connection.execute(
+            "SELECT COUNT(*) FROM story_paper_requests"
+            " WHERE principal = ? AND run_id = ? AND status = 'applying'",
+            (principal, run_id),
+        ).fetchone()[0]
+    finally:
+        connection.close()
+    return counts
+
+
 def _sandbox_view(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "sandbox_id": row["sandbox_id"],
@@ -537,6 +595,12 @@ def _request_view(row: sqlite3.Row) -> dict[str, Any]:
             "status",
         )
     }
+    if (
+        view["status"] == "pending"
+        and datetime.fromisoformat(row["expires_at"]) <= _now()
+    ):
+        # Derived, never stored: a new prepare and a new decision are needed.
+        view["status"] = "expired"
     view["arguments"] = json.loads(row["arguments"])
     view["result"] = json.loads(row["result"]) if row["result"] else None
     view["error"] = row["error"]
@@ -554,11 +618,28 @@ def _unprocessable(error: Exception) -> HTTPException:
 
 
 def build_router(  # pylint: disable=too-many-statements
-    runs: RunStore, store: PaperStore, principal: str
+    runs: RunStore,
+    store: PaperStore,
+    principal: str,
+    workflows: WorkflowCatalog | None = None,
 ) -> APIRouter:
     """Return the paper routes bound to one principal."""
+    workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
     authenticated = [Depends(AuthService().auth_hook)]
+    receipts = ReceiptLedger(store.db_path)
+
+    def _clock() -> datetime:
+        """Read ``_now`` at call time so a patched clock still governs expiry."""
+        return _now()
+
+    replay_ctx = ReplayContext(
+        principal=principal,
+        receipts=receipts,
+        request_view=_request_view,
+        now=_clock,
+        ttl=APPROVAL_TTL,
+    )
 
     def _route(method: str, path: str, name: str):
         return getattr(router, method)(
@@ -578,11 +659,23 @@ def build_router(  # pylint: disable=too-many-statements
             )
         return key
 
-    def _owned_run(run_id: str):
+    def _owned_run(run_id: str, *, mutating: bool = False):
         record = runs.get(principal, run_id)
         if record is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
+        if mutating:
+            ensure_workflow_current(record, workflow_catalog)
+            ensure_run_open(record)
         return record
+
+    def _supersede(request_id: str, reason: str) -> None:
+        """Mark a pending request superseded; its approval can never apply."""
+        with store.connect() as connection:
+            connection.execute(
+                "UPDATE story_paper_requests SET status = 'superseded',"
+                " superseded_reason = ? WHERE request_id = ? AND status = 'pending'",
+                (reason, request_id),
+            )
 
     def _owned_sandbox(sandbox_id: str) -> sqlite3.Row:
         row = store.sandbox(principal, sandbox_id)
@@ -599,7 +692,7 @@ def build_router(  # pylint: disable=too-many-statements
     @_route("post", "/runs/{run_id}/paper/sandboxes", "story_paper_sandbox_create")
     def story_paper_sandbox_create(run_id: str, request: SandboxCreate) -> dict:
         """Create an empty, isolated paper book for one run."""
-        _owned_run(run_id)
+        _owned_run(run_id, mutating=True)
         with store.connect() as connection:
             count = connection.execute(
                 "SELECT COUNT(*) FROM story_paper_sandboxes"
@@ -654,7 +747,7 @@ def build_router(  # pylint: disable=too-many-statements
         """Record one action for a person to approve; nothing changes yet."""
         _key()
         sandbox = _owned_sandbox(sandbox_id)
-        run = _owned_run(sandbox["run_id"])
+        run = _owned_run(sandbox["run_id"], mutating=True)
         if request.action not in engine_actions(sandbox["engine"]):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -666,46 +759,28 @@ def build_router(  # pylint: disable=too-many-statements
             raise _unprocessable(error) from error
         digest = argument_digest(request.action, arguments)
         with store.connect() as connection:
-            existing = connection.execute(
-                "SELECT * FROM story_paper_requests"
-                " WHERE principal = ? AND operation_id = ?",
-                (principal, request.operation_id),
-            ).fetchone()
-            if existing is not None:
-                if (
-                    existing["argument_sha256"] != digest
-                    or existing["sandbox_id"] != sandbox_id
-                ):
-                    raise HTTPException(
-                        status.HTTP_409_CONFLICT,
-                        f"Operation '{request.operation_id}' was already prepared"
-                        " for a different action.",
-                    )
-                return _request_view(existing)
-            request_id = uuid.uuid4().hex
-            now = _now()
-            connection.execute(
-                "INSERT INTO story_paper_requests (request_id, principal,"
-                " sandbox_id, run_id, action, arguments, argument_sha256,"
-                " manifest_version, expires_at, nonce, operation_id, status,"
-                " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    request_id,
-                    principal,
-                    sandbox_id,
-                    sandbox["run_id"],
-                    request.action,
-                    json.dumps(arguments, sort_keys=True),
-                    digest,
-                    run.manifest_version,
-                    (now + APPROVAL_TTL).isoformat(),
-                    secrets.token_hex(16),
-                    request.operation_id,
-                    "pending",
-                    now.isoformat(),
-                ),
-            )
-        return _request_view(store.request(request_id, principal))
+            receipts.create_table(connection)
+            # One write transaction: the logical claim, the takeover of an
+            # expired owner and the new row commit together (#1341).
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                replay = prepare_locked(
+                    connection,
+                    run,
+                    sandbox,
+                    sandbox_id=sandbox_id,
+                    request=request,
+                    arguments=arguments,
+                    digest=digest,
+                    ctx=replay_ctx,
+                )
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+        if isinstance(replay, dict):
+            return replay
+        return _request_view(store.request(replay, principal))
 
     @_route("get", "/paper/requests/{request_id}", "story_paper_request")
     def story_paper_request(request_id: str) -> dict:
@@ -759,7 +834,14 @@ def build_router(  # pylint: disable=too-many-statements
         if datetime.fromisoformat(row["expires_at"]) <= _now():
             raise HTTPException(status.HTTP_410_GONE, "The approval has expired.")
         run = _owned_run(row["run_id"])
+        try:
+            ensure_workflow_current(run, workflow_catalog)
+        except HTTPException:
+            _supersede(request_id, "workflow_changed")
+            raise
+        ensure_run_open(run)
         if run.manifest_version != row["manifest_version"]:
+            _supersede(request_id, "manifest_changed")
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 "The run's manifest changed since approval; approve again.",
@@ -767,9 +849,9 @@ def build_router(  # pylint: disable=too-many-statements
         sandbox = _owned_sandbox(row["sandbox_id"])
         with store.connect() as connection:
             claimed = connection.execute(
-                "UPDATE story_paper_requests SET status = 'applying'"
+                "UPDATE story_paper_requests SET status = 'applying', applying_at = ?"
                 " WHERE request_id = ? AND status = 'pending'",
-                (request_id,),
+                (_now().isoformat(), request_id),
             ).rowcount
         if claimed != 1:
             raise HTTPException(
@@ -807,6 +889,7 @@ def compose_story_paper_app(
     principal: str,
     store_path: Path | None = None,
     paper_root: Path | None = None,
+    workflow_dir: Path | None = None,
 ) -> FastAPI:
     """Add the paper routes, bound to ``principal``, to an isolated app copy."""
     if not principal:
@@ -820,6 +903,11 @@ def compose_story_paper_app(
     composed.router.middleware_stack = composed.router.app
     composed.middleware_stack = None
     composed.router.routes = list(source_app.router.routes)
-    composed.include_router(build_router(RunStore(db_path), store, principal))
+    workflows = WorkflowCatalog(
+        workflow_dir if workflow_dir is not None else default_workflow_dir()
+    )
+    composed.include_router(
+        build_router(RunStore(db_path), store, principal, workflows)
+    )
     composed.openapi_schema = None
     return composed

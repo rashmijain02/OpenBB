@@ -1,0 +1,25 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "cik-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "455bb7728bd58914d5e2a922781752d8f6c7606775e7a778297e37b758c4bd1f",
+ "hosted_text_len": 139,
+ "rest_path": "/cik-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "e7c508cbc5cdd4af33125517b3c7eb17cd6b4a7572d6561d595872a16908e883",
+ "rest_body_len": 176,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e4cc6c252b05250303032343335363730b251da8447e6e41625ea55f626e2a4841705e7eb9827362416649628e826f625e627a6a6e6a5e89828f8fb3125043ad0e0e234d2c2dcd711959929993539e58925a84c5601d05e7fca202b0d15cb100e8f8eb86b0000000",
+ "hosted_text": "[{\"cik\":\"0002165378\",\"companyName\":\"Snow Capital Management LLC\"},{\"cik\":\"0002164997\",\"companyName\":\"Stillwater Capital Management, Corp\"}]"
+}

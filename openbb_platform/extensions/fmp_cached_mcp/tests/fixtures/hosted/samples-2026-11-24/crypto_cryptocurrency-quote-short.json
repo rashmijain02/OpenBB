@@ -1,0 +1,25 @@
+{
+ "tool": "crypto",
+ "arguments": {
+  "endpoint": "cryptocurrency-quote-short",
+  "symbol": "BTCUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "75b857eb8a7f2d64b14f24010b800d86fe3b70b43390990da9259c1928f1582c",
+ "hosted_text_len": 76,
+ "rest_path": "/quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "484d1917a0e2d581662f25d687cc916b09bedac998c333424c7f2a01dfffb577",
+ "rest_body_len": 106,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b0525a710e7d06017251d8878415166722a50d8d4d2d2d844cf1c2a9a9c9198970e12d635343237d33331858a97e5e794e682951b9a9a189a195a581800256ab96201bce708ed6a000000",
+ "hosted_text": "[{\"symbol\":\"BTCUSD\",\"price\":59934.16,\"change\":-1276.99,\"volume\":5153934238}]"
+}

@@ -1,0 +1,25 @@
+{
+ "tool": "etfAndMutualFunds",
+ "arguments": {
+  "endpoint": "sector-weighting",
+  "symbol": "SPY"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "aa552a66956696128fc5d41233374e2d87789f3e2dfe8af75b204455852d4830",
+ "hosted_text_len": 734,
+ "rest_path": "/etf/sector-weightings",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "42e6aba07bb6e0c73c306295bef6e4f1c6c3f360da227934a7729ddde2435f8c",
+ "rest_body_len": 999,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd3c14ac4301006e0fb3e45e87909b6256ed7a3eb8a1e84c5d5838887388eed403a8164ba52c477378a5ee3c6432e93f005fefc795c28f59e9652559cc767efaa3355ed770fd5f26788203e7c0def1006f6cef7f3efde1b523fc80e03208bed319d6a8d366ddafd581eed5e125b06b24eed311c083066fcbad1e6b4ccbf42eb64001b30e79ee8b62b73379ee33462509b191c8175197ead57eb527d1c274eac90e76392e9745778c535bf4c51424a3eef36ff0de6025f91231d72c19b627ecb18f21dd4a62923ef851c0965f36d745d58bcdb543cb58d6225db3cdd1506706e2381ba49ec5f6f57ebd5f7675c3c7d025f0061fee7030000",
+ "hosted_text": "[{\"symbol\":\"SPY\",\"sector\":\"Technology\",\"weightPercentage\":35.53},{\"symbol\":\"SPY\",\"sector\":\"Financial Services\",\"weightPercentage\":12.56},{\"symbol\":\"SPY\",\"sector\":\"Healthcare\",\"weightPercentage\":10.38},{\"symbol\":\"SPY\",\"sector\":\"Consumer Cyclical\",\"weightPercentage\":9.79},{\"symbol\":\"SPY\",\"sector\":\"Communication Services\",\"weightPercentage\":8.89},{\"symbol\":\"SPY\",\"sector\":\"Industrials\",\"weightPercentage\":8.28},{\"symbol\":\"SPY\",\"sector\":\"Consumer Defensive\",\"weightPercentage\":5.28},{\"symbol\":\"SPY\",\"sector\":\"Energy\",\"weightPercentage\":3.52},{\"symbol\":\"SPY\",\"sector\":\"Utilities\",\"weightPercentage\":2.16},{\"symbol\":\"SPY\",\"sector\":\"Real Estate\",\"weightPercentage\":1.88},{\"symbol\":\"SPY\",\"sector\":\"Basic Materials\",\"weightPercentage\":1.73}]"
+}

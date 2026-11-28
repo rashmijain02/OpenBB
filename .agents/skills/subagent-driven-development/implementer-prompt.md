@@ -5,7 +5,7 @@ Use this template when dispatching an implementer subagent.
 ```
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
-  model: gpt-5.6-sol
+  model: <Sonnet default; Opus for design or high-risk work, per docs/dev-cycle/model-selection.md>
   prompt: |
     You are implementing Task N: [task name]
 

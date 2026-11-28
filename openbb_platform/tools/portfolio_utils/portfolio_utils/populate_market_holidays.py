@@ -88,7 +88,11 @@ def compute_us_holidays(start_year: int, end_year: int) -> list[tuple]:
     """Return list of (holiday_date, market, holiday_name) tuples."""
     rows = []
     for year in range(start_year, end_year + 1):
-        rows.append((_observed(date(year, 1, 1)), "US", "New Year's Day"))
+        new_year = date(year, 1, 1)
+        # NYSE Rule 7.2: a Saturday New Year's Day is not observed on the
+        # preceding Friday (that Friday closes a different year), #1345.
+        if new_year.weekday() != 5:
+            rows.append((_observed(new_year), "US", "New Year's Day"))
         rows.append((_nth_weekday(year, 1, 0, 3), "US", "Martin Luther King Jr. Day"))
         rows.append((_nth_weekday(year, 2, 0, 3), "US", "Presidents' Day"))
         rows.append((_easter(year) - timedelta(days=2), "US", "Good Friday"))

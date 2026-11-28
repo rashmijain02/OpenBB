@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "price-target-summary",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1fe61cbe0fea07c8f24863bc2ba00b8991f97927e111c91df119b79655e43f88",
+ "hosted_text_len": 363,
+ "rest_path": "/price-target-summary",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "e1e0df44a157a801764c2a6d9a46d83a142f04acbdc98ee3f53b5923be1596b0",
+ "rest_body_len": 430,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a6d90416bc2401085effe8a652f5e246493da94de627b112aa45428c57818ed902caebb656657b0a5ffbd311289a68739bcf9de7bb3ec6a24c44f3342483eee37cec84721f3bc789193f3d600fb85b3be7e72c1fa862a754bf2435590dee212a8c293259d665196f66caf01c8235d2a1e86ec9f12154d7bbe0f844bc17d7a0386e95445aa7381314bbdc72e9d64d93518a493bb388abbe35f616334d7487cfa9b5529df3c21fab965fd8954ca49296768bfb5ada01545308c2289e2562d8076e8dfc16feb56cfed01d937e67310889ce51e713466310bac2d328b67d0e658cab56c9ef23b5aff0127ae4e4bae010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"lastMonthCount\":11,\"lastMonthAvgPriceTarget\":357.73,\"lastQuarterCount\":18,\"lastQuarterAvgPriceTarget\":351.5,\"lastYearCount\":63,\"lastYearAvgPriceTarget\":331.13,\"allTimeCount\":277,\"allTimeAvgPriceTarget\":240.05,\"publishers\":\"[\\\"StreetInsider\\\",\\\"Benzinga\\\",\\\"Pulse 2.0\\\",\\\"MarketWatch\\\",\\\"Investing\\\",\\\"Barrons\\\",\\\"Investor's Business Daily\\\"]\"}]"
+}

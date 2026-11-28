@@ -1,0 +1,27 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-historical-price-eod-light",
+  "symbol": "EURUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e6f5b8fbf6be77c7463ac63d43e52cb75f5c8169797714e49fdbdc956408eb3f",
+ "hosted_text_len": 289,
+ "rest_path": "/historical-price-eod/light",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "9cb3dd92404e3f711b39ca561bc1565c9e265e21fc36a68993689b58e9a4c633",
+ "rest_body_len": 410,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b0525d7d0a0d06017251d88784a62492a48d4c8c0c84cd7d050d7c80026535094990c9232d433b03433b7848a96e5e794e682854dcdcd2d2d8182b53aa4db626889dd16230c5b8c0d4c8dc9b6c5029b2de626c618b6807498926b8b39365b2c2d4c306db134343103d9c2150b00d6e21a909a010000",
+ "hosted_text": "[{\"symbol\":\"EURUSD\",\"date\":\"2026-11-20\",\"price\":1.09679,\"volume\":157799},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-19\",\"price\":1.09672,\"volume\":130539},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-18\",\"price\":1.09743,\"volume\":120265},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-17\",\"price\":1.09984,\"volume\":129146}]"
+}

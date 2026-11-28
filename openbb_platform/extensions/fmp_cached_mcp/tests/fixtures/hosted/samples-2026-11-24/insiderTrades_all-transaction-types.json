@@ -1,0 +1,25 @@
+{
+ "tool": "insiderTrades",
+ "arguments": {
+  "endpoint": "all-transaction-types",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5adbd8c5eb7881f39093cc88cb2399f2ab06faf4ac1e24c99b0fcdaf66d8c90c",
+ "hosted_text_len": 582,
+ "rest_path": "/insider-trading-transaction-type",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "bbcd7d74a0fabdcd541c023a348e065a2c49bd42aeac36ca8fe590623418b53a",
+ "rest_body_len": 799,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a95d2cb0ac2301005d07dbf2274edfc80bb62eb5b5a6c45515c8476b481362993d407e2bf1bd1b58c8b6c869370e7924320c4c31f214247525b593a657471ef301c8a3082e82aa90a3d780e7eca118c8cbe20593f63f018d6e87ae2d004925ba708f3da9063f831ccf442694ee8094cd489f3e6f49b6169f499c167102b5b12be6792ee8c1b73485d8dc4904bc85bd9340cb9f2a1b1ed38fba590f62e3d1535ae8c464ee00cb29eca5a5a64e01c72d970e0060ad415ab872d6c15ab869dff0f7f2cb687827afb292d38be00251389221f030000",
+ "hosted_text": "[{\"transactionType\":\"A-Award\"},{\"transactionType\":\"C-Conversion\"},{\"transactionType\":\"D-Return\"},{\"transactionType\":\"E-ExpireShort\"},{\"transactionType\":\"F-InKind\"},{\"transactionType\":\"G-Gift\"},{\"transactionType\":\"H-ExpireLong\"},{\"transactionType\":\"I-Discretionary\"},{\"transactionType\":\"J-Other\"},{\"transactionType\":\"L-Small\"},{\"transactionType\":\"M-Exempt\"},{\"transactionType\":\"O-OutOfTheMoney\"},{\"transactionType\":\"P-Purchase\"},{\"transactionType\":\"S-Sale\"},{\"transactionType\":\"U-Tender\"},{\"transactionType\":\"W-Will\"},{\"transactionType\":\"X-InTheMoney\"},{\"transactionType\":\"Z-Trust\"}]"
+}

@@ -1,0 +1,631 @@
+"""fmp_cache_prices no-agent wrapper (#1344). Rendered file: do not edit.
+
+Rendered by portfolio_utils.fmp_sync.render. It takes no arguments or paths from
+the cron job: every value below is baked in at render time and guarded by three
+SHA-256 checks (this file, the deployment map and the venv python it starts);
+any mismatch prints one generic integrity line and exits 3.
+
+Process model: this file is stdlib-only and runs under whatever interpreter
+Hermes uses. It never imports the sync code. It starts the pinned venv python
+as an isolated child (``-I``, clean allowlisted environment, no inherited
+PYTHONPATH) running ``portfolio_utils.fmp_sync prices --execute --receipt``.
+On Windows the child is created suspended and placed in a Job Object with
+KILL_ON_JOB_CLOSE before it runs, so killing this wrapper (or the deadline)
+also kills the venv launcher and its python child and releases the target
+lock. Elsewhere the child gets its own process group. Only the child's single
+outcome line is relayed, after validation; raw output never reaches cron.
+
+Cancellation: the wrapper chooses the run id and passes it as ``--run-id``.
+The child has no console (CREATE_NO_WINDOW), so Ctrl+C / Ctrl+Break / SIGTERM
+reach only this wrapper. On such a stop request, or when DEADLINE_S is
+reached, the wrapper touches ``<state root>/cancel/<run id>``; the child's
+dispatcher polls that file between symbols, ends CANCELLED and still writes
+its run file and end receipt, and the wrapper relays that outcome line. A
+child still running GRACE_S later (or a second stop request) is killed with
+its whole job: "killed after grace", exit 5. Hard kill is the last resort.
+"""
+
+# isort: skip_file
+# pylint: disable=wrong-import-position
+import sys
+
+# Only sys is used until os is safely imported. The script directory
+# (sys.path[0], unless -I/-P already left it out) is dropped first, then os is
+# imported with sys.path narrowed to the stdlib directory: under ``python -S``
+# os is not preloaded, so a planted os.py next to this file or on PYTHONPATH
+# would otherwise load. After that the working directory and every inherited
+# PYTHONPATH entry are removed before anything else is imported.
+if sys.path and not (sys.flags.isolated or getattr(sys.flags, "safe_path", False)):
+    del sys.path[0]
+_SAVED_PATH = sys.path[:]
+if getattr(sys, "_stdlib_dir", None):
+    sys.path[:] = [getattr(sys, "_stdlib_dir")]
+try:
+    import os  # noqa: E402
+finally:
+    sys.path[:] = _SAVED_PATH
+
+
+def _norm(path):
+    return os.path.normcase(os.path.abspath(path or os.curdir))
+
+
+def _scrub_sys_path():
+    drop = {_norm(os.path.dirname(os.path.abspath(__file__))), _norm(os.getcwd())}
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if entry:
+            drop.add(_norm(entry))
+    sys.path[:] = [p for p in sys.path if p and _norm(p) not in drop]
+
+
+_scrub_sys_path()
+
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import re  # noqa: E402
+import subprocess  # noqa: E402
+
+WRAPPER_VERSION = @@VERSION@@
+SELF_SHA256 = "@@SELF_SHA256@@"
+MAP_PATH = @@MAP_PATH@@
+MAP_SHA256 = @@MAP_SHA256@@
+STATE_ROOT = @@STATE_ROOT@@
+CHILD_PYTHON = @@CHILD_PYTHON@@
+CHILD_SHA256 = @@CHILD_SHA256@@
+SOURCE_PATHS = @@SOURCE_PATHS@@
+TARGET_CLASS = @@TARGET_CLASS@@
+DEADLINE_S = @@DEADLINE_S@@
+GRACE_S = @@GRACE_S@@
+RUN_MODE = @@MODE@@
+GENERIC_FAILURE = "fmp_cache_prices: integrity check failed"
+INTERNAL_FAILURE = "fmp_cache_prices: internal error"
+KILLED_FAILURE = "fmp_cache_prices: killed after grace"
+EXIT_INTEGRITY = 3
+EXIT_INTERNAL = 4
+EXIT_KILLED = 5
+BUSINESS_EXITS = (0, 10, 20, 30, 40)
+_ZERO = "0" * 64
+_POLL_S = 0.2
+_READ_CAP = 4096
+_STOP: list = []  # stop requests (signal numbers) seen by _on_stop
+_ENV_KEEP = (
+    "SYSTEMROOT",
+    "WINDIR",
+    "SYSTEMDRIVE",
+    "COMSPEC",
+    "PATHEXT",
+    "PATH",
+    "TEMP",
+    "TMP",
+    "USERPROFILE",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "HOME",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "PROGRAMDATA",
+    "USERNAME",
+    "USERDOMAIN",
+    "COMPUTERNAME",
+    "NUMBER_OF_PROCESSORS",
+    "PROCESSOR_ARCHITECTURE",
+    "OS",
+    "TZ",
+    "LANG",
+    "LC_ALL",
+)
+_LINE_KEYS = {
+    "op",
+    "mode",
+    "run_id",
+    "outcome",
+    "exit",
+    "data_status",
+    "failed_layer",
+    "findings",
+    "counts",
+    "sent",
+}
+_SHORT_KEYS = {"op", "outcome", "findings"}
+_CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,64}$")
+_RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+# Outcome -> business exit (portfolio_utils.fmp_sync.outcome.EXIT_CODES).
+_OUTCOME_EXITS = {
+    "OK": 0,
+    "PARTIAL": 10,
+    "SKIPPED_BUSY": 10,
+    "DEFERRED_QUOTA": 10,
+    "DEFERRED_RATE_LIMIT": 10,
+    "CANCELLED_DEADLINE": 10,
+    "CANCELLED": 10,
+    "BLOCKED_PLAN": 20,
+    "BLOCKED_AUTH": 20,
+    "BLOCKED_EGRESS": 20,
+    "FAILED_INFRA": 30,
+    "PERSIST_FAILED": 30,
+    "BLOCKED_PROCESS": 40,
+    "BLOCKED_ABI": 40,
+    "BLOCKED_MODULE_ORIGIN": 40,
+    "BLOCKED_CONFIG": 40,
+    "BLOCKED_DATABASE": 40,
+    "BLOCKED_POLICY": 40,
+    "BLOCKED_UNIVERSE": 40,
+    "BLOCKED_EMPTY_UNIVERSE": 40,
+}
+_SHORT_OUTCOMES = {"BLOCKED_CONFIG"}
+# v4 (#1345): readiness v2 aggregate statuses.
+_DATA_STATUS = {
+    "BLOCKED",
+    "CRITICAL",
+    "UNKNOWN",
+    "UNVALIDATED",
+    "WARN",
+    "VALIDATED",
+}
+_LAYERS = {
+    "process",
+    "module_origin",
+    "abi",
+    "config",
+    "auth",
+    "route",
+    "backend",
+    "database",
+    "schema",
+    "skills",
+    "egress",
+    "budget",
+}
+_COUNT_KEYS = {"requested", "skipped", "success", "failed", "deferred"}
+# Source paths go after the stdlib (before the first site-packages entry), so
+# they can never shadow a standard-library module.
+_BOOT = (
+    "import runpy, sys; i = next((n for n, p in enumerate(sys.path) "
+    "if 'site-packages' in p.lower() or 'dist-packages' in p.lower()), "
+    "len(sys.path)); sys.path[i:i] = {paths}; "
+    "runpy.run_module('portfolio_utils.fmp_sync', run_name='__main__', alter_sys=True)"
+)
+
+
+def _normalized(data):
+    return data.replace(b"\r\n", b"\n")
+
+
+def _self_ok():
+    try:
+        with open(__file__, "rb") as handle:
+            data = _normalized(handle.read())
+        marker = ('SELF_SHA256 = "' + SELF_SHA256 + '"').encode("utf-8")
+        blank = ('SELF_SHA256 = "' + _ZERO + '"').encode("utf-8")
+        if data.count(marker) != 1:
+            return False
+        return hashlib.sha256(data.replace(marker, blank)).hexdigest() == SELF_SHA256
+    except OSError:
+        return False
+
+
+def _map_ok():
+    try:
+        with open(MAP_PATH, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest() == MAP_SHA256
+    except OSError:
+        return False
+
+
+def _child_ok():
+    """Check that the venv python is the file hashed at render time."""
+    try:
+        with open(CHILD_PYTHON, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest() == CHILD_SHA256
+    except OSError:
+        return False
+
+
+def _say(text):
+    os.write(1, (text + "\n").encode("utf-8"))
+
+
+def _child_env():
+    env = {k: os.environ[k] for k in _ENV_KEEP if k in os.environ}
+    env["FMP_SYNC_STATE_ROOT"] = STATE_ROOT
+    return env
+
+
+def _child_argv(run_id):
+    boot = _BOOT.format(paths=json.dumps(list(SOURCE_PATHS)))
+    return [
+        CHILD_PYTHON,
+        "-I",
+        "-c",
+        boot,
+        "prices",
+        "--" + RUN_MODE.replace("_", "-"),
+        "--receipt",
+        "--map",
+        MAP_PATH,
+        "--target-class",
+        TARGET_CLASS,
+        "--run-id",
+        run_id,
+    ]
+
+
+def _count(value):
+    return type(value) is int and value >= 0  # pylint: disable=unidiomatic-typecheck
+
+
+def _member(value, allowed):
+    return isinstance(value, str) and value in allowed
+
+
+def _codes(findings):
+    return (
+        isinstance(findings, list)
+        and len(findings) <= 8
+        and all(isinstance(item, str) and _CODE.match(item) for item in findings)
+    )
+
+
+def valid_line(line, run_id=None):
+    """Return True for exactly one counts-only outcome line (both CLI shapes).
+
+    Every field is pinned: enums and patterns for the strings, a fixed key set
+    of non-negative integers for ``counts``, the exit matching the outcome and,
+    when given, the run id the wrapper chose. Anything else is rejected.
+    """
+    if not line or len(line) > 512 or "\n" in line or "\r" in line:
+        return False
+    try:
+        data = json.loads(line)
+    except ValueError:
+        return False
+    if not isinstance(data, dict) or data.get("op") != "prices":
+        return False
+    if not _codes(data.get("findings")):
+        return False
+    if set(data) == _SHORT_KEYS:
+        return _member(data["outcome"], _SHORT_OUTCOMES)
+    if set(data) != _LINE_KEYS or not _member(data["outcome"], _OUTCOME_EXITS):
+        return False
+    counts = data["counts"]
+    layer = data["failed_layer"]
+    return (
+        data["mode"] == RUN_MODE
+        and isinstance(data["run_id"], str)
+        and _RUN_ID.match(data["run_id"]) is not None
+        and (run_id is None or data["run_id"] == run_id)
+        and _count(data["exit"])
+        and data["exit"] == _OUTCOME_EXITS[data["outcome"]]
+        and _member(data["data_status"], _DATA_STATUS)
+        and (layer is None or _member(layer, _LAYERS))
+        and isinstance(counts, dict)
+        and set(counts) == _COUNT_KEYS
+        and all(_count(value) for value in counts.values())
+        and _count(data["sent"])
+    )
+
+
+# ------------------------------------------------------------------ Windows job
+
+
+class _WinJob:
+    """Job Object with KILL_ON_JOB_CLOSE; the child joins it before it runs."""
+
+    def __init__(self):
+        import ctypes  # pylint: disable=import-outside-toplevel
+        from ctypes import wintypes  # pylint: disable=import-outside-toplevel
+
+        k32 = self.k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Every call gets an explicit prototype: ctypes' default c_int result
+        # would turn ResumeThread's (DWORD)-1 into -1 and truncate handles.
+        handle, dword, boolean = wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL
+        for name, restype, argtypes in (
+            ("CreateJobObjectW", handle, [wintypes.LPVOID, wintypes.LPCWSTR]),
+            (
+                "SetInformationJobObject",
+                boolean,
+                [handle, ctypes.c_int, wintypes.LPVOID, dword],
+            ),
+            ("AssignProcessToJobObject", boolean, [handle, handle]),
+            ("TerminateJobObject", boolean, [handle, wintypes.UINT]),
+            ("CloseHandle", boolean, [handle]),
+            ("CreateToolhelp32Snapshot", handle, [dword, dword]),
+            ("Thread32First", boolean, [handle, wintypes.LPVOID]),
+            ("Thread32Next", boolean, [handle, wintypes.LPVOID]),
+            ("OpenThread", handle, [dword, boolean, dword]),
+            ("ResumeThread", dword, [handle]),
+        ):
+            function = getattr(k32, name)
+            function.restype = restype
+            function.argtypes = argtypes
+        self.job = k32.CreateJobObjectW(None, None)  # not inheritable
+        if not self.job:
+            raise OSError("CreateJobObjectW failed")
+
+        class _Basic(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _Extended(ctypes.Structure):
+            _fields_ = [
+                ("Basic", _Basic),
+                ("IoInfo", ctypes.c_uint64 * 6),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        info = _Extended()
+        info.Basic.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(
+            self.job, 9, ctypes.byref(info), ctypes.sizeof(info)
+        ):
+            raise OSError("SetInformationJobObject failed")
+
+    def adopt(self, proc):
+        """Assign the suspended child to the job, then resume its threads.
+
+        Any failure raises; the caller then terminates the job, so the child
+        never runs outside it and a half-resumed child is killed.
+        """
+        handle = int(proc._handle)  # pylint: disable=protected-access
+        if not self.k32.AssignProcessToJobObject(self.job, handle):
+            raise OSError("AssignProcessToJobObject failed")
+        import ctypes  # pylint: disable=import-outside-toplevel
+        from ctypes import wintypes as wt  # pylint: disable=import-outside-toplevel
+
+        class _Thread(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wt.DWORD),
+                ("cntUsage", wt.DWORD),
+                ("th32ThreadID", wt.DWORD),
+                ("th32OwnerProcessID", wt.DWORD),
+                ("tpBasePri", wt.LONG),
+                ("tpDeltaPri", wt.LONG),
+                ("dwFlags", wt.DWORD),
+            ]
+
+        snap = self.k32.CreateToolhelp32Snapshot(0x4, 0)  # TH32CS_SNAPTHREAD
+        if snap in (None, wt.HANDLE(-1).value):
+            raise OSError("CreateToolhelp32Snapshot failed")
+        resumed = 0
+        try:
+            entry = _Thread(dwSize=ctypes.sizeof(_Thread))
+            more = self.k32.Thread32First(snap, ctypes.byref(entry))
+            while more:
+                if entry.th32OwnerProcessID == proc.pid:
+                    thread = self.k32.OpenThread(0x0002, False, entry.th32ThreadID)
+                    if not thread:
+                        raise OSError("OpenThread failed")
+                    try:
+                        if self.k32.ResumeThread(thread) == 0xFFFFFFFF:
+                            raise OSError("ResumeThread failed")
+                    finally:
+                        self.k32.CloseHandle(thread)
+                    resumed += 1
+                more = self.k32.Thread32Next(snap, ctypes.byref(entry))
+        finally:
+            self.k32.CloseHandle(snap)
+        if not resumed:
+            raise OSError("child thread not resumed")
+
+    def kill(self):
+        """Terminate every process in the job; report whether it worked."""
+        return bool(self.k32.TerminateJobObject(self.job, 1))
+
+    def close(self):
+        self.k32.CloseHandle(self.job)
+
+
+def _spawn(run_id):
+    """Start the child; return (process, job). The child is in the job/group."""
+    common = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.DEVNULL,
+        "env": _child_env(),
+        "cwd": os.path.dirname(os.path.abspath(STATE_ROOT)) or None,
+        "close_fds": True,
+    }
+    if sys.platform == "win32":
+        job = _WinJob()
+        flags = 0x00000004 | 0x08000000  # CREATE_SUSPENDED | CREATE_NO_WINDOW
+        try:
+            # pylint: disable-next=consider-using-with
+            proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
+                _child_argv(run_id), creationflags=flags, **common
+            )
+        except BaseException:
+            job.close()
+            raise
+        try:
+            job.adopt(proc)
+        except BaseException:
+            if not job.kill():
+                proc.kill()
+            proc.wait()
+            job.close()
+            raise
+        return proc, job
+    # pylint: disable-next=consider-using-with
+    proc = subprocess.Popen(  # noqa: S603 - argv baked at render time
+        _child_argv(run_id), start_new_session=True, **common
+    )
+    return proc, None
+
+
+def _kill(proc, job):
+    if job is not None:
+        if not job.kill():
+            proc.kill()
+    else:
+        import signal  # pylint: disable=import-outside-toplevel
+
+        try:
+            getattr(os, "killpg")(proc.pid, getattr(signal, "SIGKILL"))
+        except OSError:
+            proc.kill()
+
+
+# ------------------------------------------------------------------ cancellation
+
+
+def _on_stop(signum, _frame):
+    _STOP.append(signum)
+
+
+def _install_handlers():
+    """Turn Ctrl+C / Ctrl+Break / SIGTERM into a stop request; return old handlers.
+
+    The child runs with CREATE_NO_WINDOW (Windows) or in its own session, so it
+    never sees console events: the wrapper relays them as the cancel file.
+    """
+    import signal  # pylint: disable=import-outside-toplevel
+
+    previous = {}
+    for name in ("SIGINT", "SIGBREAK", "SIGTERM"):
+        number = getattr(signal, name, None)
+        if number is None:
+            continue
+        try:
+            previous[number] = signal.signal(number, _on_stop)
+        except (OSError, ValueError):
+            continue
+    return previous
+
+
+def _restore_handlers(previous):
+    import signal  # pylint: disable=import-outside-toplevel
+
+    for number, handler in previous.items():
+        if handler is not None:
+            try:
+                signal.signal(number, handler)
+            except (OSError, ValueError, TypeError):
+                continue
+
+
+def _cancel_path(run_id):
+    return os.path.join(STATE_ROOT, "cancel", run_id)
+
+
+def _request_cancel(run_id):
+    """Touch ``<state>/cancel/<run_id>``; the child's CancelController polls it."""
+    try:
+        os.makedirs(os.path.dirname(_cancel_path(run_id)), exist_ok=True)
+        with open(_cancel_path(run_id), "ab"):
+            pass
+    except OSError:
+        return False
+    return True
+
+
+def _clear_cancel(run_id):
+    try:
+        os.remove(_cancel_path(run_id))
+    except OSError:
+        return False
+    return True
+
+
+def _drain(stream, sink):
+    """Read the child's stdout to EOF; keep only the first _READ_CAP bytes."""
+    kept = 0
+    while True:
+        chunk = stream.read(_READ_CAP)
+        if not chunk:
+            return
+        if kept <= _READ_CAP:
+            sink.append(chunk)
+            kept += len(chunk)
+
+
+def _verdict(out, code, run_id):
+    lines = out[:_READ_CAP].decode("utf-8", "replace").splitlines()
+    lines = [line for line in lines if line.strip()]
+    if code not in BUSINESS_EXITS or len(lines) > 1:
+        return INTERNAL_FAILURE, EXIT_INTERNAL
+    if not lines:
+        return ("", 0) if code == 0 else (INTERNAL_FAILURE, EXIT_INTERNAL)
+    if not valid_line(lines[0], run_id):
+        return INTERNAL_FAILURE, EXIT_INTERNAL
+    return lines[0], code
+
+
+def _supervise(proc, job, run_id):
+    """Wait for the child; on a stop request or the deadline cancel, then kill.
+
+    Stop request (signal) or DEADLINE_S reached: touch the cancel file and wait
+    up to GRACE_S. A child that ends in time has its validated outcome line
+    (normally CANCELLED, with run file and end receipt written) relayed. A
+    child still running after GRACE_S, or a second stop request, gets the job
+    terminated: KILLED_FAILURE, EXIT_KILLED. The deadline cancel counts as the
+    first stop, so any external signal during its grace is the second stop and
+    kills at once (``stops`` is 0 then, so one signal exceeds it).
+    """
+    import threading  # pylint: disable=import-outside-toplevel
+    import time  # pylint: disable=import-outside-toplevel
+
+    sink: list = []
+    reader = threading.Thread(target=_drain, args=(proc.stdout, sink), daemon=True)
+    reader.start()
+    deadline = time.monotonic() + DEADLINE_S
+    asked_at = None
+    stops = 0
+    while True:
+        try:
+            proc.wait(timeout=_POLL_S)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        if asked_at is None:
+            if _STOP or now >= deadline:
+                asked_at, stops = now, len(_STOP)
+                if not _request_cancel(run_id):
+                    asked_at = now - GRACE_S  # cannot ask politely: kill now
+            continue
+        if now - asked_at >= GRACE_S or len(_STOP) > stops:
+            _kill(proc, job)
+            proc.wait()
+            reader.join(timeout=5)
+            return KILLED_FAILURE, EXIT_KILLED
+    reader.join(timeout=5)
+    return _verdict(b"".join(sink), proc.returncode, run_id)
+
+
+def main():
+    """Verify, run the isolated child, relay its outcome line; return the exit code."""
+    if not (_self_ok() and _map_ok() and _child_ok()):
+        _say(GENERIC_FAILURE)
+        return EXIT_INTEGRITY
+    run_id = os.urandom(16).hex()
+    previous = _install_handlers()
+    job = None
+    try:
+        proc, job = _spawn(run_id)
+        line, code = _supervise(proc, job, run_id)
+    except BaseException:  # noqa: BLE001 - nothing may leak from here
+        line, code = INTERNAL_FAILURE, EXIT_INTERNAL
+    finally:
+        if job is not None:
+            job.close()  # KILL_ON_JOB_CLOSE: nothing outlives the wrapper
+        _clear_cancel(run_id)
+        _restore_handlers(previous)
+    if line:
+        _say(line)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

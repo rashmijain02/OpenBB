@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "owner-earnings",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bf90c42a470eda56138b8dbfd983e59b69ac80b088c58bb320dd4b30d286b45d",
+ "hosted_text_len": 467,
+ "rest_path": "/owner-earnings",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "d2a3f6d2b59de67e9c7e9e5b24f0457e4915efe30bb7105cec1aa02d2cc44651",
+ "rest_body_len": 600,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020abd90bd4ec3301446f73e4594b989fc1f87ad6abb7508aa18106230c9258dd4dad14da0548877c716352812591818bc7ce7e8ca3a0f8b2479f72f49d2e1727a72c7f4264957ab6a972ebf5684dee108cdfa05116c7d09fc6ebf89f8b91b6a73bc07830130c254243d60e79ab0de8ab8356684e865a4cc7e6cf30a685aa8aaade724a7bca0e28a4ea6b32358636b589b1edebc90c952684a852257c79d2de0b035683bdb0ede6085248a6a2d45545a74e7f1f07d812a514cf8f44405b83f180cbfa5b9d65ef958fe472afe7b2a95b1e28fa9b8904a946a3e151784712e099f4bc52829277c3615cb390da9168f9fd306030e58020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"reportedCurrency\":\"USD\",\"fiscalYear\":\"2026\",\"period\":\"Q4\",\"date\":\"2026-09-26\",\"averagePPE\":0.13714,\"maintenanceCapex\":-594811460,\"ownersEarnings\":27506188540,\"growthCapex\":-1647188540,\"ownersEarningsPerShare\":1.88},{\"symbol\":\"AAPL\",\"reportedCurrency\":\"USD\",\"fiscalYear\":\"2026\",\"period\":\"Q3\",\"date\":\"2026-06-27\",\"averagePPE\":0.13714,\"maintenanceCapex\":-345649660,\"ownersEarnings\":34023350340,\"growthCapex\":-2109350340,\"ownersEarningsPerShare\":2.31}]"
+}

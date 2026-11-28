@@ -1,0 +1,5 @@
+# Hash-locked: pip install --require-hashes --no-deps -r this-file (win_amd64, cp312).
+# Transitive pins (fsspec, pyarrow, pandas, ...) are added with hashes at T01-L via
+# pip-compile --generate-hashes; hashes for them cannot be derived offline.
+nautilus_trader==1.231.0 \
+    --hash=sha256:0697f51e9143f9d8d040f75d2e6a45218003cc34f7ea5b0eb2f9cda6935427de

@@ -747,8 +747,8 @@ def test_the_worker_discovers_the_kinds_through_the_entry_point():
     }
 
 
-def test_the_job_routes_are_four_mcp_tools(tmp_path):
-    """Submit, list, get and cancel; each depends on the authenticated service."""
+def test_the_job_routes_are_six_mcp_tools(tmp_path):
+    """Submit, list, get, cancel, run cancel and run outcome (#1341 T03, additive)."""
     app = compose_story_jobs_app(
         FastAPI(), principal="alice", store_path=tmp_path / "r.sqlite"
     )
@@ -758,6 +758,8 @@ def test_the_job_routes_are_four_mcp_tools(tmp_path):
         "story_job_list",
         "story_job_get",
         "story_job_cancel",
+        "story_run_cancel",
+        "story_run_outcome",
     }
     assert not (tmp_path / "r.sqlite").exists()
     with pytest.raises(ValueError):
@@ -866,3 +868,101 @@ def test_a_job_claimed_before_its_id_is_recorded_waits_for_it(job_harness, monke
     assert job_harness.worker.run_once().status == "succeeded"
     assert sleeps, "the worker never waited for the job ID"
     assert len(job_harness.calls) == 1
+
+
+# --- #1356 T02: story.backtest contract under the default backend -----------
+
+_PRE_1356_RESULT_KEYS = {
+    "equity_curve",
+    "trades",
+    "positions",
+    "metrics",
+    "engine_used",
+    "config",
+}
+
+
+def test_story_backtest_old_payload_still_validates():
+    """A pre-#1356 payload validates unchanged and selects no backend."""
+    pytest.importorskip("openbb_backtest")
+    model = story_job_kinds.payload_model("story.backtest")
+    payload = model.model_validate(BACKTEST)
+    assert payload.config.backend is None
+    assert payload.config.strategy_version is None
+    assert payload.engine == "auto"
+    with pytest.raises(ValueError):
+        model.model_validate({**BACKTEST, "backend": "nautilus"})
+
+
+def test_story_run_backtest_output_keys(monkeypatch):
+    """run_backtest returns the old keys plus ``provenance`` on the legacy path."""
+    pd = pytest.importorskip("pandas")
+    pytest.importorskip("openbb_backtest")
+    from openbb_backtest.routers import run_router
+
+    sessions = pd.bdate_range("2023-01-03", periods=5)
+
+    class _Feed:
+        def __init__(self):
+            self._f = pd.DataFrame(
+                [
+                    {"symbol": s, "session": d, "close": 100.0 + i, "open": 100.0}
+                    | {"high": 101.0 + i, "low": 99.0, "volume": 1e6}
+                    for s in ("AAA", "BBB")
+                    for i, d in enumerate(sessions)
+                ]
+            )
+
+        def history(self, symbols, end, lookback):
+            f = self._f
+            mask = f["symbol"].isin(symbols) & (f["session"] <= pd.Timestamp(end))
+            return f.loc[mask].groupby("symbol").tail(lookback).reset_index(drop=True)
+
+        def sessions(self, start, end):
+            s = self._f["session"]
+            sel = s[(s >= pd.Timestamp(start)) & (s <= pd.Timestamp(end))]
+            return pd.DatetimeIndex(sorted(sel.unique()))
+
+    monkeypatch.setattr(run_router, "_build_feed", lambda config, provider: _Feed())
+    model = story_job_kinds.payload_model("story.backtest")
+    out = story_job_kinds.run_backtest(model.model_validate(BACKTEST))
+    assert set(out) == _PRE_1356_RESULT_KEYS | {"provenance"}
+    assert out["positions"] == []
+    assert out["provenance"]["backend"] == "legacy"
+    assert out["provenance"]["backend_source"] == "default"
+    assert len(out["equity_curve"]) == len(sessions)
+
+
+#: Literal digest of ``_OLD_BACKTEST`` computed with the pre-#1356 models
+#: (``d19636c1c``): a re-submitted operation id must keep its digest.
+_OLD_BACKTEST = {
+    "config": {
+        "strategy": "buy_and_hold",
+        "universe": ["AAA"],
+        "start": "2024-01-02",
+        "end": "2024-03-28",
+        "initial_cash": "10000",
+    },
+    "engine": "vector",
+}
+_OLD_BACKTEST_DIGEST = (
+    "eb3ed21646e3ad76af4e4cee631ac8e03443a700f3f102c3c725d1a087b34950"
+)
+
+
+def test_story_backtest_old_payload_digest_unchanged():
+    """Unset new config fields are not dumped, so the old digest is stable."""
+    pytest.importorskip("openbb_backtest")
+    model = story_job_kinds.payload_model("story.backtest")
+    dumped = model.model_validate(_OLD_BACKTEST).model_dump(mode="json")
+    assert "backend" not in dumped["config"]
+    assert "strategy_version" not in dumped["config"]
+    digest = story_job_kinds.payload_digest("run-1", "story.backtest", None, dumped)
+    assert digest == _OLD_BACKTEST_DIGEST
+    # a payload that sets the new field is a different submission
+    newer = {**_OLD_BACKTEST, "config": {**_OLD_BACKTEST["config"], "backend": "legacy"}}
+    dumped = model.model_validate(newer).model_dump(mode="json")
+    assert dumped["config"]["backend"] == "legacy"
+    assert story_job_kinds.payload_digest(
+        "run-1", "story.backtest", None, dumped
+    ) != _OLD_BACKTEST_DIGEST

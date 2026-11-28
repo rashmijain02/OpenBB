@@ -1,0 +1,27 @@
+{
+ "tool": "commodity",
+ "arguments": {
+  "endpoint": "commodities-historical-price-eod-full",
+  "symbol": "GCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "cc6caeb2bcc75cf705db3defcf4d4e4a6b955936c49c42507ca87de88851872e",
+ "hosted_text_len": 663,
+ "rest_path": "/historical-price-eod/full",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3e53362df4f021c2cc19ce24175d904c4360c3f555faeb8041536dbc09d15a11",
+ "rest_body_len": 928,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd23d4fc3301080e1bdbf22cadc9eec3b9f7d660589150931218650a2a6529a54b45021c47f279f8ee2d2810e595e5b4e1e5f9e1749f2dd3c49921ebe76af7599de24e9fdedd3e35dbaecf35b76ccdb880aed4aeb15aa71a5dee755b34296086468c57653f44d400fadac4f6d6285e087b42eeb43de45cd6086f859971fbbae225bc2716b91559bb6362f97b0b7af0ff9fb3aaf8eed2201b2d078d229db77a73b04e6a6fd2cffedd43e763a524091d3b1079e3b2d2ab0b1d30a877dc1898a9c3a771a13aef38ca90195f21239ad17f0ee5aa8c45061068ca0d240690e75a8a70f1da1cee830e5096a0c32fd315002ba246d7e1612f191d47973fd44dd39749a5e807a33670af9701b8129d6841898da2af23e661a70178c0a346a170fb33b1a3be3e2e5172a5305fea0030000",
+ "hosted_text": "[{\"symbol\":\"GCUSD\",\"date\":\"2026-11-20\",\"open\":3633.8,\"high\":3638.1,\"low\":3502.9,\"close\":3515.4,\"volume\":325632,\"change\":-118.4,\"changePercent\":-3.2583,\"vwap\":3572.55},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-19\",\"open\":3730.3,\"high\":3759.5,\"low\":3620.6,\"close\":3685.5,\"volume\":203702,\"change\":-44.8,\"changePercent\":-1.20098,\"vwap\":3698.975},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-18\",\"open\":3855.2,\"high\":3859.3,\"low\":3721.8,\"close\":3741.9,\"volume\":244253,\"change\":-113.3,\"changePercent\":-2.93889,\"vwap\":3794.55},{\"symbol\":\"GCUSD\",\"date\":\"2026-11-17\",\"open\":3859.5,\"high\":3894,\"low\":3839.2,\"close\":3864.2,\"volume\":160399,\"change\":4.7,\"changePercent\":0.12178,\"vwap\":3864.225}]"
+}

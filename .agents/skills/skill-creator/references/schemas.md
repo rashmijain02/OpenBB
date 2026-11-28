@@ -225,8 +225,8 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
   "metadata": {
     "skill_name": "pdf",
     "skill_path": "/path/to/pdf",
-    "executor_model": "gpt-5.6-sol",
-    "analyzer_model": "gpt-5.6-sol",
+    "executor_model": "<model used for execution>",
+    "analyzer_model": "<model used for analysis>",
     "timestamp": "2026-01-15T10:30:00Z",
     "evals_run": [1, 2, 3],
     "runs_per_configuration": 3

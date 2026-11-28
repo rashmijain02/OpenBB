@@ -1,0 +1,23 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "ETFs-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5964b0aed47555dad6036b550d70ee97775b03e62d7aee315c249acc11e916b4",
+ "hosted_text_len": 904145,
+ "rest_path": "/etf-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c8b8c350a3b37fdbc2e1788fd296f035775091d55edaeb9c59e1de7f1853da26",
+ "rest_body_len": 1135147,
+ "json_equal": true,
+ "compact_equal": true
+}

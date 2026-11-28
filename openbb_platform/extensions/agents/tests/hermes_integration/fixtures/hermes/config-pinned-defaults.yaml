@@ -1,0 +1,38 @@
+# Synthetic Hermes config trimmed from cli-config.yaml.example (MIT, (c) 2025 Nous Research)
+# Source: rashmijain02/hermes-agent main @ 710fa8a073f9a8136e10749b083a16779341faef
+# Only the keys the route and skill readers consume are kept. No real values.
+# Skill/curator/background-review keys come from hermes_cli/config_defaults.py at the
+# same SHA (the example file omits them).
+# Upstream defaults at the pin: hosted/auto routing, external login adoption, memory on.
+model:
+  default: "anthropic/claude-opus-4.6"
+  provider: "auto"
+  base_url: "https://openrouter.ai/api/v1"
+fallback_providers: []
+delegation:
+  fallback_providers: []
+auxiliary:
+  vision:
+    provider: "auto"
+  compression:
+    provider: "auto"
+  background_review:
+    enabled: true
+    provider: "auto"
+agent:
+  disabled_toolsets: []
+skills:
+  external_dirs: []
+  create_dir: ""
+  project_discovery: true
+  inline_shell: false
+curator:
+  enabled: true
+auth:
+  adopt_external_logins: true
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+telemetry:
+  shared_metrics:
+    enabled: false

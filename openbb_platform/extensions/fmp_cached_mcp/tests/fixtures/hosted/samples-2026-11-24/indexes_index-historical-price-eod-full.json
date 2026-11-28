@@ -1,0 +1,27 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "index-historical-price-eod-full",
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "8b421248c1577cfcb5e0116e2361ec892d8291f6c96884d0d508e1f1be67548d",
+ "hosted_text_len": 697,
+ "rest_path": "/historical-price-eod/full",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "873ee915467b02b41651798820fcf20795e35ed3a40e4168d5f91159857c2fd0",
+ "rest_body_len": 962,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd2c14ec2401006e0bb4fd1f40c939d999dd959af1ebc9278349a2036605228118418e3bbbbad10615b0ed2642fffb49b7efbefe34d517ca55514e5e673f9d2d4e56d513edf3f4ceecad16ffc3add566d488e748c3826779c34eb6a952601c501c743b8789b2fba301a68388475b34f999a11a81eb259dd6cda8d35e2c9e7bba6fe5876b186a8e6d2737c7f315dcddbc998fc7936a9de67d56adb8e18f8b8ff6e3f5db73fe2584028484abf47ffd662ccb56c114833ad4701f567da80814139d3a654c038d78a46eab0035a64f07c094c603103931948bc926b3dae24595e2e6b00b5732e9940c8cb0d4c2787f0c765331c2e97099c5ed2ba74126292819919f05a70c8c11e111c0df4cb21071bb0ef81bd03e983510587fb0d09152f83a320f6c0ca60d8dde89ba71f2c4508fbc2030000",
+ "hosted_text": "[{\"symbol\":\"^GSPC\",\"date\":\"2026-11-20\",\"open\":7150.39,\"high\":7198.67,\"low\":6882.66,\"close\":6910.39,\"volume\":6679680000,\"change\":-240,\"changePercent\":-3.36,\"vwap\":7035.5275},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-19\",\"open\":7389.26,\"high\":7415.64,\"low\":7173.63,\"close\":7175.83,\"volume\":5692800000,\"change\":-213.43,\"changePercent\":-2.89,\"vwap\":7288.59},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-18\",\"open\":7355.69,\"high\":7367.68,\"low\":7285.76,\"close\":7323.63,\"volume\":5388180000,\"change\":-32.06,\"changePercent\":-0.43585,\"vwap\":7333.19},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-17\",\"open\":7411.02,\"high\":7415.37,\"low\":7288.34,\"close\":7340.53,\"volume\":5165100000,\"change\":-70.49,\"changePercent\":-0.95115,\"vwap\":7363.815}]"
+}

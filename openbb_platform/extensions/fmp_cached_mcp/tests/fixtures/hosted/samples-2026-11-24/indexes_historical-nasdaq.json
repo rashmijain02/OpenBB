@@ -1,0 +1,24 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "historical-nasdaq",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "402d1d0d7a975ad0e750ecb4fa160d2ab146f08267275e95ccbb38b0cbc065b6",
+ "hosted_text_len": 110798,
+ "rest_path": "/historical-nasdaq-constituent",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "000836720c244cdec716e063cd4ccd2c2752b6f26d898fb69fa8b662057856d7",
+ "rest_body_len": 137919,
+ "json_equal": true,
+ "compact_equal": true
+}

@@ -1,0 +1,111 @@
+[
+ {
+  "tool": "chart",
+  "arguments": {
+   "endpoint": "historical-price-eod-light",
+   "symbol": "AAPL",
+   "from_date": "1970-01-01",
+   "to_date": "1970-01-05"
+  },
+  "isError": null,
+  "text": "{\"status\":\"not_found\",\"endpoint\":\"historical-price-eod-light\",\"provided\":\"symbol=\\\"AAPL\\\"\",\"message\":\"No data returned for historical-price-eod-light with symbol=\\\"AAPL\\\". The identifier may not exist, or may have no data for this endpoint. Use the 'search' tool to verify the symbol/cik/name.\"}"
+ },
+ {
+  "tool": "statements",
+  "arguments": {
+   "endpoint": "income-statement",
+   "symbol": "ZZZZNOTREAL",
+   "limit": 2,
+   "period": "annual"
+  },
+  "isError": null,
+  "text": "{\"status\":\"not_found\",\"endpoint\":\"income-statement\",\"provided\":\"symbol=\\\"ZZZZNOTREAL\\\"\",\"message\":\"No data returned for income-statement with symbol=\\\"ZZZZNOTREAL\\\". The identifier may not exist, or may have no data for this endpoint. Use the 'search' tool to verify the symbol/cik/name.\"}"
+ },
+ {
+  "tool": "calendar",
+  "arguments": {
+   "endpoint": "splits-calendar",
+   "from_date": "1970-01-01",
+   "to_date": "1970-01-02"
+  },
+  "isError": true,
+  "text": "ACCESS DENIED: A parameter you passed to this tool (\"calendar\") requires a higher plan. The user is currently on the Premium plan. Please inform the user they need to upgrade their FMP subscription at https://financialmodelingprep.com/developer/docs/pricing to use this filter. Do not retry this tool with the same parameter value; the user may retry with values their plan allows."
+ },
+ {
+  "tool": "news",
+  "arguments": {
+   "endpoint": "search-stock-news",
+   "symbols": [
+    "ZZZZNOTREAL",
+    "QQQQNOTREAL"
+   ],
+   "limit": 2
+  },
+  "isError": null,
+  "text": "[]"
+ },
+ {
+  "tool": "company",
+  "arguments": {
+   "endpoint": "batch-market-cap",
+   "symbols": [
+    "ZZZZNOTREAL"
+   ]
+  },
+  "isError": null,
+  "text": "[]"
+ },
+ {
+  "tool": "secFilings",
+  "arguments": {
+   "endpoint": "search-by-form-type",
+   "formType": "ZZZ",
+   "from_date": "2026-11-01",
+   "to_date": "2026-11-02",
+   "page": 0
+  },
+  "isError": null,
+  "text": "[]"
+ },
+ {
+  "tool": "technicalIndicators",
+  "arguments": {
+   "endpoint": "simple-moving-average",
+   "symbol": "ZZZZNOTREAL",
+   "periodLength": 10,
+   "timeframe": "1day"
+  },
+  "isError": null,
+  "text": "{\"status\":\"not_found\",\"endpoint\":\"simple-moving-average\",\"provided\":\"symbol=\\\"ZZZZNOTREAL\\\"\",\"message\":\"No data returned for simple-moving-average with symbol=\\\"ZZZZNOTREAL\\\". The identifier may not exist, or may have no data for this endpoint. Use the 'search' tool to verify the symbol/cik/name.\"}"
+ },
+ {
+  "tool": "search",
+  "arguments": {
+   "endpoint": "search-name",
+   "query": "zzqqxxnotreal"
+  },
+  "isError": null,
+  "text": "[]"
+ },
+ {
+  "tool": "marketPerformance",
+  "arguments": {
+   "endpoint": "sector-PE-snapshot",
+   "date": "1970-01-01",
+   "exchange": "NASDAQ"
+  },
+  "isError": true,
+  "text": "ACCESS DENIED: A parameter you passed to this tool (\"marketPerformance\") requires a higher plan. The user is currently on the Premium plan. Please inform the user they need to upgrade their FMP subscription at https://financialmodelingprep.com/developer/docs/pricing to use this filter. Do not retry this tool with the same parameter value; the user may retry with values their plan allows."
+ },
+ {
+  "tool": "statements",
+  "arguments": {
+   "endpoint": "financial-reports-form-10-k-xlsx",
+   "symbol": "AAPL",
+   "year": 2024,
+   "period": "FY"
+  },
+  "isError": null,
+  "text": "\"PK\\u0003\\u0004\\u0014\\u0000\\u0000\\u0000\\b\\u0000-0aY\\u0007AMb�\\u0000\\u0000\\u0000�\\u0000\\u0000\\u0000\\u0010\\u0000\\u0000\\u0000docProps/app.xmlM�=\\u000b\\u00021\\u0010D��q��A�Bb@�R��\\u000f{\\u001b/�dC�B~�9��n...<175873 chars>"
+ }
+]

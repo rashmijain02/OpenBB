@@ -73,7 +73,7 @@ def test_catalog_lists_all_25_story_variants(registry_harness):
     """The catalog covers every story and both Portfolio provider variants."""
     response = registry_harness.alice.get("/api/v1/story/catalog")
     assert response.status_code == 200
-    stories = response.json()
+    stories = [s for s in response.json() if s["family"] != "workflow"]
     assert len(stories) == 25
     assert {s["variant"] for s in stories} == {
         "portfolio",
@@ -190,8 +190,14 @@ def test_unknown_story_cannot_start_a_run(registry_harness):
 
 def test_missing_manifests_are_an_explicit_unavailable_error(tmp_path):
     """Without the agents package the catalog says so instead of listing nothing."""
-    client = _client("alice", tmp_path / "runs.sqlite", manifests=tmp_path / "none")
-    response = client.get("/api/v1/story/catalog")
+    app = compose_story_registry_app(
+        FastAPI(),
+        principal="alice",
+        manifest_dir=tmp_path / "none",
+        workflow_dir=tmp_path / "none",
+        store_path=tmp_path / "runs.sqlite",
+    )
+    response = TestClient(app).get("/api/v1/story/catalog")
     assert response.status_code == 503
 
 
@@ -270,7 +276,10 @@ async def test_run_lifecycle_over_mcp(monkeypatch, tmp_path):
     """Create, checkpoint and conflict through real MCP tool calls."""
     mcp = await _server("portfolio-read", monkeypatch, tmp_path)
     catalog = await mcp.call_tool("story_catalog", {})
-    assert len(catalog.structured_content["result"]) == 25
+    stories = [
+        r for r in catalog.structured_content["result"] if r["family"] != "workflow"
+    ]
+    assert len(stories) == 25
     run = await mcp.call_tool("story_run_create", {"story_id": "portfolio/03"})
     record = run.structured_content
     stage = next(iter(record["stage_status"]))

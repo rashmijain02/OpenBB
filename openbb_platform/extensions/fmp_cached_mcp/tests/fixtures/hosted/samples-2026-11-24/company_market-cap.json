@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "market-cap",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "f9306eb65d60a72336454d05cd1a80fc513e5b5bd9ea48baf430af1384579461",
+ "hosted_text_len": 65,
+ "rest_path": "/market-capitalization",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ac80c75de38344785728647f74ca55db771a480011cafe287e61e7d44e70ccab",
+ "rest_body_len": 90,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c81826939b58949d5ae29c58009436353037b23430303637333030004ad772c50200c7c6db935a000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-23\",\"marketCap\":5072900376000}]"
+}

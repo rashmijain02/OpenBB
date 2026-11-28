@@ -17,6 +17,13 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from openbb_agents._stage_graph import (
+    check_acyclic,
+    check_dependencies_known,
+    check_input_bindings,
+    check_unique_stages,
+)
+
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 Identifier = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_.:/-]*$")]
 # ``private_read`` covers sanitized reads of the operator's own portfolio
@@ -204,43 +211,6 @@ class ApprovalRequest(_Contract):
     nonce: str = Field(min_length=32)
 
 
-def _check_unique_stages(manifest: StoryManifest) -> dict[str, StoryStage]:
-    stages: dict[str, StoryStage] = {}
-    for stage in manifest.stages:
-        if stage.id in stages:
-            raise ValueError(f"{manifest.story_id}: duplicate stage '{stage.id}'")
-        stages[stage.id] = stage
-    return stages
-
-
-def _upstream(stage_id: str, stages: Mapping[str, StoryStage]) -> set[str]:
-    seen: set[str] = set()
-    pending = list(stages[stage_id].depends_on)
-    while pending:
-        current = pending.pop()
-        if current not in seen:
-            seen.add(current)
-            pending.extend(stages[current].depends_on)
-    return seen
-
-
-def _check_acyclic(manifest: StoryManifest, stages: Mapping[str, StoryStage]) -> None:
-    state: dict[str, str] = {}
-
-    def visit(stage_id: str) -> None:
-        if state.get(stage_id) == "done":
-            return
-        if state.get(stage_id) == "visiting":
-            raise ValueError(f"{manifest.story_id}: stage cycle through '{stage_id}'")
-        state[stage_id] = "visiting"
-        for dependency in stages[stage_id].depends_on:
-            visit(dependency)
-        state[stage_id] = "done"
-
-    for stage_id in stages:
-        visit(stage_id)
-
-
 def validate_stage_graph(
     manifest: StoryManifest, catalog: CapabilityCatalog | None = None
 ) -> None:
@@ -249,48 +219,27 @@ def validate_stage_graph(
     Checks unique stage IDs, known dependencies, acyclicity, that every input
     comes from a declared output of an upstream stage, that each notebook cell
     belongs to one stage, that financial stages name a capability, and (when a
-    catalog is given) that every capability resolves.
+    catalog is given) that every capability resolves. The graph rules live in
+    ``openbb_agents._stage_graph`` and are shared with runtime workflows.
     """
-    stages = _check_unique_stages(manifest)
-    for stage in manifest.stages:
-        for dependency in stage.depends_on:
-            if dependency not in stages:
-                raise ValueError(
-                    f"{manifest.story_id}: stage '{stage.id}' depends on unknown "
-                    f"stage '{dependency}'"
-                )
-    _check_acyclic(manifest, stages)
+    label = manifest.story_id
+    stages = check_unique_stages(label, manifest.stages)
+    check_dependencies_known(label, stages)
+    check_acyclic(label, stages)
 
     owners: dict[int, str] = {}
     for stage in manifest.stages:
         for cell in stage.cells:
             if cell in owners:
-                raise ValueError(
-                    f"{manifest.story_id}: cell {cell} belongs to more than one stage"
-                )
+                raise ValueError(f"{label}: cell {cell} belongs to more than one stage")
             owners[cell] = stage.id
         if not stage.capabilities and stage.kind not in CAPABILITY_FREE_KINDS:
-            raise ValueError(
-                f"{manifest.story_id}: stage '{stage.id}' has no capability"
-            )
-        upstream = _upstream(stage.id, stages)
-        for binding in stage.inputs:
-            if binding.from_stage is None:
-                continue
-            if binding.from_stage not in upstream:
-                raise ValueError(
-                    f"{manifest.story_id}: '{binding.from_stage}' is not upstream "
-                    f"of '{stage.id}'"
-                )
-            if binding.output not in stages[binding.from_stage].outputs:
-                raise ValueError(
-                    f"{manifest.story_id}: stage '{binding.from_stage}' does not "
-                    f"declare output '{binding.output}'"
-                )
+            raise ValueError(f"{label}: stage '{stage.id}' has no capability")
+        check_input_bindings(label, stage, stages)
         if catalog is not None:
             for name in stage.capabilities:
                 if name not in catalog.entries:
                     raise ValueError(
-                        f"{manifest.story_id}: stage '{stage.id}' needs unresolved "
+                        f"{label}: stage '{stage.id}' needs unresolved "
                         f"capability '{name}'"
                     )

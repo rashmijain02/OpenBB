@@ -1,0 +1,28 @@
+# Synthetic LiteLLM proxy config (#1338-T03) with the SHAPE of the existing local
+# claude-proxy.yaml: six github_copilot/* aliases, env-referenced master_key and
+# database_url, no litellm_settings, no fallbacks. Key names verified against
+# litellm 1.106.6 (proxy_server.py load_config, router.py Router.__init__).
+# Alias names are illustrative; no real values.
+model_list:
+  - model_name: hosted-a
+    litellm_params:
+      model: github_copilot/model-a
+  - model_name: hosted-b
+    litellm_params:
+      model: github_copilot/model-b
+  - model_name: hosted-c
+    litellm_params:
+      model: github_copilot/model-c
+  - model_name: hosted-d
+    litellm_params:
+      model: github_copilot/model-d
+  - model_name: hosted-e
+    litellm_params:
+      model: github_copilot/model-e
+  - model_name: hosted-f
+    litellm_params:
+      model: github_copilot/model-f
+general_settings:
+  master_key: os.environ/SYNTHETIC_MASTER_KEY_ENV
+  database_url: os.environ/SYNTHETIC_DATABASE_URL_ENV
+  trusted_proxy_ranges: []

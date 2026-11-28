@@ -1,0 +1,25 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "press-releases",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d6bad00d5b0e3e6c85a80fbb2a2405af3bd854fd255ce56de60ce6887a307a29",
+ "hosted_text_len": 1783,
+ "rest_path": "/news/press-releases-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "9b317b0e3888f053d03b9ebbadc473beb0cf9f89f0d36a3f4a433d5a785fa9ab",
+ "rest_body_len": 1900,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa554c16e1b3710bde72b063ac980b82bc94a00ab27cb566d3586d2580e9cb8e881da9dd5b2e1925b926b592d0ae443929fcb9774862bc9821b070572306451c3796fde9bc7df5e00fc4d7f001dbfa9965677c6d0b9bbecf4dab3ba596ae54bcccf6540fe69d81fbe128381188ea03f1a1f8fc6fdfed35ac77517da2e718e6b7fab1cee2a820a3a76b92b55d9c0cc64095c636d5df0f0cec826570173b82995cbe16d235d40070c083f2b234da6a4a672dfe8e0771d552557b1631942edc7691a0f7c52ec2e543647adccaa76582799ad52439cd2bf185f289309d7c28b66072f02c38b3f5b7811e7dd77a3f2081f8f0783e128f9a35eedb878d54ab4e2d119664da333e67e7c7c085c3099ce7e99cd2f7a705652e31ecced7d02c351af9db57b71f5663285f9f476713bbb9e1e811070a057f7eba7cff1ebd74f5fc03a0825021d9dd9aa9666438747d09d7f584cc77077f9135cbe9ebe1fc3f0f8a47fd403091a654e628035a40942664d4013e8b3aa1aa3c20694d9910a36971b90c6d8c664e48a228ff622c15e11d82a02c596cb5638409353dd02eb80d592be1ff7dbf9929d1a8dd387c6add7ebe43fca45b74874e2ed31e5ebe960900e47e9f1a87fd27f394cfb299a1f76332943a53bc4ea9fdeb7d270339dbfffbf79183e978749e34971efe19b79600858049b7d84538d2e8ce152ea9a545bc81c4bb8ba3a23f3efd107b5225c0f3768e40305059dacb1092af3bd763bd8855f2d9bcade4c1ccaaca47a5b5084f28686761b38a70bf8a309228807e199b190cc589491b0f04c58689d911f8f844560c264c623e1ef4668b955ebb9045138e0c39bebd7427427ef16b3f974b1801816219e0a476b6fa0e542da38b52a6959b55cd30abbaa07cac323518ec6ba44a609190d25290eb62814fdefa94d0e39f1c9a84f54f45913baf3d3c5f9e9db31b0ad47b06c5dc8391eca11eece883c1a4149035f4a87a5d53903112805d31090b206d62a9450ef2df5a80b91a364479259011bdb00dde56c5bb3229d5db52576d09386228ca0b406bb36befd89d8f2e58a52bea4fb4b8d9109e24782779423320e56f61e1d2f0252d069b92abac52977181ac7e240d1983ccec0c759fb0af5f861b25146caaec222815ba9a2bc0ca755a502835351cd43fa04ceb4a2e5a71b9105e59dba5796075bda26167fefe178ba2fed8e96b66a1f0d5eb397a393d1303e17ec8a886113316cdb9511716504ad8c38cc9a886a8a439b05bb2c480db18f9ad8454dd842eca326daa8a5f16d79f1fbbf49bbef1c6c070000",
+ "hosted_text": "[{\"symbol\":\"ZH\",\"publishedDate\":\"2026-11-24 04:34:00\",\"publisher\":\"GlobeNewsWire\",\"title\":\"Zhihu Inc. Reports Unaudited Third Quarter 2026 Financial Results\",\"image\":\"https://images.financialmodelingprep.com/news/zhihu-inc-reports-unaudited-third-quarter-2026-financial-results-20261124.jpg\",\"site\":\"globenewswire.com\",\"text\":\"BEIJING, China, Nov. 24, 2026 (GLOBE NEWSWIRE) -- Zhihu Inc. (“Zhihu” or the “Company”) (NYSE: ZH; HKEX: 2390), a leading online content community in China, today announced its unaudited financial results for the quarter ended September 30, 2026.\",\"url\":\"https://www.globenewswire.com/news-release/2026/11/24/3409052/0/en/zhihu-inc-reports-unaudited-third-quarter-2026-financial-results.html\"},{\"symbol\":\"TENX\",\"publishedDate\":\"2026-11-24 04:32:00\",\"publisher\":\"Business Wire\",\"title\":\"TENX Stock Alert: Halper Sadeh LLC Investigates Tenax Therapeutics, Inc. for Potential Breaches of Fiduciary Duties\",\"image\":\"https://images.financialmodelingprep.com/news/tenx-stock-alert-halper-sadeh-llc-investigates-tenax-therapeutics-20261124.jpg\",\"site\":\"businesswire.com\",\"text\":\"NEW YORK--(BUSINESS WIRE)--Halper Sadeh LLC, an investor rights law firm, is investigating whether certain officers and directors of Tenax Therapeutics, Inc. (NASDAQ: TENX) breached their fiduciary duties to shareholders in connection with potential self-dealing.If you are a long-term Tenax shareholder who still owns shares, you may be able to seek corporate governance reforms, the return of funds to the company, or other relief. Waiting may limit your options. Click here to learn more about you.\",\"url\":\"https://www.businesswire.com/news/home/20261124549420/en/TENX-Stock-Alert-Halper-Sadeh-LLC-Investigates-Tenax-Therapeutics-Inc.-for-Potential-Breaches-of-Fiduciary-Duties/\"}]"
+}

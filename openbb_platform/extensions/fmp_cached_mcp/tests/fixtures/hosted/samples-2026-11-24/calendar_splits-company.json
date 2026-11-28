@@ -1,0 +1,26 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "splits-company",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "09b20bd665a7d7c3514c82d226e31f9e96a798d86512fb391d6b1a6503d361eb",
+ "hosted_text_len": 189,
+ "rest_path": "/splits",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a0e5c6e4f3e0cb5401f48e76d0113999d489bb6aa4eb68d6a4c0f100a72efd90",
+ "rest_body_len": 262,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c840d7c042d7d8102693579a9b5a9458925f04943681a94ecdcbcfcdcc838a1a42458b0b72324b422a0bc0061597e42767eb82859480d2b53ac4bbc0d044d7c04cd7c0129b0bccc97701572c00b0680cdf06010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2020-08-31\",\"numerator\":4,\"denominator\":1,\"splitType\":\"stock-split\"},{\"symbol\":\"AAPL\",\"date\":\"2014-06-09\",\"numerator\":7,\"denominator\":1,\"splitType\":\"stock-split\"}]"
+}

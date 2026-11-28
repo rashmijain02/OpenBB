@@ -315,3 +315,77 @@ def test_pyproject_advertises_job_entry_point():
     text = pyproject.read_text(encoding="utf-8")
     assert "openbb_job_extension" in text
     assert "portfolio_utils.jobs:get_job_definitions" in text
+
+
+@pytest.mark.parametrize("status", ["UNKNOWN", "UNAVAILABLE", "CRITICAL", "BLOCKED"])
+def test_position_history_job_fails_when_readiness_not_validated(monkeypatch, status):
+    """DB trouble leaves the legacy lists empty; the job must not report success (#1345)."""
+
+    def _fake_run(**kwargs):
+        del kwargs
+        return PositionHistoryWarmResult(
+            requested_symbols=1,
+            success=["AAPL"],
+            readiness={
+                "data_status": status,
+                "missing_price_symbols": [],
+                "stale_price_symbols": [],
+            },
+        )
+
+    monkeypatch.setattr(jobs_module, "run_position_history_warm", _fake_run)
+    definition = _by_name()["portfolio.position_history"]
+    with pytest.raises(RuntimeError, match=status):
+        definition.handler(_context(definition.name), PositionHistoryJobParams())
+
+
+@pytest.mark.parametrize("status", ["VALIDATED", "WARN"])
+def test_position_history_job_succeeds_when_readiness_validated(monkeypatch, status):
+    def _fake_run(**kwargs):
+        del kwargs
+        return PositionHistoryWarmResult(
+            requested_symbols=1,
+            success=["AAPL"],
+            readiness={"data_status": status, "target_date": "2026-11-27"},
+        )
+
+    monkeypatch.setattr(jobs_module, "run_position_history_warm", _fake_run)
+    definition = _by_name()["portfolio.position_history"]
+    result = definition.handler(_context(definition.name), PositionHistoryJobParams())
+    assert result.summary["readiness"]["data_status"] == status
+
+
+def test_position_history_job_warns_not_fails_on_stale_symbols(monkeypatch):
+    """A validated DB with a stale/missing symbol succeeds and lists them (#1345)."""
+
+    def _fake_run(**kwargs):
+        del kwargs
+        return PositionHistoryWarmResult(
+            requested_symbols=3,
+            success=["AAPL", "MSFT"],
+            readiness={
+                "data_status": "VALIDATED",
+                "target_date": "2026-11-27",
+                "missing_price_symbols": ["GONE"],
+                "stale_price_symbols": ["OLD1", "OLD2"],
+            },
+        )
+
+    monkeypatch.setattr(jobs_module, "run_position_history_warm", _fake_run)
+    definition = _by_name()["portfolio.position_history"]
+    result = definition.handler(_context(definition.name), PositionHistoryJobParams())
+    joined = " | ".join(result.warnings)
+    assert result.has_warnings
+    assert "GONE" in joined and "OLD1" in joined and "OLD2" in joined
+    assert result.summary["readiness"]["data_status"] == "VALIDATED"
+
+
+def test_position_history_job_dry_run_empty_readiness_succeeds(monkeypatch):
+    def _fake_run(**kwargs):
+        del kwargs
+        return PositionHistoryWarmResult(requested_symbols=1, success=["AAPL"], readiness={})
+
+    monkeypatch.setattr(jobs_module, "run_position_history_warm", _fake_run)
+    definition = _by_name()["portfolio.position_history"]
+    result = definition.handler(_context(definition.name), PositionHistoryJobParams())
+    assert not result.has_warnings

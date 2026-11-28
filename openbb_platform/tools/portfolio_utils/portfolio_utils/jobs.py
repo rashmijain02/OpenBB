@@ -36,6 +36,7 @@ from openbb_core.app.jobs.schedules import DailySchedule
 from pydantic import BaseModel, ConfigDict, Field
 
 from portfolio_utils.fetch_position_history import run_position_history_warm
+from portfolio_utils.fmp_sync.locking import LockBusy
 from portfolio_utils.refresh_etf_holdings_cache import run_etf_holdings_warm
 
 #: Weekdays Monday-Friday (matches ``datetime.weekday()`` 0=Mon..4=Fri).
@@ -69,6 +70,9 @@ def _default_timezone() -> str:
         return local
 
     return _DEFAULT_TIMEZONE
+
+
+_MAX_LISTED_SYMBOLS = 10
 
 
 def _bounded_warnings(messages: list[str]) -> list[str]:
@@ -139,16 +143,45 @@ class EtfHoldingsJobParams(BaseModel):
 def _run_position_history_job(
     context: JobContext, params: PositionHistoryJobParams
 ) -> JobResult:
-    """Warm the equity_historical cache for portfolio symbols (handler)."""
-    result = run_position_history_warm(
-        symbols=params.symbols,
-        years=params.years,
-        dry_run=False,
-        skip_holiday_prestep=params.skip_holiday_prestep,
-        should_cancel=_should_cancel(context),
-    )
+    """Warm the equity_historical cache for portfolio symbols (handler).
+
+    The warmer holds the per-target fmp-sync lock (#1344, D8). When a manual or
+    cron run already holds it, the job is skipped (never queued, never failed).
+    """
+    try:
+        result = run_position_history_warm(
+            symbols=params.symbols,
+            years=params.years,
+            dry_run=False,
+            skip_holiday_prestep=params.skip_holiday_prestep,
+            should_cancel=_should_cancel(context),
+        )
+    except LockBusy:
+        return JobResult(
+            summary={"outcome": "SKIPPED_BUSY"},
+            warnings=["skipped: another price-warming run holds the target lock"],
+        )
+
+    if not result.readiness_evaluated_ok():
+        # Readiness v2 maps DB problems to check states, leaving the legacy
+        # missing/stale lists empty -- never report that as a successful run.
+        # Missing/stale symbols on a validated DB are warnings, not failures.
+        raise RuntimeError(
+            "position-history readiness not validated: data_status="
+            f"{result.readiness.get('data_status', 'UNVALIDATED')}"
+        )
 
     warnings = [f"{item['symbol']}: {item['error']}" for item in result.failed]
+    for label, key in (
+        ("missing price data", "missing_price_symbols"),
+        ("stale price data", "stale_price_symbols"),
+    ):
+        symbols = list(result.readiness.get(key) or [])
+        if symbols:
+            shown = ", ".join(symbols[:_MAX_LISTED_SYMBOLS])
+            more = len(symbols) - _MAX_LISTED_SYMBOLS
+            suffix = f", +{more} more" if more > 0 else ""
+            warnings.append(f"{len(symbols)} symbol(s) with {label}: {shown}{suffix}")
     if result.cancelled:
         warnings.append("run cancelled before all symbols were processed")
 

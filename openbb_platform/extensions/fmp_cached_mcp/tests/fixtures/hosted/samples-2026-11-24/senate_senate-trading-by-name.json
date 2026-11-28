@@ -1,0 +1,26 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "senate-trading-by-name",
+  "name": "Pelosi",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "7f11155f1648718980319e80b23efecbcec1b1cd0c9fb4ac13c2045ffe691d5d",
+ "hosted_text_len": 287,
+ "rest_path": "/senate-trades-by-name",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rest_body_len": 2,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a8b8e050029bb4c0d02000000",
+ "hosted_text": "{\"status\":\"not_found\",\"endpoint\":\"senate-trading-by-name\",\"provided\":\"name=\\\"Pelosi\\\"\",\"message\":\"No data returned for senate-trading-by-name with name=\\\"Pelosi\\\". The identifier may not exist, or may have no data for this endpoint. Use the 'search' tool to verify the symbol/cik/name.\"}"
+}

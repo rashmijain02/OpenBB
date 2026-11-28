@@ -9,17 +9,24 @@ user-invocable: true
 
 You run Phase 2 of the relay in `docs/dev-strategy.md`. Input: an approved spec folder. Output:
 commits on a feature branch in a worktree, evidence, and `handoff.md`. You stop at gate G2.
-**You never push, open a PR, or merge** (D6); Phase 3 (`openbb-ship` in Copilot CLI) does that.
+Routes, authority profiles, gates and environment traps are canonical in
+[`openbb-dev-cycle`](../openbb-dev-cycle/SKILL.md); this skill covers only the Phase 2 steps.
+Under the default owner-interactive profile (D6) **you never push, open a PR, or merge**; Phase 3
+does that. Under the lead-delegated profile (D15) push and PR only if your brief says so, and
+never merge.
 
-## Models (D1)
+## Models (D1, D13)
 
-- Main agent: the session's Claude model (Opus). Subagents: Claude models only, named
-  explicitly on every dispatch (`opus` for implementers on hard tasks, `sonnet` for implementers
-  and reviewers otherwise, `haiku` only for read-only search).
-- If a named model is unavailable, stop and report. Never fall back to another model family.
+- Use the best available model suited to the task (complexity, ambiguity, risk) for the main agent
+  and every subagent, and name it explicitly on every dispatch. Default tiers (Sonnet; Opus for design
+  or high-risk work): `docs/dev-cycle/model-selection.md`. Canonical: D1 in `docs/dev-strategy.md`.
+- If no suitable model is available, stop and report; do not silently degrade.
+- A model clause in a user-level skill copy (for example the `local-*-review` skills) never
+  overrides D1; run those reviews with the best available model.
 
 Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their own; from a worktree use
-`$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`.
+`$py = Join-Path (Split-Path (git rev-parse --path-format=absolute --git-common-dir)) '.venv_portfolio\Scripts\python.exe'`
+and set `PYTHONPATH` to the worktree's changed package dirs (canonical skill §6, environment traps).
 
 ## Preconditions (stop and report if any fails)
 
@@ -65,7 +72,8 @@ Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their o
    - TodoWrite may mirror `tasks.md` for this session only (D3). It is never the record.
    - A bug outside the task's scope becomes a new issue (`type-bug`), not a silent fix.
    - On a failure you cannot explain, switch to `superpowers:systematic-debugging`.
-5. **Quality.** With `$py`:
+5. **Quality.** Run the gate rows that apply in the canonical skill §4 (Pester, .NET and live
+   acceptance included). For Python, with `$py`:
    - the plan's test suites, then `black --check` and `ruff` on changed files;
    - the **real-path check** named in `plan.md`: run the changed entry point for real (CLI command,
      API route, extension call, notebook cell) with safe inputs, read-only where the code allows.
@@ -82,10 +90,12 @@ Python: the main checkout's `.venv_portfolio`. Worktrees have no venv of their o
    one `Closes #NN` or `Refs #NN` per line in the body. Stage named files, never `git add -A`.
 8. **Handoff.** Copy `specs/_templates/handoff.md` to `specs/gh-NN-slug/handoff.md`, fill it with
    real command output, and commit it.
-9. **Gate G2.** Report to the user: branch, HEAD, tasks done, test and verify results, review
-   triage, open questions. Then stop and say: "Phase 2 complete. In Copilot CLI:
-   `Use openbb-ship for #NN`." Keep the claim (heartbeat) until the user hands over, or release it
-   with `pi_claim.py <NN> release` if they say so.
+9. **Gate G2.** Report to the user (or the lead): branch, HEAD, tasks done, test and verify
+   results, review triage, open questions. Then ship per the canonical skill §5: under the
+   owner-interactive profile stop and say "Phase 2 complete. In Copilot CLI:
+   `Use openbb-ship for #NN`."; under the lead-delegated profile follow your brief. Keep the claim
+   (heartbeat) until the user hands over, or release it with `pi_claim.py <NN> release` if they
+   say so.
 
 When `superpowers:finishing-a-development-branch` offers merge, PR or discard options, choose
 "keep the branch as is"; integration happens in Phase 3.
@@ -96,4 +106,4 @@ When `superpowers:finishing-a-development-branch` offers merge, PR or discard op
   never yfinance.
 - Never read brokerage exports directly; keep credentials and personal paths out of code, logs
   and the handoff. Notebooks are committed stripped.
-- Never commit to `portfolio`, `portfolio_validations` or `develop`; never merge into them.
+- Never commit to `portfolio`, `portfolio_validations` or `develop`; never merge locally into them.

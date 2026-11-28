@@ -1,0 +1,25 @@
+{
+ "tool": "etfAndMutualFunds",
+ "arguments": {
+  "endpoint": "information",
+  "symbol": "SPY"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "79516c8adc02da88a0489089f0c555fa7fe274be3cb25ccfbecf609a79c0107f",
+ "hosted_text_len": 1903,
+ "rest_path": "/etf/info",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6249698039f47504a6d457c69f5feeae3407361844515872d0cdc55ed4533bf1",
+ "rest_body_len": 2403,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a95555d6f2a37107dbfbf6294877e48b02c1008e42d25897aa5468a02546aafae54b33bb056bcf6d6f6b2e156fdef3df6b2e43e945b8a042c33e3e3993367864f1f88fec29be8ca1dca8d5157b774b57cfeedaad71ab528399abcf04c4b6f993d2d9fef5f68f9dd334dd2941e568f5d70ce2eb3b2f2d2e8230c4947be60dab0f37dcb99d969f98573123a27a310ef69bd24259d871148d1e10f95cc845207f2a67264857e957ae7686b2c296177e1d4ddfa29c6ee2c233118bc1539a2686f545d72422bdcbaad039a15d96b9b45299c937b067065aa1a50e172a9737eeb45ffb1a4841eb921002be40a87f0c1f3bd6b4329336529bd67a6ac30c6b18b3438ce6a2bbdc44f6f70b8b2ec58fb881b4a0c79f7335191ab44c6d4276d3c69ced8396165a8158101a8ab707340bef61574e3548f9a4266051e35291679b8c39992c994123519edc86cc98100c5147ae612344b2ad516d6266eb65bb608acbdf3e02eb0c56f9571b5e580f7ef9926f4d187d2cbca589cf22112a9738f8eed15546be971c51e5997b1645b3bdf437b628b2d6d6a4fb04b1b98df4bb1418e0e4199c7cd09dd058cf5c7558b58e22c1a17ba0f12158400dd49df91ff03aeaaacd900e4408da955d0d2a111871fa31c20915d5b892ba120b2d2bd4687e546d83c92f4de28c59185502209e54ca0f70f8fd8b6180a256f8d928672b99739a21d94ec1b660d0b4a90282d90dfb28c8ed7ca075a33e10acaadd851831e9053725778245cd416a86c91662974161a437575ecb38b8916acaa60ce4da3316db83279677a2bf6c66252f6420357bc8b9ea10ec5493788124a0813b85edeccaea7a3c7613a4e3b1f6680fd42e12b443cfc594b7fe87c476e0e8bdac92ab84fc74f230ec16552718bde591bde38e9a3b1f0be72b78341d33489733b91605c06b51bb01e48edbcf49131a106ecb76ee0c25ae9bbb856faaeca2d3efa98823ebcfda823184ee9c1b830658586b7ebe5fee5e479ab583b7e1100872f4dd2f9d7e5ba35c4639f84163b0e1245c8cd643abe998fc7295e5de87ef76bdc1e705f4faf27c3ebd9a82314cd8a7bed5eb4650ee7f3713f1df647a3f74db90fb0c349321fbe9b16b54513b343cbd77d175c6032c24e5b983a663349af4fadbbcb7c5c52abb6b9f082083ebaeb2a4706f95d3874354a47d3fe3024b11a8e6f47c35becae743afdfdab767a63dd2f902ac23f4563b7ee8f65e5a0d8c6ec569c15da28b3ebe8ee888d0b0211e34932191f3d7ff7be0df62835f42d85a225dbbdc4963b033a1c2593e985a03f6323fb22133878062c4dc6b30bc116185bb4dad2e290852da3ce60ce939bf9c59065895d980511eaff2a7c96cc2ec5fdd83e83cdf360a3ff5df73d6f313250da19ccc9e5980f9aed79d92493d185386bfc63c5cd7c066a940c2fd5ca0bb4420f71bd9c134b32bbb4be9f8493193d01eb5b4d182637a7f188df9f3f84a7cfff006d18b9e363090000",
+ "hosted_text": "[{\"symbol\":\"SPY\",\"name\":\"State Street SPDR S&P 500 ETF\",\"description\":\"SPY is the best-recognized and oldest US listed ETF and typically tops rankings for largest AUM and greatest trading volume. The fund tracks the massively popular US index, the S&P 500. Few realize that S&P's index committee chooses 500 securities to represent the US large-cap space - not necessarily the 500 largest by market cap, which can lead to some omissions of single names. Still, the index offers outstanding exposure to the US large-cap space. It's important to note, SPY is a unit investment trust, an older but entirely viable structure. As a UIT, SPY must fully replicate its index (it probably would anyway) and forgo the small risk and reward of securities lending. It also can`t reinvest portfolio dividends between distributions, the resulting cash drag will slightly hurt performance in up markets and help in downtrends. SPY is a favored vanilla trading vehicle.\",\"isin\":\"US78462F1030\",\"assetClass\":\"Equity\",\"securityCusip\":\"78462F103\",\"domicile\":\"US\",\"website\":\"https://www.ssga.com/us/en/institutional/etfs/state-street-spdr-sp-500-etf-trust-spy\",\"etfCompany\":\"SPDR\",\"expenseRatio\":0.09,\"assetsUnderManagement\":756379330000,\"avgVolume\":46451482,\"inceptionDate\":\"1993-01-22\",\"nav\":715.91,\"navCurrency\":\"USD\",\"holdingsCount\":504,\"isActivelyTrading\":true,\"updatedAt\":\"2026-11-22T13:21:00.066Z\",\"sectorsList\":[{\"industry\":\"Technology\",\"exposure\":35.53},{\"industry\":\"Financial Services\",\"exposure\":12.56},{\"industry\":\"Healthcare\",\"exposure\":10.38},{\"industry\":\"Consumer Cyclical\",\"exposure\":9.79},{\"industry\":\"Communication Services\",\"exposure\":8.89},{\"industry\":\"Industrials\",\"exposure\":8.28},{\"industry\":\"Consumer Defensive\",\"exposure\":5.28},{\"industry\":\"Energy\",\"exposure\":3.52},{\"industry\":\"Utilities\",\"exposure\":2.16},{\"industry\":\"Real Estate\",\"exposure\":1.88},{\"industry\":\"Basic Materials\",\"exposure\":1.73}]}]"
+}

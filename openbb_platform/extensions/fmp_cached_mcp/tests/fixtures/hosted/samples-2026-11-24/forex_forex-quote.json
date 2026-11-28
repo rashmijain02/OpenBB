@@ -1,0 +1,25 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-quote",
+  "symbol": "EURUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "0e9f33335cd030e8130fe36f22654c88f24085c0559eb82d4d90ab4761edb6bb",
+ "hosted_text_len": 327,
+ "rest_path": "/quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "b8cc177d5109b4aeab9986ff0efd39be25f30a0637006684396947e26f424ae1",
+ "rest_body_len": 437,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a5d90bb4ec3301486f73e85e51995633ba6365b558a1890404595905007935a69842f516e1021de9d24b5d3c0e0e5fb8eff73795b20f4dd3f8470d5d9776ff02dc2dbfd6eff7287afcedc29ab03bd9ee1a2ccd381932548baa281a627e532fdaccb54bb5a6543012c892489fc533062000a42f0205a6f9ab1116709c4eaa3ea1efde7b98b90925ef0439e9d42770691775a9593e8c31999894b9020f18355e587ae37aae88d6b8c99efb66e330ee30f42a914ff1485e01229629afe9ab6c3f74fbbed6bbc952fb40bc3029353926e73df541be3ab7848b861c1d6b9d555adec30195949ce0913407bf7b338fc0242e729c5b5010000",
+ "hosted_text": "[{\"symbol\":\"EURUSD\",\"name\":\"EUR/USD\",\"price\":1.0927,\"changePercentage\":0.18966,\"change\":0.0020685,\"volume\":53408,\"dayLow\":1.08992,\"dayHigh\":1.09302,\"yearHigh\":1.20831,\"yearLow\":1.08812,\"marketCap\":null,\"priceAvg50\":1.12298,\"priceAvg200\":1.14982,\"exchange\":\"FOREX\",\"open\":1.09039,\"previousClose\":1.09063,\"timestamp\":1795513799}]"
+}

@@ -1,0 +1,23 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "financial-symbols-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "b6a1399f8748a30124ed103fc4c9f6e442a53173d18c3aee6619a024a1290cdd",
+ "hosted_text_len": 3626591,
+ "rest_path": "/financial-statement-symbol-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "2d461c4148c89fdb3938deaf430bfb26f5a97be16a39b3948a83ce2a8b4229dc",
+ "rest_body_len": 4616485,
+ "json_equal": true,
+ "compact_equal": true
+}

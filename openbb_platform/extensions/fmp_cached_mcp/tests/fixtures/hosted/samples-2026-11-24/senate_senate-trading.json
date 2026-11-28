@@ -1,0 +1,26 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "senate-trading",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "3cee54932cdb8e1b0896c6bbc620d1cfe1499adbbe747cfd335868bb8094a8b4",
+ "hosted_text_len": 914,
+ "rest_path": "/senate-trades",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "a0db1254302d1091617590237576abc3d9aef82f25ff0c449463d0e95c74ceac",
+ "rest_body_len": 1119,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ac592c16f9b3014c6effd2b2cd4c326c5c13838406f51a26e95baad52d8769876783166b16a30b29d44d1d4ff7d06469a2a69bb9e764082f77deff1f9f9f7e302a1dffe4128b0fb6aa555708582d9ecee3618fdad8a1a9cb859b4f53921118993412aa4e54adb8d110b6f690d94d0298e224ce2c1e30cd416b893ba7e6a22984683a994c6bacf5075f2722d9412fb4153f0287dd2da083487463a3de8ba2c253f6e44e75c3eaa3392bbd6f7fddba177570bd3b5367a63c550066b855b08cb8d6cdae0dd4a9a46097453f331c268aeab4ad768e934bf7fd294ef9b3ecab1e28622f809efeec03809eafda1afd29bbacb75198dfc7efdf8cb88f9373238787b12501f40d6f6cb56184ac8d765771fd7a01e53731f4af4930ebb93f57dfbbd76aeb1576128cac20a307c3dee6f75fc4b6fc3be126ea5d8858d3321a419277cbac2318f288e33c6709696199e008b39305aa4300903ff8387d15bd8c9fd896892bec20e4931612fb313b7263a3dcb4ebed61558f41176cf10946f56c26ca5e7e4949fdc2f708f4e1dc7eccc6e4fd911aafc2772de46ca393ed8000823ff11109ab0b42419e0b2800cc7e52ac6104f19a609899209a41165450fc8c5cf3f13c89bdf5f040000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"senateID\":\"C001047\",\"disclosureDate\":\"2026-11-04\",\"transactionDate\":\"2026-10-21\",\"firstName\":\"Shelley\",\"lastName\":\"Moore Capito\",\"office\":\"Shelley Moore Capito\",\"district\":\"WV\",\"owner\":\"Spouse\",\"assetDescription\":\"Apple Inc. - Common Stock\",\"assetType\":\"Stock\",\"type\":\"Sale (Partial)\",\"amount\":\"$1,001 - $15,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://efdsearch.senate.gov/search/view/ptr/a89c0c6b-4c12-4955-98f9-3a54ca52d8a3/\"},{\"symbol\":\"AAPL\",\"senateID\":\"T000278\",\"disclosureDate\":\"2026-08-05\",\"transactionDate\":\"2024-08-26\",\"firstName\":\"Thomas Hawley\",\"lastName\":\"Tuberville\",\"office\":\"Tommy Tuberville\",\"district\":\"AL\",\"owner\":\"Self\",\"assetDescription\":\"Apple Inc\",\"assetType\":\"Stock\",\"type\":\"Sale\",\"amount\":\"$15,001 - $50,000\",\"capitalGainsOver200USD\":\"False\",\"comment\":\"\",\"link\":\"https://efdsearch.senate.gov/search/view/ptr/2758f09a-fda9-4fb4-a465-270173a8125d/\"}]"
+}

@@ -35,6 +35,12 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from portfolio_utils.fmp_sync import readiness as readiness_v2
+from portfolio_utils.fmp_sync.locking import LockBusy, LockRootRejected, target_lock
+
+EXIT_SKIPPED_BUSY = 75  # EX_TEMPFAIL: another warming run holds the target lock (#1344)
+EXIT_LOCK_ROOT_REJECTED = 40
+
 # ---------------------------------------------------------------------------
 # Fix Windows console encoding (cp1252 can't handle Unicode emojis from libs)
 # ---------------------------------------------------------------------------
@@ -127,7 +133,7 @@ def ensure_market_holidays(start_year: int, end_year: int, database: str | None 
     from openbb_fmp_cached.utils.database import DatabaseConfig
 
     try:
-        from populate_market_holidays import compute_us_holidays
+        from portfolio_utils.populate_market_holidays import compute_us_holidays
     except Exception as e:
         print(f"  WARNING: Could not import holiday pre-step helper: {e}")
         return
@@ -212,61 +218,49 @@ def _connect(database: str | None = None):
 
 
 def _previous_trading_day(ref_date: datetime.date) -> datetime.date:
-    """Return previous weekday date (Mon->Fri), suitable as default freshness target."""
+    """Return the previous weekday (deprecated shim, #1345).
+
+    Weekday-only, no holidays, host-local date. Kept for external callers;
+    readiness uses
+    ``portfolio_utils.fmp_sync.sessions.target_session`` (XNYS, actual close +
+    publication grace).
+    """
     d = ref_date - timedelta(days=1)
     while d.weekday() >= 5:  # 5=Sat, 6=Sun
         d -= timedelta(days=1)
     return d
 
 
-def check_portfolio_app_readiness(symbols: list[str], database: str | None = None) -> dict:
-    """Check whether Portfolio App required data is present and recent.
+def check_portfolio_app_readiness(  # pylint: disable=too-many-arguments
+    symbols: list[str],
+    database: str | None = None,
+    *,
+    now: datetime | None = None,
+    policy: Any = None,
+    connect_fn: Callable[[], Any] | None = None,
+    calendar: Any = None,
+) -> dict:
+    """Check whether Portfolio App price data is present and recent (readiness v2, #1345).
 
-    Validates:
-      1) required tables have rows (Portfolio_Positions, Account_Owner, ESPP_Plan)
-      2) each symbol has a cached latest close in equity_historical
-      3) latest close date is at least the previous trading day
+    Keeps the legacy keys ``target_date``, ``table_counts``,
+    ``missing_price_symbols`` and ``stale_price_symbols`` and adds ``checks``,
+    ``data_status`` and ``calendar``. The body is
+    :func:`portfolio_utils.fmp_sync.readiness.evaluate`: XNYS target session
+    (actual close + 2 h grace, never the host-local date), a read-only
+    transaction with allowlisted SELECTs, valid non-filled rows only. Private
+    table counts (``Portfolio_Positions``, ``Account_Owner``, ``ESPP_Plan``)
+    are opt-in via ``policy={"private_counts": True}``; ``table_counts`` only
+    ever holds counts that were actually read (never a fabricated zero).
     """
-    target_date = _previous_trading_day(datetime.now().date())
-    readiness: dict = {
-        "target_date": str(target_date),
-        "table_counts": {},
-        "missing_price_symbols": [],
-        "stale_price_symbols": [],
-    }
-
-    if not symbols:
-        return readiness
-
-    conn = _connect(database)
-    try:
-        with conn.cursor() as cur:
-            for table_name in ("Portfolio_Positions", "Account_Owner", "ESPP_Plan"):
-                cur.execute(f"SELECT COUNT(*) AS c FROM {table_name}")
-                readiness["table_counts"][table_name] = cur.fetchone()["c"]
-
-            placeholders = ", ".join(["%s"] * len(symbols))
-            sql = f"""
-                SELECT symbol, MAX(date) AS max_date
-                FROM equity_historical
-                WHERE symbol IN ({placeholders})
-                GROUP BY symbol
-            """
-            cur.execute(sql, tuple(symbols))
-            rows = cur.fetchall()
-            max_by_symbol = {r["symbol"]: r["max_date"] for r in rows}
-
-            for sym in symbols:
-                max_date = max_by_symbol.get(sym)
-                if max_date is None:
-                    readiness["missing_price_symbols"].append(sym)
-                    continue
-                if max_date < target_date:
-                    readiness["stale_price_symbols"].append((sym, str(max_date)))
-    finally:
-        conn.close()
-
-    return readiness
+    report = readiness_v2.evaluate(
+        symbols,
+        now=now or readiness_v2.utc_now(),
+        calendar=calendar,
+        policy=policy,
+        connect_fn=connect_fn or (lambda: _connect(database)),
+        database=database,
+    )
+    return report.legacy()
 
 
 def _resolve_api_key() -> str | None:
@@ -513,6 +507,18 @@ def fetch_history(
     return stats
 
 
+_READY_STATUSES = ("VALIDATED", "WARN")
+
+
+def readiness_is_ready(readiness: dict[str, Any]) -> bool:
+    """Return True only for a validated status with no missing or stale symbols."""
+    return (
+        readiness.get("data_status") in _READY_STATUSES
+        and not readiness.get("missing_price_symbols")
+        and not readiness.get("stale_price_symbols")
+    )
+
+
 class PositionHistoryWarmResult(BaseModel):
     """Structured, JSON-safe outcome of one :func:`run_position_history_warm` run.
 
@@ -534,6 +540,25 @@ class PositionHistoryWarmResult(BaseModel):
     cancelled: bool = False
     readiness: dict[str, Any] = Field(default_factory=dict)
 
+    def readiness_ok(self) -> bool:
+        """Return whether the evaluated readiness may be reported as success.
+
+        An empty ``readiness`` (dry run) was not evaluated and is not a failure.
+        Otherwise only ``VALIDATED``/``WARN`` with nothing missing or stale counts:
+        readiness v2 turns DB problems into check states, so the legacy symbol
+        lists are empty exactly when the database could not be read.
+        """
+        return not self.readiness or readiness_is_ready(self.readiness)
+
+    def readiness_evaluated_ok(self) -> bool:
+        """Return False only when readiness ran and the database could not be validated.
+
+        Status-only (``VALIDATED``/``WARN``): missing or stale symbols do not fail
+        the legacy job, they are reported as warnings. An empty ``readiness``
+        (dry run) was not evaluated and is not a failure.
+        """
+        return not self.readiness or self.readiness.get("data_status") in _READY_STATUSES
+
     def to_summary(self) -> dict[str, Any]:
         """Return a bounded, JSON-safe summary suitable for a core ``JobResult``."""
         readiness_summary: dict[str, Any] = {}
@@ -546,6 +571,7 @@ class PositionHistoryWarmResult(BaseModel):
                 "stale_price_symbol_count": len(
                     self.readiness.get("stale_price_symbols", [])
                 ),
+                "data_status": self.readiness.get("data_status", "UNVALIDATED"),
             }
         return {
             "requested_symbols": self.requested_symbols,
@@ -587,9 +613,44 @@ def run_position_history_warm(
     (``holiday_prestep_fn``), the per-symbol fetch (``fetch_one_fn``), API key
     resolution (``api_key_resolver``), and readiness (``readiness_fn``).
     ``should_cancel`` is polled between symbols for cooperative cancellation.
-    """
-    should_cancel = should_cancel or (lambda: False)
 
+    Every call holds the per-target fmp-sync lock (#1344) for its whole body, so
+    manual, openbb-jobs and cron runs never warm the same database at once. A
+    caller that already holds the lock for this target re-enters it; contention
+    raises :class:`~portfolio_utils.fmp_sync.locking.LockBusy` before any
+    database or FMP access.
+    """
+    with target_lock(database, entrypoint="run_position_history_warm"):
+        return _run_position_history_warm_locked(
+            symbols=symbols,
+            years=years,
+            database=database,
+            dry_run=dry_run,
+            skip_holiday_prestep=skip_holiday_prestep,
+            get_symbols_fn=get_symbols_fn,
+            holiday_prestep_fn=holiday_prestep_fn,
+            fetch_one_fn=fetch_one_fn,
+            api_key_resolver=api_key_resolver,
+            readiness_fn=readiness_fn,
+            should_cancel=should_cancel or (lambda: False),
+        )
+
+
+def _run_position_history_warm_locked(  # pylint: disable=too-many-arguments
+    *,
+    symbols: list[str] | None,
+    years: int,
+    database: str | None,
+    dry_run: bool,
+    skip_holiday_prestep: bool,
+    get_symbols_fn: Callable[[str | None], tuple[list[str], list[tuple[str, str]]]],
+    holiday_prestep_fn: Callable[[int, int, str | None], None],
+    fetch_one_fn: Callable[..., dict[str, Any]] | None,
+    api_key_resolver: Callable[[], str | None],
+    readiness_fn: Callable[[list[str], str | None], dict],
+    should_cancel: Callable[[], bool],
+) -> PositionHistoryWarmResult:
+    """Body of :func:`run_position_history_warm`; the caller holds the target lock."""
     if symbols is not None:
         resolved_symbols = list(symbols)
         skipped: list[tuple[str, str]] = []
@@ -665,20 +726,33 @@ def main():
     print("  FETCH DAILY EQUITY HISTORY FOR PORTFOLIO POSITIONS")
     print("=" * 70)
 
-    # Resolve symbols
-    if args.symbols:
-        symbols = [s.strip() for s in args.symbols.split(",")]
-        skipped = []
-    else:
-        symbols, skipped = get_portfolio_symbols(args.database)
+    if args.dry_run:
+        # D7 (#1344): a dry run writes nothing -- no market_holidays upsert, no lock.
+        _print_plan(args, *_resolve_cli_symbols(args))
+        return
 
+    # Non-dry runs hold the per-target lock across symbol resolution, the holiday
+    # pre-step, the warm and readiness; the warmer's own guard re-enters it.
+    try:
+        with target_lock(args.database, entrypoint="fetch_position_history.main"):
+            _run_cli_locked(args)
+    except LockBusy:
+        print("  SKIPPED_BUSY: target lock held by another run.")  # noqa: T201
+        raise SystemExit(EXIT_SKIPPED_BUSY) from None
+    except LockRootRejected:
+        print("  BLOCKED: unsafe fmp-sync lock root.")  # noqa: T201
+        raise SystemExit(EXIT_LOCK_ROOT_REJECTED) from None
+
+
+def _resolve_cli_symbols(args) -> tuple[list[str], list[tuple[str, str]]]:
+    if args.symbols:
+        return [s.strip() for s in args.symbols.split(",")], []
+    return get_portfolio_symbols(args.database)
+
+
+def _print_plan(args, symbols: list[str], skipped: list[tuple[str, str]]) -> None:
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=args.years * 365)
-
-    if not args.skip_holiday_prestep:
-        ensure_market_holidays(start_date.year, end_date.year, args.database)
-
-    # Print plan
     print(f"\n  Date range:    {start_date} -> {end_date} ({args.years} years)")
     print("  Interval:      1d (daily)")
     print("  Provider:      fmp_cached (auto-caching)")
@@ -706,7 +780,15 @@ def main():
         print("\n  Note: fmp_cached will cache results in MySQL. Subsequent runs")
         print("  only fetch missing date ranges (incremental).")
         print("=" * 70)
-        return
+
+
+def _run_cli_locked(args) -> None:  # pylint: disable=too-many-branches
+    symbols, skipped = _resolve_cli_symbols(args)
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=args.years * 365)
+    if not args.skip_holiday_prestep:
+        ensure_market_holidays(start_date.year, end_date.year, args.database)
+    _print_plan(args, symbols, skipped)
 
     print("\n  Fetching ...\n")
 
@@ -750,10 +832,17 @@ def main():
         if len(stale) > 20:
             print(f"      ... and {len(stale) - 20} more")
 
-    if not missing and not stale:
+    data_status = readiness.get("data_status", "UNVALIDATED")
+    if readiness_is_ready(readiness):
         print("    Status: READY (cache coverage is current for portfolio symbols)")
-    else:
+    elif data_status in _READY_STATUSES:
         print("    Status: PARTIAL (see missing/stale symbols above)")
+    else:
+        print(  # noqa: T201
+            f"    Status: {data_status} -- NOT READY: the database could not be "
+            "validated (connection, query or table problem); the counts above "
+            "are NOT evidence of coverage"
+        )
 
     print(f"{'=' * 70}")
 

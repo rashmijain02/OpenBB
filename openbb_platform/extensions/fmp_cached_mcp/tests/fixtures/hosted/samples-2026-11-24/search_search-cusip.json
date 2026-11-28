@@ -1,0 +1,26 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-cusip",
+  "cusip": "037833100",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c39e6aa264d5610b85830eb16e1d150b8619decd181b7015c88528064241aedc",
+ "hosted_text_len": 372,
+ "rest_path": "/search-cusip",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3c28c1313728b801b6f1ddbc9e7552447d1caa38384b14a56061345690f20e07",
+ "rest_body_len": 493,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f3ddf08251d8844727e6e41625ea55f626e2a58b6a0202755c1332f590faea0b438b3002465606c6e616c6c68600093c94d2cca4e2d714e04c95a9a1a199b18181a9a5a1819181800e56b7570594e659b4d0dcc8d2c0d804accf05a1ce0ace746659b4dcc0c8d4c8d0c8c2c0c08d9ece24a6babb962014aaafd84ed010000",
+ "hosted_text": "[{\"symbol\":\"AAPL.MX\",\"companyName\":\"Apple Inc.\",\"cusip\":\"037833100\",\"marketCap\":95234011582000},{\"symbol\":\"AAPL\",\"companyName\":\"Apple Inc.\",\"cusip\":\"037833100\",\"marketCap\":5072900376000},{\"symbol\":\"APC.F\",\"companyName\":\"Apple Inc.\",\"cusip\":\"037833100\",\"marketCap\":4612520280000},{\"symbol\":\"APC.DE\",\"companyName\":\"Apple Inc.\",\"cusip\":\"037833100\",\"marketCap\":4612520280000}]"
+}

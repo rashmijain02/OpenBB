@@ -1,0 +1,22 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-list"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5275beeac460b64382e238693c0deaad273c4b2f9075d40f6bdc4971a1dfec1d",
+ "hosted_text_len": 177705,
+ "rest_path": "/forex-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "31c6d6fb2f4a6255c0262ca97ed6c1f636b3d42f762d6af7c32bceb3bce1ec96",
+ "rest_body_len": 233651,
+ "json_equal": true,
+ "compact_equal": true
+}

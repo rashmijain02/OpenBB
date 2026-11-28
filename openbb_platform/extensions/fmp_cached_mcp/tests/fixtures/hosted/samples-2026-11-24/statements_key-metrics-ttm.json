@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "key-metrics-ttm",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "3f475ee364ac69c81e90c63dd6d3729b9eff7ca52520ba18445a128da600a506",
+ "hosted_text_len": 1741,
+ "rest_path": "/key-metrics-ttm",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "344cc9a645df2c4650d85ed772afd1c27c058b4b5000579975116c0a8d703a65",
+ "rest_body_len": 2006,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a75555d6fe336107cbf5f11e4b9272c97e492ec9be324c5016d734d8d0287431f649b9708d1872bc9be338afbef1dc5924f9253c3d6833543ce7267969fdf5d5dfd8bdfd5d575732cd6557efdf3d5f562f1f1d7eb9f4eff1669fd12db65bac30b4b8e0391764244fdfb58b6b1ded55913ff4af37d5cad7eeb804a892399020fabeacf348fcd09a228116f9db0312e18316e047bd8c53a6db3f2699936cff779f5f544d1366131a483b3ec94537644b9af639ca15d22e4b4b5a23c3be3f5087d77f36175bb38e13824a28d75de13b3236d7d0f2c637b1bd7ed144d095bed149be0ad6512273d7ab3af6b9cc52374577d8509b15621786d5929c77ad09b959baa887fecd33c6b8f676c704e8c6667830da1473ed5e9735afcbe2fd6b1eeab825a16efd87961d633606cf13d01df2b95402891d144ac047a7b6c9b7ebbd9d7db580e157920ba5a08029ce3b34a343636ed18abfa775fabfae5b53dbbac4df34199617afd9c1738801eb71394134d6602ab63bbafcb8772d134b16d064d9ac5318b68ad7cd7c51e5c0dce787c936548312a35ec3d2ab666b6c52a2d9fb2751e675b191d447b172c9ef0899eb1eefed98ffac44e94111fa8ebbf97f9161fde2a9a12ab59a1b364bc50775033568fbe2b7679758cdb81254e8b9015e73c69a6c19831ad4b1c41f3298bf9194b6c83472a70b0de9187457af4975132660cf14c0a1135010fe7875a36e92e7efbdf148228f03558d825c0d9a2a7bcdbb8abe326eb82508e2ab1c61a724a43a19629e3311e6239cc0eacaf3cfac71ea3c1e3b0cf116bbae9f14b2c212b5f94dbc5b6c8caac693b918778b98a30acc30a0d136f44e91fad6a70829b672c710b4a0e4f1548eee502c15af44c21c0e89a0b67196db579b9491b34b92a76b16c4e955ed01996c23cc1ce1a741f7ee4aab761b3aa5615da3eb5235998189316013782070dbad3030a7f8a8f7113b343ba3e4f529ca9a249a47ae4c7f4388669edbd7d03d659b66cab7ab038233b13dc363d360f5f5e67f7c3be6d207f0b579cd0a2138fe1d6858e025915269c41c1054d312706e316b70466a9289109ef2ce982c82a11c3027360b3ee69e6936179dce47d13bc4d603a1d3c19c44e9fa7e506865e56d8a36ed0b911e1bd962488d7c8b7601bdc1b6f840817c2782228e74c981cff147c9fd5450fd55d9827d0763c91461768505ed90912b7d1f274c5ccb198f41ed93fa101fefeeeefff00f9d023b2d6070000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"marketCap\":5072900376000,\"enterpriseValueTTM\":5116706376000,\"evToSalesTTM\":10.68576244794647,\"evToOperatingCashFlowTTM\":35.26403975271715,\"evToFreeCashFlowTTM\":37.60735561827483,\"evToEBITDATTM\":29.634578802270358,\"netDebtToEBITDATTM\":0.2537124985520676,\"currentRatioTTM\":1.0231998352117235,\"incomeQualityTTM\":1.09776432759599,\"grahamNumberTTM\":39.6268727862239,\"grahamNetNetTTM\":-11.371004300216985,\"taxBurdenTTM\":0.830052060764772,\"interestBurdenTTM\":1,\"workingCapitalTTM\":3942000000,\"investedCapitalTTM\":76304000000,\"returnOnAssetsTTM\":0.3267226633180735,\"operatingReturnOnAssetsTTM\":0.4012698428816954,\"returnOnTangibleAssetsTTM\":0.34396387956384833,\"returnOnEquityTTM\":1.2761468908552864,\"returnOnInvestedCapitalTTM\":0.5321759048603942,\"returnOnCapitalEmployedTTM\":0.6736605677803208,\"earningsYieldTTM\":0.025987170008708687,\"freeCashFlowYieldTTM\":0.026820160049600784,\"capexToOperatingCashFlowTTM\":0.06231004086921163,\"capexToDepreciationTTM\":0.6735454071370036,\"capexToRevenueTTM\":0.01888128244861476,\"salesGeneralAndAdministrativeToRevenueTTM\":0.062180212766846134,\"researchAndDevelopementToRevenueTTM\":0.09557591983860796,\"stockBasedCompensationToRevenueTTM\":0.02879703613360789,\"intangiblesToTotalAssetsTTM\":0.050125077864678604,\"averageReceivablesTTM\":71310000000,\"averagePayablesTTM\":73388500000,\"averageInventoryTTM\":12816500000,\"daysOfSalesOutstandingTTM\":63.81176984090519,\"daysOfPayablesOutstandingTTM\":122.42276701246166,\"daysOfInventoryOutstandingTTM\":21.642628205128204,\"operatingCycleTTM\":85.45439804603339,\"cashConversionCycleTTM\":-36.96836896642827,\"freeCashFlowToEquityTTM\":117749000000,\"freeCashFlowToFirmTTM\":136056000000,\"tangibleAssetValueTTM\":91815000000,\"netCurrentAssetValueTTM\":-118598000000}]"
+}

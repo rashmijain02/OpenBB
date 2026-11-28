@@ -1,0 +1,25 @@
+{
+ "tool": "senate",
+ "arguments": {
+  "endpoint": "senate-latest",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "a6fff12751841190a854cadb3dc170a915103153524986c3ad20070736201761",
+ "hosted_text_len": 977,
+ "rest_path": "/senate-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "8958cc2510400c182df5b57ebda7cc1ba5db36a9ec3cd40ac1b1c6585ff096c9",
+ "rest_body_len": 1170,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ad5525d4bc330147df7575c8a8ac2baa6ed6ad7bd4df7a2a0c81cf8203e64e9ed164c93928fe910ffbbcdb68eed5110c4874072ce49ee3d37e7e504e0b35d008159d77325821104416f87a0a4166f271e1b1342d261da5125374c28e3344e5a89172424b90ae3384c48a7b19a4a4399e54a1e8b4898ee4515d7c63ed07a438f05951d21e801ae6b63b5928b8e5455c5d931d5037f1b2e9e7cd34a5f1e746a3567f6d0987a97a83d70a7b8b41d4a8d413b41c3346f7cd3bb8ee6b4a6305342c0b4846b5d2ee01c664e0a183bbb8429ae503a846b254b98b636a31be51a254790f5c919dc53dbcec88c202169e29d93f8a8dc6cdd6c6cdc3bc9196fa88027644e73bbde4f71a778749a2da9c1fdf55a39b971751af708892184d3386b77fbd13255d7288f8c0b2edffc79696d63465184556990b60ff7b77fdd5fa855b445a215c7f7a8b13a1a56453e1f664598679884833c2dc2615a246199e6593e1850a4451e056d81afdedfa4291efc9334cdf0831a78b61a26b8f259fa497cd28dd5ecf7e39364a40b5046c8df26e8e4f51b0f7a2f8d92040000",
+ "hosted_text": "[{\"symbol\":\"\",\"senateID\":\"A000383\",\"disclosureDate\":\"2026-11-20\",\"transactionDate\":\"2026-10-30\",\"firstName\":\"Alan\",\"lastName\":\"Armstrong\",\"office\":\"Armstrong, Alan (Senator)\",\"district\":\"\",\"owner\":\"Joint\",\"assetDescription\":\"Alabama Toll Rd Brdg & Tunl Auth Revenue Bond Rate/Coupon: 5.0% Matures: 2032-10-01\",\"assetType\":\"Municipal Security\",\"type\":\"Purchase\",\"amount\":\"$1,001 - $15,000\",\"comment\":\"\",\"link\":\"https://efdsearch.senate.gov/search/view/ptr/8f97b859-75e2-4739-8392-d375744aea97/\"},{\"symbol\":\"\",\"senateID\":\"A000383\",\"disclosureDate\":\"2026-11-20\",\"transactionDate\":\"2026-10-14\",\"firstName\":\"Alan\",\"lastName\":\"Armstrong\",\"office\":\"Armstrong, Alan (Senator)\",\"district\":\"\",\"owner\":\"Joint\",\"assetDescription\":\"Texas Wtr Dev Brd Revenue Bond Rate/Coupon: 5.0% Matures: 2033-10-15\",\"assetType\":\"Municipal Security\",\"type\":\"Purchase\",\"amount\":\"$250,001 - $500,000\",\"comment\":\"\",\"link\":\"https://efdsearch.senate.gov/search/view/ptr/8f97b859-75e2-4739-8392-d375744aea97/\"}]"
+}

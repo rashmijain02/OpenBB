@@ -5,10 +5,9 @@ Claude Code (each subfolder has a `SKILL.md` with YAML frontmatter).
 
 ## Repository model policy
 
-Model policy is by role (D1 in `docs/dev-strategy.md`): GPT-family models in GitHub
-Copilot CLI, Claude models in Claude Code. Every skill that launches an agent or
-subagent names the model explicitly and stops if it is unavailable; no cross-family
-fallback. Product models being deployed, trained, evaluated, or documented are outside
+Model policy is model-agnostic (D1 in `docs/dev-strategy.md`): use the best available
+model for the task. Every skill that launches an agent or subagent names the model
+explicitly and stops if no suitable model is available; never silently degrade. Product models being deployed, trained, evaluated, or documented are outside
 this execution policy.
 
 The Superpowers skills copied here (brainstorming, writing-plans, subagent-driven-development,
