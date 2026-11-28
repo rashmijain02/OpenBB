@@ -7,14 +7,19 @@ Exit 0 qualified, 2 blocked, 3 usage. It never runs Hermes, pip or any service.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
-from . import provenance
+import yaml
+
+from . import handshake, hermes_config, provenance
 from .models import (
     ComponentReport,
+    EdgeReport,
     FailedLayer,
     HealthLevel,
     PreflightReport,
@@ -145,30 +150,95 @@ def _check_database(
     )
 
 
+def _check_route(
+    profile: FinanceRuntimeProfile, config: Path | None
+) -> tuple[list[ComponentReport], hermes_config.RouteFacts | None]:
+    """Route policy from the Hermes config; no config means no verified route."""
+    if config is None:
+        return [
+            ComponentReport(
+                name="route",
+                failed_layer=FailedLayer.ROUTE,
+                detail="no_local_route: no verified local backend bound (see #1338 T03)",
+            )
+        ], None
+    try:
+        facts = hermes_config.read_route_facts(config)
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        return [
+            ComponentReport(
+                name="hermes_config",
+                failed_layer=FailedLayer.CONFIG,
+                detail=f"config_unreadable: {type(exc).__name__}",
+            ),
+            ComponentReport(
+                name="route",
+                failed_layer=FailedLayer.ROUTE,
+                detail="no_local_route: hermes config unreadable",
+            ),
+        ], None
+    verdict = hermes_config.evaluate_route(facts, profile)
+    cfg = ComponentReport(
+        name="hermes_config",
+        level=HealthLevel.CONFIGURED,
+        presence={"model_api_key": facts.api_key},
+    )
+    if verdict.blocked:
+        route = ComponentReport(
+            name="route",
+            failed_layer=FailedLayer.ROUTE,
+            detail="route_blocked: " + ",".join(verdict.reasons),
+        )
+    else:
+        route = ComponentReport(
+            name="route", level=HealthLevel.ADMITTED, detail="local_route_admitted"
+        )
+    return [cfg, route], facts
+
+
 def run_preflight(
     profile: FinanceRuntimeProfile,
     *,
     env: Mapping[str, str] | None = None,
     openbb_settings: Path | None = None,
+    hermes_config_path: Path | None = None,
+    probe: str = "none",
+    mcp_tools: Sequence[Mapping[str, Any]] | None = None,
+    mcp_http_url: str | None = None,
+    backend_base_url: str | None = None,
+    timeout: float = 5.0,
+    transport: handshake.Transport | None = None,
 ) -> PreflightReport:
-    """Run all metadata-only checks. Never executes Hermes."""
+    """Run all checks. ``probe="loopback"`` adds the handshake edges. Never executes Hermes."""
     env = os.environ if env is None else env
+    route_components, facts = _check_route(profile, hermes_config_path)
     components = [
         _check_checkout("hermes_agent", profile.hermes_agent, env),
         _check_webui(profile, env),
         _check_abi(profile, env),
         _check_database(profile, openbb_settings, env),
-        ComponentReport(
-            name="route",
-            failed_layer=FailedLayer.ROUTE,
-            detail="no_local_route: no verified local backend bound (see #1338 T03)",
-        ),
+        *route_components,
     ]
+    edges: list[EdgeReport] = []
+    if probe == "loopback":
+        edges = handshake.run_handshake(
+            profile,
+            facts,
+            env=env,
+            transport=transport,
+            settings_path=openbb_settings,
+            mcp_tools=mcp_tools,
+            mcp_http_url=mcp_http_url,
+            backend_base_url=backend_base_url,
+            timeout=timeout,
+        )
     failed = {c.failed_layer for c in components if c.failed_layer is not None}
+    failed |= {e.failed_layer for e in edges if e.failed_layer is not None}
     layers = [layer for layer in _LAYER_ORDER if layer in failed]
     qualified = not layers and all(c.level == HealthLevel.QUALIFIED for c in components)
     return PreflightReport(
         components=components,
+        edges=edges,
         failed_layers=layers,
         failed_layer=layers[0] if layers else None,
         qualified=qualified,
@@ -194,6 +264,14 @@ def _render_text(report: PreflightReport) -> str:
         if comp.detail:
             parts.append(f"detail={comp.detail}")
         lines.append(" ".join(parts))
+    for edge in report.edges:
+        lines.append(
+            f"edge {edge.name} status={edge.status.value} "
+            f"level={edge.level.name.lower() if edge.level else 'none'} "
+            f"callable={edge.callable} "
+            f"failed_layer={edge.failed_layer.value if edge.failed_layer else '-'}"
+            + (f" detail={edge.detail}" if edge.detail else "")
+        )
     layer = report.failed_layer.value if report.failed_layer else "-"
     lines.append(f"qualified={report.qualified} failed_layer={layer}")
     return "\n".join(lines)
@@ -204,21 +282,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hermes_preflight", description=__doc__)
     parser.add_argument("--profile", required=True, type=Path)
     parser.add_argument("--openbb-settings", type=Path, default=None)
+    parser.add_argument("--hermes-config", type=Path, default=None)
+    parser.add_argument("--mcp-tools", type=Path, default=None, help="JSON tool list")
+    parser.add_argument("--mcp-http-url", default=None)
+    parser.add_argument("--backend-url", default=None)
+    parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--probe", choices=["none", "loopback"], default="none")
     parser.add_argument("--format", choices=["json", "text"], default="json")
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 3
-    if args.probe != "none":
-        sys.stderr.write("probe=loopback is not implemented yet (#1338 T02)\n")
-        return 3
     try:
         profile = load_profile(args.profile)
     except (OSError, ValueError) as exc:
         sys.stderr.write(f"cannot load profile: {type(exc).__name__}\n")
         return 3
-    report = run_preflight(profile, openbb_settings=args.openbb_settings)
+    tools = None
+    if args.mcp_tools is not None:
+        try:
+            tools = json.loads(args.mcp_tools.read_text(encoding="utf-8"))
+            if not isinstance(tools, list):
+                raise ValueError("tool list is not a list")
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(f"cannot load mcp tools: {type(exc).__name__}\n")
+            return 3
+    report = run_preflight(
+        profile,
+        openbb_settings=args.openbb_settings,
+        hermes_config_path=args.hermes_config,
+        probe=args.probe,
+        mcp_tools=tools,
+        mcp_http_url=args.mcp_http_url,
+        backend_base_url=args.backend_url,
+        timeout=args.timeout,
+    )
     text = (
         report.model_dump_json(indent=2)
         if args.format == "json"

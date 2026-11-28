@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum, IntEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class HealthLevel(IntEnum):
@@ -60,12 +60,41 @@ class ComponentReport(BaseModel):
     presence: dict[str, Presence] = Field(default_factory=dict)
 
 
+class EdgeStatus(str, Enum):
+    """Outcome class of one handshake edge."""
+
+    OK = "ok"
+    UNAVAILABLE = "unavailable"
+    BLOCKED = "blocked"
+    NOT_EVALUATED = "not_evaluated"
+
+
+class EdgeReport(BaseModel):
+    """Highest health level reached on one edge, with the failed layer if any."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    status: EdgeStatus
+    level: HealthLevel | None = None
+    failed_layer: FailedLayer | None = None
+    detail: str = ""
+    presence: dict[str, Presence] = Field(default_factory=dict)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def callable(self) -> bool:  # noqa: A003
+        """True only when the edge answered a real call."""
+        return self.level is not None and self.level >= HealthLevel.CALLABLE
+
+
 class PreflightReport(BaseModel):
     """Aggregate preflight result. Exit 0 only when ``qualified``."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     components: list[ComponentReport]
+    edges: list[EdgeReport] = Field(default_factory=list)
     failed_layers: list[FailedLayer]
     failed_layer: FailedLayer | None
     qualified: bool

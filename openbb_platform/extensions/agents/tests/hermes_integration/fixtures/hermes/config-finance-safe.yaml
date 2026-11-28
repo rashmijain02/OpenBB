@@ -1,0 +1,26 @@
+# Synthetic Hermes config trimmed from cli-config.yaml.example (MIT, (c) 2025 Nous Research)
+# Source: rashmijain02/hermes-agent main @ 710fa8a073f9a8136e10749b083a16779341faef
+# Only the keys the route reader consumes are kept. No real values.
+# Finance-safe: explicit loopback gateway, private alias, no fallbacks, no adoption.
+model:
+  default: "finance-private"
+  provider: "custom"
+  base_url: "http://127.0.0.1:4000/v1"
+  api_key: "SYNTHETIC-GATEWAY-KEY-SENTINEL"
+fallback_providers: []
+delegation:
+  fallback_providers: []
+auxiliary:
+  vision:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  compression:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+auth:
+  adopt_external_logins: false
+memory:
+  memory_enabled: false
+telemetry:
+  shared_metrics:
+    enabled: false

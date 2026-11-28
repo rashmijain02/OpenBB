@@ -44,6 +44,10 @@ class FinanceRuntimeProfile(_Strict):
     python: PythonPin
     database: DatabasePin
     gateway_base_url: str
+    gateway_key_env: str | None = None  # env var NAME holding the scoped gateway key
+    mcp_catalog_sha256: str | None = (
+        None  # pinned hash of the admitted MCP tool catalog
+    )
     private_alias_allowlist: list[str] = Field(default_factory=list)
     skills_roots: list[str] = Field(default_factory=list)
 

@@ -1,0 +1,23 @@
+# Synthetic Hermes config trimmed from cli-config.yaml.example (MIT, (c) 2025 Nous Research)
+# Source: rashmijain02/hermes-agent main @ 710fa8a073f9a8136e10749b083a16779341faef
+# Only the keys the route reader consumes are kept. No real values.
+# Upstream defaults at the pin: hosted/auto routing, external login adoption, memory on.
+model:
+  default: "anthropic/claude-opus-4.6"
+  provider: "auto"
+  base_url: "https://openrouter.ai/api/v1"
+fallback_providers: []
+delegation:
+  fallback_providers: []
+auxiliary:
+  vision:
+    provider: "auto"
+  compression:
+    provider: "auto"
+auth:
+  adopt_external_logins: true
+memory:
+  memory_enabled: true
+telemetry:
+  shared_metrics:
+    enabled: false
