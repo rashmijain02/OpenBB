@@ -552,6 +552,69 @@ def test_unreadable_admitted_file_is_reported_not_skipped(tmp_path):
     assert f"drift:finance/{SKILL}" not in reasons
 
 
+@pytest.mark.skipif(os.name != "nt", reason="icacls list-deny is Windows-only")
+def test_unlistable_directory_in_skills_tree_blocks(tmp_path):
+    """A directory the walk cannot list could hide content: unreadable_tree."""
+    home = _home(tmp_path)
+    hidden = home / "skills" / "other" / "hidden"
+    hidden.mkdir(parents=True)
+    (hidden / "SKILL.md").write_text(BODY, encoding="utf-8")
+    sid = _current_sid()
+    subprocess.run(
+        ["icacls", str(hidden), "/deny", f"*{sid}:(RD)"],
+        capture_output=True,
+        check=True,
+    )
+    try:
+        reasons = _evaluate(home).reasons
+    finally:
+        subprocess.run(
+            ["icacls", str(hidden), "/remove:d", f"*{sid}"],
+            capture_output=True,
+            check=True,
+        )
+    assert "unreadable_tree" in reasons
+
+
+def _junction(link: Path, target: Path) -> None:
+    subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        check=True,
+    )
+
+
+@pytest.mark.skipif(os.name != "nt", reason="NTFS junctions are Windows-only")
+def test_junction_in_skills_tree_blocks(tmp_path):
+    home = _home(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "SKILL.md").write_text(BODY, encoding="utf-8")
+    _junction(home / "skills" / "linked", outside)
+    reasons = _evaluate(home).reasons
+    assert "symlink_junction_or_reparse_point_in_tree" in reasons
+    assert skills_admission.is_link(home / "skills" / "linked")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="NTFS junctions are Windows-only")
+def test_proposal_through_a_junction_into_a_search_root_rejected(tmp_path):
+    """quarantine/<name> must not redirect into the admitted tree."""
+    home = _home(tmp_path)
+    quarantine = tmp_path / "proposals"
+    quarantine.mkdir()
+    _junction(quarantine / "evil", home / "skills" / "finance")
+    with pytest.raises(ProposalRejected, match="link_in_proposal_path"):
+        skills_admission.write_proposal(
+            quarantine,
+            "evil",
+            BODY.replace(SKILL, "evil"),
+            facts=_facts(tmp_path),
+            skills_root=home / "skills",
+            admitted=_manifest(home),
+        )
+    assert not (home / "skills" / "finance" / "SKILL.md").exists()
+
+
 def test_writable_file_in_read_only_dir_blocks(tmp_path):
     """The per-file probe catches a writable SKILL.md under a denied directory."""
     home = _home(tmp_path)

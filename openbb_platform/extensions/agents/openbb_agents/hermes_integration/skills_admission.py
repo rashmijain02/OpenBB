@@ -60,6 +60,18 @@ def _raise(error: OSError) -> None:
     raise error
 
 
+def is_link(path: Path) -> bool:
+    """Return True for a symlink, an NTFS junction or any other reparse point."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(info.st_mode):
+        return True
+    attributes = getattr(info, "st_file_attributes", 0)
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+
+
 def tree_sha256(directory: Path) -> str:
     """Hash a skill tree: sorted relative paths plus each file's sha256.
 
@@ -228,7 +240,7 @@ def _tree_reasons(admitted: Mapping[str, str], skills_root: Path) -> list[str]:
     if len(dirs) != len(admitted):
         reasons.append("invalid_manifest_entry")
     for rel, path in sorted(dirs.items()):
-        if not path.is_dir() or path.is_symlink():
+        if not path.is_dir() or is_link(path):
             reasons.append(f"missing:{rel}")
         else:
             try:
@@ -240,25 +252,34 @@ def _tree_reasons(admitted: Mapping[str, str], skills_root: Path) -> list[str]:
                 reasons.append(f"drift:{rel}")
     admitted_dirs = [path.resolve() for path in dirs.values()]
     unadmitted = symlink = dir_writable = file_writable = False
-    for current, subdirs, files in os.walk(skills_root, followlinks=False):
-        here = Path(current)
-        symlink = symlink or any(Path(current, d).is_symlink() for d in subdirs)
-        if not dir_writable and _dir_writable(here):
-            dir_writable = True
-        for name in files:
-            path = here / name
-            if path.is_symlink():
-                symlink = True
-                continue
-            resolved = path.resolve()
-            if not any(d in resolved.parents for d in admitted_dirs):
-                unadmitted = True
-            if not file_writable and _file_writable(path):
-                file_writable = True
+    try:
+        for current, subdirs, files in os.walk(
+            skills_root, onerror=_raise, followlinks=False
+        ):
+            here = Path(current)
+            links = [d for d in subdirs if is_link(Path(current, d))]
+            symlink = symlink or bool(links)
+            subdirs[:] = [d for d in subdirs if d not in links]  # never descend
+            if not dir_writable and _dir_writable(here):
+                dir_writable = True
+            for name in files:
+                path = here / name
+                if is_link(path):
+                    symlink = True
+                    continue
+                resolved = path.resolve()
+                if not any(d in resolved.parents for d in admitted_dirs):
+                    unadmitted = True
+                if not file_writable and _file_writable(path):
+                    file_writable = True
+    except OSError:
+        # A directory that cannot be listed could hide unadmitted content.
+        reasons.append("unreadable_tree")
     if unadmitted:
         reasons.append("unadmitted_content")
     if symlink:
-        reasons.append("symlink_in_tree")
+        # Symlinks, NTFS junctions and other reparse points all redirect a path.
+        reasons.append("symlink_junction_or_reparse_point_in_tree")
     if dir_writable:
         reasons.append("admitted_dir_writable")
     if file_writable:
@@ -337,8 +358,15 @@ def write_proposal(
         proposed.add(front)
     if proposed & admitted_names(admitted, skills_root):
         raise ProposalRejected("shadows_admitted")
-    target = quarantine / name / "SKILL.md"
-    target.parent.mkdir(parents=True, exist_ok=True)
+    proposal_dir = quarantine / name
+    target = proposal_dir / "SKILL.md"
+    # ``quarantine`` is resolved, so its ancestors hold no link; the proposal
+    # directory and file must not be a symlink, junction or reparse point either.
+    if any(is_link(path) for path in (proposal_dir, target)):
+        raise ProposalRejected("link_in_proposal_path")
+    proposal_dir.mkdir(parents=True, exist_ok=True)
+    if is_link(proposal_dir) or proposal_dir.resolve() != proposal_dir:
+        raise ProposalRejected("link_in_proposal_path")
     try:
         with target.open("x", encoding="utf-8", newline="") as handle:
             handle.write(content)
