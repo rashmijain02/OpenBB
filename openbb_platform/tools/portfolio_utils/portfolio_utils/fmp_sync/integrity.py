@@ -39,7 +39,8 @@ INTEGRITY_QUERIES: dict[str, str] = {
         "SELECT COUNT(*) AS n, "  # noqa: S608
         "SUM(CASE WHEN close IS NULL OR close <= 0 THEN 1 ELSE 0 END) AS bad_close, "
         "SUM(CASE WHEN high < low OR close > high OR close < low "
-        "OR open > high OR open < low THEN 1 ELSE 0 END) AS bad_ohlc, "
+        "OR open > high OR open < low "
+        "OR open IS NULL OR high IS NULL OR low IS NULL THEN 1 ELSE 0 END) AS bad_ohlc, "
         "SUM(CASE WHEN volume < 0 THEN 1 ELSE 0 END) AS neg_volume, "
         "SUM(CASE WHEN volume = 0 THEN 1 ELSE 0 END) AS zero_volume "
         "FROM equity_historical WHERE symbol IN ({in}) "

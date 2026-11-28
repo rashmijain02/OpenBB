@@ -166,8 +166,9 @@ def build(  # pylint: disable=too-many-arguments
     conn.db.execute(EQUITY_DDL.format(name=equity_name))
     for symbol, day, interval, adjustment, valid, filled in prices:
         conn.db.execute(
-            f"INSERT INTO {equity_name} (symbol, date, close, interval_type, adjustment_type,"
-            " is_valid, is_filled) VALUES (?, ?, 1.0, ?, ?, ?, ?)",
+            f"INSERT INTO {equity_name} (symbol, date, open, high, low, close,"
+            " interval_type, adjustment_type, is_valid, is_filled)"
+            " VALUES (?, ?, 1.0, 1.0, 1.0, 1.0, ?, ?, ?, ?)",
             (symbol, day.isoformat(), interval, adjustment, valid, filled),
         )
     for raw in raw_rows:

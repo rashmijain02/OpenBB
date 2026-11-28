@@ -44,7 +44,8 @@ def _history(cal, *symbols, skip=()):
 
 
 def _raw(symbol, day, **cols):
-    return {"symbol": symbol, "date": day, "close": 1.0, **cols}
+    base = {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0}
+    return {"symbol": symbol, "date": day, **base, **cols}
 
 
 def _eval(conn, cal, symbols=("AAA", "BBB"), checks=("integrity",), **policy):
@@ -165,7 +166,7 @@ def test_duplicate_groups_sql_uses_null_safe_grouping():
 
 def test_invalid_close_negative_volume_critical(cal):
     rows = [
-        _raw("AAA", date(2026, 11, 20), close=-1.0),
+        _raw("AAA", date(2026, 11, 20), open=-1.0, high=-1.0, low=-1.0, close=-1.0),
         _raw("AAA", date(2026, 11, 23), volume=-5),
         _raw("AAA", date(2026, 11, 24), high=1.0, low=2.0),
     ]
@@ -174,6 +175,20 @@ def test_invalid_close_negative_volume_critical(cal):
     ohlc = _get(_eval(conn, cal, symbols=("AAA",)), "integrity.ohlc")
     assert (ohlc.state, ohlc.reason_code) == (CheckState.CRITICAL, "OHLC_INVALID")
     assert ohlc.counts == {"bad_close": 1, "bad_ohlc": 1, "neg_volume": 1}
+
+
+def test_null_open_high_low_is_ohlc_invalid(cal):
+    """NULL comparisons are never true in SQL; a NULL leg must still count as bad."""
+    for column in ("open", "high", "low"):
+        skip = {("AAA", TARGET)}
+        rows = [_raw("AAA", TARGET, **{column: None})]
+        conn = _conn(_history(cal, "AAA", skip=skip), raw_rows=rows)
+        ohlc = _get(_eval(conn, cal, symbols=("AAA",)), "integrity.ohlc")
+        assert (ohlc.state, ohlc.reason_code) == (
+            CheckState.CRITICAL,
+            "OHLC_INVALID",
+        ), column
+        assert ohlc.counts["bad_ohlc"] == 1, column
 
 
 def test_zero_volume_alone_ok(cal):
@@ -209,7 +224,7 @@ def _jump_conn(cal):
     return (
         _conn(
             _history(cal, "AAA", skip=skip),
-            raw_rows=[_raw("AAA", window[-1], close=2.0)],
+            raw_rows=[_raw("AAA", window[-1], open=2.0, high=2.0, low=2.0, close=2.0)],
         ),
         window[-1],
     )
