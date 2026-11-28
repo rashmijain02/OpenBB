@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 PROTOCOL_VERSION = 1
 MAX_FRAME_BYTES = 1024 * 1024
 KEY_BYTES = 32
-KNOWN_OPS = ("describe", "shutdown")
+KNOWN_OPS = ("describe", "build_catalog", "shutdown")
 
 
 class ErrorCode(str, Enum):

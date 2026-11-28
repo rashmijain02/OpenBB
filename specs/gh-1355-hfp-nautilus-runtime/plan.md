@@ -160,6 +160,16 @@ Real-path (LIVE, read-only on `openbb_fmp_cache_test`, market data only):
 run twice ⇒ same `dataset_id`; output prints counts and hashes only. If `unadjusted` rows are absent from the cache
 the command must exit non-zero with a named gap (provider rule: file `area:fmp-cached-gap`, no raw `fmp`).
 Classification: stage 1 + admission **CODE-ONLY**; stage 2 and the live export **LIVE**.
+Code-only real path (no database): the same command with `--snapshot-dir
+openbb_platform/extensions/backtest/tests/unit/nautilus/fixtures/synthetic_bundle --out-root <tmp>` run twice gives the
+same `dataset_id`; a snapshot whose AAA rows switch to `splits_only` exits 2 with `mixed_adjustment_basis`, and
+`--adjustment splits_only` with `raw_plus_actions` exits 2 with `double_adjustment`.
+T02-L stage 2 (LIVE, worker venv): set `OPENBB_NAUTILUS_DATA_ROOT` (outside the repo; datasets under `datasets/<id>`),
+then send `build_catalog {"dataset_id": "<id>"}` through the signed client (T03 `probe`) twice. Expect identical
+`catalog_sha256`, `nautilus_version` 1.231.0, and `pytest $W/test_catalog_admission.py -m requires_nautilus` green
+in the worker venv (`test_worker_catalog_build_round_trip`: bars read back equal the neutral values). Record the
+dataset id, catalog hash and nautilus version on #1355. Split/dividend events stay in the neutral `actions.parquet`;
+the catalog holds instruments and bars only.
 
 ### T03 — authenticated worker bounds; no broker credentials or order-network permissions
 

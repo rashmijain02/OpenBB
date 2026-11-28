@@ -2,7 +2,7 @@
 
 import sys
 
-from . import describe, protocol
+from . import catalog_build, describe, protocol
 
 
 def serve(stdin, stdout) -> int:
@@ -15,6 +15,7 @@ def serve(stdin, stdout) -> int:
         return 3
     handlers: dict[str, protocol.Handler] = {
         "describe": describe.collect_facts,
+        "build_catalog": catalog_build.build_catalog,
         "shutdown": lambda _body: {},
     }
     while True:
