@@ -382,3 +382,46 @@ def test_drifted_run_create_schema_is_rejected():
     )
     assert {r.code for r in result.rejections} == {"schema_drift"}
     assert sentinel.calls == []
+
+
+def test_guard_normalises_windows_paths_and_blocks_chdir_and_launchers(tmp_path):
+    """Review finding 7: trailing dots/spaces, NTFS streams, chdir, launchers."""
+    (tmp_path / "x.ipynb").write_text("{}", "utf-8")
+    (tmp_path / "notebooks").mkdir()
+    script = textwrap.dedent(f"""
+        import json, os, subprocess, sys
+        from pathlib import Path
+        from openbb_agents.hermes_integration import notebook_guard
+        notebook_guard.install()
+        root = Path({str(tmp_path)!r})
+        seen = {{}}
+        def attempt(name, call):
+            try:
+                call()
+                seen[name] = "allowed"
+            except Exception as error:
+                seen[name] = type(error).__name__
+        attempt("dot", lambda: open(str(root / "x.ipynb") + ".", "rb").close())
+        attempt("space", lambda: open(str(root / "x.ipynb") + " ", "rb").close())
+        attempt("stream", lambda: open(str(root / "x.ipynb") + "::$DATA", "rb").close())
+        attempt("dirdot", lambda: os.listdir(str(root / "notebooks") + "."))
+        attempt("chdir", lambda: os.chdir(root / "notebooks"))
+        attempt("popen", lambda: subprocess.run(["jupyter-nosuch-1340", "--version"]))
+        attempt("nb", lambda: subprocess.run("nbnosuch1340 --version", shell=True))
+        attempt("system", lambda: os.system("jupyter-nosuch-1340 --version"))
+        attempt("python", lambda: subprocess.run([sys.executable, "-c", "pass"]))
+        print(json.dumps({{"seen": seen}}))
+        """)
+    process = subprocess.run(
+        [sys.executable, "-c", script],
+        env=_env(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert process.returncode == 0, process.stderr
+    seen = json.loads(process.stdout.splitlines()[-1])["seen"]
+    assert seen.pop("python") == "allowed"
+    assert seen == dict.fromkeys(seen, "NotebookAccessBlocked"), seen
+    assert len(seen) == 8
