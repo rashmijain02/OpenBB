@@ -71,7 +71,7 @@ FAULT_ENV = "OPENBB_HFP_FAULT_INJECTION"
 CRASH_EXIT = 75
 # Registry tools the runner calls itself; each must be pinned (schema + access)
 # like any stage capability so drift and understated access are caught.
-_RUN_TOOLS = (_CREATE_TOOL, _CHECKPOINT_TOOL)
+_RUN_TOOLS = (_CREATE_TOOL, _CHECKPOINT_TOOL, _GET_TOOL, _OUTCOME_TOOL)
 _MAX_ERROR = 200
 
 
@@ -226,15 +226,21 @@ def _reused(record: Mapping[str, Any], stage_id: str) -> str | None:
 
 
 async def _outcome(
-    invoker: ToolInvoker, server: str, run_id: str, live_tools: Mapping[str, str]
-) -> str | None:
-    """Return the server's derived run outcome, when the profile exposes it."""
-    if f"{server}:{_OUTCOME_TOOL}" not in live_tools:
-        return None
-    with contextlib.suppress(Exception):
+    invoker: ToolInvoker, server: str, run_id: str
+) -> tuple[str | None, str | None]:
+    """Return ``(outcome, error)`` from the server's derived run outcome.
+
+    ``story_run_outcome`` is a pinned run tool, so admission already proved
+    the profile exposes it; a failed read is reported, never guessed.
+    """
+    try:
         reply = await invoker.call(server, _OUTCOME_TOOL, {"run_id": run_id})
-        return str(reply.get("outcome"))
-    return None
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        return None, f"outcome_unavailable: {type(error).__name__}"[:_MAX_ERROR]
+    outcome = reply.get("outcome") if isinstance(reply, Mapping) else None
+    if not isinstance(outcome, str):
+        return None, "outcome_unavailable: no outcome in reply"
+    return outcome, None
 
 
 async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -396,6 +402,7 @@ async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-loc
         if after_stage is not None:
             after_stage(state["run_id"], stage.id)
 
+    outcome, outcome_error = await _outcome(invoker, create.server, run["run_id"])
     return WorkflowRunResult(
         True,
         manifest.workflow_id,
@@ -404,7 +411,8 @@ async def run_workflow(  # noqa: PLR0912,PLR0915  # pylint: disable=too-many-loc
         run["run_id"],
         tuple(results),
         outputs=outputs,
-        outcome=await _outcome(invoker, create.server, run["run_id"], live_tools),
+        outcome=outcome,
+        error=outcome_error,
     )
 
 

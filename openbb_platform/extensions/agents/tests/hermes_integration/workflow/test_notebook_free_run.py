@@ -283,9 +283,11 @@ def test_stages_run_in_order_and_a_failure_stops_the_rest_without_retry():
     ok = _Sentinel(digest)
     done = asyncio.run(run_workflow(document, inputs, ok, live_tools=live))
     assert ok.calls[0] == "story_run_create"
+    # The runner then reads the server's derived outcome (a pinned run tool).
     assert [c for c in ok.calls if c != "story_run_checkpoint"][1:] == [
         "story_concentration",
         "story_construction_targets",
+        "story_run_outcome",
     ]
     assert [s.status for s in done.stages] == ["succeeded"] * 3
 

@@ -306,3 +306,55 @@ def test_run_receipts_unknown_run_exits_1(tmp_path):
     done = _module(tmp_path, "run_receipts", "--run", "no-such-run")
     assert done.returncode == 1
     assert "unknown run" in done.stderr
+
+
+# --- Run tools pinned and fail-closed outcome (#1341 CODE-5) -----------------
+
+
+def test_shipped_workflow_pins_every_run_tool():
+    """story_run_get and story_run_outcome are pinned like any capability."""
+    from openbb_agents.hermes_integration import workflow_runner
+
+    document = json.loads(DOCUMENT.read_text("utf-8"))
+    pinned = {pin["tool"] for pin in document["capabilities"].values()}
+    assert {"story_run_get", "story_run_outcome"} <= set(workflow_runner._RUN_TOOLS)
+    assert set(workflow_runner._RUN_TOOLS) <= pinned
+
+
+@pytest.mark.parametrize("tool", ["story_run_get", "story_run_outcome"])
+def test_unpinned_run_read_tool_is_rejected(store, tool):
+    """A workflow that does not pin a run read tool is refused, not run."""
+    document = json.loads(DOCUMENT.read_text("utf-8"))
+    document["capabilities"] = {
+        key: pin for key, pin in document["capabilities"].items() if pin["tool"] != tool
+    }
+
+    async def scenario(invoker, live):
+        return await run_workflow(document, INPUTS, invoker, live_tools=live)
+
+    result = _session(scenario)
+    assert not result.admitted
+    assert not result.succeeded
+    assert any(tool in r.detail for r in result.rejections)
+
+
+def test_unavailable_outcome_fails_closed_with_a_code(store):
+    """If story_run_outcome cannot be read, the run says so; never succeeded."""
+
+    class _NoOutcome(_Counting):
+        async def call(self, server, tool, arguments):
+            if tool == "story_run_outcome":
+                raise ConnectionError("outcome tool unreachable")
+            return await super().call(server, tool, arguments)
+
+    async def scenario(invoker, live):
+        return await run_workflow(
+            document, INPUTS, _NoOutcome(invoker), live_tools=live
+        )
+
+    document = json.loads(DOCUMENT.read_text("utf-8"))
+    result = _session(scenario)
+    assert all(s.status == "succeeded" for s in result.stages)
+    assert not result.succeeded
+    assert result.error is not None
+    assert result.error.startswith("outcome_unavailable")

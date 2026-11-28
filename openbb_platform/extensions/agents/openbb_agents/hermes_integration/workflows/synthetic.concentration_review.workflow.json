@@ -28,6 +28,18 @@
       "tool": "story_run_create",
       "schema_sha256": "3f847daaa6c38d4a61eec28bd415bca9263a55aa0938b9450b6bb5cb152af111",
       "access": "artifact"
+    },
+    "platform:story_run_get": {
+      "server": "platform",
+      "tool": "story_run_get",
+      "schema_sha256": "f42cab437be1dec517e3866869434365019de79211a3088cb114a54c6cdfc2f6",
+      "access": "artifact"
+    },
+    "platform:story_run_outcome": {
+      "server": "platform",
+      "tool": "story_run_outcome",
+      "schema_sha256": "f42cab437be1dec517e3866869434365019de79211a3088cb114a54c6cdfc2f6",
+      "access": "artifact"
     }
   },
   "stages": [
