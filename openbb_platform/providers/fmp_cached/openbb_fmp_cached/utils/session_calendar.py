@@ -26,10 +26,13 @@ change.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, datetime, time, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 AssetClass = Literal["equity", "crypto", "forex"]
 
@@ -56,6 +59,12 @@ _FIAT_CODES = _DENSE_FIAT | frozenset(
     }
 )  # fmt: skip
 
+# Crypto pairs whose 5min bars were recorded with zero missing bars over a
+# full week (2025-01-06..10, 1440 bars each): BTC, ETH, SOL, XRP, AVAX. Every
+# other token omits no-trade bars (ADAUSD 19h hole, DOGEUSD 20h, LINKUSD 14h,
+# ATMUSD 116 holes), so it is treated as sparse.
+_DENSE_CRYPTO = frozenset({"BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "AVAXUSD"})
+
 _CRYPTO_TOLERANCE = timedelta(minutes=15)
 _FOREX_TOLERANCE = timedelta(minutes=30)
 _SPARSE_EDGE_TOLERANCE = timedelta(hours=24)
@@ -67,7 +76,12 @@ def _symbol_sets() -> tuple[frozenset[str], frozenset[str]]:
     try:
         data = json.loads(_ASSET_FILE.read_text(encoding="utf-8"))
         return frozenset(data["crypto"]), frozenset(data["forex"])
-    except (OSError, ValueError, KeyError):
+    except (OSError, ValueError, KeyError) as exc:
+        logger.warning(
+            "fmp_24h_symbols.json could not be loaded (%s); crypto symbols fall "
+            "back to the equity calendar and only fiat-pair forex is recognised",
+            exc,
+        )
         return frozenset(), frozenset()
 
 
@@ -96,10 +110,13 @@ def is_24h_symbol(symbol: str | None) -> bool:
 
 
 def is_sparse_symbol(symbol: str | None) -> bool:
-    """Return True for forex pairs where FMP omits no-trade bars."""
-    if classify_symbol(symbol) != "forex":
+    """Return True for 24h symbols where FMP omits no-trade bars."""
+    kind = classify_symbol(symbol)
+    if kind == "equity":
         return False
     text = _normalise(str(symbol))
+    if kind == "crypto":
+        return text not in _DENSE_CRYPTO
     return not (text[:3] in _DENSE_FIAT and text[3:] in _DENSE_FIAT)
 
 

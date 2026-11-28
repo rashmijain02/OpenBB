@@ -497,3 +497,144 @@ def test_edge_shortfall_within_tolerance_is_accepted_beyond_it_flagged():
     assert _analyze("BTCUSD", "5min", start, end, late_end)[1] is True
     late_start = _fx("btcusd_5min_weekend", "BTCUSD", lo=D(2025, 1, 3, 12, 30))
     assert _analyze("BTCUSD", "5min", start, end, late_start)[1] is True
+
+
+# --------------------------------------------------------------------------
+# review round 2
+# --------------------------------------------------------------------------
+
+
+def _synthetic(symbol, start, end, *, skip=None):
+    """Dense bars (recordings show majors have none missing)."""
+    return _bars(symbol, "5min", start, end, skip=skip)
+
+
+def test_forex_now_inside_weekly_closure_does_not_demand_closed_bars():
+    start, end = D(2025, 1, 6, 0, 0), D(2025, 1, 12, 23, 55)
+    rows = _synthetic("EURUSD", start, D(2025, 1, 10, 16, 55), skip=sc.forex_is_closed)
+    now = D(2025, 1, 12, 10, 0)  # Sunday morning, market still closed
+    assert sc.forex_is_closed(now)
+    assert _analyze("EURUSD", "5min", start, end, rows, now=now)[1] is False
+    # after the Sunday reopen the missing evening bars are demanded again
+    assert _analyze("EURUSD", "5min", start, end, rows, now=D(2025, 1, 12, 22, 0))[1]
+
+
+def test_forex_now_inside_new_year_closure_does_not_demand_closed_bars():
+    start, end = D(2024, 12, 30, 0, 0), D(2025, 1, 1, 23, 55)
+    rows = _synthetic("EURUSD", start, D(2024, 12, 31, 17, 0), skip=sc.forex_is_closed)
+    assert (
+        _analyze("EURUSD", "5min", start, end, rows, now=D(2025, 1, 1, 10, 0))[1]
+        is False
+    )
+
+
+def test_crypto_spring_forward_hour_is_not_a_gap():
+    start, end = D(2026, 3, 8, 0, 0), D(2026, 3, 8, 5, 55)
+    # naive New York labels skip 02:00-02:55 on the transition Sunday
+    rows = _synthetic("BTCUSD", start, end, skip=lambda t: t.hour == 2)
+    assert _analyze("BTCUSD", "5min", start, end, rows)[1] is False
+    missing_more = _synthetic("BTCUSD", start, end, skip=lambda t: t.hour in (2, 4))
+    assert _analyze("BTCUSD", "5min", start, end, missing_more)[1] is True
+
+
+def test_crypto_fall_back_window_is_not_a_gap_or_negative_delta():
+    start, end = D(2026, 11, 1, 0, 0), D(2026, 11, 1, 5, 55)
+    rows = _synthetic("BTCUSD", start, end)  # 01:xx labels exist once after upsert
+    assert _analyze("BTCUSD", "5min", start, end, rows)[1] is False
+    # a short hole spanning the repeated hour: elapsed time stays 10 minutes
+    holed = _synthetic(
+        "BTCUSD",
+        start,
+        end,
+        skip=lambda t: t.hour == 1 and t.minute >= 55 or t.hour == 2 and t.minute == 0,
+    )
+    assert _analyze("BTCUSD", "5min", start, end, holed)[1] is False
+
+
+def test_illiquid_crypto_is_sparse_but_recorded_majors_are_dense():
+    for dense in ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "AVAXUSD"):
+        assert not sc.is_sparse_symbol(dense)
+        assert sc.gap_tolerances(dense, timedelta(minutes=5))[0] is not None
+    for sparse in ("ADAUSD", "DOGEUSD", "ATMUSD", "USDTRY"):
+        assert sc.is_sparse_symbol(sparse)
+        assert sc.gap_tolerances(sparse, timedelta(minutes=5))[0] is None
+    assert not sc.is_sparse_symbol("EURUSD")
+
+
+def test_recorded_sparse_crypto_does_not_loop_refetch():
+    rows = _fx("adausd_5min", "ADAUSD")
+    assert (
+        _analyze("ADAUSD", "5min", D(2025, 1, 6), D(2025, 1, 8, 23, 55), rows)[1]
+        is False
+    )
+
+
+def test_recorded_dense_crypto_solusd_still_detects_holes():
+    start, end = D(2025, 1, 6, 0, 0), D(2025, 1, 7, 23, 55)
+    rows = _fx("solusd_5min", "SOLUSD", hi=end)
+    assert _analyze("SOLUSD", "5min", start, end, rows)[1] is False
+    holed = _fx(
+        "solusd_5min",
+        "SOLUSD",
+        hi=end,
+        skip=lambda t: D(2025, 1, 6, 9, 0) <= t < D(2025, 1, 6, 10, 0),
+    )
+    assert _analyze("SOLUSD", "5min", start, end, holed)[1] is True
+
+
+def test_date_only_range_before_first_bar_is_exempt_at_the_edges():
+    rows = _fx(
+        "btcusd_5min_weekend", "BTCUSD", lo=D(2025, 1, 4, 3, 0), hi=D(2025, 1, 4, 20, 0)
+    )
+    day = D(2025, 1, 4)
+    assert _analyze("BTCUSD", "5min", day, day, rows, date_only=True)[1] is False
+    assert _analyze("BTCUSD", "5min", day, D(2025, 1, 4, 20, 0), rows)[1] is True
+
+
+def test_intraday_range_ending_on_saturday_is_not_missing():
+    mon_fri = {date(2025, 1, 6) + timedelta(days=i) for i in range(5)}
+    args = (date(2025, 1, 6), date(2025, 1, 11), mon_fri, "1hour")
+    assert eh._detect_missing_ranges(*args, asset_class="forex") == []
+    assert eh._detect_missing_ranges(*args) == []  # equity: same closed Saturday
+    # a range starting Saturday begins at the Sunday evening open
+    sun_to_fri = mon_fri | {date(2025, 1, 5)}
+    sat_start = (date(2025, 1, 4), date(2025, 1, 10), sun_to_fri, "1hour")
+    assert eh._detect_missing_ranges(*sat_start, asset_class="forex") == []
+    assert (
+        eh._detect_missing_ranges(
+            date(2025, 1, 4), date(2025, 1, 10), mon_fri, "1hour", asset_class="forex"
+        )
+        != []
+    )
+    # a genuinely uncovered open day is still reported
+    thin = {date(2025, 1, 6), date(2025, 1, 7), date(2025, 1, 8)}
+    assert (
+        eh._detect_missing_ranges(*args[:2], thin, "1hour", asset_class="forex") != []
+    )
+
+
+def test_missing_symbol_list_is_a_loud_warning(caplog, tmp_path, monkeypatch):
+    import logging
+
+    monkeypatch.setattr(sc, "_ASSET_FILE", tmp_path / "absent.json")
+    sc._symbol_sets.cache_clear()
+    try:
+        with caplog.at_level(logging.WARNING, logger=sc.__name__):
+            assert sc._symbol_sets() == (frozenset(), frozenset())
+            sc._symbol_sets()
+        hits = [r for r in caplog.records if "fmp_24h_symbols" in r.getMessage()]
+        assert len(hits) == 1  # warned once, not per call
+    finally:
+        sc._symbol_sets.cache_clear()
+
+
+def test_intraday_range_entirely_inside_closures_has_nothing_missing():
+    mon_fri = {date(2025, 1, 6) + timedelta(days=i) for i in range(5)}
+    saturday = date(2025, 1, 11)
+    assert eh._detect_missing_ranges(saturday, saturday, mon_fri, "1hour") == []
+    assert (
+        eh._detect_missing_ranges(
+            saturday, saturday, mon_fri, "1hour", asset_class="forex"
+        )
+        == []
+    )

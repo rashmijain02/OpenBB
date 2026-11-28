@@ -783,7 +783,11 @@ def _count_trading_days_in_range(
     *,
     intraday: bool = False,
 ) -> int:
-    """Count US trading days (Mon-Fri, excluding basic holidays) in [start, end].
+    """Count expected trading days in [start, end] for the asset class.
+
+    Equities use Mon-Fri minus the basic US holidays; crypto counts every
+    calendar day; forex counts Mon-Fri (plus Sunday when ``intraday``) minus
+    Dec 25 and Jan 1.
 
     Used by the intraday density guard in :func:`_detect_missing_ranges`
     to compute the denominator of the density fraction. Uses the same
@@ -849,15 +853,29 @@ def _detect_missing_ranges(
         if not cached_dates or len(cached_dates) == 0:
             return [(start_date, end_date)]
 
-        # Check if we have any data in range - be more conservative with intraday
+        # Check if we have any data in range - be more conservative with intraday.
+        # Edges are snapped to open days so a range that starts or ends in a
+        # closure (e.g. a Saturday) is not reported missing forever (#1304).
+        closed_holidays = _get_basic_market_holidays(start_date.year, end_date.year)
+        edge_start, edge_end = start_date, end_date
+        while edge_start <= edge_end and not _is_trading_day(
+            edge_start, closed_holidays, asset_class, intraday=True
+        ):
+            edge_start += timedelta(days=1)
+        while edge_end >= edge_start and not _is_trading_day(
+            edge_end, closed_holidays, asset_class, intraday=True
+        ):
+            edge_end -= timedelta(days=1)
+        if edge_start > edge_end:
+            return []  # whole range lies inside closures: nothing to fetch
         min_cached = min(cached_dates) if cached_dates else None
         max_cached = max(cached_dates) if cached_dates else None
 
         if (
             not min_cached
             or max_cached is None
-            or min_cached > start_date
-            or max_cached < end_date
+            or min_cached > edge_start
+            or max_cached < edge_end
         ):
             return [(start_date, end_date)]
 

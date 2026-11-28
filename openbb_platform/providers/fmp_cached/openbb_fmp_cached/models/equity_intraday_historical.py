@@ -357,6 +357,8 @@ def _analyze_intraday_cache(
             end=end_exclusive - timedelta(seconds=1),
             delta=interval_delta,
             symbol=str(query.symbol),
+            check_start=not start_date_only,
+            check_end=not end_date_only,
             now=now or datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None),
         )
     # Coverage check — earliest & latest cached bar bracket the requested range.
@@ -555,6 +557,23 @@ def _floor_to_grid(value: datetime, delta: timedelta) -> datetime:
     return midnight + ((value - midnight) // delta) * delta
 
 
+_NEW_YORK = ZoneInfo("America/New_York")
+
+
+def _elapsed(earlier: datetime, later: datetime) -> timedelta:
+    """Elapsed time between naive New York labels, without the skipped hour.
+
+    The spring-forward hour does not exist in New York wall time, so bars
+    jump 01:55 -> 03:00. The fall-back repeat is not added back: duplicate
+    01:xx labels are one cache row, so the span is not a hole either.
+    """
+    zero = timedelta(0)
+    before = earlier.replace(tzinfo=_NEW_YORK).utcoffset() or zero
+    after = later.replace(tzinfo=_NEW_YORK).utcoffset() or zero
+    shift = after - before
+    return (later - earlier) - max(shift, zero)
+
+
 def _has_continuous_gap(
     rows: list[dict[str, Any]],
     *,
@@ -563,6 +582,8 @@ def _has_continuous_gap(
     delta: timedelta,
     symbol: str,
     now: datetime,
+    check_start: bool = True,
+    check_end: bool = True,
 ) -> bool:
     """Gap check for 24h assets: bars every ``delta`` while the market is open.
 
@@ -572,7 +593,11 @@ def _has_continuous_gap(
     the newest bar one to two intervals late. Holes and edge shortfalls up to
     the tolerance (at least three intervals) are therefore accepted, which
     also absorbs the publishing lag; forex holiday days are exempt; and bars
-    after ``now`` are not demanded.
+    after ``now`` are not demanded. ``now`` is moved back to the last open
+    bar for forex, and consecutive bars are compared in elapsed time so the
+    spring-forward hour is not a hole. Date-only requests skip the edge
+    checks, as the equity path does, so a window that starts before a
+    token's listing is not a perpetual gap.
     """
     forex = classify_symbol(symbol) == "forex"
     interior_tol, edge_tol = gap_tolerances(symbol, delta)
@@ -580,14 +605,16 @@ def _has_continuous_gap(
     midnight = datetime.combine(first_start.date(), time())
     expected_first = midnight + -(-(first_start - midnight) // delta) * delta
     last_start = forex_last_open_bar_start(end, delta) if forex else end
+    if forex:
+        now = forex_last_open_bar_start(now, delta)
     expected_last = min(
         _floor_to_grid(last_start, delta),
         _floor_to_grid(now, delta),
     )
     timestamps = [row["date"] for row in rows]
-    if timestamps[0] - expected_first > edge_tol:
+    if check_start and timestamps[0] - expected_first > edge_tol:
         return True
-    if expected_last - timestamps[-1] > edge_tol:
+    if check_end and expected_last - timestamps[-1] > edge_tol:
         return True
     if interior_tol is None:
         return False
@@ -595,7 +622,7 @@ def _has_continuous_gap(
         expected_next = current + delta
         if forex and forex_is_closed(expected_next):
             expected_next = forex_next_open(expected_next)
-        if following - expected_next <= interior_tol:
+        if _elapsed(expected_next, following) <= interior_tol:
             continue
         if forex and (forex_is_thin_day(current) or forex_is_thin_day(following)):
             continue
