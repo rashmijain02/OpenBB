@@ -41,12 +41,15 @@ legacy backend: unchanged code path and numbers (summary field None)
   param_schema_sha256, params_sha256, execution_sha256, base_dataset_id, engine_version, worker_version, fixed_precision})`.
   `params_sha256` comes from P16 normalisation, so `1.0`, `"1"`, `Decimal("1.00")` are **one** config (not an inflated N).
   `base_dataset_id` = neutral export of the full experiment range from the same `Bundle`: changed data ⇒ new config_id.
+  `config_key` = the same hash without `base_dataset_id` (dataset-independent identity, used for N; CODE-2b).
 - `window = {policy, method, fold_params_sha256, ordinal, start_session, end_session, session_count, sessions_sha256}`.
 - `trial_id = sha256(canon{"v":"trial/1", config_id, window})`; `attempt_id = sha256(trial_id, attempt_no, spawn_nonce_sha256)`.
 - `experiment_id = sha256(canon(ExperimentSpec))`, where the spec is dataset-independent (strategy, universe, cash, method,
   policy, fold params, windows, external trials, and each config identity minus `base_dataset_id`). The planned cell list
   (trial ids) is written first, so completeness is checkable; a re-plan on refreshed data appends its new cells as
-  `planned.v<k>.json` (earlier versions are never rewritten), so N keeps every config tried and assembly reports `mixed_dataset`.
+  `planned.v<k>.json` (earlier versions are never rewritten). One planned version = one `base_dataset_id`; a
+  **generation** = all planned cells of one dataset (CODE-2b). The matrix comes from the current plan's generation only;
+  N keeps every config of every generation.
 - `AttemptRecord{attempt_id, trial_id, attempt_no, status: ok|failed|excluded, error_code (protocol.ErrorCode / FailedLayer),
   reason, result_sha256, window_dataset_id, binding_sha256, started_at, ended_at}`. Nothing is ever deleted or overwritten.
 
@@ -64,13 +67,18 @@ legacy backend: unchanged code path and numbers (summary field None)
 ### 2.3 Deduplication and N (the "never understate" rules, each a red test)
 1. Dedup key is `trial_id`. Many attempts ⇒ one cell. Terminal state: `ok` if any attempt is `ok`; two `ok` attempts with
    different `result_sha256` ⇒ cell `conflict` ⇒ experiment `failed_closed` (nondeterminism is never averaged away).
-2. `N_dsr = |{config_id : any attempt recorded, any status}| + external_trials`. Failed and excluded configs **count** (they
-   were searched); retries never add (same config_id); changed data adds (new config_id). `N_effective` (correlation-clustered)
-   may be reported as a diagnostic only, never used to lower the penalty.
+2. `N_dsr = |{config_key : planned in any generation or attempted, any status}| + external_trials` (CODE-2b). Failed,
+   excluded and admission-rejected configs **count** (they were searched); retries never add (same config_id); the same
+   config re-run on refreshed data never adds (same config_key); a config tried only on an old dataset still counts.
+   `N_effective` (correlation-clustered) may be reported as a diagnostic only, never used to lower the penalty.
 3. Matrix columns: configs whose every planned window is `ok`. Others are listed in `exclusions[{config_id, reason}]` with
    reason ∈ {`worker_failed`, `admission_rejected`, `unsupported_semantics`, `incomplete_windows`, `zero_variance`,
    `insufficient_sessions`, `conflict`}. Any exclusion ⇒ `matrix_complete=false` ⇒ verdict capped at `fragile` (D3).
-4. Mixed `base_dataset_id` inside one experiment ⇒ no matrix (`mixed_dataset`), ledger still kept and counted.
+4. Dataset generations (CODE-2b): matrix, cell counts and exclusions cover only the generation of the current plan's
+   `base_dataset_id`; datasets are never mixed in one matrix, and an incomplete current generation is `incomplete` as any
+   experiment. `mixed_dataset` (no matrix) is kept only for an inconsistent ledger: an attempt whose dataset disagrees with
+   its planned cell. A planned version mixing datasets is refused on write and fails closed on read. A conflict in any
+   generation fails the experiment closed.
 5. Retry policy: retry only `process`/`timeout`/spawn failures, `max_attempts=2` (settings). Deterministic codes (`schema`,
    `admission`, `module_origin`, `egress`, unsupported semantics) are terminal on first attempt.
 6. Resume: re-running the same `experiment_id` reads the ledger, skips cells with terminal `ok`, continues attempt numbers.
@@ -125,8 +133,10 @@ Red-first tests:
 - A1 `$V/test_experiment_split.py`: golden ledger of 3 configs × 4 WFO windows dispatched (a) in one spawn, (b) across 3
   fake-worker spawns in shuffled order, (c) crash after cell 5 + resume ⇒ identical `matrix_sha256`, N, exclusions.
 - A2 `$V/test_trial_accounting.py`: `test_retry_after_process_failure_counts_once` (attempts=2, N unchanged),
-  `test_deterministic_rejection_not_retried`, `test_failed_and_excluded_configs_count_in_n`, `test_changed_dataset_is_new_trial`
-  (N+1, `mixed_dataset`, no matrix), `test_conflicting_ok_attempts_fail_closed`, `test_n_monotone_under_permutations`
+  `test_deterministic_rejection_not_retried`, `test_failed_and_excluded_configs_count_in_n`, CODE-2b generation tests
+  (`test_refresh_same_configs_keeps_n_and_uses_new_generation`, `test_refresh_dropped_config_still_counts_in_n`,
+  `test_latest_generation_incomplete_behaves_as_incomplete`, `test_mixed_datasets_in_one_planned_version_fail_closed`,
+  `test_attempt_disagreeing_with_planned_dataset_is_mixed`, `test_conflict_in_old_generation_still_fails_closed`), `test_conflicting_ok_attempts_fail_closed`, `test_n_monotone_under_permutations`
   (all permutations of a 6-record set), `test_external_trials_added`, `test_exclusion_caps_verdict_at_fragile`,
   `test_bounds_reject_before_spawn` (spawn spy not called).
 - Routing `$B/test_backend_selection.py` (replace the P16 rejection test): `test_sweep_routes_nautilus_never_calls_legacy`,
@@ -227,7 +237,7 @@ T02 (pure stats + independent fixtures; no routing)  ->  T01 (ledger, matrix, ex
 | D1 | Window policy default | `continuous` for sweeps and validate; `per_fold` available (atomic windows, fresh cash), recorded in the trial key. |
 | D2 | Fold windows: worker protocol change vs per-window export | Per-window export from the same `Bundle`; config binds `base_dataset_id`. No worker change, no worker reinstall for P17. |
 | D3 | Undefined PBO and incomplete matrices | `ValidationReport.pbo: float | None` (None = undefined, never 0.0) on the Nautilus path; verdict capped at `fragile` when PBO is None or `matrix_complete=false`; update the techtrade formatters. Legacy keeps its float. |
-| D4 | What N counts | Distinct attempted config_ids incl. failed/excluded, + declared `external_trials`; retries never add; data change adds. Effective-N diagnostic only. |
+| D4 | What N counts | Distinct attempted config_ids incl. failed/excluded, + declared `external_trials`; retries never add; data change adds (superseded by CODE-2b: the same config on refreshed data does not add). Effective-N diagnostic only. |
 | D5 | Cross-trial variance and moments | `V` = sample variance (ddof=1) of per-config per-observation SR over ok configs; sample skew and non-excess kurtosis; N=1 ⇒ benchmark 0. Legacy default `sr_variance=1.0`. |
 | D6 | Legacy F1–F6 (folds-as-columns PBO, N=folds, CPCV span, tuneta N) | Leave legacy numbers unchanged in P17; file one `type-bug` for the legacy validate statistics and fix at the P18 cutover (tune passes `external_trials=trials` then). |
 
@@ -238,3 +248,7 @@ T02 (pure stats + independent fixtures; no routing)  ->  T01 (ledger, matrix, ex
 - **Reference values:** do NOT pin paper numbers recalled from memory. Use a value only if it is verified against the paper's public text (a read-only fetch is fine) and cited with page or section. Otherwise compute the expected value independently from the closed-form definition with its stated inputs, and show the derivation in the fixture. Never derive it from the code under test.
 - **Ordering:** T02, then T01, then T03, in one PR.
 - **CODE-2:** ledger keyed on dataset-independent spec; changed data adds planned cells.
+- **CODE-2b:** dataset generations — matrix from latest generation only; N = distinct configs across all generations + external; refresh never makes a spec permanently unusable.
+  - "Latest" = the generation of the current plan's `base_dataset_id` (a refresh back to an earlier dataset reuses that generation, nothing re-runs).
+  - Bounds stay per plan (`max_configs=64`, `max_cells=512`, raw-combo pre-check). N may legitimately grow through history, so no cross-generation cap. Accepted: the ledger grows by at most one planned version per data refresh.
+  - Accepted (fail closed): the raw-combo pre-check runs before normalisation, so it is stricter than the distinct count (65 raw combos that normalise to 60 configs are rejected).

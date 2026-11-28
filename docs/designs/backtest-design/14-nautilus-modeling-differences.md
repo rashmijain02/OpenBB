@@ -107,6 +107,10 @@ two engines agree.
   configurations; undefined PBO is `None` and caps the verdict at `fragile`; excluded cells count in
   `N` and make the matrix incomplete. The minimum backtest length keeps the `2 ln N / SR^2`
   approximation. See the legacy findings below for what the legacy path does differently.
+- Data refreshes: the ledger of one experiment spec keeps one **generation** per dataset. The matrix
+  (PBO, DSR, fold metrics) is built from the current dataset's generation only, never from mixed
+  data. `N` counts each configuration once whatever data it ran on, so a daily refresh does not
+  inflate it, and a configuration tried only on older data still counts.
 
 **id:** `shared_metrics`
 
