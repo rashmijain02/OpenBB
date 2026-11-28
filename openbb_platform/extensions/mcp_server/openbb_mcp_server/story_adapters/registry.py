@@ -172,22 +172,64 @@ _NOTEBOOK_KEYS = frozenset(
 _NOTEBOOK_FILE = re.compile(r"\.ipynb\s*$", re.IGNORECASE)
 
 
-def _notebook_identity(node: Any) -> str | None:
-    """Return the first notebook key or notebook-file string in ``node``."""
-    if isinstance(node, dict):
-        for key, value in node.items():
-            if str(key).lower() in _NOTEBOOK_KEYS:
-                return f"key '{key}'"
-            found = _notebook_identity(value)
-            if found:
-                return found
-    elif isinstance(node, list):
-        for value in node:
-            found = _notebook_identity(value)
-            if found:
-                return found
-    elif isinstance(node, str) and _NOTEBOOK_FILE.search(node):
-        return "notebook file reference"
+_MAX_DEPTH = 64
+_MAX_NODES = 200_000
+_WORKFLOW_ID = re.compile(r"^[a-z0-9][a-z0-9_.:/-]*$")
+
+
+def _notebook_identity(document: Any) -> str | None:
+    """Return the first notebook key or notebook-file string in ``document``.
+
+    Iterative and bounded in depth and node count, so a hostile document
+    cannot exhaust the stack; exceeding a bound is itself a refusal.
+    """
+    stack: list[tuple[Any, int]] = [(document, 0)]
+    visited = 0
+    while stack:
+        node, depth = stack.pop()
+        visited += 1
+        if depth > _MAX_DEPTH or visited > _MAX_NODES:
+            return "document too deep or too large to scan"
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if str(key).lower() in _NOTEBOOK_KEYS:
+                    return f"key '{key}'"
+                stack.append((value, depth + 1))
+        elif isinstance(node, list):
+            stack.extend((value, depth + 1) for value in node)
+        elif isinstance(node, str) and _NOTEBOOK_FILE.search(node):
+            return "notebook file reference"
+    return None
+
+
+def _structural_problem(document: Any) -> str | None:
+    """Minimal shape check for what the registry itself reads from a workflow.
+
+    The full contract lives in ``openbb_agents.hermes_integration.workflow``;
+    ``openbb_mcp_server`` must not import it, so this checks only the fields
+    the catalog and run routes use, strictly (no bool-for-int coercion).
+    """
+    if not isinstance(document, dict):
+        return "document is not an object"
+    if type(document.get("schema_version")) is not int or (
+        document["schema_version"] != 1
+    ):
+        return "unsupported schema_version"
+    workflow_id = document.get("workflow_id")
+    if not isinstance(workflow_id, str) or not _WORKFLOW_ID.match(workflow_id):
+        return "missing or invalid workflow_id"
+    if not isinstance(document.get("version"), str):
+        return "missing version"
+    if not isinstance(document.get("capabilities"), dict):
+        return "capabilities is not an object"
+    stages = document.get("stages")
+    if not isinstance(stages, list) or not stages:
+        return "stages is not a non-empty list"
+    for stage in stages:
+        if not isinstance(stage, dict) or not isinstance(stage.get("id"), str):
+            return "stage is not an object with an id"
+        if not isinstance(stage.get("optional", False), bool):
+            return "stage optional is not a boolean"
     return None
 
 
@@ -207,23 +249,32 @@ class WorkflowCatalog:
         if workflow_dir is None or not workflow_dir.is_dir():
             return
         self.available = True
+        owners: dict[str, list[str]] = {}
         for path in sorted(workflow_dir.glob(_WORKFLOW_FILE)):
             try:
                 document = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
+            except (OSError, ValueError, RecursionError):
                 self.refused[path.name] = "unreadable or invalid JSON"
                 continue
-            identity = _notebook_identity(document)
-            workflow_id = (
-                document.get("workflow_id") if isinstance(document, dict) else None
-            )
-            if identity:
-                self.refused[path.name] = f"notebook identity: {identity}"
-            elif not isinstance(workflow_id, str) or not workflow_id:
-                self.refused[path.name] = "missing workflow_id"
-            else:
-                self._documents[workflow_id] = document
-                self._digests[workflow_id] = canonical_json_sha256(document)
+            problem = _notebook_identity(document)
+            if problem:
+                self.refused[path.name] = f"notebook identity: {problem}"
+                continue
+            problem = _structural_problem(document)
+            if problem:
+                self.refused[path.name] = problem
+                continue
+            workflow_id = document["workflow_id"]
+            owners.setdefault(workflow_id, []).append(path.name)
+            self._documents[workflow_id] = document
+            self._digests[workflow_id] = canonical_json_sha256(document)
+        for workflow_id, names in owners.items():
+            if len(names) > 1:
+                # Ambiguous identity: serve neither copy.
+                del self._documents[workflow_id]
+                del self._digests[workflow_id]
+                for name in names:
+                    self.refused[name] = f"duplicate workflow_id '{workflow_id}'"
 
     @staticmethod
     def parse_id(story_id: str) -> str | None:

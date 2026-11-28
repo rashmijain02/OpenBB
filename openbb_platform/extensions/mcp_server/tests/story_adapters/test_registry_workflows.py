@@ -245,3 +245,79 @@ def test_shipped_workflow_loads_into_catalog():
     catalog = WorkflowCatalog(SHIPPED)
     assert not catalog.refused
     assert [s.story_id for s in catalog.summaries()] == [WORKFLOW_ID]
+
+
+def _malformed(document: dict, case: str) -> dict:
+    """Structurally broken variants of the shipped workflow (review finding 1)."""
+    broken = json.loads(json.dumps(document))
+    if case == "no_stages":
+        del broken["stages"]
+    elif case == "stages_not_list":
+        broken["stages"] = {"concentration": {}}
+    elif case == "stage_not_object":
+        broken["stages"] = ["concentration"]
+    elif case == "empty_stages":
+        broken["stages"] = []
+    elif case == "bool_schema_version":
+        broken["schema_version"] = True
+    elif case == "bad_workflow_id":
+        broken["workflow_id"] = "../Escape"
+    elif case == "capabilities_not_object":
+        broken["capabilities"] = ["platform:story_concentration"]
+    broken["workflow_id"] = (
+        broken["workflow_id"] if case == "bad_workflow_id" else "synthetic.malformed"
+    )
+    return broken
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "no_stages",
+        "stages_not_list",
+        "stage_not_object",
+        "empty_stages",
+        "bool_schema_version",
+        "bad_workflow_id",
+        "capabilities_not_object",
+    ],
+)
+def test_malformed_workflow_is_refused_and_catalog_still_serves(
+    tmp_path, workflow_dir, case
+):
+    """A bad file next to the shipped one never takes the catalog down."""
+    document = json.loads((workflow_dir / FILE).read_text("utf-8"))
+    (workflow_dir / "bad.workflow.json").write_text(
+        json.dumps(_malformed(document, case)), "utf-8"
+    )
+    catalog = WorkflowCatalog(workflow_dir)
+    assert "bad.workflow.json" in catalog.refused
+    client = _client(tmp_path / "runs.sqlite", workflow_dir)
+    response = client.get("/api/v1/story/catalog")
+    assert response.status_code == 200, response.text
+    rows = response.json()
+    assert sum(row["family"] == "workflow" for row in rows) == 1
+    assert len(rows) == 26  # 25 stories + 1 workflow
+
+
+def test_duplicate_workflow_id_is_refused(workflow_dir):
+    """Two files claiming one ID are ambiguous; neither is served."""
+    shutil.copy(workflow_dir / FILE, workflow_dir / "copy.workflow.json")
+    catalog = WorkflowCatalog(workflow_dir)
+    assert catalog.get("synthetic.concentration_review") is None
+    assert {FILE, "copy.workflow.json"} <= set(catalog.refused)
+
+
+@pytest.mark.parametrize("depth", [500, 5000])
+def test_deeply_nested_workflow_is_refused_without_recursion_error(
+    tmp_path, workflow_dir, depth
+):
+    """The notebook-key scan is iterative and depth-bounded; loading never raises."""
+    text = (workflow_dir / FILE).read_text("utf-8")
+    nested = '{"x":' * depth + "{}" + "}" * depth
+    text = text.replace('"limitations": [', '"limitations": [' + nested + ",", 1)
+    (workflow_dir / FILE).write_text(text, "utf-8")
+    catalog = WorkflowCatalog(workflow_dir)
+    assert FILE in catalog.refused
+    client = _client(tmp_path / "runs.sqlite", workflow_dir)
+    assert client.get("/api/v1/story/catalog").status_code == 200
