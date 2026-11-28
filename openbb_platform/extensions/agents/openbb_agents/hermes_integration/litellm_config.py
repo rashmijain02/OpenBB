@@ -287,6 +287,24 @@ def _fallback_pairs(value: Any) -> list[tuple[str, list[str]]]:
     return pairs
 
 
+def _model_entries(raw: Any) -> tuple[list[dict[str, Any]], list[str]]:
+    """Mapping entries of ``model_list``; any other shape is a blocking issue, not a crash."""
+    if raw is None:
+        return [], []
+    if not isinstance(raw, list):
+        return [], ["model_list_unparsed"]
+    entries: list[dict[str, Any]] = []
+    issues: list[str] = []
+    for i, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            issues.append(f"model_list_{i}_unparsed")
+            continue
+        if not isinstance(entry.get("litellm_params"), dict):
+            issues.append(f"model_list_{i}_litellm_params_unparsed")
+        entries.append(entry)
+    return entries, issues
+
+
 def read_gateway_facts(
     path: Path, profile: FinanceRuntimeProfile | None = None
 ) -> GatewayFacts:
@@ -294,10 +312,9 @@ def read_gateway_facts(
     loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
         raise ValueError("litellm config is not a mapping")
+    entries, shape_issues = _model_entries(loaded.get("model_list"))
     groups: dict[str, list[Deployment]] = {}
-    for entry in loaded.get("model_list") or []:
-        if not isinstance(entry, dict):
-            continue
+    for entry in entries:
         name = _alias_name(entry.get("model_name"))
         groups.setdefault(name, []).append(_classify(entry, profile))
     aliases = []
@@ -346,7 +363,7 @@ def read_gateway_facts(
         store_prompts_in_spend_logs=_toggle_on(gen, "store_prompts_in_spend_logs"),
         secrets={k: _secret(gen.get(k)) for k in SECRET_KEYS},
         unvetted_keys=_unvetted(loaded),
-        config_issues=_config_issues(loaded),
+        config_issues=[*shape_issues, *_config_issues(loaded)],
     )
 
 

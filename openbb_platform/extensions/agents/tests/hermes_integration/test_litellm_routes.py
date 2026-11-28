@@ -774,3 +774,30 @@ def test_logging_toggle_absent_or_false_is_admitted(tmp_path, dotted):
     cfg[section].pop(key)
     _, verdict = _verdict(tmp_path, cfg)
     assert verdict.blocked is False, verdict.reasons
+
+
+# --- malformed section shapes are blocking issues, not crashes (#1338 N3) ---------------
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("model_list: 5\n", "model_list_unparsed"),
+        ("model_list: {a: 1}\n", "model_list_unparsed"),
+        ("model_list: [5]\n", "model_list_0_unparsed"),
+        (
+            "model_list: [{model_name: finance-private, litellm_params: [1]}]\n",
+            "model_list_0_litellm_params_unparsed",
+        ),
+    ],
+)
+def test_malformed_model_list_is_a_blocking_issue(tmp_path, text, reason):
+    _, verdict = _verdict(tmp_path, text)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_malformed_entry_next_to_valid_local_alias_still_blocks(tmp_path):
+    cfg = _local_cfg()
+    cfg["model_list"].append("hosted-z")
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.reasons == ["model_list_2_unparsed"]
