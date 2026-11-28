@@ -18,6 +18,7 @@ import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openbb_agents import mcp_server
+from openbb_agents.hermes_integration.policy_probe import child_pythonpath
 
 from .conftest import SENTINELS
 
@@ -107,7 +108,7 @@ def test_default_mode_does_not_import_policy_module():
         capture_output=True,
         text=True,
         check=True,
-        env=os.environ.copy(),
+        env={**os.environ, "PYTHONPATH": child_pythonpath(os.getenv("PYTHONPATH"))},
         timeout=60,
     )
     assert out.stdout.strip() == "False"
@@ -134,10 +135,12 @@ main(sys.argv[1:])
 async def _call_all(
     script: str, flags: list[str], errlog: Path, arguments: dict | None = None
 ) -> dict:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = child_pythonpath(env.get("PYTHONPATH"))
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-c", script, *flags],
-        env=os.environ.copy(),
+        env=env,
     )
     results = {}
     with errlog.open("w", encoding="utf-8") as err, anyio.fail_after(60):
@@ -251,3 +254,29 @@ def test_policy_probe_flags_an_allowed_call():
     both = {tool: {"isError": True, "text": denied} for tool in allowed}
     assert policy_probe._evaluate(both, audit)[0] is True
     assert policy_probe._evaluate(both, audit + "approved")[0] is False
+
+
+def test_policy_probe_child_pythonpath_is_absolute_package_root(tmp_path, monkeypatch):
+    """The child server imports this checkout's package, not a relative one."""
+    import openbb_agents
+    from openbb_agents.hermes_integration import policy_probe
+
+    root = Path(openbb_agents.__file__).resolve().parents[1]
+    monkeypatch.setenv("PYTHONPATH", "relative-entry")
+    env = policy_probe._synthetic_env(tmp_path)
+    first = env["PYTHONPATH"].split(os.pathsep)[0]
+    assert Path(first).is_absolute()
+    assert Path(first) == root
+    assert env["PYTHONPATH"].split(os.pathsep)[1:] == ["relative-entry"]
+
+
+def test_policy_probe_passes_with_relative_pythonpath(monkeypatch, capsys):
+    """Regression: a relative PYTHONPATH must not break the child (cwd=temp)."""
+    import openbb_agents
+    from openbb_agents.hermes_integration import policy_probe
+
+    root = Path(openbb_agents.__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+    monkeypatch.setenv("PYTHONPATH", ".")
+    assert policy_probe.main(["--synthetic"]) == 0
+    assert json.loads(capsys.readouterr().out)["result"] == "denied"

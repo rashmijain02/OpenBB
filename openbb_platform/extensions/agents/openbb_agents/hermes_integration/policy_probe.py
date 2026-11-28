@@ -48,8 +48,23 @@ def _closed_loopback_port() -> int:
         return sock.getsockname()[1]
 
 
+def child_pythonpath(existing: str | None = None) -> str:
+    """Return a PYTHONPATH whose first entry is this package's absolute root.
+
+    A child server started with a different ``cwd`` would resolve relative
+    entries elsewhere and could import another checkout's ``openbb_agents``.
+    The root is derived from the parent's resolved ``openbb_agents.__file__``.
+    """
+    import openbb_agents  # pylint: disable=import-outside-toplevel
+
+    root = str(Path(openbb_agents.__file__).resolve().parents[1])
+    rest = [entry for entry in (existing or "").split(os.pathsep) if entry]
+    return os.pathsep.join([root, *rest])
+
+
 def _synthetic_env(home: Path) -> dict[str, str]:
     env = {key: os.environ[key] for key in _PASS_THROUGH if key in os.environ}
+    env["PYTHONPATH"] = child_pythonpath(os.environ.get("PYTHONPATH"))
     for key in ("HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP"):
         env[key] = str(home)
     env["DB_HOST"] = "127.0.0.1"
