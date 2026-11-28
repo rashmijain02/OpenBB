@@ -78,3 +78,53 @@ def test_emit_fails_on_a_failed_check_or_any_egress(capsys):
     assert probe._emit([("c", "ok", "abstain_required")], 0) == 1
     assert probe._emit([("c", "ok", "ok")], 1) == 1
     assert "checks=1 failed=0 egress=1" in capsys.readouterr().out
+
+
+# --- T03: --synthetic --adversarial over the real gated stdio server ----------
+
+
+def test_adversarial_requires_synthetic(capsys):
+    assert probe.main(["--adversarial"]) == 3
+    assert probe.main(["--register", "--adversarial"]) == 3
+
+
+def test_probe_adversarial_passes_every_check(capsys):
+    from openbb_agents.hermes_integration.knowledge import adversarial
+    from openbb_agents.hermes_integration.projection import scan_text
+
+    assert probe.main(["--synthetic", "--adversarial"]) == 0
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+    summary = dict(kv.split("=") for kv in lines[-1].split())
+    assert summary["failed"] == "0" and summary["escalations"] == "0"
+    assert summary["egress"] == "0" and int(summary["denied"]) >= 15
+    assert int(summary["checks"]) == len(lines) - 1 >= 25
+    assert all(line.endswith("ok=true") for line in lines[:-1])
+    # codes and counts only
+    assert scan_text(out) == []
+    for marker in (*adversarial.PRIVATE_MARKERS, adversarial.HIDDEN_MARKER):
+        assert marker not in out
+    for _, text in adversarial.INJECTED_DOCS.values():
+        for sentence in text.split("\n"):
+            if len(sentence) > 20:
+                assert sentence not in out
+
+
+def test_adversarial_checks_fail_on_an_escalation():
+    """The evaluator is not ceremonial: one allowed private call fails it."""
+    from openbb_agents.hermes_integration.knowledge import adversarial
+
+    actions = [("act:0", "get_positions", {"approved": True})]
+    assert adversarial.classify(False, {"positions": []}) == "escalation"
+    assert adversarial.classify(True, {"error": "capability_denied"}) == (
+        "capability_denied"
+    )
+    assert adversarial.classify(False, {"result": "evidence"}) == "escalation"
+    assert adversarial.leak_count(["x privmarkeragents"]) == 1
+    assert adversarial.leak_count(["/home/bob/x"]) == 1
+    assert adversarial.emit([("a", "1", "1")], 1, 1, 0) == 1
+    assert adversarial.emit([("a", "1", "1")], 1, 0, 1) == 1
+    assert adversarial.emit([("a", "1", "2")], 1, 0, 0) == 1
+    assert adversarial.emit([("a", "1", "1")], 0, 0, 0) == 1
+    assert adversarial.emit([("a", "1", "1")], 1, 0, 0) == 0
+    assert adversarial.action_kinds(actions) == {"private_tool"}

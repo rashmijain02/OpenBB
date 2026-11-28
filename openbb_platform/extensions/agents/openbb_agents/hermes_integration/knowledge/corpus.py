@@ -85,7 +85,16 @@ _DENY_PREFIXES = (
     "docs/superpowers/",
     ".github/skills/",
 )
-_DENY_NAMES = frozenset({"claude.md", "agents.md", "gemini.md", "handoff.md"})
+_DENY_NAMES = frozenset(
+    {
+        "claude.md",
+        "agents.md",
+        "gemini.md",
+        "handoff.md",
+        "skill.md",
+        "copilot-instructions.md",
+    }
+)
 _BAD_CHARS = re.compile(r"[\\:\x00-\x1f\x7f]")
 
 

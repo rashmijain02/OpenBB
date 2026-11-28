@@ -7,6 +7,10 @@ r"""Real-path probe for the gated public-knowledge tools (#1378-T02).
                  a wrong-revision near match, proposed-vs-implemented, an
                  absent answer and a private-tool denial. Each scripted
                  answer is graded with :func:`grounding.check_answer`.
+``--synthetic --adversarial`` runs :mod:`.adversarial` instead: injected
+                 instructions, private-path and notebook-output exclusion,
+                 an obedient coordinator that must be denied every action,
+                 and abstention on excluded evidence (#1378-T03).
 ``--register``   asks fixed public questions against the committed register.
 ``--grade-stdin`` grades owner-pasted answers (L6): one ``<question_id>\\t<answer>``
                  line per answer, cite keys and abstain markers only.
@@ -20,9 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-import socket
 import subprocess
 import sys
 import tempfile
@@ -35,11 +37,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from ..egress_guard import egress_guard
-from ..policy_probe import child_pythonpath
-from . import grounding
-
-_PASS_THROUGH = ("PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC")
-_EGRESS = re.compile(r"knowledge_egress attempts=(\d+)")
+from . import adversarial, grounding
+from ._stdio import _EGRESS, _env, _flags, _git
 
 SYNTHETIC_DOCS = {
     "docs/Specs/gh-1-probe/spec.md": (
@@ -60,44 +59,6 @@ REGISTER_QUESTIONS = {
     "proposed_vs_implemented": "documents.search",
     "absent": "zebra quokka platypus",
 }
-
-
-def _env(home: Path) -> dict[str, str]:
-    env = {k: os.environ[k] for k in _PASS_THROUGH if k in os.environ}
-    env["PYTHONPATH"] = child_pythonpath(os.environ.get("PYTHONPATH"))
-    for key in ("HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP"):
-        env[key] = str(home)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-    env["DB_HOST"] = "127.0.0.1"
-    env["DB_PORT"] = str(port)  # closed: nothing listens there
-    return env
-
-
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
-        [  # noqa: S607
-            "git",
-            "-c",
-            "core.fsmonitor=false",
-            "-c",
-            "core.autocrlf=false",
-            "-c",
-            "commit.gpgsign=false",
-            "-c",
-            "user.name=probe",
-            "-c",
-            "user.email=probe@invalid",
-            "-C",
-            str(root),
-            *args,
-        ],
-        check=True,
-        capture_output=True,
-        timeout=60,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_NOSYSTEM": "1"},
-    )
 
 
 def _blob(root: Path, rel: str) -> str:
@@ -186,13 +147,6 @@ async def _session(flags: list[str], home: Path, calls: list[Call]) -> dict[str,
                     payload = {}
                 out[key] = (bool(result.isError), payload)
     return out
-
-
-def _flags(register_path: Path | None) -> list[str]:
-    flags = ["--policy-profile", "hermes-finance", "--principal", "hermes_runtime"]
-    if register_path is not None:
-        flags += ["--knowledge-register", str(register_path)]
-    return flags
 
 
 def _cite(payload: dict, source_id: str) -> str:
@@ -355,16 +309,22 @@ def _grade_stdin(payloads: dict[str, dict]) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI: exactly one of ``--synthetic``, ``--register``, ``--grade-stdin``."""
+    """CLI: one of ``--synthetic`` [``--adversarial``], ``--register``, ``--grade-stdin``."""
     parser = argparse.ArgumentParser(prog="knowledge.probe")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--synthetic", action="store_true")
     mode.add_argument("--register", action="store_true")
     mode.add_argument("--grade-stdin", action="store_true")
+    parser.add_argument("--adversarial", action="store_true")
     try:
         args = parser.parse_args(argv)
     except SystemExit:
         return 3
+    if args.adversarial and not args.synthetic:
+        sys.stderr.write("knowledge.probe: --adversarial requires --synthetic\n")
+        return 3
+    if args.adversarial:
+        return adversarial.emit(*adversarial.run_adversarial())
     if args.synthetic:
         checks, egress = _run_synthetic()
         return _emit(checks, egress)

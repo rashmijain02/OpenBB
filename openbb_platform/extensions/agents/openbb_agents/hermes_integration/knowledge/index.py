@@ -21,11 +21,12 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from .corpus import Corpus
+from .corpus import Corpus, path_code
 
 ANSWER_CONTRACT_VERSION = 1
 MAX_HITS = 5
@@ -93,7 +94,40 @@ _INSTRUCTION = re.compile(
     r"|\bignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+instructions"
     r"|\"(?:tool_call|tool_calls|function_call|tool_name)\"\s*:"
     r"|\b(?:pip|npm|uv)\s+install\b|\bcurl\s+\S"
-    r"|\b(?:change|switch|set)\s+(?:the\s+)?(?:policy|profile|model|route|principal)\b)"
+    r"|\b(?:change|switch|set|use)\s+(?:the\s+)?"
+    r"(?:policy|profile|model|route|principal|provider|endpoint|base[ _]?url"
+    r"|api[ _]?key)\b"
+    r"|\b(?:call|invoke|execute|run)\s+(?:the\s+)?`?[a-z][a-z0-9]*(?:_[a-z0-9]+)+)"
+)
+_LINK_TARGET = re.compile(r"\]\(\s*<?([^)\s>]+)")
+# Detection-only fold of common Cyrillic/Greek look-alikes of Latin letters;
+# NFKC already folds full-width and compatibility forms. The folded text is
+# only matched, never returned.
+_CONFUSABLES = str.maketrans(
+    {
+        "\u0430": "a",
+        "\u0435": "e",
+        "\u043e": "o",
+        "\u0440": "p",
+        "\u0441": "c",
+        "\u0443": "y",
+        "\u0445": "x",
+        "\u0456": "i",
+        "\u0458": "j",
+        "\u0455": "s",
+        "\u04bb": "h",
+        "\u0501": "d",
+        "\u03b1": "a",
+        "\u03b9": "i",
+        "\u03bd": "v",
+        "\u03bf": "o",
+        "\u0406": "I",
+        "\u0410": "A",
+        "\u0415": "E",
+        "\u041e": "O",
+        "\u0420": "P",
+        "\u0421": "C",
+    }
 )
 
 
@@ -110,6 +144,27 @@ def clean_text(text: str) -> str:
     text = _HTML_COMMENT.sub("", text)
     text = _INVISIBLE.sub("", text)
     return _CONTROL.sub("", text)
+
+
+def instruction_like(text: str) -> bool:
+    """Return True when ``text`` reads like an instruction to the model.
+
+    Heuristic: the folded text (NFKC plus look-alike letters) is matched
+    against :data:`_INSTRUCTION`, and a markdown link whose target is a
+    denylisted path (``notebooks_local/``, ``.env*``, agent instructions)
+    also counts. The flag only labels untrusted data; safety rests on the
+    server-side gate and the argument-free tools.
+    """
+    folded = unicodedata.normalize("NFKC", text).translate(_CONFUSABLES)
+    if _INSTRUCTION.search(folded):
+        return True
+    for target in _LINK_TARGET.findall(folded):
+        path = re.split(r"[#?]", target, maxsplit=1)[0]
+        while path.startswith(("./", "../")):
+            path = path.split("/", 1)[1]
+        if path and path_code(path) == "denylisted":
+            return True
+    return False
 
 
 def query_tokens(query: str) -> list[str]:
@@ -363,7 +418,7 @@ class KnowledgeIndex:
         flags = set()
         if extra:
             flags.add(extra)
-        if _INSTRUCTION.search(entry.text):
+        if instruction_like(entry.text):
             flags.add("INSTRUCTION_LIKE_TEXT")
         if entry.head_drift:
             flags.add("HEAD_DRIFT")
