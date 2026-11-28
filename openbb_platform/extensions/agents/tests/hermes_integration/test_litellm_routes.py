@@ -94,12 +94,17 @@ def test_existing_shape_hosted_only_reports_no_private_alias(tmp_path):
 
 
 def test_existing_shape_via_preflight_is_route_blocked(tmp_path):
-    from openbb_agents.hermes_integration.hermes_preflight import run_preflight
+    from openbb_agents.hermes_integration.hermes_preflight import (
+        PreflightOptions,
+        run_preflight,
+    )
 
     report = run_preflight(
         _profile(tmp_path, 8080),
+        PreflightOptions(
+            litellm_config_path=LITELLM / "existing-shape-hosted-only.yaml"
+        ),
         env={},
-        litellm_config_path=LITELLM / "existing-shape-hosted-only.yaml",
     )
     routes = next(c for c in report.components if c.name == "litellm_routes")
     assert routes.failed_layer.value == "route"

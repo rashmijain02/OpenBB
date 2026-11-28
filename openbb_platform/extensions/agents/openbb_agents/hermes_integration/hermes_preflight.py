@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -54,27 +55,28 @@ def _check_checkout(
             detail=f"not_a_directory: {pin.dir_env}",
         )
     facts = provenance.git_facts(directory)
-    common = {
-        "name": name,
-        "sha": facts.sha,
-        "remote": facts.remote,
-        "dirty": facts.dirty,
-        "license_sha256": provenance.license_sha256(directory),
-        "origin": provenance.origin_of(directory),
-    }
+    base = ComponentReport(
+        name=name,
+        sha=facts.sha,
+        remote=facts.remote,
+        dirty=facts.dirty,
+        license_sha256=provenance.license_sha256(directory),
+        origin=provenance.origin_of(directory),
+    )
     problems = []
     if not facts.sha or not facts.sha.startswith(pin.expected_sha):
         problems.append("wrong_sha")
     if facts.remote != provenance.normalize_remote(pin.expected_remote):
         problems.append("wrong_remote")
     if problems:
-        return ComponentReport(
-            **common,
-            observed_sha=facts.sha,
-            failed_layer=FailedLayer.MODULE_ORIGIN,
-            detail=f"wrong_origin: {','.join(problems)}",
+        return base.model_copy(
+            update={
+                "observed_sha": facts.sha,
+                "failed_layer": FailedLayer.MODULE_ORIGIN,
+                "detail": f"wrong_origin: {','.join(problems)}",
+            }
         )
-    return ComponentReport(**common, level=HealthLevel.CONFIGURED)
+    return base.model_copy(update={"level": HealthLevel.CONFIGURED})
 
 
 def _check_webui(
@@ -236,44 +238,54 @@ def _check_gateway(
     return [cfg, route], report
 
 
+@dataclass(frozen=True)
+class PreflightOptions:
+    """Inputs of one preflight run besides the profile, env and transport."""
+
+    openbb_settings: Path | None = None
+    hermes_config_path: Path | None = None
+    litellm_config_path: Path | None = None
+    probe: str = "none"
+    mcp_tools: Sequence[Mapping[str, Any]] | None = None
+    mcp_http_url: str | None = None
+    backend_base_url: str | None = None
+    timeout: float = 5.0
+
+
 def run_preflight(
     profile: FinanceRuntimeProfile,
+    options: PreflightOptions | None = None,
     *,
     env: Mapping[str, str] | None = None,
-    openbb_settings: Path | None = None,
-    hermes_config_path: Path | None = None,
-    litellm_config_path: Path | None = None,
-    probe: str = "none",
-    mcp_tools: Sequence[Mapping[str, Any]] | None = None,
-    mcp_http_url: str | None = None,
-    backend_base_url: str | None = None,
-    timeout: float = 5.0,
     transport: handshake.Transport | None = None,
 ) -> PreflightReport:
     """Run all checks. ``probe="loopback"`` adds the handshake edges. Never executes Hermes."""
+    opts = options or PreflightOptions()
     env = os.environ if env is None else env
-    route_components, facts = _check_route(profile, hermes_config_path)
-    gateway_components, gateway = _check_gateway(profile, litellm_config_path)
+    route_components, facts = _check_route(profile, opts.hermes_config_path)
+    gateway_components, gateway = _check_gateway(profile, opts.litellm_config_path)
     components = [
         _check_checkout("hermes_agent", profile.hermes_agent, env),
         _check_webui(profile, env),
         _check_abi(profile, env),
-        _check_database(profile, openbb_settings, env),
+        _check_database(profile, opts.openbb_settings, env),
         *route_components,
         *gateway_components,
     ]
     edges: list[EdgeReport] = []
-    if probe == "loopback":
+    if opts.probe == "loopback":
         edges = handshake.run_handshake(
             profile,
             facts,
             env=env,
             transport=transport,
-            settings_path=openbb_settings,
-            mcp_tools=mcp_tools,
-            mcp_http_url=mcp_http_url,
-            backend_base_url=backend_base_url,
-            timeout=timeout,
+            options=handshake.HandshakeOptions(
+                settings_path=opts.openbb_settings,
+                mcp_tools=opts.mcp_tools,
+                mcp_http_url=opts.mcp_http_url,
+                backend_base_url=opts.backend_base_url,
+                timeout=opts.timeout,
+            ),
         )
     failed = {c.failed_layer for c in components if c.failed_layer is not None}
     failed |= {e.failed_layer for e in edges if e.failed_layer is not None}
@@ -360,14 +372,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 3
     report = run_preflight(
         profile,
-        openbb_settings=args.openbb_settings,
-        hermes_config_path=args.hermes_config,
-        litellm_config_path=args.litellm_config,
-        probe=args.probe,
-        mcp_tools=tools,
-        mcp_http_url=args.mcp_http_url,
-        backend_base_url=args.backend_url,
-        timeout=args.timeout,
+        PreflightOptions(
+            openbb_settings=args.openbb_settings,
+            hermes_config_path=args.hermes_config,
+            litellm_config_path=args.litellm_config,
+            probe=args.probe,
+            mcp_tools=tools,
+            mcp_http_url=args.mcp_http_url,
+            backend_base_url=args.backend_url,
+            timeout=args.timeout,
+        ),
     )
     text = (
         report.model_dump_json(indent=2)

@@ -12,7 +12,11 @@ from pathlib import Path
 
 import pytest
 from openbb_agents.hermes_integration import provenance
-from openbb_agents.hermes_integration.hermes_preflight import main, run_preflight
+from openbb_agents.hermes_integration.hermes_preflight import (
+    PreflightOptions,
+    main,
+    run_preflight,
+)
 from openbb_agents.hermes_integration.models import (
     FailedLayer,
     HealthLevel,
@@ -89,8 +93,8 @@ def _env(repos, **extra):
 def _run(repos, profile=None, settings=SETTINGS_OK, env=None):
     return run_preflight(
         profile or _profile(repos),
+        PreflightOptions(openbb_settings=settings),
         env=env if env is not None else _env(repos),
-        openbb_settings=settings,
     )
 
 

@@ -422,34 +422,43 @@ def probe_mysql(
     )
 
 
+@dataclass(frozen=True)
+class HandshakeOptions:
+    """Optional handshake inputs; an unset input leaves its edge not evaluated."""
+
+    settings_path: Path | None = None
+    mcp_tools: Sequence[Mapping[str, Any]] | None = None
+    mcp_http_url: str | None = None
+    backend_base_url: str | None = None
+    timeout: float = 5.0
+
+
 def run_handshake(
     profile: FinanceRuntimeProfile,
     facts: RouteFacts | None,
     *,
     env: Mapping[str, str],
     transport: Transport | None = None,
-    settings_path: Path | None = None,
-    mcp_tools: Sequence[Mapping[str, Any]] | None = None,
-    mcp_http_url: str | None = None,
-    backend_base_url: str | None = None,
-    timeout: float = 5.0,
+    options: HandshakeOptions | None = None,
 ) -> list[EdgeReport]:
     """Evaluate every edge once. Never starts, installs or falls back."""
+    opts = options or HandshakeOptions()
+    timeout = opts.timeout
     transport = transport or LoopbackTransport()
     gateway = probe_gateway(profile, facts, env, transport, timeout)
     edges = [
         check_webui(profile, env, transport, timeout),
         gateway,
-        probe_backend(gateway, backend_base_url, transport, timeout),
+        probe_backend(gateway, opts.backend_base_url, transport, timeout),
     ]
-    if mcp_tools is not None:
-        edges.append(check_mcp_catalog(mcp_tools, profile.mcp_catalog_sha256))
+    if opts.mcp_tools is not None:
+        edges.append(check_mcp_catalog(opts.mcp_tools, profile.mcp_catalog_sha256))
     else:
         edges.append(_not_evaluated("hermes_mcp_stdio", "no_tool_catalog_supplied"))
-    if mcp_http_url:
-        edges.append(probe_mcp_http(mcp_http_url, transport, timeout))
-    if settings_path is not None:
-        edges.append(probe_mysql(settings_path, env, transport, timeout))
+    if opts.mcp_http_url:
+        edges.append(probe_mcp_http(opts.mcp_http_url, transport, timeout))
+    if opts.settings_path is not None:
+        edges.append(probe_mysql(opts.settings_path, env, transport, timeout))
     else:
         edges.append(_not_evaluated("openbb_mysql", "no_openbb_settings"))
     return edges

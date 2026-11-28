@@ -116,13 +116,14 @@ def _edge(edges, name):
 def _run(tmp_path, base, cfg="config-finance-safe.yaml", transport=None, **kw):
     profile = _profile(base)
     facts = hermes_config.read_route_facts(_config(tmp_path, cfg, base))
+    env = kw.pop("env", {})
+    kw.setdefault("timeout", 2.0)
     return handshake.run_handshake(
         profile,
         facts,
-        env=kw.pop("env", {}),
+        env=env,
         transport=transport or Recording(),
-        timeout=kw.pop("timeout", 2.0),
-        **kw,
+        options=handshake.HandshakeOptions(**kw),
     )
 
 
@@ -190,7 +191,7 @@ def test_200_with_private_alias_is_callable_and_key_is_not_echoed(tmp_path):
             facts,
             env={"HFP_TEST_KEY": "SYNTHETIC-SCOPED-KEY"},
             transport=Recording(),
-            timeout=2.0,
+            options=handshake.HandshakeOptions(timeout=2.0),
         )
         assert srv.seen[0][0] == "/v1/models"
         assert srv.seen[0][1] == "Bearer SYNTHETIC-SCOPED-KEY"  # sent, never reported
