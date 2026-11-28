@@ -41,9 +41,14 @@ class Scrubber:
 
 
 def _apply_defaults(spec: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-    """Fill required parameters the hosted server defaults (e.g. ``symbol=AAPL``)."""
+    """Fill required parameters the hosted server defaults (e.g. ``symbol=AAPL``).
+
+    Only defaults confirmed against the hosted server (``defaults_verified``)
+    are applied; guessed ones are left out so FMP's own missing-parameter
+    error renders instead (see DIVERGENCES.md).
+    """
     defaults: dict[str, Any] = spec.get("defaults") or {}
-    if not defaults:
+    if not defaults or spec.get("defaults_verified") is not True:
         return args
     reverse = {v: k for k, v in PARAM_RENAMES.items()}
     out = dict(args)

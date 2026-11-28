@@ -915,7 +915,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "revisable",
+   "retention": "feed",
    "defaults": {
     "symbols": "BTCUSD"
    },
@@ -926,7 +926,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "revisable",
+   "retention": "feed",
    "defaults": {
     "symbols": "EURUSD"
    },
@@ -937,7 +937,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "revisable",
+   "retention": "feed",
    "defaults": {
     "symbols": "AAPL"
    },
@@ -948,7 +948,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "revisable",
+   "retention": "feed",
    "defaults": {
     "symbols": "AAPL"
    },
@@ -1199,14 +1199,14 @@
    "required": [
     "symbol"
    ],
-   "retention": "revisable"
+   "retention": "feed"
   },
   "house-trading-by-name": {
    "path": "/house-trades-by-name",
    "required": [
     "name"
    ],
-   "retention": "revisable"
+   "retention": "feed"
   },
   "senate-latest": {
    "path": "/senate-latest",
@@ -1218,14 +1218,14 @@
    "required": [
     "symbol"
    ],
-   "retention": "revisable"
+   "retention": "feed"
   },
   "senate-trading-by-name": {
    "path": "/senate-trades-by-name",
    "required": [
     "name"
    ],
-   "retention": "revisable"
+   "retention": "feed"
   }
  },
  "statements": {

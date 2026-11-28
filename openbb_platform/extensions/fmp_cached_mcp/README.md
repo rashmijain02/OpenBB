@@ -40,12 +40,12 @@ when it is set, every HTTP request must send `Authorization: Bearer <token>`.
 | series range (prices, indicators, rates with `from`/`to`) | forever, per exact request (`fmp_mcp_document`) | when stale: a range that is still open after 60 s (intraday), 1 h (daily) or 1 day (economic indicators, COT); a closed range daily, because split-adjusted history can be re-based upstream |
 | document, immutable (as-reported, filings, past trades) | forever (`fmp_mcp_document`) | once |
 | document, revisable / reference (statements, profiles, lists) | forever, last good copy | after the refresh interval (1 day) |
-| feed (news, latest filings) | items forever (`fmp_mcp_feed_item`); listing 10 min | when the listing expires |
+| feed (news and symbol news searches, latest filings, congressional trades) | items forever (`fmp_mcp_feed_item`); listing 10 min | when the listing expires |
 | ephemeral (quotes, snapshots, screener) | `fmp_mcp_ephemeral` with `expires_at` | after 15 s to 15 min |
 | no-store (custom DCF) | nothing | always |
 
-A call about a past date on an ephemeral or revisable endpoint is immutable; an empty answer is
-never immutable (it is kept ephemeral for a day). A range is closed once its end is older than
+A call about a past date on an ephemeral, revisable or feed endpoint is immutable (feed items are
+still kept); an empty answer is never immutable (it is kept ephemeral for up to a day). A range is closed once its end is older than
 the series' finality lag: 2 days, economic indicators 120, COT reports 14. Overlapping ranges
 are separate requests; fetching only the missing dates of a stored series (gap-fill) is #1310.
 Only 400/402/404 are remembered as refusals (10 minutes); other errors serve the stored copy as

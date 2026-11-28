@@ -18,10 +18,12 @@ import pytest
 from openbb_fmp_cached_mcp.policy import resolve_policy
 from openbb_fmp_cached_mcp.service import StoreBackedUpstream
 from openbb_fmp_cached_mcp.store import (
+    ALL_TABLES,
     EPHEMERAL_TABLE,
     PERSISTENT_TABLES,
     SqliteDatabase,
     Store,
+    StoreDataError,
     StoreUnavailable,
 )
 from openbb_fmp_cached_mcp.upstream import UpstreamResponse
@@ -444,13 +446,14 @@ def test_provenance_states_are_datastate_values():
 def test_empty_answer_is_never_stored_as_immutable(env):
     """A not-found today (e.g. no filing yet) may exist tomorrow."""
     svc, fmp, _, clock = env
-    fmp.docs["/senate-trades-by-name"] = UpstreamResponse(200, b"[]")
-    args = {"endpoint": "senate-trading-by-name", "name": "Nobody"}
-    _get(svc, "senate", args)
+    # A revisable name lookup (senate-trading-by-name became a feed).
+    fmp.docs["/crowdfunding-offerings-search"] = UpstreamResponse(200, b"[]")
+    args = {"endpoint": "crowdfunding-search", "name": "Nobody"}
+    _get(svc, "Fundraisers", args)
     clock.advance(hours=12)
-    assert _get(svc, "senate", args).state == "cached"
+    assert _get(svc, "Fundraisers", args).state == "cached"
     clock.advance(hours=13)
-    _get(svc, "senate", args)
+    _get(svc, "Fundraisers", args)
     assert len(fmp.calls) == 2
 
 
@@ -911,7 +914,6 @@ def test_a_refusal_while_a_copy_is_stored_serves_the_copy_as_stale(env):
     "tool, args, refresh",
     [
         ("calendar", {"endpoint": "dividends-company", "symbol": "AAPL"}, 86400),
-        ("senate", {"endpoint": "senate-trading", "symbol": "AAPL"}, 86400),
         (
             "statements",
             {"endpoint": "financial-reports-dates", "symbol": "AAPL"},
@@ -956,6 +958,57 @@ def test_growing_lists_refresh_and_only_fixed_reports_are_immutable(
     assert (pol.mode, pol.refresh_s) == ("document", refresh)
 
 
+# Final review: symbol news and congressional-trade searches are feeds. New
+# items appear all day, so the listing lives 10 minutes and every item is kept.
+_FEED_SEARCHES = [
+    ("senate", {"endpoint": "senate-trading", "symbol": "AAPL"}),
+    ("senate", {"endpoint": "senate-trading-by-name", "name": "Jerry"}),
+    ("senate", {"endpoint": "house-trading", "symbol": "AAPL"}),
+    ("senate", {"endpoint": "house-trading-by-name", "name": "Nancy"}),
+    ("news", {"endpoint": "search-stock-news", "symbols": ["AAPL"]}),
+    ("news", {"endpoint": "search-press-releases", "symbols": ["AAPL"]}),
+    ("news", {"endpoint": "search-crypto-news", "symbols": ["BTCUSD"]}),
+    ("news", {"endpoint": "search-forex-news", "symbols": ["EURUSD"]}),
+]
+
+
+@pytest.mark.parametrize("tool, args", _FEED_SEARCHES)
+def test_symbol_news_and_trade_searches_are_feeds(tool, args):
+    pol = resolve_policy(tool, args, today=TODAY)
+    assert (pol.mode, pol.refresh_s, pol.feed) == ("ephemeral", 600, True)
+
+
+def test_past_dated_news_search_is_immutable_and_keeps_items():
+    pol = resolve_policy(
+        "news",
+        {
+            "endpoint": "search-stock-news",
+            "symbols": ["AAPL"],
+            "from_date": "2025-01-01",
+            "to_date": "2025-01-31",
+        },
+        today=TODAY,
+    )
+    assert (pol.mode, pol.refresh_s, pol.feed) == ("document", None, True)
+
+
+def test_symbol_trade_search_listing_refreshes_and_items_are_kept(env):
+    svc, fmp, store, clock = env
+    rows = [{"symbol": "AAPL", "amount": "$1,001 - $15,000", "n": i} for i in (1, 2)]
+    fmp.docs["/senate-trades"] = UpstreamResponse(200, json.dumps(rows).encode())
+    args = {"endpoint": "senate-trading", "symbol": "AAPL"}
+    _get(svc, "senate", args)
+    clock.advance(seconds=300)
+    _get(svc, "senate", args)
+    assert len(fmp.calls) == 1, "fresh within the 10-minute listing TTL"
+    clock.advance(seconds=400)
+    _get(svc, "senate", args)
+    assert len(fmp.calls) == 2, "listing refreshed after 10 minutes, not 24 h"
+    clock.advance(days=60)
+    store.prune_ephemeral()
+    assert store.count("fmp_mcp_feed_item") == 2
+
+
 def test_feed_rows_sharing_a_link_are_all_kept(env):
     """Several transactions share one disclosure link (recorded senate-latest)."""
     _, _, store, _ = env
@@ -977,3 +1030,36 @@ def test_past_date_feed_calls_still_keep_their_items(env):
         today=TODAY,
     )
     assert pol.mode == "document" and pol.refresh_s is None and pol.feed
+
+
+# --- Final review: least-privilege MySQL user with pre-created tables --------
+
+
+class _NoCreateDb(SqliteDatabase):
+    """Reachable DB whose user lacks CREATE: MySQL checks the privilege before
+    ``IF NOT EXISTS`` and answers 1142 even when the table already exists."""
+
+    def __init__(self, path, precreate=()):
+        super().__init__(path)
+        for table in precreate:
+            super().execute(f"CREATE TABLE {table} (x INTEGER)")
+        self.creates = 0
+
+    def execute(self, sql, params=()):
+        if sql.lstrip().upper().startswith("CREATE"):
+            self.creates += 1
+            raise StoreDataError("OperationalError 1142")
+        return super().execute(sql, params)
+
+
+def test_create_denied_but_tables_exist_accepts_the_store():
+    db = _NoCreateDb(":memory:", precreate=ALL_TABLES)
+    Store(db).create_tables()  # no raise
+    assert db.creates >= 1, "CREATE was attempted and refused"
+
+
+@pytest.mark.parametrize("precreate", [(), PERSISTENT_TABLES])
+def test_create_denied_and_tables_missing_reraises_the_original_error(precreate):
+    db = _NoCreateDb(":memory:", precreate=precreate)
+    with pytest.raises(StoreDataError, match="1142"):
+        Store(db).create_tables()

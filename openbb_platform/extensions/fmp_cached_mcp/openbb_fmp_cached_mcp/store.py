@@ -240,10 +240,27 @@ class Store:
             if self.db.dialect == "mysql"
             else ""
         )
-        for table, cols in _DDL.items():
-            self.db.execute(
-                f"CREATE TABLE IF NOT EXISTS {table} ({cols.format(**types)}){options}"
-            )
+        try:
+            for table, cols in _DDL.items():
+                self.db.execute(
+                    f"CREATE TABLE IF NOT EXISTS {table} "
+                    f"({cols.format(**types)}){options}"
+                )
+        except StoreDataError:
+            # MySQL checks the CREATE privilege before IF NOT EXISTS (1142), so a
+            # least-privilege user fails here even when an admin pre-created the
+            # tables. Accept the store only if every table is already there.
+            if not self._tables_exist():
+                raise
+
+    def _tables_exist(self) -> bool:
+        """Return True when every store table answers a zero-row SELECT."""
+        for table in _DDL:
+            try:
+                self.db.query(f"SELECT 1 FROM {table} LIMIT 0")  # noqa: S608
+            except StoreDataError:
+                return False
+        return True
 
     def _upsert_sql(self, table: str, cols: list[str], keys: Iterable[str]) -> str:
         marks = ", ".join(["%s"] * len(cols))

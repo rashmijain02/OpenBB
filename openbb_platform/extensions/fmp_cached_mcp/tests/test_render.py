@@ -205,6 +205,33 @@ def test_nan_and_infinity_literals_are_not_json():
     assert result.text == '"[{\\"x\\": NaN}]"'
 
 
+# --- Final review: hosted Node does res.text() (lossy, BOM-stripped) first ---
+
+
+def test_invalid_utf8_byte_in_json_body_still_parses_with_replacement_char():
+    # Node: JSON.parse(await res.text()) where text() decodes \xe9 to U+FFFD.
+    result = render_response(
+        tool="news",
+        arguments={"endpoint": "stock-news"},
+        path="/news/stock",
+        status=200,
+        body=b'[{"t":"caf\xe9"}]',
+    )
+    assert result.text == '[{"t":"caf\ufffd"}]'
+
+
+def test_leading_bom_is_stripped_before_json_parse():
+    # Node: res.text() strips one leading U+FEFF before JSON.parse.
+    result = render_response(
+        tool="quote",
+        arguments={"endpoint": "quote"},
+        path="/quote",
+        status=200,
+        body=b'\xef\xbb\xbf[{"symbol":"AAPL"}]',
+    )
+    assert result.text == '[{"symbol":"AAPL"}]'
+
+
 def test_js_dumps_matches_node_on_edge_corpus_and_fixtures(tmp_path):
     """Differential check against real ``JSON.stringify(JSON.parse(x))``."""
     import random  # pylint: disable=import-outside-toplevel

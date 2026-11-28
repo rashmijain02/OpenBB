@@ -99,6 +99,19 @@ def test_hosted_defaults_fill_missing_required_params():
     assert up.calls[-1] == ("/quote", {})
 
 
+def test_unverified_hosted_defaults_are_not_applied():
+    # endpoint_map marks the secFilings date defaults defaults_verified=false
+    # (guessed by REST shape match). Injecting them would cache a fixed
+    # past-date window as an immutable document, so FMP's own error renders.
+    up = RecordedUpstream()
+    _call(up, "secFilings", {"endpoint": "8k-latest"})
+    path, params = up.calls[-1]
+    assert path == "/sec-filings-8k"
+    assert "from" not in params and "to" not in params
+    _call(up, "news", {"endpoint": "search-stock-news"})
+    assert "symbols" not in up.calls[-1][1]
+
+
 def test_upstream_400_matches_hosted():
     case = load_hosted(f"rest-errors-{SNAPSHOT}.json")["cases"][0]
     up = RecordedUpstream(

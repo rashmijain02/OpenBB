@@ -7,7 +7,7 @@ import pytest
 from openbb_fmp_cached_mcp import __main__ as cli
 from openbb_fmp_cached_mcp.endpoint_map import PLAN_LIMITED_ALIASES, load_endpoint_map
 from openbb_fmp_cached_mcp.service import StoreBackedUpstream
-from openbb_fmp_cached_mcp.store import StoreUnavailable
+from openbb_fmp_cached_mcp.store import StoreDataError, StoreUnavailable
 from openbb_fmp_cached_mcp.upstream import FmpRestUpstream
 
 
@@ -57,16 +57,19 @@ def test_unopenable_sqlite_path_is_a_clean_setup_error(tmp_path):
 
 
 class _CreateDenied:
-    """MySQL reachable, but the user lacks CREATE (error 1142)."""
+    """MySQL reachable, the user lacks CREATE (1142) and no tables exist (1146)."""
 
     dialect = "mysql"
 
     def execute(self, sql, params=()):
-        from openbb_fmp_cached_mcp.store import (  # pylint: disable=C0415
-            StoreDataError,
-        )
-
         raise StoreDataError("OperationalError 1142")
+
+    def query(self, sql, params=()):
+        raise StoreDataError("ProgrammingError 1146")
+
+
+class _CreateDeniedTablesExist(_CreateDenied):
+    """Least-privilege user; an admin pre-created the tables."""
 
     def query(self, sql, params=()):
         return []
@@ -83,6 +86,13 @@ def test_mysql_store_exits_cleanly_when_mysql_refuses_create(monkeypatch):
     monkeypatch.setattr(cli, "MySqlDatabase", _CreateDenied)
     with pytest.raises(cli.StoreSetupError):
         cli.build_upstream("k" * 32, "mysql")
+
+
+@pytest.mark.parametrize("spec", ["auto", "mysql"])
+def test_mysql_store_is_used_when_create_is_denied_but_tables_exist(monkeypatch, spec):
+    monkeypatch.setattr(cli, "MySqlDatabase", _CreateDeniedTablesExist)
+    up, rest = cli.build_upstream("k" * 32, spec)
+    assert isinstance(up, StoreBackedUpstream) and up is not rest
 
 
 def test_store_is_opened_before_the_http_client(monkeypatch):

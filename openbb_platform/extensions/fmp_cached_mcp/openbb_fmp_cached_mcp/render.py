@@ -187,10 +187,15 @@ def render_response(
 ) -> Rendered:
     """Turn one FMP REST response into the hosted tool-result text."""
     if status == 200:
+        # Hosted Node runs JSON.parse(await res.text()): text() decodes
+        # lossily (bad bytes -> U+FFFD) and strips one leading BOM.
+        text = body.decode("utf-8", "replace")
+        if text.startswith("\ufeff"):
+            text = text[1:]
         try:
-            parsed = json.loads(body.decode("utf-8"), parse_constant=_reject_constant)
-        except (UnicodeDecodeError, ValueError):
-            return Rendered(_js_string(body.decode("utf-8", "replace")), False)
+            parsed = json.loads(text, parse_constant=_reject_constant)
+        except ValueError:
+            return Rendered(_js_string(text), False)
         if parsed == []:
             envelope = _not_found(arguments)
             if envelope is not None:
