@@ -236,7 +236,9 @@ def _check_skills(
     if config is None:
         return blocked("no_hermes_config")
     try:
-        facts = hermes_config.read_skill_facts(config)
+        facts = hermes_config.read_skill_facts(
+            config, hermes_config.managed_config_path()
+        )
     except (OSError, ValueError, yaml.YAMLError):
         return blocked("hermes_config_unreadable")
     verdict = skills_admission.evaluate_skills(

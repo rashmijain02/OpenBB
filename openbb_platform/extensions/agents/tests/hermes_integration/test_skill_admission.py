@@ -559,3 +559,44 @@ def test_writable_file_in_read_only_dir_blocks(tmp_path):
         reasons = _evaluate(home).reasons
     assert "admitted_file_writable" in reasons
     assert "admitted_dir_writable" not in reasons
+
+
+# --- managed scope (#1338 merge applies to skill keys) --------------------------------
+
+
+def _managed(tmp_path: Path, data: dict) -> Path:
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "config.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
+    return managed
+
+
+def test_managed_overlay_is_merged_into_skill_facts(tmp_path):
+    managed = _managed(
+        tmp_path, {"curator": {"enabled": True}, "skills": {"inline_shell": True}}
+    )
+    facts = hermes_config.read_skill_facts(
+        _safe_config(tmp_path), managed=managed / "config.yaml"
+    )
+    assert facts.curator_enabled is True and facts.inline_shell is True
+    # User siblings survive the deep merge.
+    assert facts.project_discovery is False
+
+
+def test_cli_skills_read_managed_scope_config(tmp_path, capsys, monkeypatch):
+    home = _home(tmp_path)
+    monkeypatch.setenv(
+        "HERMES_MANAGED_DIR", str(_managed(tmp_path, {"curator": {"enabled": True}}))
+    )
+    argv = [
+        "--profile",
+        str(_cli_profile(tmp_path, _manifest(home))),
+        "--hermes-config",
+        str(_safe_config(tmp_path)),
+        "--skills-root",
+        str(home / "skills"),
+    ]
+    with read_only(home / "skills"):
+        code, comp, _, _ = _skills_component(argv, capsys)
+    assert code == 2 and comp["failed_layer"] == "skills", comp
+    assert "curator" in comp["detail"], comp

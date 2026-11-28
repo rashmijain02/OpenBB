@@ -712,12 +712,14 @@ def _managed_overlay(raw: dict[str, Any]) -> dict[str, Any]:
     return loaded
 
 
-def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
-    """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
+def _load_config(path: Path, managed: Path | None) -> tuple[dict[str, Any], list[str]]:
+    """Load ``path`` with the ``managed`` overlay deep-merged on top, as Hermes does.
 
-    Each file is normalised as Hermes ``_load_config_impl`` does before the merge.
-    Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for refused shapes)
-    when either file is unusable.
+    The one loader for route and skill facts: Hermes YAML semantics
+    (:func:`load_hermes_yaml`), each file normalised as ``_load_config_impl`` does
+    before the merge. Returns the merged mapping and the root model keys seen in
+    either file. Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for
+    refused shapes) when either file is unusable.
     """
     user = load_hermes_yaml(Path(path).read_text(encoding="utf-8-sig"))
     if not isinstance(user, dict):
@@ -728,6 +730,16 @@ def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
         raw = _load_mapping(managed, "managed hermes config")
         raw_roots += [k for k in _ROOT_MODEL_KEYS if k in raw]
         loaded = _deep_merge(loaded, _managed_overlay(raw))
+    return loaded, raw_roots
+
+
+def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
+    """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
+
+    Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for refused shapes)
+    when either file is unusable.
+    """
+    loaded, raw_roots = _load_config(path, managed)
     host, port, base_path, scheme = _split(_get(loaded, "model.base_url"))
     aux, aux_unvetted, aux_issues = _read_auxiliary(loaded.get("auxiliary"))
     surf_unvetted, surf_issues = _scan_surfaces(loaded)
@@ -826,11 +838,12 @@ def _str_list(value: Any) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()]
 
 
-def read_skill_facts(path: Path) -> SkillFacts:
-    """Read skill facts from ``path``; raises ``OSError``/``ValueError`` when unusable."""
-    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(loaded, dict):
-        raise ValueError("hermes config is not a mapping")
+def read_skill_facts(path: Path, managed: Path | None = None) -> SkillFacts:
+    """Read skill facts from ``path`` with the ``managed`` overlay merged on top.
+
+    Raises ``OSError``/``ValueError`` when either file is unusable.
+    """
+    loaded, _ = _load_config(path, managed)
     create_dir = _get(loaded, "skills.create_dir")
     create_dir = str(create_dir).strip() if isinstance(create_dir, str) else ""
     return SkillFacts(
