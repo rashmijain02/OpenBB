@@ -223,10 +223,10 @@ def admit_workflow(
         return _admit(
             document,
             live_tools,
-            supported_access_versions,
-            allowed_access,
-            tool_access,
-            denied_tools or (),
+            supported_access_versions=supported_access_versions,
+            allowed_access=allowed_access,
+            tool_access=tool_access,
+            denied_tools=denied_tools or (),
         )
     except Exception:  # pylint: disable=broad-exception-caught
         # Fail closed on anything unforeseen (RecursionError, bad live_tools...).
@@ -241,6 +241,7 @@ def admit_workflow(
 def _admit(
     document: Any,
     live_tools: Mapping[str, str],
+    *,
     supported_access_versions: Collection[int],
     allowed_access: Collection[str] | None,
     tool_access: Mapping[str, Collection[str]],
