@@ -103,14 +103,48 @@ def quiet_output() -> Iterator[None]:
         os.close(null_fd)
 
 
+_SIGNAL_NAMES = ("SIGINT", "SIGBREAK")
+_PENDING = threading.Event()
+
+
+@contextlib.contextmanager
+def pending_signals() -> Iterator[None]:
+    """Hold SIGINT/SIGBREAK as a pending cancel for a whole CLI run.
+
+    Installed by ``python -m portfolio_utils.fmp_sync prices`` before the map is
+    read, so Ctrl+C / Ctrl+Break during admission does not kill the process
+    before the run file and end receipt are written: the warm starts already
+    cancelled instead. Previous handlers are restored on exit.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    _PENDING.clear()
+    previous = {}
+
+    def _handler(_signum: int, _frame: Any) -> None:
+        _PENDING.set()
+
+    for name in (n for n in _SIGNAL_NAMES if hasattr(signal, n)):
+        previous[name] = signal.signal(getattr(signal, name), _handler)
+    try:
+        yield
+    finally:
+        for name, handler in previous.items():
+            signal.signal(getattr(signal, name), handler)
+        _PENDING.clear()
+
+
 @contextlib.contextmanager
 def _signal_flag(cancel: CancelController, enabled: bool) -> Iterator[None]:
     """Turn SIGINT/SIGBREAK into the cancel flag (checked between symbols)."""
     if not enabled or threading.current_thread() is not threading.main_thread():
         yield
         return
-    names = [n for n in ("SIGINT", "SIGBREAK") if hasattr(signal, n)]
+    names = [n for n in _SIGNAL_NAMES if hasattr(signal, n)]
     previous = {}
+    if _PENDING.is_set():
+        cancel.signal_flag = True
 
     def _handler(_signum: int, _frame: Any) -> None:
         cancel.signal_flag = True

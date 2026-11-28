@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import signal
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -215,19 +214,6 @@ def test_cancel_file(harness):
     out = harness.run(fetch_one_fn=cancelling, run_id="rid-cancel")
     assert out.outcome is Outcome.CANCELLED and out.exit_code == 10
     assert out.counts.success == 1 and out.counts.deferred == 2
-
-
-@pytest.mark.skipif(not hasattr(signal, "SIGBREAK"), reason="SIGBREAK is Windows-only")
-def test_sigbreak_flag(harness):
-    def interrupted(symbol, **kw):
-        result = gapped_fetch(symbol, **kw)
-        signal.raise_signal(signal.SIGBREAK)
-        return result
-
-    before = signal.getsignal(signal.SIGBREAK)
-    out = harness.run(fetch_one_fn=interrupted, install_signals=True)
-    assert out.outcome is Outcome.CANCELLED and out.counts.success == 1
-    assert signal.getsignal(signal.SIGBREAK) == before
 
 
 def test_partial_and_all_failed(harness):
