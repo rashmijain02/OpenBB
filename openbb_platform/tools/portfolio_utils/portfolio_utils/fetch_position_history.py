@@ -218,9 +218,10 @@ def _connect(database: str | None = None):
 
 
 def _previous_trading_day(ref_date: datetime.date) -> datetime.date:
-    """Deprecated (#1345): weekday-only, no holidays, host-local date.
+    """Return the previous weekday (deprecated shim, #1345).
 
-    Kept as a shim for external callers; readiness uses
+    Weekday-only, no holidays, host-local date. Kept for external callers;
+    readiness uses
     ``portfolio_utils.fmp_sync.sessions.target_session`` (XNYS, actual close +
     publication grace).
     """
@@ -506,6 +507,18 @@ def fetch_history(
     return stats
 
 
+_READY_STATUSES = ("VALIDATED", "WARN")
+
+
+def readiness_is_ready(readiness: dict[str, Any]) -> bool:
+    """Return True only for a validated status with no missing or stale symbols."""
+    return (
+        readiness.get("data_status") in _READY_STATUSES
+        and not readiness.get("missing_price_symbols")
+        and not readiness.get("stale_price_symbols")
+    )
+
+
 class PositionHistoryWarmResult(BaseModel):
     """Structured, JSON-safe outcome of one :func:`run_position_history_warm` run.
 
@@ -527,6 +540,16 @@ class PositionHistoryWarmResult(BaseModel):
     cancelled: bool = False
     readiness: dict[str, Any] = Field(default_factory=dict)
 
+    def readiness_ok(self) -> bool:
+        """Return whether the evaluated readiness may be reported as success.
+
+        An empty ``readiness`` (dry run) was not evaluated and is not a failure.
+        Otherwise only ``VALIDATED``/``WARN`` with nothing missing or stale counts:
+        readiness v2 turns DB problems into check states, so the legacy symbol
+        lists are empty exactly when the database could not be read.
+        """
+        return not self.readiness or readiness_is_ready(self.readiness)
+
     def to_summary(self) -> dict[str, Any]:
         """Return a bounded, JSON-safe summary suitable for a core ``JobResult``."""
         readiness_summary: dict[str, Any] = {}
@@ -539,6 +562,7 @@ class PositionHistoryWarmResult(BaseModel):
                 "stale_price_symbol_count": len(
                     self.readiness.get("stale_price_symbols", [])
                 ),
+                "data_status": self.readiness.get("data_status", "UNVALIDATED"),
             }
         return {
             "requested_symbols": self.requested_symbols,
@@ -799,10 +823,17 @@ def _run_cli_locked(args) -> None:  # pylint: disable=too-many-branches
         if len(stale) > 20:
             print(f"      ... and {len(stale) - 20} more")
 
-    if not missing and not stale:
+    data_status = readiness.get("data_status", "UNVALIDATED")
+    if readiness_is_ready(readiness):
         print("    Status: READY (cache coverage is current for portfolio symbols)")
-    else:
+    elif data_status in _READY_STATUSES:
         print("    Status: PARTIAL (see missing/stale symbols above)")
+    else:
+        print(  # noqa: T201
+            f"    Status: {data_status} -- NOT READY: the database could not be "
+            "validated (connection, query or table problem); the counts above "
+            "are NOT evidence of coverage"
+        )
 
     print(f"{'=' * 70}")
 

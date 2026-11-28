@@ -159,6 +159,14 @@ def _run_position_history_job(
             warnings=["skipped: another price-warming run holds the target lock"],
         )
 
+    if not result.readiness_ok():
+        # Readiness v2 maps DB problems to check states, leaving the legacy
+        # missing/stale lists empty -- never report that as a successful run.
+        raise RuntimeError(
+            "position-history readiness not validated: data_status="
+            f"{result.readiness.get('data_status', 'UNVALIDATED')}"
+        )
+
     warnings = [f"{item['symbol']}: {item['error']}" for item in result.failed]
     if result.cancelled:
         warnings.append("run cancelled before all symbols were processed")
