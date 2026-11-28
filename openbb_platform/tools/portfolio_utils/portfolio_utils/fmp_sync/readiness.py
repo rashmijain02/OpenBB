@@ -29,7 +29,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from portfolio_utils.fmp_sync import datasets, sessions
+from portfolio_utils.fmp_sync import datasets, fundamentals, integrity, sessions
 from portfolio_utils.fmp_sync.checks import (
     CheckResult,
     CheckState,
@@ -77,19 +77,26 @@ QUERIES: dict[str, str] = {
     "private_count:Account_Owner": "SELECT COUNT(*) AS c FROM Account_Owner",
     "private_count:ESPP_Plan": "SELECT COUNT(*) AS c FROM ESPP_Plan",
 }
+QUERIES.update(integrity.INTEGRITY_QUERIES)
+QUERIES.update(fundamentals.FUNDAMENTALS_QUERIES)
 _GRANT = {1044, 1142, 1143}
 _TABLE_MISSING = 1146
 _TIMEOUT = 3024
 _DOWN = {2002, 2003, 2006, 2013, 2055}
-DB_CHECKS = (
+CORE_DB_CHECKS = (
     "db.session",
     "table.equity_historical",
     "table.market_holidays",
     "calendar.holiday_table",
-    "prices.freshness",
-    "prices.null_partition",
-    "prices.duplicates",
 )
+PRICE_CHECKS = ("prices.freshness", "prices.null_partition", "prices.duplicates")
+DB_CHECKS = (*CORE_DB_CHECKS, *PRICE_CHECKS)
+CHECK_GROUPS = ("readiness", "integrity", "fundamentals")
+_GROUP_IDS = {
+    "readiness": PRICE_CHECKS,
+    "integrity": integrity.INTEGRITY_CHECKS,
+    "fundamentals": ("fundamentals.profile_price",),
+}
 
 
 class QueryNotAllowed(ValueError):
@@ -113,6 +120,8 @@ class ReadinessPolicy(BaseModel):
     max_sessions: int = Field(default=30, ge=1, le=252)
     query_timeout_ms: int = Field(default=5000, ge=100, le=60000)
     grace_minutes: int = Field(default=120, ge=0, le=720)
+    max_rows: int = Field(default=20000, ge=100, le=200000)
+    max_symbols: int = Field(default=200, ge=1, le=5000)
 
 
 def error_code(exc: BaseException) -> int | None:
@@ -201,6 +210,7 @@ class ReadinessReport:  # pylint: disable=too-many-instance-attributes
     missing: list[str] = field(default_factory=list)
     stale: list[tuple[str, str]] = field(default_factory=list)
     private_counts: dict[str, int] = field(default_factory=dict)
+    groups: tuple[str, ...] = ("readiness",)
 
     @property
     def data_status(self) -> str:
@@ -239,8 +249,14 @@ def evaluate(  # pylint: disable=too-many-arguments
     database: str | None = None,
     exclusions: int = 0,
     dry_run: bool = False,
+    checks: Sequence[str] = ("readiness",),
 ) -> ReadinessReport:
-    """Evaluate calendar, session, table and price checks for ``symbols``."""
+    """Evaluate calendar, session, table and price checks for ``symbols``.
+
+    ``checks`` selects groups beyond the always-on core: ``readiness`` (price
+    freshness, NULL partitions, duplicates), ``integrity`` and ``fundamentals``.
+    """
+    groups = tuple(g for g in CHECK_GROUPS if g in set(checks))
     pol = (
         policy
         if isinstance(policy, ReadinessPolicy)
@@ -248,7 +264,9 @@ def evaluate(  # pylint: disable=too-many-arguments
     )
     cal = calendar or sessions.xnys_for(now)
     grace = timedelta(minutes=pol.grace_minutes)
-    report = ReadinessReport(None, pol.grace_minutes, cal.name, cal.version)
+    report = ReadinessReport(
+        None, pol.grace_minutes, cal.name, cal.version, groups=groups
+    )
     try:
         report.target_session = sessions.target_session(now, cal, grace)
         report.checks.append(_check("session.target", CheckState.OK, "TARGET_SESSION"))
@@ -266,6 +284,8 @@ def evaluate(  # pylint: disable=too-many-arguments
                 required=False,
             )
         )
+    if "fundamentals" in groups:
+        report.checks.extend(fundamentals.json_blob_sources())
     skip = "DRY_RUN_NO_DB" if dry_run or connect_fn is None else None
     if not symbols and skip is None:
         skip = "NO_SYMBOLS"
@@ -279,7 +299,11 @@ def evaluate(  # pylint: disable=too-many-arguments
 
 def _not_evaluated(report: ReadinessReport, code: str, pol: ReadinessPolicy) -> None:
     done = {c.check_id for c in report.checks}
-    ids = [*DB_CHECKS, *(f"private.{t}" for t in PRIVATE_TABLES if pol.private_counts)]
+    ids = [
+        *CORE_DB_CHECKS,
+        *(i for g in report.groups for i in _GROUP_IDS[g]),
+        *(f"private.{t}" for t in PRIVATE_TABLES if pol.private_counts),
+    ]
     for check_id in ids:
         if check_id not in done:
             report.checks.append(
@@ -364,18 +388,74 @@ def _db_checks(  # pylint: disable=too-many-arguments,too-many-positional-argume
         report.checks.append(check)
     _holiday_checks(report, session, now, cal, present["market_holidays"])
     if present["equity_historical"].state is CheckState.CRITICAL:
-        for check_id in (
-            "prices.freshness",
-            "prices.null_partition",
-            "prices.duplicates",
-        ):
+        for check_id in (i for g in report.groups for i in _GROUP_IDS[g]):
             report.checks.append(
                 _check(check_id, CheckState.NOT_EVALUATED, "TABLE_MISSING")
             )
     else:
-        _price_checks(report, session, symbols, cal, pol)
+        if "readiness" in report.groups:
+            _price_checks(report, session, symbols, cal, pol)
+        if "integrity" in report.groups:
+            _integrity_checks(report, session, symbols, cal, pol)
+        if "fundamentals" in report.groups:
+            _fundamentals_checks(report, session, symbols, visible, pol)
     if pol.private_counts:
         _private_counts(report, session, visible, case_insensitive)
+
+
+def _integrity_checks(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    report: ReadinessReport,
+    session: ReadOnlySession,
+    symbols: list[str],
+    cal: sessions.CalendarSource,
+    pol: ReadinessPolicy,
+) -> None:
+    target = report.target_session
+    if target is None:
+        return
+    window = sessions.sessions_between(cal, cal.first_day, target)[-pol.max_sessions :]
+    report.checks.extend(
+        integrity.evaluate(
+            session.run,
+            symbols,
+            window,
+            cal,
+            interval_type=pol.interval_type,
+            adjustment_type=pol.adjustment_type,
+            limits=integrity.IntegrityLimits(pol.max_rows, pol.max_symbols),
+            failure=_query_failure,
+        )
+    )
+
+
+def _fundamentals_checks(
+    report: ReadinessReport,
+    session: ReadOnlySession,
+    symbols: list[str],
+    visible: set[str],
+    pol: ReadinessPolicy,
+) -> None:
+    if "equity_profile" not in visible:
+        # Source absent: nothing to judge, and not a defect of the audited data.
+        report.checks.append(
+            _check(
+                "fundamentals.profile_price",
+                CheckState.NOT_EVALUATED,
+                "SOURCE_TABLE_ABSENT",
+                required=False,
+            )
+        )
+        return
+    report.checks.append(
+        fundamentals.evaluate_profiles(
+            session.run,
+            symbols,
+            interval_type=pol.interval_type,
+            adjustment_type=pol.adjustment_type,
+            max_rows=pol.max_rows,
+            failure=_query_failure,
+        )
+    )
 
 
 def _table_state(name: str, visible: set[str], case_insensitive: bool) -> CheckResult:
@@ -608,6 +688,7 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
     admit_kwargs: Mapping[str, Any] | None = None,
     connect_fn: Callable[[], Any] | None = None,
     state_root: Path | None = None,
+    checks: Sequence[str] = ("readiness",),
 ) -> AuditResult:
     """Dry-run (no socket) or read-only audit; never takes the target lock, never writes data."""
     # pylint: disable=import-outside-toplevel
@@ -616,6 +697,8 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
     run_id = run_id or uuid.uuid4().hex
     if now.tzinfo is None:
         return _result(run_id, mode, "BLOCKED_CONFIG", 40, "NAIVE_NOW")
+    if not checks or any(c not in CHECK_GROUPS for c in checks):
+        return _result(run_id, mode, "BLOCKED_CONFIG", 40, "INVALID_CHECKS")
     try:
         locking.resolve_lock_database(dmap.target)
         pol = ReadinessPolicy(**(getattr(dmap, "readiness", None) or {}))
@@ -648,6 +731,7 @@ def run_audit(  # pylint: disable=too-many-arguments,too-many-locals
         database=dmap.target,
         exclusions=exclusions,
         dry_run=mode == "dry_run",
+        checks=checks,
     )
     db = next((c for c in report.checks if c.check_id == "db.session"), None)
     outcome, code = "OK", 0

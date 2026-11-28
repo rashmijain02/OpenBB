@@ -23,7 +23,11 @@ CREATE TABLE {name} (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol VARCHAR(20) NOT NULL,
     date DATE NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
     close REAL,
+    volume INTEGER,
     interval_type VARCHAR(10) DEFAULT '1d',
     adjustment_type VARCHAR(20) DEFAULT 'splits_only',
     is_filled BOOLEAN DEFAULT 0,
@@ -39,6 +43,16 @@ CREATE TABLE market_holidays (
     holiday_name VARCHAR(100),
     year INTEGER,
     PRIMARY KEY (holiday_date, market)
+)
+"""
+PROFILE_DDL = """
+CREATE TABLE equity_profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol VARCHAR(50),
+    date DATE,
+    currency VARCHAR(10),
+    price REAL,
+    market_cap INTEGER
 )
 """
 _WRITE = re.compile(
@@ -139,9 +153,15 @@ def build(  # pylint: disable=too-many-arguments
     private: Mapping[str, int] | None = None,
     equity_name: str = "equity_historical",
     with_holidays: bool = True,
+    raw_rows: Iterable[Mapping] = (),
+    profiles: Iterable[tuple] | None = None,
     lctn: int = 0,
 ) -> SqliteConn:
-    """Seed a connection. ``prices`` rows: (symbol, date, interval, adjustment, valid, filled)."""
+    """Seed a connection. ``prices`` rows: (symbol, date, interval, adjustment, valid, filled).
+
+    ``raw_rows`` are dict inserts (any equity column); ``profiles`` rows are
+    (symbol, date, currency, price, market_cap) for ``equity_profile``.
+    """
     conn = SqliteConn(database, lctn)
     conn.db.execute(EQUITY_DDL.format(name=equity_name))
     for symbol, day, interval, adjustment, valid, filled in prices:
@@ -150,6 +170,21 @@ def build(  # pylint: disable=too-many-arguments
             " is_valid, is_filled) VALUES (?, ?, 1.0, ?, ?, ?, ?)",
             (symbol, day.isoformat(), interval, adjustment, valid, filled),
         )
+    for raw in raw_rows:
+        cols = ", ".join(raw)
+        marks = ", ".join("?" for _ in raw)
+        conn.db.execute(
+            f"INSERT INTO {equity_name} ({cols}) VALUES ({marks})",
+            [v.isoformat() if isinstance(v, date) else v for v in raw.values()],
+        )
+    if profiles is not None:
+        conn.db.execute(PROFILE_DDL)
+        for symbol, day, currency, price, cap in profiles:
+            conn.db.execute(
+                "INSERT INTO equity_profile (symbol, date, currency, price, market_cap)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (symbol, day.isoformat() if day else None, currency, price, cap),
+            )
     if with_holidays:
         conn.db.execute(HOLIDAY_DDL)
         for day in holidays:

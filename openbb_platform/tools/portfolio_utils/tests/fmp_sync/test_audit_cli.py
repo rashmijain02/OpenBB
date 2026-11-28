@@ -178,3 +178,31 @@ def test_audit_read_only_bad_readiness_policy_blocks(world):  # noqa: F811
         world, lambda: pytest.fail("must not connect"), readiness={"bogus": 1}
     )
     assert (out.outcome, out.exit_code) == ("BLOCKED_CONFIG", 40)
+
+
+def test_audit_dry_run_integrity_fundamentals_not_evaluated(tmp_path, sockets, capsys):
+    code = cli.main(
+        [
+            "audit",
+            "--dry-run",
+            "--map",
+            str(_map(tmp_path)),
+            "--now",
+            NOW_ISO,
+            "--checks",
+            "integrity,fundamentals",
+        ]
+    )
+    line = json.loads(capsys.readouterr().out.strip())
+    assert code == 0 and line["data_status"] == "UNVALIDATED"
+    assert {"DRY_RUN_NO_DB", "SOURCE_NOT_ADMITTED"} <= set(line["findings"])
+    assert line["states"]["NOT_EVALUATED"] >= 9
+    assert sockets == []
+
+
+def test_audit_unknown_checks_group_rejected(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(
+            ["audit", "--dry-run", "--map", str(_map(tmp_path)), "--checks", "bogus"]
+        )
+    assert exc.value.code == 2

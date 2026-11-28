@@ -87,6 +87,20 @@ def _aware(value: str) -> datetime:
     return parsed
 
 
+def _checks(value: str) -> tuple[str, ...]:
+    groups = ("readiness", "integrity", "fundamentals")
+    names = (
+        groups
+        if value.strip() == "all"
+        else tuple(n for n in (p.strip() for p in value.split(",")) if n)
+    )
+    if not names or any(n not in groups for n in names):
+        raise argparse.ArgumentTypeError(
+            "--checks takes readiness, integrity, fundamentals or all"
+        )
+    return names
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m portfolio_utils.fmp_sync")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -110,6 +124,12 @@ def _parser() -> argparse.ArgumentParser:
         "--target-class", choices=("disposable", "production"), default="disposable"
     )
     audit.add_argument("--run-id", type=_run_id, default=None)
+    audit.add_argument(
+        "--checks",
+        type=_checks,
+        default=("readiness",),
+        help="comma list of readiness,integrity,fundamentals, or all",
+    )
     lock = sub.add_parser("lock", help="target lock status")
     lock.add_argument("--status", action="store_true", required=True)
     lock.add_argument("--map", required=True, type=Path)
@@ -175,6 +195,7 @@ def _audit(
             now=args.now or readiness.utc_now(),
             requested_class=args.target_class,
             run_id=args.run_id,
+            checks=args.checks,
             **(extra or {}),
         )
     except LockRootRejected:
