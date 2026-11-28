@@ -1,0 +1,14 @@
+{
+  "nautilus_version": "1.231.0",
+  "python_version": "3.12.15",
+  "python_tag": "cp312",
+  "wheel_tag": "cp312-cp312-win_amd64",
+  "platform_tag": "win_amd64",
+  "high_precision": false,
+  "fixed_precision": 9,
+  "module_origin_in_prefix": true,
+  "wheel_sha256": "0697f51e9143f9d8d040f75d2e6a45218003cc34f7ea5b0eb2f9cda6935427de",
+  "license_files": [
+    {"name": "LICENSE", "sha256": "ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c"}
+  ]
+}
