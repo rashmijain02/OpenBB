@@ -148,10 +148,9 @@ PRIVATE_SECTIONS_DOC = (
     f"{_USER_DIR}/privmarkeruserpath/notes\n\n## Quail secret\n\n"
     "quail api_key=privmarkersecret123\n",
 )
-# A synthetic notebook written into the temporary repo only; the suffix is
-# assembled so this probe holds no notebook-path constant (#1340 hygiene).
-_NB_SUFFIX = ".ipy" + "nb"
-NOTEBOOK_DOC = ("adv.pangolin", "docs/examples/adv_pangolin" + _NB_SUFFIX)
+# A synthetic notebook path, written into the temporary repo only; it is a
+# reviewed entry in the #1340 import-hygiene allowlist.
+NOTEBOOK_DOC = ("adv.pangolin", "docs/examples/adv_pangolin.ipynb")
 _NB_MARKERS = (
     "privmarkercode",
     "privmarkeroutput",

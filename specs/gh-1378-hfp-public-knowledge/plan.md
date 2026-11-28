@@ -258,5 +258,6 @@ merge (as #1339 L5). Security review is mandatory: new LLM-exposed tools and a w
 
   Everything is repo-tracked and pinned by blob SHA, and the register itself is reviewed in the PR. The owner can narrow it later.
 - **Q3:** official tax sources are pointer-only rows from research.md §8, with no fetching. Fetching needs SOURCES-PINNED and TAX-YEAR.
+- **Drift gate:** HEAD drift is enforced by running `python -m openbb_agents.hermes_integration.knowledge.register --check` (with drift, no `--no-drift`) as a local-CI merge-gate step on any PR that touches registered docs or the register. The unit suite uses `--no-drift`, so it never fails on unrelated commits.
 - **Q7:** merge on CODE-ONLY evidence with `Refs`, and close #1378 after the owner's L6 passes.
 - **Q2, Q4–Q6, Q8–Q9:** accepted as recommended. There is no semantic index; that stays behind the OPTIONAL-SEMANTIC owner gate.

@@ -15,7 +15,9 @@ the committed register against the repository and prints identifiers, codes and
 counts only (never document text). Exit 0 clean, 1 on any exclusion, scan hit
 or HEAD drift, 2 on an invalid register, 3 on usage errors. ``--no-drift``
 reports HEAD drift without failing (pins at ``reviewed_commit`` are still
-verified); the repository test suite uses that mode. Re-pinning is reproducible
+verified); the repository test suite uses that mode, so HEAD drift is gated
+by running ``--check`` (with drift) as a local-CI merge-gate step on any PR that
+touches registered docs or the register. Re-pinning is reproducible
 with ``scripts/build_public_sources_register.py``.
 """
 
