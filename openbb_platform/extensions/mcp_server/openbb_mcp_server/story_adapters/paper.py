@@ -57,7 +57,13 @@ from pydantic import (
 )
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
-from openbb_mcp_server.story_adapters.registry import RunStore, default_store_path
+from openbb_mcp_server.story_adapters.registry import (
+    RunStore,
+    WorkflowCatalog,
+    default_store_path,
+    default_workflow_dir,
+    ensure_workflow_current,
+)
 
 APPROVAL_KEY_ENV = "OPENBB_STORY_APPROVAL_KEY"
 PAPER_ROOT_ENV = "OPENBB_STORY_PAPER_ROOT"
@@ -554,9 +560,13 @@ def _unprocessable(error: Exception) -> HTTPException:
 
 
 def build_router(  # pylint: disable=too-many-statements
-    runs: RunStore, store: PaperStore, principal: str
+    runs: RunStore,
+    store: PaperStore,
+    principal: str,
+    workflows: WorkflowCatalog | None = None,
 ) -> APIRouter:
     """Return the paper routes bound to one principal."""
+    workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story", tags=["story"])
     authenticated = [Depends(AuthService().auth_hook)]
 
@@ -578,10 +588,12 @@ def build_router(  # pylint: disable=too-many-statements
             )
         return key
 
-    def _owned_run(run_id: str):
+    def _owned_run(run_id: str, *, mutating: bool = False):
         record = runs.get(principal, run_id)
         if record is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
+        if mutating:
+            ensure_workflow_current(record, workflow_catalog)
         return record
 
     def _owned_sandbox(sandbox_id: str) -> sqlite3.Row:
@@ -599,7 +611,7 @@ def build_router(  # pylint: disable=too-many-statements
     @_route("post", "/runs/{run_id}/paper/sandboxes", "story_paper_sandbox_create")
     def story_paper_sandbox_create(run_id: str, request: SandboxCreate) -> dict:
         """Create an empty, isolated paper book for one run."""
-        _owned_run(run_id)
+        _owned_run(run_id, mutating=True)
         with store.connect() as connection:
             count = connection.execute(
                 "SELECT COUNT(*) FROM story_paper_sandboxes"
@@ -654,7 +666,7 @@ def build_router(  # pylint: disable=too-many-statements
         """Record one action for a person to approve; nothing changes yet."""
         _key()
         sandbox = _owned_sandbox(sandbox_id)
-        run = _owned_run(sandbox["run_id"])
+        run = _owned_run(sandbox["run_id"], mutating=True)
         if request.action not in engine_actions(sandbox["engine"]):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -758,7 +770,7 @@ def build_router(  # pylint: disable=too-many-statements
             )
         if datetime.fromisoformat(row["expires_at"]) <= _now():
             raise HTTPException(status.HTTP_410_GONE, "The approval has expired.")
-        run = _owned_run(row["run_id"])
+        run = _owned_run(row["run_id"], mutating=True)
         if run.manifest_version != row["manifest_version"]:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
@@ -807,6 +819,7 @@ def compose_story_paper_app(
     principal: str,
     store_path: Path | None = None,
     paper_root: Path | None = None,
+    workflow_dir: Path | None = None,
 ) -> FastAPI:
     """Add the paper routes, bound to ``principal``, to an isolated app copy."""
     if not principal:
@@ -820,6 +833,11 @@ def compose_story_paper_app(
     composed.router.middleware_stack = composed.router.app
     composed.middleware_stack = None
     composed.router.routes = list(source_app.router.routes)
-    composed.include_router(build_router(RunStore(db_path), store, principal))
+    workflows = WorkflowCatalog(
+        workflow_dir if workflow_dir is not None else default_workflow_dir()
+    )
+    composed.include_router(
+        build_router(RunStore(db_path), store, principal, workflows)
+    )
     composed.openapi_schema = None
     return composed
