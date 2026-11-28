@@ -77,7 +77,9 @@ def test_access_outside_allowed_set_not_granted(shipped_document, live_tools):
     assert not admission.admitted
     assert "access_not_granted" in codes(admission)
     granted = admit_workflow(
-        shipped_document, live_tools=live_tools, allowed_access={"analysis"}
+        shipped_document,
+        live_tools=live_tools,
+        allowed_access={"analysis", "artifact"},
     )
     assert granted.admitted
 
@@ -243,3 +245,81 @@ def test_cli_exit_codes(tmp_path, live_tools, capsys):
         ["--workflow", "no.such.one", "--live-file", str(live)], capsys
     )
     assert missing == 3
+
+
+# --- Review finding 3: declared access is checked against the reviewed class.
+
+
+def test_shipped_pins_declare_at_least_their_reviewed_access_class():
+    """The real classes come from the reviewed capability policy, not the manifest."""
+    # pylint: disable=import-outside-toplevel
+    from openbb_agents.hermes_integration.tool_access import reviewed_tool_access
+
+    classes = reviewed_tool_access()
+    assert classes["platform:story_concentration"] == {"provider_read"}
+    assert classes["platform:story_run_checkpoint"] == {"story_state"}
+    assert classes["platform:story_run_create"] == {"story_state"}
+
+
+def test_state_writing_tool_declared_as_analysis_is_access_understated(
+    shipped_document, live_tools
+):
+    pin = shipped_document["capabilities"]["platform:story_run_checkpoint"]
+    pin["access"] = "analysis"
+    admission = admit_workflow(shipped_document, live_tools=live_tools)
+    assert not admission.admitted
+    assert codes(admission) == {"access_understated"}
+
+
+def test_access_understated_against_an_explicit_class_map(shipped_document, live_tools):
+    """A tool whose real class is financial_mutation is covered by no v1 word."""
+    tool_access = {key: {"provider_read"} for key in live_tools}
+    tool_access["platform:story_concentration"] = {"financial_mutation"}
+    admission = admit_workflow(
+        shipped_document, live_tools=live_tools, tool_access=tool_access
+    )
+    assert codes(admission) == {"access_understated"}
+    assert admit_workflow(
+        shipped_document,
+        live_tools=live_tools,
+        tool_access={key: {"provider_read"} for key in live_tools},
+    ).admitted
+
+
+def test_unclassified_tool_is_rejected(shipped_document, live_tools):
+    tool_access = {key: {"provider_read"} for key in live_tools}
+    del tool_access["platform:story_construction_targets"]
+    admission = admit_workflow(
+        shipped_document, live_tools=live_tools, tool_access=tool_access
+    )
+    assert codes(admission) == {"access_unclassified"}
+
+
+# --- Review finding 5: one capability per stage until fan-out is supported.
+
+
+def test_multi_capability_stage_is_rejected(shipped_document, live_tools):
+    shipped_document["stages"][1]["capabilities"].append("platform:story_concentration")
+    admission = admit_workflow(shipped_document, live_tools=live_tools)
+    assert codes(admission) == {"multi_capability_unsupported"}
+
+
+# --- Review finding 8: behaviour, not vocabulary constants.
+
+
+@pytest.mark.parametrize(
+    "literal", ["household_meta", "tax_compute", "document_evidence"]
+)
+def test_v2_only_literal_is_unknown_under_v1_and_unmapped_under_v2(
+    shipped_document, live_tools, literal
+):
+    shipped_document["capabilities"]["platform:story_concentration"]["access"] = literal
+    under_v1 = admit_workflow(
+        shipped_document, live_tools=live_tools, supported_access_versions={1, 2}
+    )
+    assert codes(under_v1) == {"unknown_access"}
+    shipped_document["access_version"] = 2
+    under_v2 = admit_workflow(
+        shipped_document, live_tools=live_tools, supported_access_versions={1, 2}
+    )
+    assert codes(under_v2) == {"access_unmapped"}

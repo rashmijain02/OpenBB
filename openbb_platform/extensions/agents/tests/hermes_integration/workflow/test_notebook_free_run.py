@@ -351,3 +351,34 @@ def test_in_process_portfolio_ops_run_records_workflow_digest_in_registry():
     }
     assert record["state_version"] == 3
     assert record["manifest_version"] == result.manifest_version
+
+
+def test_unpinned_run_create_is_rejected_before_any_call():
+    """Review finding 3: run bookkeeping tools are pinned, so drift is detected."""
+    document = json.loads(DOCUMENT.read_text("utf-8"))
+    assert "platform:story_run_create" in document["capabilities"]
+    live = _live(document)
+    del document["capabilities"]["platform:story_run_create"]
+    sentinel = _Sentinel(workflow_manifest_sha256(document))
+    result = asyncio.run(
+        run_workflow(
+            document, {"weights": dict(SYNTHETIC_WEIGHTS)}, sentinel, live_tools=live
+        )
+    )
+    assert result.admitted is False
+    assert {r.code for r in result.rejections} == {"capability_unresolved"}
+    assert sentinel.calls == []
+
+
+def test_drifted_run_create_schema_is_rejected():
+    document = json.loads(DOCUMENT.read_text("utf-8"))
+    live = _live(document)
+    live["platform:story_run_create"] = "0" * 64
+    sentinel = _Sentinel(workflow_manifest_sha256(document))
+    result = asyncio.run(
+        run_workflow(
+            document, {"weights": dict(SYNTHETIC_WEIGHTS)}, sentinel, live_tools=live
+        )
+    )
+    assert {r.code for r in result.rejections} == {"schema_drift"}
+    assert sentinel.calls == []

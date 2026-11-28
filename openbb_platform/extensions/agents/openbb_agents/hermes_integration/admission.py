@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from openbb_agents.hermes_integration.workflow import (
+    ACCESS_COVERS,
     ACCESS_VOCABULARIES,
     MAPPED_ACCESS,
     WorkflowManifest,
@@ -28,11 +29,14 @@ REJECTION_CODES = (
     "unknown_access",
     "access_unmapped",
     "access_not_granted",
+    "access_understated",
+    "access_unclassified",
     "capability_unresolved",
     "tool_absent",
     "schema_drift",
     "notebook_dependency",
     "graph_invalid",
+    "multi_capability_unsupported",
 )
 
 NOTEBOOK_KEYS = frozenset({"cells", "notebook_path", "source_sha256"})
@@ -121,6 +125,7 @@ def _check_access(
     manifest: WorkflowManifest,
     supported_access_versions: Collection[int],
     allowed_access: Collection[str] | None,
+    tool_access: Mapping[str, Collection[str]],
 ) -> list[Rejection]:
     version = manifest.access_version
     vocabulary = ACCESS_VOCABULARIES.get(version)
@@ -136,7 +141,21 @@ def _check_access(
             )
         elif allowed_access is not None and pin.access not in allowed_access:
             found.append(_reject("access_not_granted", f"{name}: {pin.access}"))
+        else:
+            found.extend(_check_reviewed_class(name, pin.access, pin, tool_access))
     return found
+
+
+def _check_reviewed_class(
+    name: str, declared: str, pin: Any, tool_access: Mapping[str, Collection[str]]
+) -> list[Rejection]:
+    """Refuse a pin declaring less than the tool's reviewed access class."""
+    real = tool_access.get(f"{pin.server}:{pin.tool}")
+    if not real:
+        return [_reject("access_unclassified", f"{name}: no reviewed access class")]
+    if not set(real) <= ACCESS_COVERS.get(declared, frozenset()):
+        return [_reject("access_understated", f"{name}: declared '{declared}'")]
+    return []
 
 
 def _check_capabilities(
@@ -144,6 +163,10 @@ def _check_capabilities(
 ) -> list[Rejection]:
     found = []
     for stage in manifest.stages:
+        if len(stage.capabilities) > 1:
+            found.append(
+                _reject("multi_capability_unsupported", f"{stage.id}: one per stage")
+            )
         for name in stage.capabilities:
             if name not in manifest.capabilities:
                 found.append(_reject("capability_unresolved", f"{stage.id}: '{name}'"))
@@ -164,14 +187,30 @@ def admit_workflow(
     live_tools: Mapping[str, str],
     supported_access_versions: Collection[int] = frozenset({1}),
     allowed_access: Collection[str] | None = None,
+    tool_access: Mapping[str, Collection[str]] | None = None,
 ) -> WorkflowAdmission:
     """Decide whether ``document`` may run; never raises.
 
     ``live_tools`` maps ``"<server>:<tool>"`` to the SHA-256 of the live tool's
     canonical input schema. A same-named tool on another server never counts.
+    ``tool_access`` maps ``"<server>:<tool>"`` to its reviewed access classes;
+    it defaults to the reviewed capability policy (``tool_access`` module).
     """
     try:
-        return _admit(document, live_tools, supported_access_versions, allowed_access)
+        if tool_access is None:
+            # pylint: disable-next=import-outside-toplevel
+            from openbb_agents.hermes_integration.tool_access import (
+                reviewed_tool_access,
+            )
+
+            tool_access = reviewed_tool_access()
+        return _admit(
+            document,
+            live_tools,
+            supported_access_versions,
+            allowed_access,
+            tool_access,
+        )
     except Exception:  # pylint: disable=broad-exception-caught
         # Fail closed on anything unforeseen (RecursionError, bad live_tools...).
         return WorkflowAdmission(
@@ -187,6 +226,7 @@ def _admit(
     live_tools: Mapping[str, str],
     supported_access_versions: Collection[int],
     allowed_access: Collection[str] | None,
+    tool_access: Mapping[str, Collection[str]],
 ) -> WorkflowAdmission:
     rejections = _scan_notebook_dependencies(document)
     if not isinstance(document, Mapping):
@@ -199,7 +239,7 @@ def _admit(
         return WorkflowAdmission(False, None, None, tuple(rejections))
 
     rejections.extend(
-        _check_access(manifest, supported_access_versions, allowed_access)
+        _check_access(manifest, supported_access_versions, allowed_access, tool_access)
     )
     rejections.extend(_check_capabilities(manifest, live_tools))
     try:

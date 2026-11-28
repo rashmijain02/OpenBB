@@ -53,6 +53,10 @@ SYNTHETIC_WEIGHTS: Mapping[str, float] = {
     "SYN_L": 0.02,
 }
 _CHECKPOINT_TOOL = "story_run_checkpoint"
+_CREATE_TOOL = "story_run_create"
+# Registry tools the runner calls itself; each must be pinned (schema + access)
+# like any stage capability so drift and understated access are caught.
+_RUN_TOOLS = (_CREATE_TOOL, _CHECKPOINT_TOOL)
 _MAX_ERROR = 200
 
 
@@ -157,7 +161,9 @@ _ARGUMENTS: Mapping[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
 
 
 def _reject_result(
-    document: Any, admission: Any, stage_ids: Sequence[str]
+    admission: Any,
+    stage_ids: Sequence[str],
+    rejections: Sequence[Rejection] | None = None,
 ) -> WorkflowRunResult:
     return WorkflowRunResult(
         admitted=False,
@@ -166,8 +172,22 @@ def _reject_result(
         manifest_version=None,
         run_id=None,
         stages=tuple(StageResult(stage_id, "not_run") for stage_id in stage_ids),
-        rejections=admission.rejections,
+        rejections=tuple(rejections or admission.rejections),
     )
+
+
+def _run_tool_pins(manifest: WorkflowManifest) -> tuple[dict[str, Any], list]:
+    """Return the pin of each run tool, and rejections for any not pinned."""
+    pins: dict[str, Any] = {}
+    for pin in manifest.capabilities.values():
+        if pin.tool in _RUN_TOOLS:
+            pins.setdefault(pin.tool, pin)
+    missing = [
+        Rejection("capability_unresolved", f"run tool '{tool}' is not pinned")
+        for tool in _RUN_TOOLS
+        if tool not in pins
+    ]
+    return pins, missing
 
 
 def _document_stage_ids(document: Any) -> list[str]:
@@ -187,17 +207,22 @@ async def run_workflow(
     """Admit and execute ``document``; never retries, never falls back."""
     admission = admit_workflow(document, live_tools=live_tools)
     if not admission.admitted:
-        return _reject_result(document, admission, _document_stage_ids(document))
+        return _reject_result(admission, _document_stage_ids(document))
 
     manifest = WorkflowManifest.model_validate(document)
+    run_pins, missing = _run_tool_pins(manifest)
+    if missing:
+        return _reject_result(admission, _document_stage_ids(document), missing)
     digest = admission.workflow_manifest_sha256 or ""
     stages = _ordered(manifest)
     not_run = tuple(StageResult(s.id, "not_run") for s in stages)
-    server = next(iter(manifest.capabilities.values())).server
+    create, checkpoint_pin = run_pins[_CREATE_TOOL], run_pins[_CHECKPOINT_TOOL]
 
     try:
         run = await invoker.call(
-            server, "story_run_create", {"story_id": f"workflow:{manifest.workflow_id}"}
+            create.server,
+            create.tool,
+            {"story_id": f"workflow:{manifest.workflow_id}"},
         )
         if run.get("workflow_manifest_sha256") != digest:
             raise RuntimeError("registry run is not bound to this workflow digest")
@@ -220,8 +245,8 @@ async def run_workflow(
 
     async def checkpoint(stage_id: str, status: str, body: Mapping[str, Any]) -> None:
         reply = await invoker.call(
-            server,
-            _CHECKPOINT_TOOL,
+            checkpoint_pin.server,
+            checkpoint_pin.tool,
             {
                 "run_id": state["run_id"],
                 "expected_version": state["version"],

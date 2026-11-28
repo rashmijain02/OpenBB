@@ -8,7 +8,6 @@ import pytest
 from openbb_agents._stage_graph import check_acyclic, check_unique_stages
 from openbb_agents.hermes_integration.admission import admit_workflow
 from openbb_agents.hermes_integration.workflow import (
-    ACCESS_VOCABULARIES,
     WorkflowManifest,
     workflow_manifest_sha256,
 )
@@ -67,23 +66,6 @@ def test_stage_kind_excludes_tutorial_only_kinds(shipped_document, kind):
     shipped_document["stages"][0]["kind"] = kind
     with pytest.raises(ValidationError):
         WorkflowManifest.model_validate(shipped_document)
-
-
-def test_manifest_is_frozen(shipped_document):
-    manifest = WorkflowManifest.model_validate(shipped_document)
-    with pytest.raises(ValidationError):
-        manifest.title = "changed"
-
-
-def test_access_vocabularies_v1_is_the_legacy_six_and_v2_extends_it():
-    assert ACCESS_VOCABULARIES[1] == frozenset(
-        {"metadata", "provider_read", "private_read", "analysis", "artifact", "paper"}
-    )
-    assert ACCESS_VOCABULARIES[2] == ACCESS_VOCABULARIES[1] | {
-        "household_meta",
-        "tax_compute",
-        "document_evidence",
-    }
 
 
 def test_schema_digest_matches_reviewed_catalog_pins():

@@ -48,6 +48,21 @@ ACCESS_VOCABULARIES: Mapping[int, frozenset[str]] = {
 # PolicyGate access module; until then only the legacy six are mapped.
 MAPPED_ACCESS: frozenset[str] = _V1_ACCESS
 
+_READ = frozenset({"public_metadata", "provider_read"})
+# Reviewed ``AccessClass`` values (``openbb_mcp_server.models.capability``)
+# that each mapped access word may cover. A pinned tool whose reviewed class is
+# outside the set of its declared word is ``access_understated``. Classes no
+# word covers (``filesystem_write``, ``cache_maintenance``, ``job_control``,
+# ``workspace_mutation``, ``financial_mutation``) are never admitted.
+ACCESS_COVERS: Mapping[str, frozenset[str]] = {
+    "metadata": frozenset({"public_metadata"}),
+    "provider_read": _READ,
+    "analysis": _READ,
+    "private_read": _READ | {"private_portfolio_read"},
+    "artifact": _READ | {"story_state"},
+    "paper": _READ | {"story_state", "story_paper"},
+}
+
 
 class _Contract(BaseModel):
     """Strict base: unknown fields are errors and nothing is coerced.
