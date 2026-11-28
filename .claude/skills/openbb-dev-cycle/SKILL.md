@@ -68,7 +68,7 @@ alone do not pass a gate.
 | PowerShell (`deploy/windows/**`) | Pester under **pwsh 7 with Pester 4.10.1**: `pwsh -NoProfile -Command "Import-Module Pester -RequiredVersion 4.10.1; Invoke-Pester deploy/windows/tests -EnableExit"`. Windows PowerShell 5.1 ships Pester 3.4 and is not a valid runner. |
 | .NET (`services/windows/**`) | `dotnet test services/windows/OpenBB.ServiceHost/tests/OpenBB.ServiceHost.Tests` (builds the test child too) |
 | Anything needing admin/UAC or a real service/browser | Live acceptance, human in the loop (template below) |
-| Every PR before merge | Local code, security and privacy reviews (`local-code-review`, `local-security-review`, `local-privacy-review`; in Claude Code `/code-review` and `/security-review` cover the first two) on the PR diff vs its base; every finding fixed or filed |
+| Every PR before merge | Local code, security and privacy reviews (`local-code-review`, `local-security-review`, `local-privacy-review`, canonical at `.claude/skills/<name>/SKILL.md`; in Claude Code `/code-review` and `/security-review` cover the first two) on the PR diff vs its base; every finding fixed or filed |
 | Every batch before merge | Local CI: `scripts/local_ci.py --merged-with origin/portfolio` (OM8). Until `scripts/local_ci.py` is on `portfolio`, the lead runs, locally, every GitHub Actions job the PR's changed files would trigger (commands from `.github/workflows/*.yml`), posts the evidence in a PR comment, and names in that comment any job that cannot be reproduced (never counted as passed). No merge without that evidence. |
 
 No CI workflow runs the Pester or .NET suites (STATE.md gap G4), so they are mandatory locally when
