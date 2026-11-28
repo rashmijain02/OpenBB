@@ -36,6 +36,7 @@ from openbb_backtest.interfaces import (
     Engine,
     Strategy,
 )  # noqa: F401, E402
+from openbb_backtest.modeled_differences import MODELED_DIFFERENCES
 from openbb_backtest.models import (
     BacktestConfig,
     BacktestResult,
@@ -226,16 +227,6 @@ def execute_run(  # pylint: disable=too-many-arguments
         strategy_review="unreviewed",
     )
     return sanitize_result(result.model_copy(update={"provenance": provenance}))
-
-
-#: Documented modelling differences between the nautilus reference and the
-#: legacy event engine (#1357 T03 document ids); reconcile is diagnostic only.
-MODELED_DIFFERENCES = (
-    "whole_share_quantities",
-    "settled_cash",
-    "fill_timing",
-    "fee_model",
-)
 
 
 def _sweep_nautilus(

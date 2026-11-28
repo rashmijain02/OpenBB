@@ -13,6 +13,10 @@ Subcommands:
   real worker entrypoint with the event-replay fake engine on the spec's
   synthetic ``bars``; ``native`` / ``docker`` use the configured worker and
   the fmp_cached export. Exit 0 on an assembled experiment, 2 on an error.
+- ``bench``: bounded benchmark of realistic validation experiments (see
+  :mod:`openbb_backtest.validation.bench`); prints counts, codes and timings
+  only. ``--inject-kill K`` / ``--inject-fail-once`` / ``--inject-reject`` /
+  ``--inject-changed-data`` add deterministic failure injection.
 
 Run as ``python -m openbb_backtest.validation.experiment <subcommand>``.
 """
@@ -148,6 +152,47 @@ def _run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _bench(args: argparse.Namespace) -> int:
+    # pylint: disable=import-outside-toplevel  # lazy: keeps Nautilus optional
+    from openbb_backtest.errors import BacktestError
+    from openbb_backtest.validation import bench
+
+    try:
+        spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+        report = bench.run_bench(
+            spec,
+            runtime=args.runtime,
+            runs_root=Path(args.runs_root) if args.runs_root else None,
+            injections=bench.Injections(
+                kill_after=args.inject_kill,
+                fail_once=args.inject_fail_once,
+                reject=args.inject_reject,
+                changed_data=args.inject_changed_data,
+            ),
+        )
+    except (BacktestError, OSError, ValueError, KeyError, TypeError) as exc:
+        sys.stdout.write(
+            json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}) + "\n"
+        )
+        return 2
+    if args.format == "json":
+        out = json.dumps({"ok": True, **report}, indent=2, sort_keys=True)
+    else:
+        lines = [
+            f"{r['scenario']} planned={r['n_planned']} ok={r['n_ok']} "
+            f"failed={r['n_failed']} excluded={r['n_excluded']} N={r['n_trials_dsr']} "
+            f"attempts={r['attempts']} complete={r['matrix_complete']} "
+            f"sha={str(r['matrix_sha256'])[:12]} elapsed_s={r['elapsed_s']}"
+            for r in report["scenarios"]
+        ]
+        lines.append(f"totals: {report['totals']}")
+        lines.append(f"peak_concurrency: {report['peak_concurrency']}")
+        lines.append(f"elapsed_s: {report['elapsed_s']}")
+        out = "\n".join(lines)
+    sys.stdout.write(out + "\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI and return the exit code."""
     ap = argparse.ArgumentParser(prog="experiment", description=__doc__)
@@ -164,12 +209,23 @@ def main(argv: list[str] | None = None) -> int:
         help="ledger root (default: a temporary directory, so no resume)",
     )
     rn.add_argument("--format", choices=["json", "text"], default="text")
+    bn = sub.add_parser("bench", help="bounded benchmark of validation experiments")
+    bn.add_argument("--spec", type=Path, required=True)
+    bn.add_argument("--runtime", choices=["fake", "native", "docker"], required=True)
+    bn.add_argument("--runs-root", default=None)
+    bn.add_argument("--format", choices=["json", "text"], default="text")
+    bn.add_argument("--inject-kill", type=int, default=None, metavar="K")
+    bn.add_argument("--inject-fail-once", action="store_true")
+    bn.add_argument("--inject-reject", action="store_true")
+    bn.add_argument("--inject-changed-data", action="store_true")
     try:
         args = ap.parse_args(argv)
     except SystemExit:
         return 2
     if args.command == "run":
         return _run(args)
+    if args.command == "bench":
+        return _bench(args)
     return _qualify_stats(args)
 
 

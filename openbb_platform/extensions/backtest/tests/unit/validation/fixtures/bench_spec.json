@@ -1,0 +1,76 @@
+{
+ "source": "synthetic (seeded random walk, numpy default_rng(1357)); no real prices; native runtime reads the cached export for the same symbols instead",
+ "generator": {
+  "seed": 1357,
+  "start": "2021-01-04",
+  "end": "2024-01-04",
+  "calendar": "XNYS",
+  "drifts": {
+   "AAA": 0.001,
+   "BBB": -0.0005
+  }
+ },
+ "initial_cash": "100000.00",
+ "methods": [
+  "wfo",
+  "cpcv"
+ ],
+ "policies": [
+  "continuous",
+  "per_fold"
+ ],
+ "strategies": [
+  {
+   "strategy": "target_weight_rebalance",
+   "strategy_version": "1.0.0",
+   "strategy_params": {
+    "execution": {
+     "fill_timing": "same_close"
+    }
+   },
+   "param_grid": {
+    "weights": [
+     {
+      "AAA": "0.5",
+      "BBB": "0.5"
+     },
+     {
+      "AAA": "0.8",
+      "BBB": "0.2"
+     },
+     {
+      "AAA": "0.2",
+      "BBB": "0.7"
+     }
+    ],
+    "rebalance_every_sessions": [
+     5,
+     10,
+     21
+    ]
+   }
+  },
+  {
+   "strategy": "buy_and_hold",
+   "strategy_version": "1.0.0",
+   "param_grid": {
+    "execution": [
+     {
+      "fill_timing": "same_close"
+     },
+     {
+      "fill_timing": "next_open"
+     },
+     {
+      "fill_timing": "same_close",
+      "fees": "taker_bps",
+      "taker_bps": "5"
+     }
+    ]
+   },
+   "universe": [
+    "AAA"
+   ]
+  }
+ ]
+}
