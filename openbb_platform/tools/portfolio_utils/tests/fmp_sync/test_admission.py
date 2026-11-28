@@ -497,6 +497,82 @@ def test_dotenv_supplying_absent_keys_is_not_drift(world, tmp_path):
     assert "SENTINEL" not in repr(result)
 
 
+_TRANSPORT_KEYS = [
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "https_proxy",
+    "http_proxy",
+    "all_proxy",
+    "no_proxy",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "SSL_CERT_FILE",
+    "FMP_SYNC_STATE_ROOT",
+]
+
+
+@pytest.mark.parametrize("key", _TRANSPORT_KEYS)
+def test_dotenv_file_newly_supplying_transport_key_is_blocked(world, tmp_path, key):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(f"{key}=SYNTHETIC-VALUE\nDB_NAME={DISPOSABLE_DB}\n", encoding="utf-8")
+    imported: list[bool] = []
+    result = _admit(
+        world,
+        env={},
+        dotenv_path=dotenv,
+        import_warmer_fn=lambda: imported.append(True),
+    )
+    assert result.failed_layer == FailedLayer.CONFIG.value
+    assert "DOTENV_TRANSPORT_KEY" in result.findings
+    assert "DOTENV_DRIFT" not in result.findings
+    assert imported == []
+    assert "SYNTHETIC" not in repr(result)
+
+
+@pytest.mark.parametrize("key", _TRANSPORT_KEYS)
+def test_import_newly_setting_transport_key_is_blocked(world, key):
+    env: dict[str, str] = {}
+    result = _admit(
+        world, env=env, import_warmer_fn=lambda: env.update({key: "SYNTHETIC-VALUE"})
+    )
+    assert result.failed_layer == FailedLayer.CONFIG.value
+    assert "DOTENV_TRANSPORT_KEY" in result.findings
+    assert "SYNTHETIC" not in repr(result)
+
+
+@pytest.mark.parametrize("key", _TRANSPORT_KEYS)
+def test_dotenv_repeating_present_transport_key_is_allowed(world, tmp_path, key):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text(f"{key}=same\nDB_NAME={DISPOSABLE_DB}\n", encoding="utf-8")
+    env = {key: "same", "DB_NAME": DISPOSABLE_DB}
+    result = _admit(
+        world,
+        env=env,
+        dotenv_path=dotenv,
+        import_warmer_fn=_dotenv_loader(env, dotenv),
+        map=_no_settings(tmp_path),
+    )
+    assert "DOTENV_TRANSPORT_KEY" not in result.findings
+    assert "DOTENV_DRIFT" not in result.findings
+    assert result.admitted, result
+
+
+def test_dotenv_overriding_present_transport_key_stays_drift(world, tmp_path):
+    dotenv = tmp_path / "warmer.env"
+    dotenv.write_text("HTTPS_PROXY=http://127.0.0.1:9\n", encoding="utf-8")
+    result = _admit(
+        world,
+        env={"HTTPS_PROXY": "before"},
+        dotenv_path=dotenv,
+        import_warmer_fn=lambda: None,
+    )
+    assert "DOTENV_DRIFT" in result.findings
+    assert "DOTENV_TRANSPORT_KEY" not in result.findings
+
+
+
 def test_dotenv_overriding_present_key_is_drift(world, tmp_path):
     dotenv = tmp_path / "warmer.env"
     dotenv.write_text("DB_NAME=openbb_fmp_cache_test\n", encoding="utf-8")

@@ -72,6 +72,9 @@ _DRIFT_KEYS = frozenset(
         "FMP_SYNC_STATE_ROOT",
     }
 )
+# Transport-trust and state-location keys a ``.env`` may never newly supply
+# (FMP_API_KEY is excluded: a ``.env`` may legitimately provide it).
+_TRANSPORT_KEYS = _DRIFT_KEYS - {"FMP_API_KEY"}
 _AUTO_CREATE = "FMP_CACHE_AUTO_CREATE_DB"
 EXIT_ADMITTED = 0
 EXIT_POLICY = 40
@@ -298,6 +301,11 @@ def _overridden(before: Mapping[str, str], after: Mapping[str, str]) -> bool:
     return any(after.get(k) != v for k, v in before.items())
 
 
+def _newly_transport(before: Mapping[str, str], env: Mapping[str, str]) -> bool:
+    """Report a transport-trust or state-location key absent before but present now."""
+    return any(k.upper() in _TRANSPORT_KEYS and k not in before for k in env)
+
+
 def _check_config(  # pylint: disable=too-many-arguments
     dmap, layers, env, *, before, dotenv_path, import_warmer_fn
 ) -> None:
@@ -312,6 +320,8 @@ def _check_config(  # pylint: disable=too-many-arguments
         _check_flags({**env, **loaded}, config)
         if _overridden(before, _db_env(loaded)):
             raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_DRIFT")
+        if _newly_transport(before, loaded):
+            raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_TRANSPORT_KEY")
     try:
         import_warmer_fn()
     except Exception as exc:  # noqa: BLE001  pylint: disable=broad-exception-caught
@@ -320,6 +330,8 @@ def _check_config(  # pylint: disable=too-many-arguments
         ) from exc
     if _overridden(before, _db_env(env)):
         raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_DRIFT")
+    if _newly_transport(before, env):
+        raise _Blocked("BLOCKED_CONFIG", config, "DOTENV_TRANSPORT_KEY")
     _check_flags(env, config)
     # pylint: disable-next=import-outside-toplevel
     from openbb_fmp_cached.utils.database import safe_identifier
