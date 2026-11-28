@@ -146,6 +146,8 @@ _DEFAULT_MANAGED_DIR = Path("/etc/hermes")
 # unvetted here as well, so a config using them still blocks (fail closed).
 _ROOT_MODEL_KEYS = ("provider", "base_url", "context_length", "api_base")
 _MERGE_TAG = "tag:yaml.org,2002:merge"
+_ORDERED_MAP_TAGS = frozenset({"tag:yaml.org,2002:omap", "tag:yaml.org,2002:pairs"})
+_YAML_VERSIONS = frozenset({(1, 1), (1, 2)})
 
 
 class HermesConfigError(ValueError):
@@ -158,6 +160,18 @@ class ConfigDuplicateKeyError(HermesConfigError):
     """Duplicate mapping key: ruamel raises, so Hermes would load a fallback config."""
 
     reason = "config_duplicate_key"
+
+
+class ConfigOrderedMapTagError(HermesConfigError):
+    """``!!omap``/``!!pairs``: ruamel's safe loader asserts, so Hermes falls back."""
+
+    reason = "config_ordered_map_tag"
+
+
+class ConfigYamlVersionError(HermesConfigError):
+    """``%YAML`` other than 1.1/1.2: ruamel refuses it, so Hermes falls back."""
+
+    reason = "config_yaml_version_unsupported"
 
 
 class ManagedDirRelativeError(HermesConfigError):
@@ -213,20 +227,43 @@ def _reject_duplicate_keys(loader: _HermesLoader, root: yaml.Node) -> None:
                 keys.add(key)
 
 
+def _reject_ruamel_refusals(loader: _HermesLoader, root: yaml.Node) -> None:
+    """Raise on inputs ruamel rejects with ``AssertionError`` (Hermes then falls back)."""
+    version = getattr(loader, "yaml_version", None)
+    if version is not None and tuple(version) not in _YAML_VERSIONS:
+        raise ConfigYamlVersionError("unsupported %YAML version in hermes config")
+    seen_nodes: set[int] = set()
+    stack: list[yaml.Node] = [root]
+    while stack:
+        node = stack.pop()
+        if id(node) in seen_nodes:
+            continue
+        seen_nodes.add(id(node))
+        if node.tag in _ORDERED_MAP_TAGS:
+            raise ConfigOrderedMapTagError("ordered map tag in hermes config")
+        if isinstance(node, yaml.SequenceNode):
+            stack.extend(node.value)
+        elif isinstance(node, yaml.MappingNode):
+            for key_node, value_node in node.value:
+                stack.extend((key_node, value_node))
+
+
 def load_hermes_yaml(text: str) -> Any:
     """Parse a Hermes config with Hermes' YAML semantics, or fail closed.
 
     Mirrors ``hermes_yaml.safe_load`` (rashmijain02/hermes-agent 710fa8a): YAML 1.1
     booleans including ``y``/``Y``/``n``/``N``, and duplicate keys rejected. A ruamel
     load failure makes Hermes fall back to a backup or ``DEFAULT_CONFIG`` (provider
-    ``auto``), so a duplicate raises :class:`ConfigDuplicateKeyError` here. Residual:
-    other ruamel-only rejections are not modelled; PyYAML errors still fail closed.
+    ``auto``), so a duplicate raises :class:`ConfigDuplicateKeyError` here, as do
+    ``!!omap``/``!!pairs`` and a ``%YAML`` version other than 1.1/1.2. Residual: other
+    ruamel-only rejections are not modelled; PyYAML errors still fail closed.
     """
     loader = _HermesLoader(text)
     try:
         node = loader.get_single_node()
         if node is None:
             return None
+        _reject_ruamel_refusals(loader, node)
         _reject_duplicate_keys(loader, node)
         return loader.construct_document(node)
     finally:

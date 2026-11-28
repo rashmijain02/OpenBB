@@ -1030,3 +1030,52 @@ def test_inprocess_chained_fallback_positive_control_reaches_hosted(
         router.completion(model=ALIAS, messages=_prompt(), timeout=2)
         assert hosted.hits >= 1
         assert egress == []
+
+
+# --- RR4: fallback keys litellm does not validate (#1338) -----------------------------
+
+
+@pytest.mark.parametrize("section", ["router_settings", "litellm_settings"])
+@pytest.mark.parametrize("key", ["context_window_fallbacks", "default_fallbacks"])
+@pytest.mark.parametrize(
+    "value",
+    [{"hosted-a": [ALIAS]}, {"hosted-a": ["local-b"]}, {"x": {"hosted-a": ["y"]}}],
+    ids=["mapping_to_list", "mapping_other_source", "nested_mapping"],
+)
+def test_unvalidated_fallback_mapping_blocks(tmp_path, section, key, value):
+    # litellm 1.106.6 does not validate these keys and reads a mapping's keys as plain
+    # targets for every group, so finance-private would fall back to hosted-a.
+    cfg = _local_cfg()
+    cfg.setdefault(section, {})[key] = value
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked
+    assert (
+        f"fallback_shape_unparsed:{section}.{key}" in verdict.reasons
+    ), verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "value",
+    [{"local-b": []}, {"x": ["local-b"]}, {"x": [{"local-b": []}]}],
+    ids=["key", "nested_mapping_value", "nested_list_mapping"],
+)
+def test_unvalidated_mapping_chain_is_seen_transitively(tmp_path, value):
+    cfg = _with_local_b()
+    cfg["router_settings"]["default_fallbacks"] = value
+    cfg["router_settings"]["fallbacks"] = [{"local-b": ["hosted-a"]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert (
+        "fallback_chain_reaches_hosted:finance-private>local-b>hosted-a"
+        in _chain_reasons(verdict)
+    ), verdict.reasons
+
+
+@pytest.mark.parametrize("key", ["context_window_fallbacks", "default_fallbacks"])
+def test_documented_list_forms_do_not_report_shape(tmp_path, key):
+    cfg = _with_local_b()
+    cfg["router_settings"][key] = (
+        ["local-b"] if key == "default_fallbacks" else [{ALIAS: ["local-b"]}]
+    )
+    _, verdict = _verdict(tmp_path, cfg)
+    assert not [r for r in verdict.reasons if r.startswith("fallback_shape")]
+    assert verdict.blocked is False, verdict.reasons

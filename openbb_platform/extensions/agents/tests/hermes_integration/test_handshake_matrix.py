@@ -1100,3 +1100,85 @@ def test_root_model_keys_stay_unvetted(tmp_path, root):
     text = _safe_text(tmp_path) + f"{root}: https://openrouter.ai/api/v1\n"
     verdict = _route_verdict(_hermes(tmp_path, text))
     assert f"unvetted_key:{root}" in verdict.reasons, verdict.reasons
+
+
+# --- RR4: ruamel-rejected YAML (#1338) ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("o: !!omap [{a: 1}]\n", "config_ordered_map_tag"),
+        ("o: !!pairs [{a: 1}, {a: 2}]\n", "config_ordered_map_tag"),
+        ("o: !!omap []\n", "config_ordered_map_tag"),
+        ("a: [1, {b: !!omap [{c: 1}]}]\n", "config_ordered_map_tag"),
+        ("? !!pairs [{a: 1}]\n: 1\n", "config_ordered_map_tag"),
+        ("%YAML 1.3\n---\na: 1\n", "config_yaml_version_unsupported"),
+        ("%YAML 1.0\n---\na: 1\n", "config_yaml_version_unsupported"),
+        ("%YAML 1.9\n---\na: 1\n", "config_yaml_version_unsupported"),
+    ],
+    ids=[
+        "omap",
+        "pairs",
+        "omap_empty",
+        "omap_nested",
+        "pairs_key",
+        "yaml_1_3",
+        "yaml_1_0",
+        "yaml_1_9",
+    ],
+)
+def test_ruamel_rejected_yaml_fails_closed(tmp_path, capsys, text, reason):
+    with pytest.raises(hermes_config.HermesConfigError) as err:
+        hermes_config.load_hermes_yaml(text)
+    assert err.value.reason == reason
+    path = _hermes(tmp_path, _safe_text(tmp_path) + "extra: !!omap [{a: 1}]\n")
+    code, comps = _cli_route(tmp_path, capsys, path)
+    assert code == 2
+    assert comps["hermes_config"]["detail"] == "config_ordered_map_tag"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["%YAML 1.1\n---\na: 1\n", "%YAML 1.2\n---\na: 1\n", "a: !!set {x}\n", "a: 1\n"],
+)
+def test_ruamel_accepted_yaml_still_loads(text):
+    assert hermes_config.load_hermes_yaml(text)
+
+
+def test_ruamel_rejection_parity_with_pinned_ruamel():
+    import os
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path as _P
+
+    root = _P(tempfile.gettempdir()) / "rr1338" / "ruamel"
+    if not (root / "ruamel" / "yaml").is_dir():
+        pytest.skip("pinned ruamel 0.18.16 not available")
+    code = (
+        "import sys; sys.path.insert(0, sys.argv[1])\n"
+        "from ruamel.yaml import YAML\n"
+        "y = YAML(typ='safe', pure=True); y.version = (1, 1)\n"
+        "try: y.load(sys.argv[2])\n"
+        "except AssertionError: print('assert')\n"
+        "except Exception: print('other')\n"
+        "else: print('ok')\n"
+    )
+    for text in ("%YAML 1.3\n---\na: 1\n", "%YAML 1.2\n---\na: 1\n"):
+        out = subprocess.run(  # noqa: S603
+            [sys.executable, "-I", "-c", code, str(root), text],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"},
+        ).stdout.strip()
+        if out == "":
+            pytest.skip("ruamel not importable under this interpreter")
+        rejected = out in ("assert", "other")
+        try:
+            hermes_config.load_hermes_yaml(text)
+            ours = False
+        except hermes_config.HermesConfigError:
+            ours = True
+        assert ours == rejected, (text, out)

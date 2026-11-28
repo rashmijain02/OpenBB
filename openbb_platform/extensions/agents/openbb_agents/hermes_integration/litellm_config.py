@@ -335,9 +335,37 @@ def _fallback_chain_reasons(
     return list(dict.fromkeys(reasons))
 
 
-def _fallback_pairs(value: Any) -> list[tuple[str, list[str]]]:
-    """Normalise ``[{src: [targets]}]`` and ``default_fallbacks: [targets]``."""
+_UNVALIDATED_FALLBACK_KEYS = ("default_fallbacks", "context_window_fallbacks")
+
+
+def _mapping_targets(value: Any) -> list[str]:
+    """Every string in a mapping value: its keys and (nested) values."""
+    out: list[str] = []
+    if isinstance(value, dict):
+        for k, v in value.items():
+            out.append(str(k))
+            out += _mapping_targets(v)
+    elif isinstance(value, list):
+        for v in value:
+            out += _mapping_targets(v)
+    elif value is not None:
+        out.append(str(value))
+    return out
+
+
+def _fallback_pairs(
+    value: Any, unvalidated: bool = False
+) -> list[tuple[str, list[str]]]:
+    """Normalise ``[{src: [targets]}]`` and ``default_fallbacks: [targets]``.
+
+    litellm 1.106.6 does not validate ``default_fallbacks`` or
+    ``context_window_fallbacks``: a top-level mapping is read as plain targets for every
+    group (its keys). With ``unvalidated`` such a mapping becomes all-sources targets so
+    the chain check sees them; the caller also blocks the shape.
+    """
     pairs: list[tuple[str, list[str]]] = []
+    if unvalidated and isinstance(value, dict):
+        return [(_ALL_SOURCES, _mapping_targets(value))]
     if isinstance(value, dict):
         value = [value]
     if not isinstance(value, list):
@@ -406,9 +434,13 @@ def read_gateway_facts(
         block = loaded.get(section)
         block = block if isinstance(block, dict) else {}
         for key in FALLBACK_KEYS:
-            pairs = _fallback_pairs(block.get(key))
+            raw_fb = block.get(key)
+            unvalidated = key in _UNVALIDATED_FALLBACK_KEYS
+            pairs = _fallback_pairs(raw_fb, unvalidated)
             if pairs:
                 fallbacks[f"{section}.{key}"] = pairs
+            if unvalidated and isinstance(raw_fb, dict):
+                shape_issues.append(f"fallback_shape_unparsed:{section}.{key}")
         if isinstance(block.get("num_retries"), int):
             retries[section] = block["num_retries"]
     lset = loaded.get("litellm_settings")
