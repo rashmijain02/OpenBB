@@ -185,6 +185,14 @@ Real path, code-only: `& $py -m openbb_backtest.validation.experiment bench --sp
 Real path, **LIVE** (after #1355 T01-L and #1356 T03-L; `OPENBB_NAUTILUS_VENV`, `OPENBB_NAUTILUS_DATA_ROOT`): same command with
 `--runtime native` ⇒ exit 0, engine `1.231.0`, the same N/exclusions as fake, matrix hash recorded (may differ from fake only
 where the doc declares it); then `--runtime native --inject-kill 5` ⇒ identical N. Post hashes and counts only on #1357.
+**T03-L (implemented command, runs after #1355 T01-L and #1356 T03-L):**
+`python -m openbb_backtest.validation.experiment bench --spec tests/unit/validation/fixtures/bench_spec.json --runtime native --format json`
+(from `openbb_platform/extensions/backtest`; `OPENBB_NAUTILUS_VENV`, `OPENBB_NAUTILUS_DATA_ROOT` set; the spec's symbols must
+exist in the cached export, otherwise the run fails closed) ⇒ exit 0, `totals.n_matches_plan: true`, `peak_concurrency` is `null`
+on native (no client probe; confirm one `nautilus` process at a time out of band). Then the same command with
+`--inject-kill 5` ⇒ identical `n_trials_dsr` and `matrix_sha256` per scenario, `kill_resume` present. Post counts, codes, hashes
+and `elapsed_s` per scenario on #1357 (no returns, no account values). Fake-only injections (`--inject-fail-once`,
+`--inject-changed-data`) are not run natively. Fake reference numbers (T03 code-only run): 8 scenarios, 120 cells, N 48, all complete.
 Optional LIVE diagnostic on real cached data is expected to fail closed (`corporate_actions_present`, #1385); record, don't bypass.
 
 Classification: T01 **CODE-ONLY**; T02 **CODE-ONLY**; T03 fake bench + doc **CODE-ONLY**, native bench **LIVE**.
