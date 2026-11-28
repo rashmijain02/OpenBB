@@ -17,8 +17,8 @@ from pydantic import ValidationError
 from openbb_agents.hermes_integration.workflow import (
     ACCESS_COVERS,
     ACCESS_VOCABULARIES,
-    MAPPED_ACCESS,
     WorkflowManifest,
+    mapped_access,
     validate_workflow,
     workflow_manifest_sha256,
 )
@@ -134,10 +134,11 @@ def _check_access(
     if version not in supported_access_versions or vocabulary is None:
         return [_reject("access_version_unsupported", f"access_version {version}")]
     found = []
+    mapped = mapped_access()
     for name, pin in manifest.capabilities.items():
         if pin.access not in vocabulary:
             found.append(_reject("unknown_access", f"{name}: access literal"))
-        elif pin.access not in MAPPED_ACCESS:
+        elif pin.access not in mapped:
             found.append(
                 _reject("access_unmapped", f"{name}: no policy mapping for access")
             )

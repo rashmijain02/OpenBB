@@ -47,15 +47,13 @@ def test_supported_but_undefined_access_version_rejected(shipped_document, live_
     assert "access_version_unsupported" in codes(admission)
 
 
-def test_v2_household_literal_denied_as_unmapped(live_tools):
+def test_v2_household_literal_maps_to_the_household_operation(live_tools):
     admission = admit_workflow(
         load_fixture("v2-household"),
         live_tools=live_tools,
         supported_access_versions={1, 2},
     )
-    assert not admission.admitted
-    assert "access_unmapped" in codes(admission)
-    assert "unknown_access" not in codes(admission)
+    assert admission.admitted, admission.rejections
 
 
 def test_v2_manifest_is_unsupported_by_default(live_tools):
@@ -308,10 +306,15 @@ def test_multi_capability_stage_is_rejected(shipped_document, live_tools):
 
 
 @pytest.mark.parametrize(
-    "literal", ["household_meta", "tax_compute", "document_evidence"]
+    ("literal", "under_v2_codes"),
+    [
+        ("household_meta", set()),
+        ("tax_compute", {"access_unmapped"}),
+        ("document_evidence", set()),
+    ],
 )
-def test_v2_only_literal_is_unknown_under_v1_and_unmapped_under_v2(
-    shipped_document, live_tools, literal
+def test_v2_only_literal_is_unknown_under_v1_and_policy_mapped_under_v2(
+    shipped_document, live_tools, literal, under_v2_codes
 ):
     shipped_document["capabilities"]["platform:story_concentration"]["access"] = literal
     under_v1 = admit_workflow(
@@ -322,7 +325,7 @@ def test_v2_only_literal_is_unknown_under_v1_and_unmapped_under_v2(
     under_v2 = admit_workflow(
         shipped_document, live_tools=live_tools, supported_access_versions={1, 2}
     )
-    assert codes(under_v2) == {"access_unmapped"}
+    assert codes(under_v2) == under_v2_codes
 
 
 # --- Re-review N3: whole-tool classification and the disposition decision.

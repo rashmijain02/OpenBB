@@ -7,13 +7,16 @@ numbers, notebook paths or notebook hashes; tutorial traceability lives apart
 self-contained pins (server, tool, input-schema hash, declared access), so no
 external catalog file is needed at runtime.
 
-This module is pure: no I/O, no server or notebook imports.
+This module is pure: no I/O, no server or notebook imports. Access words map
+onto the PolicyGate vocabulary of ``hermes_integration.access`` (#1339), read at
+decision time so a renamed or removed operation or scope denies admission.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated, Any, Literal
+from types import MappingProxyType
+from typing import Annotated, Any, Literal, NamedTuple
 
 from openbb_mcp_server.utils.schema_digest import canonical_json_sha256
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -24,6 +27,7 @@ from openbb_agents._stage_graph import (
     check_input_bindings,
     check_unique_stages,
 )
+from openbb_agents.hermes_integration import access as policy_access
 
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 Identifier = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_.:/-]*$")]
@@ -38,22 +42,63 @@ WorkflowStageKind = Literal[
 _V1_ACCESS = frozenset(
     {"metadata", "provider_read", "private_read", "analysis", "artifact", "paper"}
 )
-# Declared access requirements per ``access_version``. v2 literals parse but
-# stay denied (``access_unmapped``) until a PolicyGate mapping exists (T01b).
+# Declared access requirements per ``access_version``. A literal without a
+# PolicyGate mapping (``tax_compute``) parses but is denied (``access_unmapped``).
 ACCESS_VOCABULARIES: Mapping[int, frozenset[str]] = {
     1: _V1_ACCESS,
     2: _V1_ACCESS | {"household_meta", "tax_compute", "document_evidence"},
 }
-# Literals with a known policy-operation mapping. T01b extends this from the
-# PolicyGate access module; until then only the legacy six are mapped.
-MAPPED_ACCESS: frozenset[str] = _V1_ACCESS
+
+
+class PolicyOperation(NamedTuple):
+    """The PolicyGate operation (and scope, where the gate defines one) of a word."""
+
+    operation: str
+    scope: str | None = None
+
+
+# Workflow access word -> PolicyGate operation (plan Q1, T01b). ``tax_compute``
+# has no entry: it stays denied until the tax PBI defines its operation.
+ACCESS_OPERATIONS: Mapping[str, PolicyOperation] = MappingProxyType(
+    {
+        "metadata": PolicyOperation("public_metadata"),
+        "provider_read": PolicyOperation("provider_read"),
+        "analysis": PolicyOperation("provider_read"),
+        "private_read": PolicyOperation("private_portfolio_read"),
+        "artifact": PolicyOperation("story_state"),
+        "paper": PolicyOperation("story_paper"),
+        "household_meta": PolicyOperation("household_read", "household.summary"),
+        "document_evidence": PolicyOperation(
+            "evidence_projection_read", "evidence.projection"
+        ),
+    }
+)
+
+
+def mapped_access() -> frozenset[str]:
+    """Return the words whose operation and scope the PolicyGate still knows.
+
+    Read from ``hermes_integration.access`` on every call (fail closed): a word
+    whose operation or scope was renamed or removed there is unmapped.
+    """
+    operations = policy_access.OPERATIONS
+    scopes = policy_access.KNOWN_SCOPES
+    return frozenset(
+        word
+        for word, target in ACCESS_OPERATIONS.items()
+        if target.operation in operations
+        and (target.scope is None or target.scope in scopes)
+    )
+
 
 _READ = frozenset({"public_metadata", "provider_read"})
 # Reviewed ``AccessClass`` values (``openbb_mcp_server.models.capability``)
 # that each mapped access word may cover. A pinned tool whose reviewed class is
 # outside the set of its declared word is ``access_understated``. Classes no
 # word covers (``filesystem_write``, ``cache_maintenance``, ``job_control``,
-# ``workspace_mutation``, ``financial_mutation``) are never admitted.
+# ``workspace_mutation``, ``financial_mutation``) are never admitted. The
+# gate-only household and evidence operations are not reviewed tool classes, so
+# their words cover only the public read classes.
 ACCESS_COVERS: Mapping[str, frozenset[str]] = {
     "metadata": frozenset({"public_metadata"}),
     "provider_read": _READ,
@@ -61,6 +106,8 @@ ACCESS_COVERS: Mapping[str, frozenset[str]] = {
     "private_read": _READ | {"private_portfolio_read"},
     "artifact": _READ | {"story_state"},
     "paper": _READ | {"story_state", "story_paper"},
+    "household_meta": _READ,
+    "document_evidence": _READ,
 }
 
 
