@@ -46,6 +46,7 @@ def test_legacy_numbers_unchanged(captured, key):
     # Fields added by #1357 are additive; legacy leaves them at their defaults.
     for extra, default in (
         ("experiment", None),
+        ("dsr_undefined_reason", None),
         ("diagnostic_only", False),
         ("modeled_differences", []),
     ):
