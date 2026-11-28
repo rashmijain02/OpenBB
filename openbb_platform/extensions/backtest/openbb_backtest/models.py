@@ -289,7 +289,9 @@ class SweepPoint(Data):
     ``metrics`` its :class:`PerformanceMetrics`.
     """
 
-    params: dict[str, Any] = Field(description="Strategy keyword arguments for the combo.")
+    params: dict[str, Any] = Field(
+        description="Strategy keyword arguments for the combo."
+    )
     metrics: PerformanceMetrics = Field(description="Metrics for this combo.")
 
 
@@ -360,7 +362,9 @@ class FactorReport(Data):
     """
 
     factor: str = Field(description="Evaluated factor name.")
-    periods: list[int] = Field(description="Forward return periods analysed (sessions).")
+    periods: list[int] = Field(
+        description="Forward return periods analysed (sessions)."
+    )
     quantiles: int = Field(description="Number of factor quantiles formed.")
     ic_mean: dict[str, float] = Field(description="Mean IC per forward period.")
     ic_std: dict[str, float] = Field(description="IC standard deviation per period.")
@@ -469,9 +473,7 @@ class TearSheet(Data):
     drawdown_periods: list[DrawdownPeriod] = Field(
         description="Ranked drawdown episodes."
     )
-    monthly_returns: list[MonthlyReturn] = Field(
-        description="Per-month total returns."
-    )
+    monthly_returns: list[MonthlyReturn] = Field(description="Per-month total returns.")
     html_path: str | None = Field(
         default=None, description="Path to the saved HTML artifact, if exported."
     )

@@ -19,13 +19,23 @@ See ``docs/designs/backtest-design/09-api-surface.md`` §1–§2.
 # from __future__ import annotations  # removed: breaks FastAPI OBBject[X] resolution (#824)
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from openbb_core.app.model.example import PythonEx
 from openbb_core.app.model.obbject import OBBject
 from openbb_core.app.router import Router
 
 from openbb_backtest.errors import BackendSelectionError, UnsupportedSemanticsError
+
+# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
+# time because this file no longer uses `from __future__ import annotations`
+# — see #824 for the root cause.
+from openbb_backtest.interfaces import (
+    Broker,
+    DataFeed,
+    Engine,
+    Strategy,
+)  # noqa: F401, E402
 from openbb_backtest.models import (
     BacktestConfig,
     BacktestResult,
@@ -42,11 +52,6 @@ from openbb_backtest.router_helpers import (
     resolve_provider,
     sanitize_result,
 )
-
-# Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
-# time because this file no longer uses `from __future__ import annotations`
-# — see #824 for the root cause.
-from openbb_backtest.interfaces import Broker, DataFeed, Engine, Strategy  # noqa: F401, E402
 
 logger = logging.getLogger(__name__)
 

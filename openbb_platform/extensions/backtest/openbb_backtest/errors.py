@@ -75,9 +75,7 @@ class EngineSelectionError(BacktestError):
         self.requested = requested
         self.available = list(available)
         choices = ", ".join(self.available)
-        super().__init__(
-            f"Unknown engine '{requested}'. Choose one of: {choices}."
-        )
+        super().__init__(f"Unknown engine '{requested}'. Choose one of: {choices}.")
 
 
 class _BackendError(BacktestError):

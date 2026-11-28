@@ -29,7 +29,7 @@ from openbb_backtest.errors import (
     EngineSelectionError,
     UnsupportedSemanticsError,
 )
-from openbb_backtest.models import BacktestConfig, BacktestResult, BackendSource
+from openbb_backtest.models import BackendSource, BacktestConfig, BacktestResult
 from openbb_backtest.settings import DEFAULT_SETTINGS
 
 if TYPE_CHECKING:
@@ -86,7 +86,9 @@ def resolve_engine(engine: str, *, path_dependent: bool = False) -> str:
     key = engine.strip().lower()
     if key == "auto":
         chosen = _EVENT if path_dependent else _VECTORIZED
-        logger.debug("engine=auto resolved to %s (path_dependent=%s)", chosen, path_dependent)
+        logger.debug(
+            "engine=auto resolved to %s (path_dependent=%s)", chosen, path_dependent
+        )
         return chosen
     try:
         return _ENGINE_ALIASES[key]

@@ -18,8 +18,8 @@ from openbb_nautilus_worker.reviewed import booking, registry
 
 from openbb_backtest.errors import BackendUnavailableError
 from openbb_backtest.models import (
-    BacktestConfig,
     BackendSource,
+    BacktestConfig,
     BacktestResult,
     EquityPoint,
     PositionSnapshot,
