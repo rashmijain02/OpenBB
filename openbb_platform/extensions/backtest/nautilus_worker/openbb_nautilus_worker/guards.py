@@ -27,6 +27,7 @@ from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import IO, Any
 
+from .nautilus_closure import NAUTILUS_IMPORT_CLOSURE
 from .protocol import ErrorCode, ProtocolError
 
 # Worker exit codes (the client observes them; 0 = shutdown or EOF).
@@ -82,9 +83,32 @@ BLOCKED_IMPORT_PREFIXES = (
     "tardis_client",
     "tardis_dev",
 )
-# Pure config modules that ``nautilus_trader.config`` re-exports; they define
-# dataclasses only and open no connection (verified LIVE in T03-L).
-IMPORT_EXEMPT = frozenset({"nautilus_trader.live", "nautilus_trader.live.config"})
+# Live/exec modules that stay blocked even if a future pin pulled them into the
+# closure: the live node and every venue adapter (live data/exec clients).
+ALWAYS_BLOCKED_PREFIXES = ("nautilus_trader.live.node", "nautilus_trader.adapters")
+
+
+def _under(name: str, prefixes: Iterable[str]) -> bool:
+    return any(name == p or name.startswith(p + ".") for p in prefixes)
+
+
+def closure_exemptions(closure: Iterable[str]) -> frozenset[str]:
+    """Exact closure names under a blocked prefix, never an adapter or the node.
+
+    ``BacktestEngine`` imports ``live.{data,execution,risk}_engine`` at module
+    level through ``system.kernel``; :mod:`.nautilus_closure` holds the pinned
+    list, its source commit and method. T01-L / T03-L confirm on the wheel.
+    """
+    return frozenset(
+        name
+        for name in closure
+        if _under(name, BLOCKED_IMPORT_PREFIXES)
+        and not _under(name, ALWAYS_BLOCKED_PREFIXES)
+    )
+
+
+# Exact module names (no prefixes) the import guard lets through.
+IMPORT_EXEMPT = closure_exemptions(NAUTILUS_IMPORT_CLOSURE)
 
 _SOCKET_EVENTS = frozenset(
     {

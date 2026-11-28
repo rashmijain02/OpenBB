@@ -23,6 +23,7 @@ import pytest
 from openbb_nautilus_worker import (
     __main__ as wm,
     guards,
+    nautilus_closure,
     protocol as p,
 )
 from openbb_nautilus_worker.protocol import ErrorCode, ProtocolError
@@ -119,6 +120,10 @@ _IMPORT_SCRIPT = textwrap.dedent("""
     pkg = sys.argv[1]
     for rel in ("nautilus_trader/__init__.py", "nautilus_trader/live/__init__.py",
                 "nautilus_trader/live/config.py", "nautilus_trader/live/node.py",
+                "nautilus_trader/live/data_engine.py",
+                "nautilus_trader/live/execution_engine.py",
+                "nautilus_trader/live/risk_engine.py",
+                "nautilus_trader/live/data_client.py",
                 "nautilus_trader/adapters/__init__.py",
                 "nautilus_trader/adapters/interactive_brokers/__init__.py",
                 "nautilus_trader/model/__init__.py", "ibapi/__init__.py",
@@ -139,6 +144,10 @@ _IMPORT_SCRIPT = textwrap.dedent("""
     guards.install_import_guard()
     import importlib
     for name in ("nautilus_trader.model", "nautilus_trader.live.config",
+                 "nautilus_trader.live.data_engine",
+                 "nautilus_trader.live.execution_engine",
+                 "nautilus_trader.live.risk_engine",
+                 "nautilus_trader.live.data_client",
                  "nautilus_trader.live.node", "nautilus_trader.adapters",
                  "nautilus_trader.adapters.interactive_brokers", "ibapi",
                  "databento"):
@@ -163,8 +172,16 @@ def test_live_adapter_imports_blocked(tmp_path):
     out = json.loads(proc.stdout)
     assert out["preloaded"] == "egress"
     assert out["nautilus_trader.model"] == "ok"
-    assert out["nautilus_trader.live.config"] == "ok"
+    # Exact closure names pass (BacktestEngine needs them via system.kernel).
     for name in (
+        "nautilus_trader.live.config",
+        "nautilus_trader.live.data_engine",
+        "nautilus_trader.live.execution_engine",
+        "nautilus_trader.live.risk_engine",
+    ):
+        assert out[name] == "ok", name
+    for name in (
+        "nautilus_trader.live.data_client",
         "nautilus_trader.live.node",
         "nautilus_trader.adapters",
         "nautilus_trader.adapters.interactive_brokers",
@@ -172,6 +189,59 @@ def test_live_adapter_imports_blocked(tmp_path):
         "databento",
     ):
         assert out[name] == "BlockedImportError", name
+
+
+def test_import_exemptions_are_exact_closure_names_never_adapters():
+    expected = {
+        "nautilus_trader.live",
+        "nautilus_trader.live.config",
+        "nautilus_trader.live.data_engine",
+        "nautilus_trader.live.enqueue",
+        "nautilus_trader.live.execution_engine",
+        "nautilus_trader.live.reconciliation",
+        "nautilus_trader.live.risk_engine",
+    }
+    assert guards.IMPORT_EXEMPT == expected
+    assert guards.IMPORT_EXEMPT <= nautilus_closure.NAUTILUS_IMPORT_CLOSURE
+    assert nautilus_closure.SOURCE_COMMIT == "27a8e54e7ac3c57d6cbf8891f0283dfbaee97317"
+    # A closure that (in some future pin) contained the node or an adapter
+    # still never exempts them; prefixes are never exempted.
+    poisoned = {
+        "nautilus_trader.live.node",
+        "nautilus_trader.adapters.interactive_brokers.execution",
+        "nautilus_trader.live.risk_engine",
+        "nautilus_trader.model",
+    }
+    assert guards.closure_exemptions(poisoned) == {"nautilus_trader.live.risk_engine"}
+    assert not guards.is_blocked_module("nautilus_trader.live.risk_engine")
+    assert guards.is_blocked_module("nautilus_trader.live.risk_engine.sub")
+
+
+_ENGINE_IMPORT_SCRIPT = textwrap.dedent("""
+    from openbb_nautilus_worker import guards
+    guards.install_import_guard()
+    from nautilus_trader.backtest.engine import BacktestEngine
+    from nautilus_trader.persistence.catalog import ParquetDataCatalog
+    import sys
+    assert BacktestEngine and ParquetDataCatalog
+    live = sorted(m for m in sys.modules if m.startswith("nautilus_trader.live"))
+    print(",".join(live))
+    """)
+
+
+@pytest.mark.requires_nautilus
+def test_guarded_worker_imports_backtest_engine_and_catalog():
+    """T01-L: with the guard installed, both classes import from the real wheel."""
+    proc = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _ENGINE_IMPORT_SCRIPT],
+        capture_output=True,
+        timeout=300,
+        check=False,
+        env=_minimal_env(),
+    )
+    assert proc.returncode == 0, proc.stderr.decode()[-2000:]
+    loaded = set(filter(None, proc.stdout.decode().strip().split(",")))
+    assert loaded <= guards.IMPORT_EXEMPT, sorted(loaded - guards.IMPORT_EXEMPT)
 
 
 # --- socket guard -----------------------------------------------------------------
