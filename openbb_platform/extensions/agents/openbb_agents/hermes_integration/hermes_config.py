@@ -126,6 +126,8 @@ AUXILIARY_SETTINGS = frozenset(
 # Delegation keys that pick another route; ``backend`` is allowed only as ``default``.
 DELEGATION_ROUTE_KEYS = ("provider", "base_url", "model", "api_mode", "backends")
 _URL_KEYS = ("base_url", "url", "api", "inference_base_url")
+# Leaf keys whose value is a credential, never a route: a ``${VAR}`` there is allowed.
+_SECRET_LEAF = re.compile(r"(?:^|_)(?:api_key|key|token|password|secret)$")
 _LABEL = re.compile(r"[^A-Za-z0-9_.-]")
 
 _LOOPBACK_NAMES = {"localhost"}
@@ -229,6 +231,34 @@ def _entry_local(entry: Any) -> bool:
         return False
     urls = [entry[k] for k in _URL_KEYS if isinstance(entry.get(k), str) and entry[k]]
     return bool(urls) and all(is_loopback_host(_split(u)[0]) for u in urls)
+
+
+def url_has_userinfo(url: str) -> bool:
+    """True if the authority carries userinfo, or a backslash some clients read as a slash."""
+    return "\\" in url or "@" in urlsplit(url).netloc
+
+
+def _scan_values(node: Any, path: str = "") -> list[str]:
+    """Hermes expands ``${VAR}``/``${env:VAR}`` in every string (``_expand_env_vars`` at the
+    pin), so an env ref can rewrite any route after this check. Block every ref outside a
+    secret-valued leaf, and userinfo in every URL-valued key."""
+    issues: list[str] = []
+    items = (
+        node.items()
+        if isinstance(node, dict)
+        else enumerate(node) if isinstance(node, list) else ()
+    )
+    for key, value in items:
+        here = f"{path}.{key}" if path else str(key)
+        if isinstance(value, (dict, list)):
+            issues += _scan_values(value, here)
+        elif isinstance(value, str):
+            leaf = str(key).lower()
+            if "${" in value and not _SECRET_LEAF.search(leaf):
+                issues.append(f"env_ref:{safe_label(here, 80)}")
+            if leaf in (*_URL_KEYS, "api_base") and url_has_userinfo(value):
+                issues.append(f"url_userinfo:{safe_label(here, 80)}")
+    return issues
 
 
 def _scan_top_level(loaded: dict[str, Any]) -> list[str]:
@@ -383,6 +413,7 @@ def read_route_facts(path: Path) -> RouteFacts:
             *_scan_providers(loaded),
             *surf_issues,
             *aux_issues,
+            *_scan_values(loaded),
         ],
     )
 

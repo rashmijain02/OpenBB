@@ -719,3 +719,17 @@ def test_alias_names_are_stripped_of_control_chars_and_capped(tmp_path):
     assert all(len(n) <= 64 for n in names)
     assert not any(ord(c) < 32 or ord(c) == 127 for n in names for c in n)
     assert ALIAS in names
+
+
+# --- userinfo in a deployment api_base (#1338 N1) ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "base", ["http://hosted.invalid\@127.0.0.1:8080/v1", "http://u@127.0.0.1:8080/v1"]
+)
+def test_api_base_with_userinfo_is_not_local(tmp_path, base):
+    cfg = _local_cfg()
+    cfg["model_list"][0]["litellm_params"]["api_base"] = base
+    facts, verdict = _verdict(tmp_path, cfg)
+    alias = next(a for a in facts.aliases if a.name == ALIAS)
+    assert "api_base_userinfo" in alias.reasons and verdict.blocked

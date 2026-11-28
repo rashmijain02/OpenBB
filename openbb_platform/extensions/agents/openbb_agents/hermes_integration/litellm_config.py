@@ -23,7 +23,12 @@ from urllib.parse import urlsplit
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from .hermes_config import RouteVerdict, is_loopback_host, safe_label
+from .hermes_config import (
+    RouteVerdict,
+    is_loopback_host,
+    safe_label,
+    url_has_userinfo,
+)
 from .models import (
     AliasReport,
     BackendKind,
@@ -229,6 +234,9 @@ def _classify(
     reasons: list[str] = []
     if provider not in LOCAL_CAPABLE_PROVIDERS:
         reasons.append("hosted_provider")
+    api_base = params.get("api_base")
+    if isinstance(api_base, str) and url_has_userinfo(api_base):
+        reasons.append("api_base_userinfo")
     if host is None:
         reasons.append("api_base_unset")
     elif not is_loopback_host(host):

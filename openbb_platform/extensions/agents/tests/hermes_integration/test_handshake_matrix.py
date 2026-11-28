@@ -718,3 +718,57 @@ def test_cli_unreadable_hermes_config_is_config_layer(tmp_path, capsys):
     report = json.loads(capsys.readouterr().out)
     cfg = next(c for c in report["components"] if c["name"] == "hermes_config")
     assert code == 2 and cfg["failed_layer"] == "config"
+
+
+# --- env refs and URL userinfo (#1338 N1) -----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (
+            _set_path("model.base_url", "http://${X}@127.0.0.1:4000/v1"),
+            "url_userinfo:model.base_url",
+        ),
+        (
+            _set_path("model.base_url", "http://${X}@127.0.0.1:4000/v1"),
+            "env_ref:model.base_url",
+        ),
+        (
+            _set_path(
+                "auxiliary.approval.base_url", "http://${env:X}@127.0.0.1:4000/v1"
+            ),
+            "env_ref:auxiliary.approval.base_url",
+        ),
+        (
+            _set_path("auxiliary.approval.base_url", "http://u@127.0.0.1:4000/v1"),
+            "url_userinfo:auxiliary.approval.base_url",
+        ),
+        (
+            _set_path("model.base_url", "http://127.0.0.1:4000/${P}"),
+            "env_ref:model.base_url",
+        ),
+        (
+            _set_path("model.base_url", "http://hosted.invalid\@127.0.0.1:4000/v1"),
+            "url_userinfo:model.base_url",
+        ),
+        (_set_path("model.provider", "${PROVIDER}"), "env_ref:model.provider"),
+        (_set_path("model.api_key_env", "${K}"), "env_ref:model.api_key_env"),
+        (
+            _set_path("mcp_servers", {"m": {"url": "http://x@127.0.0.1:9/mcp"}}),
+            "url_userinfo:mcp_servers.m.url",
+        ),
+        (
+            _set_path("custom_providers", [{"base_url": "http://${H}/v1"}]),
+            "env_ref:custom_providers.0.base_url",
+        ),
+    ],
+)
+def test_route_policy_blocks_env_refs_and_url_userinfo(tmp_path, mutate, reason):
+    verdict = _mutated_verdict(tmp_path, mutate)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_route_policy_admits_env_ref_in_secret_value_only(tmp_path):
+    verdict = _mutated_verdict(tmp_path, _set_path("model.api_key", "${GW_KEY}"))
+    assert verdict.blocked is False, verdict.reasons
