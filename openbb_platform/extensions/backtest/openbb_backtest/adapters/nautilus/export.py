@@ -54,6 +54,8 @@ BASIS_ADJUSTMENT = {
     "split_adjusted_source": "splits_only",
 }
 _PRICE_COLS = ("open", "high", "low", "close")
+# |ln ratio| below this cannot be told apart from an ordinary overnight gap.
+SPLIT_AMBIGUOUS_LOG = 0.2
 _SYMBOL_OK = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-")
 
 # Selects adjustment_type / is_filled / is_valid so the basis can be checked
@@ -323,17 +325,26 @@ def _check_split_jumps(
     splits: list[tuple[str, date, float]],
     prices: dict[str, dict[date, dict[str, Decimal]]],
     sessions: list[date],
-) -> None:
+) -> tuple[int, int]:
     """Fail closed when the price series disagrees with the declared basis.
 
     At a split ex-date an unadjusted series jumps by about the split ratio
     (prior close / ex-date open); a split-adjusted series does not. A
     ``raw_plus_actions`` series without the jump is already adjusted, so
     applying the split event would adjust it twice.
+
+    Splits that cannot be judged are counted, never rejected: a ratio with
+    ``|ln r| < 0.2`` (indistinguishable from an overnight gap) and a split on
+    the first session (no prior close). Returns ``(ambiguous, at_window_start)``.
     """
+    ambiguous = at_start = 0
     for sym, day, ratio in splits:
         idx = sessions.index(day)
-        if idx == 0 or ratio == 1.0:
+        if idx == 0:
+            at_start += 1
+            continue
+        if abs(math.log(ratio)) < SPLIT_AMBIGUOUS_LOG:
+            ambiguous += 1
             continue
         prev_close = float(prices[sym][sessions[idx - 1]]["close"])
         ex_open = float(prices[sym][day]["open"])
@@ -353,6 +364,7 @@ def _check_split_jumps(
                 f"{sym} jumps at its {ratio:g} split on {day}; 'splits_only' rows "
                 "are not split-adjusted",
             )
+    return ambiguous, at_start
 
 
 def _scaled(dec: Decimal, places: int) -> int:
@@ -440,7 +452,7 @@ def export_dataset(  # pylint: disable=too-many-arguments,too-many-locals
         )
 
     splits, dividends = _event_frames(reader, syms, sessions)
-    _check_split_jumps(basis, splits, prices, sessions)
+    ambiguous, at_start = _check_split_jumps(basis, splits, prices, sessions)
     emitted_splits = splits if basis == "raw_plus_actions" else []
 
     cal = get_calendar(calendar)
@@ -502,6 +514,8 @@ def export_dataset(  # pylint: disable=too-many-arguments,too-many-locals
                 split_events=len(splits),
                 dividend_events=len(dividends),
                 split_events_dropped=len(splits) - len(emitted_splits),
+                split_ratio_ambiguous=ambiguous,
+                split_at_window_start=at_start,
             ),
             content=ds.ContentFacts(
                 bars_sha256=ds.table_digest(bars),
@@ -563,6 +577,7 @@ def summary(result: ExportResult) -> dict[str, Any]:
         "dataset_id": result.dataset_id,
         "symbols": man.symbols,
         "action_basis": man.action_basis,
+        "dividend_basis": man.dividend_basis,
         "calendar": man.calendar.model_dump(),
         "instruments": [i.model_dump() for i in man.instruments],
         "source": man.source.model_dump(),

@@ -10,6 +10,7 @@ AAA splits 2-for-1 ex 2024-12-02 (unadjusted prices halve), BBB pays 0.25 ex
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from importlib import metadata
@@ -479,3 +480,81 @@ def test_buy_and_hold_oracle_matches_exported_closes(tmp_path):
     assert [str(e.quantize(Decimal("0.01"))) for e in equity] == oracle["expected"][
         "equity"
     ]
+
+
+# --- split-ratio ambiguity and dividend basis (#1355 fix part 2) -------------
+
+
+def _small_split_with_gap(t):
+    """AAA: a 21/20 (=1.05) split whose raw series gaps UP 4% overnight."""
+    t["calendar_splits"][0].update(
+        data_json=json.dumps({"numerator": 21, "denominator": 20})
+    )
+    for r in _rows(t, "AAA"):
+        if r["date"] >= "2024-12-02":
+            for c in ("open", "high", "low", "close"):
+                r[c] = str((Decimal(r[c]) * Decimal("2.08")).quantize(Decimal("0.01")))
+
+
+def test_small_split_ratio_is_ambiguous_not_a_basis_verdict(tmp_path):
+    """A 1.05 split vs a 4% overnight gap: raw data must not be rejected."""
+    res = _export(tmp_path, _small_split_with_gap)
+    src = res.manifest.source
+    assert (src.split_ratio_ambiguous, src.split_at_window_start) == (1, 0)
+    assert ("AAA", date(2024, 12, 2), "split", "1.05") in [
+        tuple(r.values())
+        for r in pq.read_table(res.path / "actions.parquet").to_pylist()
+    ]
+
+
+def test_split_on_first_session_is_recorded_as_ambiguous(tmp_path):
+    """No prior session in the window: no verdict, but the manifest says so."""
+    res = _export(tmp_path, start="2024-12-02")
+    src = res.manifest.source
+    assert (src.split_ratio_ambiguous, src.split_at_window_start) == (0, 1)
+
+
+def _flat_prices(first_close, second_open):
+    days = [date(2024, 12, 2), date(2024, 12, 3)]
+    row = {"open": Decimal(second_open), "close": Decimal(second_open)}
+    return {
+        "AAA": {
+            days[0]: {"open": Decimal(first_close), "close": Decimal(first_close)},
+            days[1]: row,
+        }
+    }, days
+
+
+@pytest.mark.parametrize(
+    ("ratio", "expect"),
+    [(math.exp(0.19), "ambiguous"), (math.exp(0.21), "double_adjustment")],
+    ids=["below-threshold", "above-threshold"],
+)
+def test_split_ratio_threshold_is_ln_0_2(ratio, expect):
+    """|ln r| < 0.2 is ambiguous; above it a flat series is a double adjustment."""
+    prices, days = _flat_prices("100", "100")
+    args = ("raw_plus_actions", [("AAA", days[1], ratio)], prices, days)
+    if expect == "ambiguous":
+        assert ex._check_split_jumps(*args) == (
+            1,
+            0,
+        )  # pylint: disable=protected-access
+    else:
+        with pytest.raises(DatasetError) as info:
+            ex._check_split_jumps(*args)  # pylint: disable=protected-access
+        assert info.value.reason == "double_adjustment"
+
+
+def test_dividend_basis_is_recorded_and_moves_the_id(tmp_path):
+    """Dividends are passed through unverified (#1385); the manifest says so."""
+    res = _export(tmp_path)
+    assert res.manifest.dividend_basis == "passthrough_unverified"
+    man = json.loads((res.path / ds.MANIFEST_NAME).read_text(encoding="utf-8"))
+    assert man["dividend_basis"] == "passthrough_unverified"
+    assert "dividend_basis" in ds.identity(res.manifest)
+
+
+def test_summary_reports_dividend_basis(tmp_path):
+    """The CLI summary carries the dividend basis next to the action basis."""
+    out = ex.summary(_export(tmp_path))
+    assert out["dividend_basis"] == "passthrough_unverified"

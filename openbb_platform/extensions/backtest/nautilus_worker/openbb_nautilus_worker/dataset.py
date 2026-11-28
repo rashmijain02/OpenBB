@@ -114,6 +114,10 @@ class SourceFacts(BaseModel):
     split_events: int = Field(ge=0)
     dividend_events: int = Field(ge=0)
     split_events_dropped: int = Field(ge=0)
+    # Warnings, not verdicts: a split whose ratio is too small to tell from an
+    # overnight gap, or that sits on the first session (no prior close).
+    split_ratio_ambiguous: int = Field(default=0, ge=0)
+    split_at_window_start: int = Field(default=0, ge=0)
 
 
 class ContentFacts(BaseModel):
@@ -140,6 +144,9 @@ class Manifest(BaseModel):
     calendar: CalendarFacts
     action_basis: ActionBasis
     split_events_applied_to_prices: Literal[False] = False
+    # TODO(#1385): dividends are copied from the cache without any cross-check
+    # (no LIVE evidence of their basis yet); revisit when #1385 settles it.
+    dividend_basis: Literal["passthrough_unverified"] = "passthrough_unverified"
     max_precision: int = Field(ge=0, le=16)
     instruments: list[InstrumentFacts]
     source: SourceFacts
