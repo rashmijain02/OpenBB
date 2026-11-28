@@ -256,3 +256,29 @@ def test_lock_status_never_contends_for_the_byte_lock(
     assert locking.lock_status(DISPOSABLE_DB, root=state_root) == "busy"
     h.release()
     assert locking.lock_status(DISPOSABLE_DB, root=state_root) == "free"
+
+
+@pytest.mark.parametrize(
+    "key", ["CURL_CA_BUNDLE", "SSL_CERT_FILE", "ALL_PROXY", "NO_PROXY", "FMP_API_KEY"]
+)
+def test_import_drift_of_tls_proxy_and_key_settings(world, key):  # noqa: F811
+    """A warmer import that sets TLS / proxy / FMP-key settings is drift."""
+    env: dict[str, str] = {}
+    result = _admit(world, env=env, import_warmer_fn=lambda: env.update({key: "x"}))
+    assert "DOTENV_DRIFT" in result.findings
+
+
+def test_drift_snapshot_never_holds_raw_values():
+    """The drift snapshot keeps presence + hash only, never the value."""
+    from portfolio_utils.fmp_sync import (
+        admission,
+    )  # pylint: disable=import-outside-toplevel
+
+    snap = admission._db_env(  # pylint: disable=protected-access
+        {"FMP_API_KEY": "s3cr3t-key-value", "DB_PASSWORD": "pw-value-1"}
+    )
+    assert set(snap) == {"FMP_API_KEY", "DB_PASSWORD"}
+    assert "s3cr3t-key-value" not in repr(snap) and "pw-value-1" not in repr(snap)
+    assert snap != admission._db_env(  # pylint: disable=protected-access
+        {"FMP_API_KEY": "other", "DB_PASSWORD": "pw-value-1"}
+    )

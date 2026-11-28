@@ -58,8 +58,19 @@ WARMER_MODULE = "portfolio_utils.fetch_position_history"
 ORIGIN_MODULES = ("portfolio_utils", "openbb_fmp_cached", "openbb_agents")
 _DB_ENV_PREFIXES = ("DB_", "MYSQL_", "FMP_CACHE_")
 # Transport and state keys a warmer import or .env must not change either.
+# FMP_API_KEY is compared by presence + SHA-256 only (see _db_env).
 _DRIFT_KEYS = frozenset(
-    {"HTTPS_PROXY", "HTTP_PROXY", "REQUESTS_CA_BUNDLE", "FMP_SYNC_STATE_ROOT"}
+    {
+        "HTTPS_PROXY",
+        "HTTP_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "SSL_CERT_FILE",
+        "FMP_API_KEY",
+        "FMP_SYNC_STATE_ROOT",
+    }
 )
 _AUTO_CREATE = "FMP_CACHE_AUTO_CREATE_DB"
 EXIT_ADMITTED = 0
@@ -186,7 +197,8 @@ def _db_env(env: Mapping[str, str]) -> dict[str, str]:
     # The warmer's import does setdefault(FMP_CACHE_AUTO_CREATE_DB, "false").
     if snap.get(_AUTO_CREATE, "false").lower() == "false":
         snap.pop(_AUTO_CREATE, None)
-    return snap
+    # Presence + SHA-256 only: the snapshot never holds a credential value.
+    return {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in snap.items()}
 
 
 def _within(path: Path, root: Path) -> bool:

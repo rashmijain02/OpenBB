@@ -130,6 +130,65 @@ def test_planted_modules_next_to_wrapper_are_never_imported(
     assert json.loads(done.stdout)["outcome"] == "BLOCKED_POLICY"
 
 
+def test_wrapper_under_S_never_imports_planted_os(real, child_env, python_exe):
+    """``python -S`` (os not preloaded, frozen modules off): no planted os loads."""
+    real["write"](limits=None)
+    render.apply_files(real["map"], real["home"])
+    scripts = _script(real).parent
+    extra = real["tmp"] / "pp"
+    extra.mkdir()
+    marker = real["tmp"] / "planted_os.marker"
+    for where in (scripts, extra):
+        (where / "os.py").write_text(
+            f"open({str(marker)!r}, 'a').write({str(where)!r})\n"
+            "raise ImportError('planted')\n",
+            encoding="utf-8",
+        )
+    child_env["PYTHONPATH"] = str(extra)
+    done = subprocess.run(  # noqa: S603
+        [python_exe, "-S", "-X", "frozen_modules=off", str(_script(real))],
+        capture_output=True,
+        text=True,
+        env=child_env,
+        cwd=scripts,
+        timeout=180,
+        check=False,
+    )
+    assert not marker.exists(), marker.read_text("utf-8")
+    assert json.loads(done.stdout)["outcome"] == "BLOCKED_POLICY", done
+
+
+def test_baked_source_paths_never_shadow_the_stdlib(real, child_env, python_exe):
+    """The child puts the baked source paths after the stdlib, not first."""
+    src = real["tmp"] / "shadow_src"
+    root = src / "openbb_platform" / "tools" / "portfolio_utils"
+    pkg = root / "portfolio_utils" / "fmp_sync"
+    pkg.mkdir(parents=True)
+    (root / "portfolio_utils" / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "__main__.py").write_text("import fractions\n", encoding="utf-8")
+    marker = real["tmp"] / "shadow.marker"
+    (root / "fractions.py").write_text(
+        f"open({str(marker)!r}, 'w').write('shadowed')\n", encoding="utf-8"
+    )
+    real["write"](source_root=str(src))
+    render.apply_files(real["map"], real["home"])
+    done = _run(_script(real), child_env, python_exe)
+    assert done.returncode == 0, done.stdout
+    assert not marker.exists(), "a baked source path shadowed a stdlib module"
+
+
+def test_child_python_hash_mismatch_is_an_integrity_failure(
+    rig, child_env, python_exe  # noqa: F811
+):
+    """The venv python changed after render: generic integrity line, exit 3."""
+    render.apply_files(rig["map"], rig["home"])
+    (rig["tmp"] / "venv" / "Scripts" / "python.exe").write_text("y", encoding="utf-8")
+    done = _run(_script(rig), child_env, python_exe)
+    assert done.returncode == 3
+    assert done.stdout.strip() == GENERIC
+
+
 def test_wrapper_hash_mismatch_generic_nonzero(real, child_env, python_exe):
     render.apply_files(real["map"], real["home"])
     script = _script(real)
@@ -173,19 +232,56 @@ def test_invalid_child_output_is_never_relayed(rig, monkeypatch):  # noqa: F811
         "data_status": "UNVALIDATED",
         "failed_layer": None,
         "findings": ["PRIOR_RUN_INTERRUPTED"],
-        "counts": {"requested": 1},
+        "counts": {
+            "requested": 1,
+            "skipped": 0,
+            "success": 1,
+            "failed": 0,
+            "deferred": 0,
+        },
         "sent": 1,
     }
+    short = {"op": "prices", "outcome": "BLOCKED_CONFIG", "findings": ["MAP_INVALID"]}
     assert valid(json.dumps(good))
-    assert valid(json.dumps({"op": "prices", "outcome": "X_Y", "findings": []}))
+    assert valid(json.dumps(good), "a" * 32)
+    assert valid(
+        json.dumps(
+            {
+                **good,
+                "failed_layer": "module_origin",
+                "exit": 40,
+                "outcome": "BLOCKED_MODULE_ORIGIN",
+            }
+        )
+    )
+    assert valid(json.dumps(short))
     for bad in (
         {**good, "symbol": "AAPL"},
         {**good, "findings": ["C:\\Users\\someone"]},
         {**good, "outcome": "ok lower"},
+        {**good, "outcome": "NOT_AN_OUTCOME"},
         {**good, "exit": 1},
+        {**good, "exit": 10},  # OK must carry exit 0
+        {**good, "exit": False},
         {**good, "op": "other"},
+        {**good, "mode": "dry_run"},  # the wrapper only ever runs execute
+        {**good, "mode": "C:\\x"},
+        {**good, "run_id": "not-a-run-id"},
+        {**good, "run_id": "A" * 32},
+        {**good, "data_status": "C:\\Users\\someone"},
+        {**good, "failed_layer": "C:\\x"},
+        {**good, "counts": {**good["counts"], "AAPL": 1}},
+        {**good, "counts": {"requested": 1}},
+        {**good, "counts": {**good["counts"], "success": True}},
+        {**good, "counts": {**good["counts"], "success": -1}},
+        {**good, "sent": -1},
+        {**good, "sent": "1"},
+        {**good, "findings": ["A"] * 9},
+        {**short, "outcome": "OK"},
+        {**short, "findings": ["C:\\x"]},
     ):
         assert not valid(json.dumps(bad)), bad
+    assert not valid(json.dumps(good), "b" * 32), "run id must match the wrapper's"
     assert not valid("Traceback (most recent call last):")
 
 

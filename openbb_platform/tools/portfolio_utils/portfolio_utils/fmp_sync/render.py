@@ -199,6 +199,9 @@ def render_wrapper(map_path: Path) -> str:
         ),
         "STATE_ROOT": json.dumps(str(root)),
         "CHILD_PYTHON": json.dumps(child),
+        "CHILD_SHA256": json.dumps(
+            hashlib.sha256(Path(child).read_bytes()).hexdigest()
+        ),
         "TARGET_CLASS": json.dumps(dmap.target_class),
         "DEADLINE_S": repr(float(WRAPPER_DEADLINE_S)),
         "GRACE_S": repr(float(WRAPPER_GRACE_S)),

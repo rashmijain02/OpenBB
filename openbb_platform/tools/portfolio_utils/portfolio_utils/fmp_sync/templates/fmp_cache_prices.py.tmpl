@@ -1,8 +1,9 @@
 """fmp_cache_prices no-agent wrapper (#1344). Rendered file: do not edit.
 
 Rendered by portfolio_utils.fmp_sync.render. It takes no arguments or paths from
-the cron job: every value below is baked in at render time and guarded by two
-SHA-256 checks (this file and the deployment map).
+the cron job: every value below is baked in at render time and guarded by three
+SHA-256 checks (this file, the deployment map and the venv python it starts);
+any mismatch prints one generic integrity line and exits 3.
 
 Process model: this file is stdlib-only and runs under whatever interpreter
 Hermes uses. It never imports the sync code. It starts the pinned venv python
@@ -28,11 +29,21 @@ its whole job: "killed after grace", exit 5. Hard kill is the last resort.
 # pylint: disable=wrong-import-position
 import sys
 
-# Nothing beyond sys/os (both loaded at interpreter start-up) is imported until
-# the script directory, the working directory and every inherited PYTHONPATH
-# entry are removed from sys.path: a module planted next to this file or on a
-# Hermes-provided PYTHONPATH must never load.
-import os  # noqa: E402
+# Only sys is used until os is safely imported. The script directory
+# (sys.path[0], unless -I/-P already left it out) is dropped first, then os is
+# imported with sys.path narrowed to the stdlib directory: under ``python -S``
+# os is not preloaded, so a planted os.py next to this file or on PYTHONPATH
+# would otherwise load. After that the working directory and every inherited
+# PYTHONPATH entry are removed before anything else is imported.
+if sys.path and not (sys.flags.isolated or getattr(sys.flags, "safe_path", False)):
+    del sys.path[0]
+_SAVED_PATH = sys.path[:]
+if getattr(sys, "_stdlib_dir", None):
+    sys.path[:] = [getattr(sys, "_stdlib_dir")]
+try:
+    import os  # noqa: E402
+finally:
+    sys.path[:] = _SAVED_PATH
 
 
 def _norm(path):
@@ -60,6 +71,7 @@ MAP_PATH = @@MAP_PATH@@
 MAP_SHA256 = @@MAP_SHA256@@
 STATE_ROOT = @@STATE_ROOT@@
 CHILD_PYTHON = @@CHILD_PYTHON@@
+CHILD_SHA256 = @@CHILD_SHA256@@
 SOURCE_PATHS = @@SOURCE_PATHS@@
 TARGET_CLASS = @@TARGET_CLASS@@
 DEADLINE_S = @@DEADLINE_S@@
@@ -115,10 +127,54 @@ _LINE_KEYS = {
     "sent",
 }
 _SHORT_KEYS = {"op", "outcome", "findings"}
-_CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,96}$")
-_OUTCOME = re.compile(r"^[A-Z_]{2,40}$")
+_CODE = re.compile(r"^[A-Za-z0-9_:.\-]{1,64}$")
+_RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+# Outcome -> business exit (portfolio_utils.fmp_sync.outcome.EXIT_CODES).
+_OUTCOME_EXITS = {
+    "OK": 0,
+    "PARTIAL": 10,
+    "SKIPPED_BUSY": 10,
+    "DEFERRED_QUOTA": 10,
+    "DEFERRED_RATE_LIMIT": 10,
+    "CANCELLED_DEADLINE": 10,
+    "CANCELLED": 10,
+    "BLOCKED_PLAN": 20,
+    "BLOCKED_AUTH": 20,
+    "BLOCKED_EGRESS": 20,
+    "FAILED_INFRA": 30,
+    "PERSIST_FAILED": 30,
+    "BLOCKED_PROCESS": 40,
+    "BLOCKED_ABI": 40,
+    "BLOCKED_MODULE_ORIGIN": 40,
+    "BLOCKED_CONFIG": 40,
+    "BLOCKED_DATABASE": 40,
+    "BLOCKED_POLICY": 40,
+    "BLOCKED_UNIVERSE": 40,
+    "BLOCKED_EMPTY_UNIVERSE": 40,
+}
+_SHORT_OUTCOMES = {"BLOCKED_CONFIG"}
+_DATA_STATUS = {"UNVALIDATED"}
+_LAYERS = {
+    "process",
+    "module_origin",
+    "abi",
+    "config",
+    "auth",
+    "route",
+    "backend",
+    "database",
+    "schema",
+    "skills",
+    "egress",
+    "budget",
+}
+_COUNT_KEYS = {"requested", "skipped", "success", "failed", "deferred"}
+# Source paths go after the stdlib (before the first site-packages entry), so
+# they can never shadow a standard-library module.
 _BOOT = (
-    "import runpy, sys; sys.path[0:0] = {paths}; "
+    "import runpy, sys; i = next((n for n, p in enumerate(sys.path) "
+    "if 'site-packages' in p.lower() or 'dist-packages' in p.lower()), "
+    "len(sys.path)); sys.path[i:i] = {paths}; "
     "runpy.run_module('portfolio_utils.fmp_sync', run_name='__main__', alter_sys=True)"
 )
 
@@ -144,6 +200,15 @@ def _map_ok():
     try:
         with open(MAP_PATH, "rb") as handle:
             return hashlib.sha256(handle.read()).hexdigest() == MAP_SHA256
+    except OSError:
+        return False
+
+
+def _child_ok():
+    """Check that the venv python is the file hashed at render time."""
+    try:
+        with open(CHILD_PYTHON, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest() == CHILD_SHA256
     except OSError:
         return False
 
@@ -177,32 +242,59 @@ def _child_argv(run_id):
     ]
 
 
+def _count(value):
+    return type(value) is int and value >= 0  # pylint: disable=unidiomatic-typecheck
+
+
+def _member(value, allowed):
+    return isinstance(value, str) and value in allowed
+
+
+def _codes(findings):
+    return (
+        isinstance(findings, list)
+        and len(findings) <= 8
+        and all(isinstance(item, str) and _CODE.match(item) for item in findings)
+    )
+
+
 def valid_line(line, run_id=None):
-    """Return True for exactly one counts-only outcome line (both CLI shapes)."""
+    """Return True for exactly one counts-only outcome line (both CLI shapes).
+
+    Every field is pinned: enums and patterns for the strings, a fixed key set
+    of non-negative integers for ``counts``, the exit matching the outcome and,
+    when given, the run id the wrapper chose. Anything else is rejected.
+    """
     if not line or len(line) > 512 or "\n" in line or "\r" in line:
         return False
     try:
         data = json.loads(line)
     except ValueError:
         return False
-    if not isinstance(data, dict) or set(data) not in (_LINE_KEYS, _SHORT_KEYS):
+    if not isinstance(data, dict) or data.get("op") != "prices":
         return False
-    findings = data.get("findings")
-    if not isinstance(findings, list) or not all(
-        isinstance(item, str) and _CODE.match(item) for item in findings
-    ):
+    if not _codes(data.get("findings")):
         return False
-    outcome = data.get("outcome")
-    if not isinstance(outcome, str) or not _OUTCOME.match(outcome):
+    if set(data) == _SHORT_KEYS:
+        return _member(data["outcome"], _SHORT_OUTCOMES)
+    if set(data) != _LINE_KEYS or not _member(data["outcome"], _OUTCOME_EXITS):
         return False
-    if set(data) == _LINE_KEYS:
-        if data["exit"] not in BUSINESS_EXITS or not isinstance(data["counts"], dict):
-            return False
-        if not all(isinstance(v, int) for v in data["counts"].values()):
-            return False
-        if not isinstance(data["sent"], int):
-            return False
-    return data.get("op") == "prices"
+    counts = data["counts"]
+    layer = data["failed_layer"]
+    return (
+        data["mode"] == RUN_MODE
+        and isinstance(data["run_id"], str)
+        and _RUN_ID.match(data["run_id"]) is not None
+        and (run_id is None or data["run_id"] == run_id)
+        and _count(data["exit"])
+        and data["exit"] == _OUTCOME_EXITS[data["outcome"]]
+        and _member(data["data_status"], _DATA_STATUS)
+        and (layer is None or _member(layer, _LAYERS))
+        and isinstance(counts, dict)
+        and set(counts) == _COUNT_KEYS
+        and all(_count(value) for value in counts.values())
+        and _count(data["sent"])
+    )
 
 
 # ------------------------------------------------------------------ Windows job
@@ -504,7 +596,7 @@ def _supervise(proc, job, run_id):
 
 def main():
     """Verify, run the isolated child, relay its outcome line; return the exit code."""
-    if not (_self_ok() and _map_ok()) or not os.path.isfile(CHILD_PYTHON):
+    if not (_self_ok() and _map_ok() and _child_ok()):
         _say(GENERIC_FAILURE)
         return EXIT_INTEGRITY
     run_id = os.urandom(16).hex()
