@@ -420,7 +420,7 @@ def _probe_session(target: str, layers, connect_fn) -> None:
         cursor.close()
     except Exception as exc:  # noqa: BLE001  pylint: disable=broad-exception-caught
         args = getattr(exc, "args", ())
-        if args and args[0] in _MYSQL_DOWN:
+        if args and isinstance(args[0], int) and args[0] in _MYSQL_DOWN:
             raise _Blocked("FAILED_INFRA", database, "MYSQL_UNAVAILABLE") from exc
         raise _Blocked("BLOCKED_DATABASE", database, "SESSION_CHECK_FAILED") from exc
     finally:
