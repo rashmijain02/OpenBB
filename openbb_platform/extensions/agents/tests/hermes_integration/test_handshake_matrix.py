@@ -472,6 +472,139 @@ def test_route_policy_blocks_alias_outside_allowlist(tmp_path):
     assert "model_not_private_alias" in verdict.reasons
 
 
+# --- fail-closed route policy (#1338 SECURITY-1) ------------------------------------
+
+
+def _mutated_verdict(tmp_path, mutate):
+    cfg = _config(tmp_path, "config-finance-safe.yaml")
+    data = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    mutate(data)
+    cfg.write_text(yaml.safe_dump(data), encoding="utf-8")
+    return hermes_config.evaluate_route(
+        hermes_config.read_route_facts(cfg), _profile(PLACEHOLDER)
+    )
+
+
+def _drop_aux(task):
+    return lambda d: d["auxiliary"].pop(task)
+
+
+def _set_path(dotted, value):
+    def mutate(data):
+        node = data
+        *head, last = dotted.split(".")
+        for part in head:
+            node = node.setdefault(part, {})
+        node[last] = value
+
+    return mutate
+
+
+HOSTED = "https://hosted.invalid/v1"
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (_set_path("fallback_model", {"provider": "openrouter"}), "fallback_model_set"),
+        (_set_path("delegation.provider", "openrouter"), "delegation_provider_set"),
+        (_set_path("delegation.base_url", HOSTED), "delegation_base_url_set"),
+        (_set_path("delegation.model", "hosted-model"), "delegation_model_set"),
+        (_set_path("delegation.backend", "codex"), "delegation_backend_not_default"),
+        (
+            _set_path("delegation.backends", {"x": {"model_map": {"a": "b"}}}),
+            "delegation_backends_set",
+        ),
+        (_drop_aux("title_generation"), "auxiliary_title_generation_unset"),
+        (_drop_aux("moa_aggregator"), "auxiliary_moa_aggregator_unset"),
+        (
+            _set_path("auxiliary.review.base_url", "http://127.0.0.1:4999/v1"),
+            "auxiliary_review_base_url_not_profile_gateway",
+        ),
+        (
+            _set_path("auxiliary.curator.model", "hosted-alias"),
+            "auxiliary_curator_model_not_private_alias",
+        ),
+        (
+            _set_path("auxiliary.openrouter_model", "x/y"),
+            "auxiliary_openrouter_model_set",
+        ),
+        (
+            _set_path("platforms.api_server.extra.model_routes", {"a": {"model": "m"}}),
+            "platforms_api_server_model_routes_set",
+        ),
+        (
+            _set_path("platforms.telegram.enabled", True),
+            "unvetted_key:platforms.telegram",
+        ),
+        (
+            _set_path("smart_model_routing", {"enabled": True}),
+            "smart_model_routing_not_disabled",
+        ),
+        (
+            _set_path("providers", {"openrouter": {"api_key": "SYNTHETIC"}}),
+            "providers_openrouter_not_loopback",
+        ),
+        (
+            _set_path("custom_providers", [{"name": "x", "base_url": HOSTED}]),
+            "custom_providers_0_not_loopback",
+        ),
+        (_set_path("model_aliases", {"fast": "hosted"}), "model_aliases_set"),
+        (_set_path("memory.provider", "honcho"), "memory_provider_set"),
+        (_set_path("telemetry.shared_metrics.enabled", True), "telemetry_enabled"),
+        (
+            _set_path("mcp_servers", {"notes": {"url": HOSTED}}),
+            "mcp_servers_notes_not_loopback",
+        ),
+        (_set_path("x_search", {"model": "hosted"}), "unvetted_key:x_search"),
+        (_set_path("brand_new_key", 1), "unvetted_key:brand_new_key"),
+    ],
+)
+def test_route_policy_blocks_every_unread_routing_key(tmp_path, mutate, reason):
+    verdict = _mutated_verdict(tmp_path, mutate)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        _set_path("smart_model_routing", {"enabled": False}),
+        _set_path("providers", {"local": {"base_url": "http://127.0.0.1:8080/v1"}}),
+        _set_path("mcp_servers", {"openbb": {"command": "uvx"}}),
+        _set_path("display", {"compact": True}),
+        _set_path("delegation.backend", "default"),
+    ],
+)
+def test_route_policy_admits_vetted_harmless_keys(tmp_path, mutate):
+    verdict = _mutated_verdict(tmp_path, mutate)
+    assert verdict.blocked is False, verdict.reasons
+
+
+def test_route_policy_unvetted_key_label_is_sanitised(tmp_path):
+    verdict = _mutated_verdict(tmp_path, _set_path("evil\nkey" + "x" * 80, 1))
+    keys = [r for r in verdict.reasons if r.startswith("unvetted_key:")]
+    assert keys and "\n" not in keys[0] and len(keys[0]) <= len("unvetted_key:") + 40
+
+
+def test_allowlists_are_derived_from_pinned_default_config():
+    pinned = yaml.safe_load(
+        (HERMES / "pinned-default-keys.yaml").read_text(encoding="utf-8")
+    )
+    assert tuple(sorted(pinned["auxiliary_tasks"])) == hermes_config.AUXILIARY_TASKS
+    assert hermes_config.AUXILIARY_SETTINGS <= set(pinned["auxiliary_settings"])
+    legacy = {
+        "fallback_model",
+        "custom_providers",
+        "smart_model_routing",
+        "platforms",
+        "model_aliases",
+        "platform_toolsets",
+        "mcp_servers",
+    }
+    vetted = hermes_config.HARMLESS_TOP_LEVEL | hermes_config.POLICED_TOP_LEVEL
+    assert vetted <= set(pinned["top_level"]) | legacy
+
+
 def test_unreadable_config_raises_value_error(tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text("- just\n- a list\n", encoding="utf-8")
