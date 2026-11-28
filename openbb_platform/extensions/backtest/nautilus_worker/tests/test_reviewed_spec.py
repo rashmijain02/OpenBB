@@ -67,7 +67,9 @@ def _copy_pkg(tmp_path: Path, crlf: bool = False) -> Path:
     shutil.copytree(PKG, dst, ignore=shutil.ignore_patterns("__pycache__"))
     if crlf:
         for path in dst.rglob("*.py"):
-            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+            # Normalise first: a Windows checkout with core.autocrlf is already CRLF.
+            lf = path.read_bytes().replace(b"\r\n", b"\n")
+            path.write_bytes(lf.replace(b"\n", b"\r\n"))
     return dst
 
 
