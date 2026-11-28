@@ -314,6 +314,23 @@ class WorkflowCatalog:
         return copy.deepcopy(document) if document is not None else None
 
 
+def ensure_workflow_current(record: RunRecord, workflows: WorkflowCatalog) -> None:
+    """Raise ``409 workflow_changed`` if a workflow run's document changed.
+
+    Legacy story runs (no ``workflow_manifest_sha256``) are never affected.
+    Shared by the registry, paper, jobs and artifacts routes.
+    """
+    if record.workflow_manifest_sha256 is None:
+        return
+    current = workflows.digest(workflows.parse_id(record.story_id) or "")
+    if current != record.workflow_manifest_sha256:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "workflow_changed: the workflow changed since this run started "
+            f"({record.manifest_version}); start a new run.",
+        )
+
+
 class RunStore:
     """SQLite run store with optimistic concurrency per run."""
 
@@ -544,14 +561,7 @@ def build_router(
     def story_run_checkpoint(run_id: str, checkpoint: Checkpoint) -> RunRecord:
         """Record one stage's status and JSON state against the version read."""
         record = _owned_run(run_id)
-        if record.workflow_manifest_sha256 is not None:
-            current = workflows.digest(workflows.parse_id(record.story_id) or "")
-            if current != record.workflow_manifest_sha256:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    "The workflow changed since this run started "
-                    f"({record.manifest_version}); start a new run.",
-                )
+        ensure_workflow_current(record, workflows)
         if checkpoint.stage_id not in record.stage_status:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,

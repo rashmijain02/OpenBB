@@ -33,7 +33,13 @@ from openbb_core.app.service.job_service import JobService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
-from openbb_mcp_server.story_adapters.registry import RunStore, default_store_path
+from openbb_mcp_server.story_adapters.registry import (
+    RunStore,
+    WorkflowCatalog,
+    default_store_path,
+    default_workflow_dir,
+    ensure_workflow_current,
+)
 from openbb_mcp_server.story_adapters.story_job_kinds import (
     OPERATION_ID,
     KindUnavailable,
@@ -125,9 +131,13 @@ def _now() -> str:
 
 
 def build_router(  # pylint: disable=too-many-statements
-    runs: RunStore, ledger: SubmissionLedger, principal: str
+    runs: RunStore,
+    ledger: SubmissionLedger,
+    principal: str,
+    workflows: WorkflowCatalog | None = None,
 ) -> APIRouter:
     """Return the story job routes bound to one principal."""
+    workflow_catalog = workflows or WorkflowCatalog(default_workflow_dir())
     router = APIRouter(prefix="/api/v1/story/runs", tags=["story"])
     dedupe_prefix = f"story:{ArtifactStore.principal_key(principal)}:"
 
@@ -136,6 +146,7 @@ def build_router(  # pylint: disable=too-many-statements
         if record is None:
             # Another principal's run is indistinguishable from no run.
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
+        ensure_workflow_current(record, workflow_catalog)
         return record
 
     def _job(
@@ -316,6 +327,7 @@ def compose_story_jobs_app(
     *,
     principal: str,
     store_path: Path | None = None,
+    workflow_dir: Path | None = None,
 ) -> FastAPI:
     """Add the story job routes, bound to ``principal``, to an isolated app copy."""
     if not principal:
@@ -327,7 +339,14 @@ def compose_story_jobs_app(
     composed.middleware_stack = None
     composed.router.routes = list(source_app.router.routes)
     composed.include_router(
-        build_router(RunStore(db_path), SubmissionLedger(db_path), principal)
+        build_router(
+            RunStore(db_path),
+            SubmissionLedger(db_path),
+            principal,
+            WorkflowCatalog(
+                workflow_dir if workflow_dir is not None else default_workflow_dir()
+            ),
+        )
     )
     composed.openapi_schema = None
     return composed
