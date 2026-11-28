@@ -154,6 +154,17 @@ def _check_database(
     )
 
 
+# Deeply nested YAML/JSON raises ``RecursionError``: a config error, never a traceback.
+_CONFIG_ERRORS = (OSError, ValueError, yaml.YAMLError, RecursionError)
+
+
+def _config_error(exc: BaseException) -> str:
+    """Report code for an unusable config: a refusal reason, else the error type."""
+    if isinstance(exc, hermes_config.HermesConfigError):
+        return exc.reason
+    return f"config_unreadable: {type(exc).__name__}"
+
+
 def _check_route(
     profile: FinanceRuntimeProfile, config: Path | None
 ) -> tuple[list[ComponentReport], hermes_config.RouteFacts | None]:
@@ -166,16 +177,16 @@ def _check_route(
                 detail="no_local_route: no verified local backend bound (see #1338 T03)",
             )
         ], None
-    # Hermes deep-merges a managed-scope config.yaml over the user config at load time.
-    managed = hermes_config.managed_config_path()
     try:
+        # Hermes deep-merges a managed-scope config.yaml over the user config.
+        managed = hermes_config.managed_config_path()
         facts = hermes_config.read_route_facts(config, managed)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
+    except _CONFIG_ERRORS as exc:
         return [
             ComponentReport(
                 name="hermes_config",
                 failed_layer=FailedLayer.CONFIG,
-                detail=f"config_unreadable: {type(exc).__name__}",
+                detail=_config_error(exc),
             ),
             ComponentReport(
                 name="route",
@@ -211,12 +222,12 @@ def _check_gateway(
         return [], None
     try:
         facts = litellm_config.read_gateway_facts(config, profile)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
+    except _CONFIG_ERRORS as exc:
         return [
             ComponentReport(
                 name="litellm_config",
                 failed_layer=FailedLayer.CONFIG,
-                detail=f"config_unreadable: {type(exc).__name__}",
+                detail=_config_error(exc),
             )
         ], None
     verdict = litellm_config.evaluate_gateway(facts, profile)
@@ -364,7 +375,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if exc.code == 0 else 3
     try:
         profile = load_profile(args.profile)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
+    except _CONFIG_ERRORS as exc:
         sys.stderr.write(f"cannot load profile: {type(exc).__name__}\n")
         return 3
     tools = None
@@ -375,7 +386,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 isinstance(t, dict) for t in tools
             ):
                 raise ValueError("tool list is not a list of objects")
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RecursionError) as exc:
             sys.stderr.write(f"cannot load mcp tools: {type(exc).__name__}\n")
             return 3
     report = run_preflight(

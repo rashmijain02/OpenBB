@@ -889,3 +889,214 @@ def test_cli_reads_managed_scope_config(tmp_path, capsys, monkeypatch):
     route = next(c for c in report["components"] if c["name"] == "route")
     assert code == 2 and route["failed_layer"] == "route"
     assert "base_url_not_loopback" in route["detail"]
+
+
+# --- RR3: parse Hermes configs with Hermes semantics (#1338 CODE-1, SEC-1, SEC-2) ---
+
+SAFE_TELEMETRY = "telemetry:\n  shared_metrics:\n    enabled: false\n"
+
+
+def _safe_text(tmp_path) -> str:
+    return _config(tmp_path, "config-finance-safe.yaml").read_text(encoding="utf-8")
+
+
+def _hermes(tmp_path, text, name="h.yaml") -> Path:
+    out = tmp_path / name
+    out.write_text(text, encoding="utf-8")
+    return out
+
+
+def _managed_text(tmp_path, text) -> Path:
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "config.yaml").write_text(text, encoding="utf-8")
+    return managed / "config.yaml"
+
+
+def _route_verdict(path, managed=None):
+    facts = hermes_config.read_route_facts(path, managed=managed)
+    return hermes_config.evaluate_route(facts, _profile(PLACEHOLDER))
+
+
+def _cli_route(tmp_path, capsys, hermes_path):
+    code = main(
+        [
+            "--profile",
+            str(_cli_profile(tmp_path, PLACEHOLDER)),
+            "--hermes-config",
+            str(hermes_path),
+        ]
+    )
+    report = json.loads(capsys.readouterr().out)
+    by_name = {c["name"]: c for c in report["components"]}
+    return code, by_name
+
+
+@pytest.mark.parametrize(
+    ("managed", "reason"),
+    [
+        # Hermes ``_normalize_root_model_keys`` runs on the managed dict before merging.
+        (
+            {"model": {"api_base": "https://openrouter.ai/api/v1"}},
+            "base_url_not_loopback",
+        ),
+        ({"model": {"name": "gpt-4o"}}, "model_not_private_alias"),
+        ({"model": {"model": "hosted-a"}}, "model_not_private_alias"),
+        ({"base_url": "https://openrouter.ai/api/v1"}, "base_url_not_loopback"),
+        ({"provider": "openrouter"}, "provider_not_custom"),
+        (
+            {"model": {"default": {"model": ALIAS, "provider": "openrouter"}}},
+            "provider_not_custom",
+        ),
+    ],
+)
+def test_managed_overlay_is_normalised_like_hermes(tmp_path, managed, reason):
+    path = _managed_dir(tmp_path, managed) / "config.yaml"
+    verdict = _route_verdict(_config(tmp_path, "config-finance-safe.yaml"), path)
+    assert verdict.blocked and reason in verdict.reasons, verdict.reasons
+
+
+def test_user_model_aliases_are_normalised_like_hermes(tmp_path):
+    # ``api_base`` -> ``base_url`` and ``name`` -> ``default`` when absent (pinned
+    # ``_normalize_root_model_keys``): Hermes routes this config to the gateway.
+    text = _safe_text(tmp_path).replace(
+        '  default: "finance-private"\n', '  name: "finance-private"\n', 1
+    )
+    text = text.replace(
+        '  base_url: "http://127.0.0.1:4000/v1"\n  api_key',
+        ('  api_base: "http://127.0.0.1:4000/v1"\n  api_key'),
+        1,
+    )
+    assert "api_base" in text and "  name:" in text
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert verdict.blocked is False, verdict.reasons
+
+
+def test_user_nested_model_provider_is_flattened_like_hermes(tmp_path):
+    text = _safe_text(tmp_path).replace(
+        '  default: "finance-private"\n  provider: "custom"\n',
+        '  default: {model: "finance-private", provider: "openrouter"}\n',
+        1,
+    )
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert verdict.blocked and "provider_not_custom" in verdict.reasons
+    assert "model_not_private_alias" not in verdict.reasons, verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # PyYAML keeps the last key (finance-safe); ruamel raises, so Hermes falls
+        # back to a backup or DEFAULT_CONFIG (provider ``auto``).
+        "model:\n  default: gpt-4o\n  provider: openrouter\n{safe}",
+        "{safe}display:\n  a: 1\ndisplay:\n  b: 2\n",
+        "{safe}display:\n  <<: {{a: 1}}\n  <<: {{b: 2}}\n",
+        "{safe}display:\n  1: a\n  0x1: b\n",
+    ],
+    ids=["model_twice", "harmless_twice", "merge_key_twice", "same_value_keys"],
+)
+def test_duplicate_keys_fail_closed(tmp_path, capsys, text):
+    path = _hermes(tmp_path, text.format(safe=_safe_text(tmp_path)))
+    with pytest.raises(hermes_config.ConfigDuplicateKeyError):
+        hermes_config.read_route_facts(path)
+    code, comps = _cli_route(tmp_path, capsys, path)
+    assert code == 2
+    assert comps["hermes_config"]["detail"] == "config_duplicate_key"
+    assert comps["route"]["failed_layer"] == "route"
+
+
+def test_duplicate_key_in_managed_overlay_fails_closed(tmp_path):
+    managed = _managed_text(tmp_path, "display:\n  a: 1\ndisplay:\n  b: 2\n")
+    with pytest.raises(hermes_config.ConfigDuplicateKeyError):
+        hermes_config.read_route_facts(
+            _config(tmp_path, "config-finance-safe.yaml"), managed
+        )
+
+
+def test_merge_key_override_is_not_a_duplicate(tmp_path):
+    # An explicit key beside ``<<`` overrides the merged one in YAML and ruamel alike.
+    text = _safe_text(tmp_path) + "display:\n  <<: {a: 1}\n  a: 2\n"
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert verdict.blocked is False, verdict.reasons
+
+
+def test_loader_resolves_yaml_1_1_booleans_like_ruamel():
+    load = hermes_config.load_hermes_yaml
+    assert load("a: y\nb: Y\nc: n\nd: N\ne: on\nf: OFF\ng: yes\nh: 'y'\n") == {
+        "a": True,
+        "b": True,
+        "c": False,
+        "d": False,
+        "e": True,
+        "f": False,
+        "g": True,
+        "h": "y",
+    }
+
+
+@pytest.mark.parametrize(
+    "metrics",
+    [
+        "    enabled: y\n    send: y\n",
+        "    enabled: false\n    send: Y\n",
+        '    enabled: "yes"\n',
+        "    enabled: null\n",
+        "    enabled: 0\n",
+    ],
+    ids=["y_y", "send_Y", "quoted_yes", "null", "zero"],
+)
+def test_telemetry_flag_not_false_blocks(tmp_path, metrics):
+    text = _safe_text(tmp_path).replace(
+        SAFE_TELEMETRY, "telemetry:\n  shared_metrics:\n" + metrics
+    )
+    assert text.endswith("shared_metrics:\n" + metrics)
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert "telemetry_enabled" in verdict.reasons, verdict.reasons
+
+
+@pytest.mark.parametrize(
+    "telemetry", ["telemetry:\n  shared_metrics: y\n", "telemetry: on\n"]
+)
+def test_telemetry_unparsed_blocks(tmp_path, telemetry):
+    text = _safe_text(tmp_path).replace(SAFE_TELEMETRY, telemetry)
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert "telemetry_unparsed" in verdict.reasons, verdict.reasons
+
+
+def test_yaml_1_1_false_flags_are_admitted(tmp_path):
+    text = _safe_text(tmp_path).replace(
+        SAFE_TELEMETRY, "telemetry:\n  shared_metrics:\n    enabled: n\n    send: N\n"
+    )
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert verdict.blocked is False, verdict.reasons
+
+
+def test_relative_managed_dir_fails_closed(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("HERMES_MANAGED_DIR", "relative_managed_dir")
+    with pytest.raises(hermes_config.ManagedDirRelativeError):
+        hermes_config.managed_config_path()
+    code, comps = _cli_route(
+        tmp_path, capsys, _config(tmp_path, "config-finance-safe.yaml")
+    )
+    assert code == 2
+    assert comps["hermes_config"]["detail"] == "managed_dir_relative"
+
+
+def test_deeply_nested_hermes_config_is_a_config_error(tmp_path, capsys):
+    deep = "display:\n  a: " + "[" * 3000 + "]" * 3000 + "\n"
+    path = _hermes(tmp_path, _safe_text(tmp_path) + deep)
+    code, comps = _cli_route(tmp_path, capsys, path)
+    assert code == 2
+    assert comps["hermes_config"]["detail"] == "config_unreadable: RecursionError"
+
+
+def test_deeply_nested_models_body_is_no_aliases():
+    assert handshake._alias_ids(b"[" * 100000 + b"]" * 100000) == set()
+
+
+@pytest.mark.parametrize("root", ["base_url", "context_length", "api_base"])
+def test_root_model_keys_stay_unvetted(tmp_path, root):
+    # Hermes moves (or drops) root model keys; this reader still blocks them.
+    text = _safe_text(tmp_path) + f"{root}: https://openrouter.ai/api/v1\n"
+    verdict = _route_verdict(_hermes(tmp_path, text))
+    assert f"unvetted_key:{root}" in verdict.reasons, verdict.reasons

@@ -164,7 +164,7 @@ def load_credentials(
         return {}, ()
     try:
         loaded = json.loads(Path(settings_path).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return {}, ("settings_unreadable",)
     if not isinstance(loaded, dict):
         return {}, ("settings_not_a_mapping",)

@@ -139,7 +139,7 @@ def _alias_ids(body: bytes) -> set[str]:
     try:
         data = json.loads(body.decode("utf-8", errors="replace"))
         return {str(m["id"]) for m in data.get("data", []) if "id" in m}
-    except (ValueError, AttributeError, TypeError, KeyError):
+    except (ValueError, AttributeError, TypeError, KeyError, RecursionError):
         return set()
 
 

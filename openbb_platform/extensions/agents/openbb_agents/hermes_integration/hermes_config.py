@@ -142,6 +142,169 @@ _LABEL = re.compile(r"[^A-Za-z0-9_.-]")
 _LOOPBACK_NAMES = {"localhost"}
 # Managed-scope directory default at the pin (``hermes_cli/managed_scope.py``).
 _DEFAULT_MANAGED_DIR = Path("/etc/hermes")
+# Root keys Hermes moves under ``model`` (``_normalize_root_model_keys``). They stay
+# unvetted here as well, so a config using them still blocks (fail closed).
+_ROOT_MODEL_KEYS = ("provider", "base_url", "context_length", "api_base")
+_MERGE_TAG = "tag:yaml.org,2002:merge"
+
+
+class HermesConfigError(ValueError):
+    """A Hermes config this reader refuses; ``reason`` is the report code."""
+
+    reason = "config_unreadable"
+
+
+class ConfigDuplicateKeyError(HermesConfigError):
+    """Duplicate mapping key: ruamel raises, so Hermes would load a fallback config."""
+
+    reason = "config_duplicate_key"
+
+
+class ManagedDirRelativeError(HermesConfigError):
+    """``HERMES_MANAGED_DIR`` is relative to the Hermes process cwd, not ours."""
+
+    reason = "managed_dir_relative"
+
+
+class _HermesLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
+    """PyYAML ``SafeLoader`` with the ruamel YAML 1.1 reading Hermes uses.
+
+    Hermes loads configs with ``hermes_yaml.safe_load`` at the pin: ruamel
+    ``typ="safe"`` with ``version=(1, 1)``, which also resolves bare ``y``/``n`` as
+    booleans and raises on duplicate keys (see :func:`load_hermes_yaml`).
+    """
+
+    bool_values = {**yaml.SafeLoader.bool_values, "y": True, "n": False}
+
+
+_HermesLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool", re.compile(r"^(?:y|Y|n|N)$"), list("yYnN")
+)
+
+
+def _reject_duplicate_keys(loader: _HermesLoader, root: yaml.Node) -> None:
+    """Raise on a key repeated in one mapping, ``<<`` included, as ruamel does.
+
+    Runs on the composed node graph before merge keys are flattened, so an explicit
+    key overriding a merged one is not reported. Keys compare by constructed value
+    (``1`` and ``0x1`` collide), as in ruamel.
+    """
+    seen_nodes: set[int] = set()
+    stack: list[yaml.Node] = [root]
+    while stack:
+        node = stack.pop()
+        if id(node) in seen_nodes:
+            continue
+        seen_nodes.add(id(node))
+        if isinstance(node, yaml.SequenceNode):
+            stack.extend(node.value)
+        elif isinstance(node, yaml.MappingNode):
+            keys: set[Any] = set()
+            for key_node, value_node in node.value:
+                stack.extend((key_node, value_node))
+                if key_node.tag == _MERGE_TAG:
+                    key: Any = ("<<",)
+                elif isinstance(key_node, yaml.ScalarNode):
+                    key = loader.construct_object(key_node, deep=True)
+                else:
+                    continue  # complex keys: the constructor rejects unhashable ones
+                if key in keys:
+                    raise ConfigDuplicateKeyError("duplicate key in hermes config")
+                keys.add(key)
+
+
+def load_hermes_yaml(text: str) -> Any:
+    """Parse a Hermes config with Hermes' YAML semantics, or fail closed.
+
+    Mirrors ``hermes_yaml.safe_load`` (rashmijain02/hermes-agent 710fa8a): YAML 1.1
+    booleans including ``y``/``Y``/``n``/``N``, and duplicate keys rejected. A ruamel
+    load failure makes Hermes fall back to a backup or ``DEFAULT_CONFIG`` (provider
+    ``auto``), so a duplicate raises :class:`ConfigDuplicateKeyError` here. Residual:
+    other ruamel-only rejections are not modelled; PyYAML errors still fail closed.
+    """
+    loader = _HermesLoader(text)
+    try:
+        node = loader.get_single_node()
+        if node is None:
+            return None
+        _reject_duplicate_keys(loader, node)
+        return loader.construct_document(node)
+    finally:
+        loader.dispose()
+
+
+def _normalize_root_model_keys(config: dict[str, Any]) -> dict[str, Any]:
+    """Port of Hermes ``_normalize_root_model_keys``.
+
+    Source: ``hermes_cli/config.py`` lines 1722-1818 at 710fa8a, with
+    ``coerce_provider_id`` from ``hermes_cli/config_providers.py`` lines 66-70.
+    Hermes applies it to the user config (``_canonicalize_config`` in
+    ``_load_config_impl``, line 2399) and to the managed config before merging
+    (``_merge_managed_overlay``, line 2293).
+    """
+    model_in = config.get("model")
+    model_provider = model_in.get("provider") if isinstance(model_in, dict) else None
+    needs_model_work = (
+        model_provider is not None and not isinstance(model_provider, str)
+    ) or (
+        isinstance(model_in, dict)
+        and bool(
+            model_in.get("api_base")
+            or model_in.get("model")
+            or model_in.get("name")
+            or any(
+                isinstance(model_in.get(k), dict) for k in ("default", "model", "name")
+            )
+        )
+    )
+    has_root = any(config.get(k) for k in _ROOT_MODEL_KEYS)
+    if not has_root and not needs_model_work:
+        return config
+    config = dict(config)
+    raw = config.get("model")
+    model: dict[str, Any] = (
+        dict(raw) if isinstance(raw, dict) else {"default": raw} if raw else {}
+    )
+    config["model"] = model
+    for key in ("default", "model", "name"):
+        val = model.get(key)
+        if isinstance(val, dict):
+            nested_model = val.get("model") or val.get("default")
+            nested_provider = str(val.get("provider") or "").strip()
+            model[key] = str(nested_model or "").strip()
+            if nested_provider:
+                outer = str(model.get("provider") or "").strip()
+                if not outer or outer == "auto":
+                    model["provider"] = nested_provider
+    for key in ("provider", "base_url", "context_length"):
+        root_val = config.get(key)
+        if root_val and not model.get(key):
+            model[key] = root_val
+        config.pop(key, None)
+    if model.get("provider") is not None:
+        model["provider"] = str(model["provider"]).strip()
+    for alias_val in (config.get("api_base"), model.get("api_base")):
+        if alias_val and not model.get("base_url"):
+            model["base_url"] = alias_val
+    config.pop("api_base", None)
+    model.pop("api_base", None)
+    alias = model.get("model") or model.get("name")
+    if not model.get("default") and alias:
+        model["default"] = alias
+    if model.get("default"):
+        model.pop("model", None)
+        model.pop("name", None)
+    return config
+
+
+def _load_mapping(path: Path, what: str) -> dict[str, Any]:
+    """Load ``path`` as Hermes does (``utf-8-sig``); an empty file is ``{}``."""
+    loaded = load_hermes_yaml(Path(path).read_text(encoding="utf-8-sig"))
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{what} is not a mapping")
+    return loaded
 
 
 def is_loopback_host(host: str | None) -> bool:
@@ -378,10 +541,15 @@ def _scan_misc(loaded: dict[str, Any]) -> list[str]:
         issues.append("smart_model_routing_not_disabled")
     if _set(_get(loaded, "memory.provider")):  # external memory providers are hosted
         issues.append("memory_provider_set")
-    metrics = _get(loaded, "telemetry.shared_metrics")
-    if isinstance(metrics, dict) and True in (
-        metrics.get("enabled"),
-        metrics.get("send"),
+    # Absent flags keep the pinned default (``False``); any other value counts as on.
+    telemetry = loaded.get("telemetry")
+    metrics = telemetry.get("shared_metrics") if isinstance(telemetry, dict) else None
+    if (telemetry is not None and not isinstance(telemetry, dict)) or (
+        metrics is not None and not isinstance(metrics, dict)
+    ):
+        issues.append("telemetry_unparsed")
+    elif isinstance(metrics, dict) and any(
+        k in metrics and metrics[k] is not False for k in ("enabled", "send")
     ):
         issues.append("telemetry_enabled")
     return issues
@@ -427,10 +595,14 @@ def managed_config_path(environ: Mapping[str, str] | None = None) -> Path | None
     """Return the managed-scope ``config.yaml`` Hermes would overlay, or ``None``.
 
     Mirrors ``get_managed_dir`` at the pin: a non-empty ``HERMES_MANAGED_DIR`` wins
-    (and yields nothing when it is not a directory), otherwise ``/etc/hermes``.
+    (and yields nothing when it is not a directory), otherwise ``/etc/hermes``. A
+    relative override resolves against the Hermes process cwd, which this check
+    cannot know, so it raises :class:`ManagedDirRelativeError`.
     """
     env = os.environ if environ is None else environ
     override = env.get("HERMES_MANAGED_DIR", "").strip()
+    if override and not Path(override).is_absolute():
+        raise ManagedDirRelativeError("HERMES_MANAGED_DIR is relative")
     directory = Path(override) if override else _DEFAULT_MANAGED_DIR
     path = directory / "config.yaml"
     return path if directory.is_dir() and path.is_file() else None
@@ -448,13 +620,9 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     return result
 
 
-def _load_managed(path: Path) -> dict[str, Any]:
-    """Load the overlay as Hermes applies it; a malformed file fails closed here."""
-    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8-sig"))
-    if loaded is None:
-        return {}
-    if not isinstance(loaded, dict):
-        raise ValueError("managed hermes config is not a mapping")
+def _managed_overlay(raw: dict[str, Any]) -> dict[str, Any]:
+    """Build the overlay as ``_merge_managed_overlay`` applies it at the pin."""
+    loaded = _normalize_root_model_keys(raw)
     if isinstance(loaded.get("model"), str):  # bare ``model: x`` means model.default
         loaded = {**loaded, "model": {"default": loaded["model"]}}
     return loaded
@@ -463,13 +631,19 @@ def _load_managed(path: Path) -> dict[str, Any]:
 def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
     """Read routing facts from ``path`` with the ``managed`` overlay deep-merged on top.
 
-    Raises ``OSError``/``ValueError`` when either file is unusable.
+    Each file is normalised as Hermes ``_load_config_impl`` does before the merge.
+    Raises ``OSError``/``ValueError`` (:class:`HermesConfigError` for refused shapes)
+    when either file is unusable.
     """
-    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(loaded, dict):
+    user = load_hermes_yaml(Path(path).read_text(encoding="utf-8-sig"))
+    if not isinstance(user, dict):
         raise ValueError("hermes config is not a mapping")
+    raw_roots = [k for k in _ROOT_MODEL_KEYS if k in user]
+    loaded = _normalize_root_model_keys(user)
     if managed is not None:
-        loaded = _deep_merge(loaded, _load_managed(managed))
+        raw = _load_mapping(managed, "managed hermes config")
+        raw_roots += [k for k in _ROOT_MODEL_KEYS if k in raw]
+        loaded = _deep_merge(loaded, _managed_overlay(raw))
     host, port, base_path, scheme = _split(_get(loaded, "model.base_url"))
     aux, aux_unvetted, aux_issues = _read_auxiliary(loaded.get("auxiliary"))
     surf_unvetted, surf_issues = _scan_surfaces(loaded)
@@ -491,7 +665,12 @@ def read_route_facts(path: Path, managed: Path | None = None) -> RouteFacts:
         auxiliary=aux,
         adopt_external_logins=adopt if isinstance(adopt, bool) else None,
         provider_endpoints=_provider_endpoints(loaded),
-        unvetted_keys=[*_scan_top_level(loaded), *aux_unvetted, *surf_unvetted],
+        unvetted_keys=[
+            *dict.fromkeys(raw_roots),
+            *_scan_top_level(loaded),
+            *aux_unvetted,
+            *surf_unvetted,
+        ],
         route_issues=[
             *_scan_misc(loaded),
             *_scan_delegation(loaded),

@@ -420,3 +420,16 @@ def test_git_runs_with_fsmonitor_disabled(monkeypatch, tmp_path):
     monkeypatch.setattr(provenance.subprocess, "run", fake_run)
     provenance.git_facts(tmp_path)
     assert calls and all(c[:3] == ["git", "-c", "core.fsmonitor=false"] for c in calls)
+
+
+def test_deeply_nested_settings_json_is_unreadable_not_a_crash(tmp_path):
+    # #1338 RR3: RecursionError from deep nesting is a config error.
+    path = tmp_path / "user_settings.json"
+    path.write_text("[" * 100000 + "]" * 100000, encoding="utf-8")
+    assert provenance.load_credentials(path) == ({}, ("settings_unreadable",))
+
+
+def test_deeply_nested_mcp_tools_json_exits_3(tmp_path):
+    tools = tmp_path / "tools.json"
+    tools.write_text("[" * 100000 + "]" * 100000, encoding="utf-8")
+    assert main(["--profile", str(PROFILE), "--mcp-tools", str(tools)]) == 3
