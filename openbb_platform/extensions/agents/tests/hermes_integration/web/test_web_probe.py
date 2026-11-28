@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from openbb_agents.hermes_integration.web import web_probe
 
 
@@ -40,3 +41,20 @@ def test_web_probe_text_format_and_bad_scenario(capsys):
     assert "approvals_written: 0" in out
     assert "ok: True" in out
     assert web_probe.main(["--scenario", "nope"]) == 3
+
+
+def test_web_probe_journey_real_path(capsys):
+    """T02 real path: one approval row, one run, one job, outcome succeeded."""
+    pytest.importorskip("openbb_portfolio_intel")
+    assert web_probe.main(["--scenario", "journey", "--format", "json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["plan"] == "pending->started"
+    assert report["approve_results"] == ["200:approved", "200:already_approved"]
+    assert report["duplicates"] == {"approve": "2->1", "start": "2->1"}
+    assert (report["runs"], report["jobs"], report["job_status"]) == (
+        1,
+        1,
+        ["succeeded"],
+    )
+    assert report["outcome"] == "succeeded" and report["artifacts_sha_ok"]
+    assert (report["provider_calls"], report["egress_refused"]) == (0, 0)

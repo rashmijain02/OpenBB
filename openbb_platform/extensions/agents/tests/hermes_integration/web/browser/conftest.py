@@ -53,7 +53,9 @@ def _fork_dir() -> Path:
 @pytest.fixture(scope="module")
 def playwright_sync():
     try:
-        from playwright.sync_api import sync_playwright  # pylint: disable=import-outside-toplevel
+        from playwright.sync_api import (
+            sync_playwright,
+        )  # pylint: disable=import-outside-toplevel
     except ImportError as exc:
         pytest.skip(f"playwright not installed in this interpreter: {exc}")
     with sync_playwright() as pw:
@@ -103,7 +105,13 @@ class Stack:
 
 
 @pytest.fixture(scope="module")
-def stack(tmp_path_factory):
+def sidecar_backend():
+    """No story backend by default; card tests override this with real stores."""
+    return None
+
+
+@pytest.fixture(scope="module")
+def stack(tmp_path_factory, sidecar_backend):  # pylint: disable=redefined-outer-name
     if os.name != "nt" and not os.environ.get("HFP_BROWSER_ANY_OS"):
         pytest.skip("tier B is qualified on the Windows host with system Edge")
     root = tmp_path_factory.mktemp("hfp-tier-b")
@@ -114,7 +122,10 @@ def stack(tmp_path_factory):
     for path in (home, state, root / "agent-empty", root / "localappdata"):
         path.mkdir()
     token_file = state / "sidecar-auth" / "openbb-hfp.token"
-    with LoopbackSidecar(principal="tier-b", token_file=token_file) as sidecar:
+    principal = sidecar_backend.principal if sidecar_backend else "tier-b"
+    with LoopbackSidecar(
+        principal=principal, token_file=token_file, backend=sidecar_backend
+    ) as sidecar:
         ext_dir = root / "bundle"
         bundle.render_bundle(ext_dir, port=sidecar.port)
         port = _free_port()
@@ -154,7 +165,9 @@ def stack(tmp_path_factory):
             try:
                 url = f"http://127.0.0.1:{port}"
                 if not _wait_health(url, proc):
-                    tail = log_path.read_text(encoding="utf-8", errors="replace")[-1500:]
+                    tail = log_path.read_text(encoding="utf-8", errors="replace")[
+                        -1500:
+                    ]
                     pytest.fail(f"pinned WebUI did not become healthy:\n{tail}")
                 yield Stack(url, password, sidecar, state, log_path, src)
             finally:
@@ -174,7 +187,9 @@ def browser_context(playwright_sync, stack):
             args=["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1"],
         )
     except Exception as exc:  # pylint: disable=broad-except
-        pytest.skip(f"system Edge could not be launched by playwright: {type(exc).__name__}")
+        pytest.skip(
+            f"system Edge could not be launched by playwright: {type(exc).__name__}"
+        )
     context = browser.new_context()
 
     def guard(route):

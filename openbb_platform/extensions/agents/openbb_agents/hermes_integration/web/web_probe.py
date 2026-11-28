@@ -1,6 +1,8 @@
 """Real-path probe of the HFP sidecar security layer (#1342 T01).
 
-Usage: ``python -m openbb_agents.hermes_integration.web.web_probe --scenario security``.
+Usage: ``python -m openbb_agents.hermes_integration.web.web_probe --scenario security``
+or ``--scenario journey`` (T02: preview -> approve via the sidecar -> start -> worker ->
+outcome card over temp stores; see :mod:`.journey`).
 Starts the real sidecar on an ephemeral ``127.0.0.1`` port with a synthetic token in a
 temp dir, sends the rejection matrix with raw HTTP (so ``Host`` is the probe's), and
 reports each case's status and code. Never contacts WebUI, Hermes or any other port.
@@ -226,16 +228,28 @@ def _render_text(report: dict[str, Any]) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point; returns the process exit code."""
     parser = argparse.ArgumentParser(prog="web_probe", description=__doc__)
-    parser.add_argument("--scenario", choices=["security"], required=True)
+    parser.add_argument("--scenario", choices=["security", "journey"], required=True)
     parser.add_argument("--format", choices=["json", "text"], default="json")
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 3
-    report = run_security()
-    text = (
-        json.dumps(report, indent=2) if args.format == "json" else _render_text(report)
-    )
+    if args.scenario == "journey":
+        # pylint: disable=import-outside-toplevel
+        from .journey import run_journey
+
+        report = run_journey()
+        lines = [f"{key}: {value}" for key, value in report.items()]
+        text = (
+            json.dumps(report, indent=2) if args.format == "json" else "\n".join(lines)
+        )
+    else:
+        report = run_security()
+        text = (
+            json.dumps(report, indent=2)
+            if args.format == "json"
+            else _render_text(report)
+        )
     sys.stdout.write(text + "\n")
     return 0 if report["ok"] else 1
 
