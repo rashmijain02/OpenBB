@@ -338,10 +338,15 @@ def _denied(monkeypatch, value):
 def test_projection_without_a_usable_key_fails_closed(tmp_path, monkeypatch):
     assert _denied(monkeypatch, None) == "projection_key_unconfigured"
     assert _denied(monkeypatch, "") == "projection_key_unconfigured"
+    monkeypatch.chdir(tmp_path)  # a readable, long-enough key, but a relative path
+    (tmp_path / "relative.key").write_bytes(b"r" * 64)
     assert _denied(monkeypatch, "relative.key") == "projection_key_unconfigured"
     missing = str(tmp_path / "missing.key")
     assert _denied(monkeypatch, missing) == "projection_key_unconfigured"
     short = _key_file(tmp_path, "short", b"x" * 31)
+    monkeypatch.setenv(projection.PROJECTION_KEY_ENV, str(short))
+    with pytest.raises(ProjectionDenied):
+        projection.load_projection_key()
     assert _denied(monkeypatch, str(short)) == "projection_key_unconfigured"
 
 
