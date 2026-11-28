@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 from openbb_backtest.adapters.nautilus import strategies
+from openbb_backtest import registry as legacy_registry
 from openbb_backtest.registry import register_strategy
 from openbb_nautilus_worker import admission
 from openbb_nautilus_worker.reviewed import registry as worker_registry
@@ -79,6 +80,13 @@ def test_legacy_registry_entry_cannot_shadow_reviewed(monkeypatch):
         importlib.metadata,
         "entry_points",
         lambda *a, **k: (_ for _ in ()).throw(AssertionError("entry points read")),
+    )
+
+    # a private copy, so the shadow entry does not leak into later tests
+    monkeypatch.setattr(
+        legacy_registry,
+        "_STRATEGIES",
+        dict(legacy_registry._STRATEGIES),  # pylint: disable=protected-access
     )
 
     @register_strategy("target_weight_rebalance")

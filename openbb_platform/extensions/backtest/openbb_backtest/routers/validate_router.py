@@ -43,7 +43,12 @@ from openbb_backtest.models import (
     TearSheet,
     ValidationReport,
 )
-from openbb_backtest.router_helpers import build_feed, resolve_engine, resolve_provider
+from openbb_backtest.router_helpers import (
+    build_feed,
+    reject_nautilus_until_p17,
+    resolve_engine,
+    resolve_provider,
+)
 
 # Runtime imports (formerly under `if TYPE_CHECKING`). Needed at import
 # time because this file no longer uses `from __future__ import annotations`
@@ -368,6 +373,7 @@ async def validate(
     from openbb_backtest.validation import build_validation_report
 
     _check_method(method)
+    reject_nautilus_until_p17(config, "validate")
     provider_name = resolve_provider(provider)
     base_factory = _strategy_factory(config.strategy)
 
@@ -455,6 +461,7 @@ async def tearsheet(
     """
     from openbb_backtest.analytics import build_tearsheet, to_returns
 
+    reject_nautilus_until_p17(config, "tearsheet")
     provider_name = resolve_provider(provider)
     strategy: Strategy = _strategy_factory(config.strategy)(**(strategy_params or {}))
     engine_name = resolve_engine(

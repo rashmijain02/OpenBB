@@ -313,6 +313,18 @@ def run(
         "starting_cash": _money(spec.starting_cash),
         "final_equity": books["equity"][-1],
         **books,
+        # The fills the books were derived from, so the facade can re-derive and
+        # cross-check cash and project trades (#1356 T02). Buys only until T03.
+        "fills": [
+            {
+                "session": f.session,
+                "side": "buy",
+                "quantity": f.quantity,
+                "price": str(f.price),
+                "commission": _money(f.commission),
+            }
+            for f in result.fills
+        ],
     }
     if adm.binding is not None:
         report["binding"] = registry.run_binding(

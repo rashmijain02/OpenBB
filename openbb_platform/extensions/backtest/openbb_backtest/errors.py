@@ -78,3 +78,40 @@ class EngineSelectionError(BacktestError):
         super().__init__(
             f"Unknown engine '{requested}'. Choose one of: {choices}."
         )
+
+
+class _BackendError(BacktestError):
+    """Shared shape of the backend errors (#1356): a message plus context.
+
+    ``reason`` names the specific check (for a worker or reviewed-loader
+    rejection it is the worker's own ``reason``) and ``code`` is the failed
+    layer (a ``FailedLayer`` value such as ``schema`` or ``module_origin``).
+    Both are ``None`` when the facade itself rejected the request.
+    """
+
+    def __init__(
+        self, message: str, *, reason: str | None = None, code: str | None = None
+    ) -> None:
+        self.reason = reason
+        self.code = code
+        super().__init__(message)
+
+
+class BackendSelectionError(_BackendError):
+    """An unknown backend, or a backend/engine combination that cannot run."""
+
+
+class BackendUnavailableError(_BackendError):
+    """The selected backend cannot run here (not configured, not qualified, failed).
+
+    The legacy engine is never used as a fallback.
+    """
+
+
+class UnsupportedSemanticsError(_BackendError):
+    """The request needs semantics the selected backend does not implement.
+
+    Raised for an unreviewed or plugin strategy on ``nautilus``, a reviewed-only
+    strategy on ``legacy``, unsupported execution assumptions, and the commands
+    that do not route to ``nautilus`` yet (HFP-P17).
+    """

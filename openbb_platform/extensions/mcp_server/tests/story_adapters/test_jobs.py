@@ -868,3 +868,66 @@ def test_a_job_claimed_before_its_id_is_recorded_waits_for_it(job_harness, monke
     assert job_harness.worker.run_once().status == "succeeded"
     assert sleeps, "the worker never waited for the job ID"
     assert len(job_harness.calls) == 1
+
+
+# --- #1356 T02: story.backtest contract under the default backend -----------
+
+_PRE_1356_RESULT_KEYS = {
+    "equity_curve",
+    "trades",
+    "positions",
+    "metrics",
+    "engine_used",
+    "config",
+}
+
+
+def test_story_backtest_old_payload_still_validates():
+    """A pre-#1356 payload validates unchanged and selects no backend."""
+    pytest.importorskip("openbb_backtest")
+    model = story_job_kinds.payload_model("story.backtest")
+    payload = model.model_validate(BACKTEST)
+    assert payload.config.backend is None
+    assert payload.config.strategy_version is None
+    assert payload.engine == "auto"
+    with pytest.raises(ValueError):
+        model.model_validate({**BACKTEST, "backend": "nautilus"})
+
+
+def test_story_run_backtest_output_keys(monkeypatch):
+    """run_backtest returns the old keys plus ``provenance`` on the legacy path."""
+    pd = pytest.importorskip("pandas")
+    pytest.importorskip("openbb_backtest")
+    from openbb_backtest.routers import run_router
+
+    sessions = pd.bdate_range("2023-01-03", periods=5)
+
+    class _Feed:
+        def __init__(self):
+            self._f = pd.DataFrame(
+                [
+                    {"symbol": s, "session": d, "close": 100.0 + i, "open": 100.0}
+                    | {"high": 101.0 + i, "low": 99.0, "volume": 1e6}
+                    for s in ("AAA", "BBB")
+                    for i, d in enumerate(sessions)
+                ]
+            )
+
+        def history(self, symbols, end, lookback):
+            f = self._f
+            mask = f["symbol"].isin(symbols) & (f["session"] <= pd.Timestamp(end))
+            return f.loc[mask].groupby("symbol").tail(lookback).reset_index(drop=True)
+
+        def sessions(self, start, end):
+            s = self._f["session"]
+            sel = s[(s >= pd.Timestamp(start)) & (s <= pd.Timestamp(end))]
+            return pd.DatetimeIndex(sorted(sel.unique()))
+
+    monkeypatch.setattr(run_router, "_build_feed", lambda config, provider: _Feed())
+    model = story_job_kinds.payload_model("story.backtest")
+    out = story_job_kinds.run_backtest(model.model_validate(BACKTEST))
+    assert set(out) == _PRE_1356_RESULT_KEYS | {"provenance"}
+    assert out["positions"] == []
+    assert out["provenance"]["backend"] == "legacy"
+    assert out["provenance"]["backend_source"] == "default"
+    assert len(out["equity_curve"]) == len(sessions)

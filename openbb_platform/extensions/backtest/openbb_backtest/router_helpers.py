@@ -24,8 +24,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from openbb_backtest.errors import EngineSelectionError
-from openbb_backtest.models import BacktestConfig, BacktestResult
+from openbb_backtest.errors import (
+    BackendSelectionError,
+    EngineSelectionError,
+    UnsupportedSemanticsError,
+)
+from openbb_backtest.models import BacktestConfig, BacktestResult, BackendSource
 from openbb_backtest.settings import DEFAULT_SETTINGS
 
 if TYPE_CHECKING:
@@ -88,6 +92,59 @@ def resolve_engine(engine: str, *, path_dependent: bool = False) -> str:
         return _ENGINE_ALIASES[key]
     except KeyError:
         raise EngineSelectionError(engine, available=_AVAILABLE_ENGINES) from None
+
+
+#: Backends the facade can dispatch to (#1356). ``legacy`` = the in-process
+#: vectorized/event engines; ``nautilus`` = the reviewed path via the worker.
+BACKENDS = ("legacy", "nautilus")
+
+
+def resolve_backend(
+    backend: str | None, config: BacktestConfig
+) -> tuple[str, BackendSource]:
+    """Resolve the backend and record where the choice came from.
+
+    Precedence mirrors bd-q7u5 for engines: an explicit ``backend`` parameter,
+    then ``config.backend``, then ``DEFAULT_SETTINGS.default_backend``. Returns
+    ``(backend, source)`` with ``source`` in ``param|config|default``. The choice
+    is never changed afterwards (no fallback).
+
+    Raises
+    ------
+    BackendSelectionError
+        If the selected backend is not one of :data:`BACKENDS`.
+    """
+    source: BackendSource
+    if backend is not None:
+        value, source = backend, "param"
+    elif config.backend is not None:
+        value, source = config.backend, "config"
+    else:
+        value, source = DEFAULT_SETTINGS.default_backend, "default"
+    key = value.strip().lower() if isinstance(value, str) else ""
+    if key not in BACKENDS:
+        raise BackendSelectionError(
+            f"Unknown backend '{value}' (from {source}). Choose one of: "
+            + ", ".join(BACKENDS)
+            + "."
+        )
+    return key, source
+
+
+def reject_nautilus_until_p17(config: BacktestConfig, command: str) -> None:
+    """Refuse ``nautilus`` for commands that do not route to it yet (D6).
+
+    ``sweep``, ``reconcile``, ``validate`` and ``tearsheet`` run folds or grids,
+    which reach the Nautilus backend in HFP-P17. Until then a config selecting
+    it is rejected rather than silently run on the legacy engines.
+    """
+    backend, source = resolve_backend(None, config)
+    if backend == "nautilus":
+        raise UnsupportedSemanticsError(
+            f"{command} does not support backend 'nautilus' yet (from {source});"
+            " it arrives with HFP-P17. Use backend 'legacy'.",
+            reason="backend_not_routed",
+        )
 
 
 def sanitize_result(result: BacktestResult) -> BacktestResult:
