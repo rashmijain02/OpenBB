@@ -1,0 +1,28 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "search-crypto-news",
+  "symbols": [
+   "BTCUSD"
+  ],
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "b7e2209d2b07684ea25d1b45d97f42a7f3c700b5c6ff33b772a1c383ded278ec",
+ "hosted_text_len": 1270,
+ "rest_path": "/news/crypto",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "d634aa6f3b52d9b170431290abb411940c3b27b1ad232f71876e232acd6b7abb",
+ "rest_body_len": 1379,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa5533b6fdb3010def32b0e468a2ea65eb1dcd45b9ba04090364b5274283a50122db1a648824745158afef71c25cb499c74ca60431279f73deebb9f27007fe907b0c0a12d8c5a6c60f1f9eee2fbede562397db75da12436a2bae45e84e32cc9d62c4d59b68264b5394b3669767cd78d6da42f8dd4f399975e8df5b77c50c6bd47b8f58e5ad6035c21dc981e7e18e71bf82a10e1aee11eae3cc2be09dde5d8ccad64cbebb155e3bdc54d1c8f1f30da4acd7529b96a4d2594d4b575c246a569632d7a8c710446867b5c269169d3b33ee03245b8cc132e931e5931e1b220364db355f4dbd6333ccac988d034da5f0c2807a5e28f0fe7df64d970a1e0a56042057aae04c2d63808d040d09afe04ec3b82f4d01855e1127a49be7068b9db090ff75c7502b4e00e4ecff2e8031528258d065e73a9d1d34def04c7ce0d60b6709ea7cbb324079a2a8c4ac199ae6ed400a7793ad746f0092e2596a6d31ebc19795c10893009c2eada42388482973be8ec785a2a2edb25705d8115ee208d542a7a20165f8c6be19c5dc35686512ca72ad35aae076884aa9e31e318b8de98fb6876b173eae9888fcd8e4b37586fd893c93e0ef6f944f5619ac14fe282f18230fe2ddf1cfe2cdfacf257c31fccf34289da71dbbc588139d595b4b3abba22174fd7c975b0a2269e80822b0c232333d709abf800ca505050ea5240faf13cc1372ec46c4ba0c1020d36d260eb64c738b2c0828d2cd8c8e271197a51d8e36d289f2a7e6d1d66d1a5d15eea4e5453d028aa5e4cc91fe5510cc886659224809db534c98323dc7bd15a3f55169455f261eb4c4b897f348854028605d841d5b9f0d637b488619db642a9717128fc59feee7f517ba1249e36efc8b0e0d268d164cec480050d6c1a4ec8d8c9af07d54961ca63050000",
+ "hosted_text": "[{\"symbol\":\"BTCUSD\",\"publishedDate\":\"2026-11-24 04:30:12\",\"publisher\":\"Bitcoin\",\"title\":\"Saylor's Strategy Is Now Worth Less That Its Bitcoin Stash\",\"image\":\"https://images.financialmodelingprep.com/news/saylors-strategy-is-now-worth-less-that-its-bitcoin-20261124.jpg\",\"site\":\"news.bitcoin.com\",\"text\":\"Michael Saylor's Strategy now trades for less than the bitcoin it holds, with a market value near $35.7 billion against a treasury of 851,305 BTC worth roughly $51 billion. A Discount to the Coins The numbers back up the claim, and per Strategy's latest Form 8-K filing, the company held 851,305 BTC as of Nov.\",\"url\":\"https://news.bitcoin.com/crypto-news/saylor-strategy-worth-less-than-bitcoin-holdings/\"},{\"symbol\":\"BTCUSD\",\"publishedDate\":\"2026-11-24 04:25:45\",\"publisher\":\"Cointelegraph\",\"title\":\"Bitcoin dips back under $60K as gold seals worst 60-day loss since 1980s\",\"image\":\"https://images.financialmodelingprep.com/news/bitcoin-dips-back-under-60k-as-gold-seals-worst-20261124.webp\",\"site\":\"cointelegraph.com\",\"text\":\"Bitcoin continued to threaten the loss of $60,000 support as gold attempted to bounce from a 60-day losing streak during which it fell nearly 25%.\",\"url\":\"https://cointelegraph.com/markets/bitcoin-dips-60k-gold-worst-60-day-loss-1980s\"}]"
+}

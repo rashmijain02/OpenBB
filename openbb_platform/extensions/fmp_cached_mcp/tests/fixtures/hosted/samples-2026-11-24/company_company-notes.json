@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "company-notes",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1de22151d4902b7464445f5031c161162b2ed68359720d01522059a51e4c2b03",
+ "hosted_text_len": 535,
+ "rest_path": "/company-notes",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0be6e1785a2fd8133b1edc9004f7c9621563652a805b8ccaceb42719075e3fcd",
+ "rest_body_len": 716,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e4cc6c252b0525032030363230b43456d281481457e626e5e780e41c1d037c60a225992539a92041633d0353035505bffc92d4628594d254052303234b98aad48ae48cc4bc74b0423fc76017c74025a044ad0ee5d61aea991999a2596b467b6b8df4803ad0ac35a7876f8dcd4de91fc8c67a66e8be3531a2bdb5067aa6e8d61a1b12b0962b160046cbd86acc020000",
+ "hosted_text": "[{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"3.050% Notes due 2029\",\"exchange\":\"NASDAQ\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"1.625% Notes due 2026\",\"exchange\":\"NASDAQ\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"2.000% Notes due 2027\",\"exchange\":\"NASDAQ\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"1.375% Notes due 2029\",\"exchange\":\"NASDAQ\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"3.600% Notes due 2042\",\"exchange\":\"NASDAQ\"},{\"cik\":\"0000320193\",\"symbol\":\"AAPL\",\"title\":\"0.500% Notes due 2031\",\"exchange\":\"NASDAQ\"}]"
+}

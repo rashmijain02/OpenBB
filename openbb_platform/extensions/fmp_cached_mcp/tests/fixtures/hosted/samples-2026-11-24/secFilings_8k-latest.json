@@ -1,0 +1,27 @@
+{
+ "tool": "secFilings",
+ "arguments": {
+  "endpoint": "8k-latest",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "2fc4664eed16176c66aabe39095f05310b8f48de74969dc1fbfb17371df564d0",
+ "hosted_text_len": 717,
+ "rest_path": "/sec-filings-8k",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0f8ceadb1a8baf4326bb6d17312ee1488c18fc2e263eb36299876c47a9b904cf",
+ "rest_body_len": 826,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020abd51cb6ac33010bce72b84cf51b4bb4a1cdbb7d0d24b5b284d6fa51455566211bfb04c1e94fe7b6de5d140d35b2848086606cdceceeb80b1cfee3216b85df151e541c2829bd9d37330dca3daae7a080010a58cc2f8482c6c6ecbe5ad6a4dcf1350c81139490690f873142aad4ddd9af497141841829304a7a73faba678d9d55e16f1fb239c2977674b556aab72d7718bee3107ae1bc20f98b56ded1221369bcdc8193d5a566b316b7466d7c609932e552352d52a7148217c2018879398429430957006f17e420f725ba6663bcadae22777a9f287ebb96a5537bcdf0922c1365a79afceea6b78a99ac7f9fc4233514c14d3959be9a428ffb3997d0abf23421943bf13a2488ecf20df8c07afd5ccdfae4681448a71caa3d57ba1acabca533983b76fc5eaa6323a030000",
+ "hosted_text": "[{\"symbol\":\"CAPR\",\"cik\":\"0001133869\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 20:15:17\",\"formType\":\"8-K\",\"hasFinancials\":false,\"link\":\"https://www.sec.gov/Archives/edgar/data/1133869/000110465926130730/0001104659-26-130730-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1133869/000110465926130730/capr-20261120x8k.htm\"},{\"symbol\":\"MSS\",\"cik\":\"0001892292\",\"filingDate\":\"2026-11-23 00:00:00\",\"acceptedDate\":\"2026-11-20 20:00:13\",\"formType\":\"8-K\",\"hasFinancials\":false,\"link\":\"https://www.sec.gov/Archives/edgar/data/1892292/000121390026122834/0001213900-26-122834-index.htm\",\"finalLink\":\"https://www.sec.gov/Archives/edgar/data/1892292/000121390026122834/ea0312917-8k_maison.htm\"}]"
+}

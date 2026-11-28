@@ -1,0 +1,26 @@
+{
+ "tool": "economics",
+ "arguments": {
+  "endpoint": "treasury-rates",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "760c0810026e77a7ebb46c5a7ecf05b1b9209d9b776955537992c212ce7a79dd",
+ "hosted_text_len": 731,
+ "rest_path": "/treasury-rates",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "608182417aebc4262e655f590f2a52b1dc7765c68d0795ff634539be37730abc",
+ "rest_body_len": 1068,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd3b10ac23010c6f1dda7089db5e42e974be2ab884341c145057111f1ddad89c2e99d541cbafcd37ec38f743573ee3a3ece759be1bced96ae438fbc0058a0efe6ed647f3c9c77309e510f4536ac0db36ca1b680b2716baff72edbe1d4e62288d4d63888d4c6388a146b4af2c354d3dbbaafa9a09c7fb4d80792fbcf0663bacdbf5b40312cd0a0280605690a4245c1a828122b8a0c8a22b3a228f469117b4fda8282b6a0298a6c5d0b8322fd48117ea1c85a82b444d1126c482443c2b81534792b9241e1ad3f840d8b605880b6f88fc290285a023444341cf8e1305bdf014123dd102c040000",
+ "hosted_text": "[{\"date\":\"2026-11-20\",\"month1\":4.19,\"month2\":4.28,\"month3\":4.32,\"month6\":4.38,\"year1\":4.51,\"year2\":4.63,\"year3\":4.65,\"year5\":4.71,\"year7\":4.8,\"year10\":4.92,\"year20\":5.34,\"year30\":5.31},{\"date\":\"2026-11-19\",\"month1\":4.2,\"month2\":4.29,\"month3\":4.34,\"month6\":4.42,\"year1\":4.62,\"year2\":4.76,\"year3\":4.81,\"year5\":4.86,\"year7\":4.94,\"year10\":5.04,\"year20\":5.43,\"year30\":5.4},{\"date\":\"2026-11-18\",\"month1\":4.1,\"month2\":4.27,\"month3\":4.34,\"month6\":4.43,\"year1\":4.62,\"year2\":4.8,\"year3\":4.84,\"year5\":4.89,\"year7\":4.96,\"year10\":5.07,\"year20\":5.44,\"year30\":5.41},{\"date\":\"2026-11-17\",\"month1\":4.09,\"month2\":4.26,\"month3\":4.33,\"month6\":4.41,\"year1\":4.6,\"year2\":4.8,\"year3\":4.84,\"year5\":4.9,\"year7\":4.99,\"year10\":5.1,\"year20\":5.5,\"year30\":5.46}]"
+}

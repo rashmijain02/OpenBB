@@ -1,0 +1,28 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "batch-aftermarket-trade",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c123df1e05229dcaed751e1b42edc25e22048a01732d91d395ea2027a9e0835a",
+ "hosted_text_len": 147,
+ "rest_path": "/batch-aftermarket-trade",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0b0ac2653972c6ed79fce6ed1528e422a35c52d15ff8d9f982bfb32a98f48e4c",
+ "rest_body_len": 210,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d8868415166722a50d0d8d450cfc4ccc2042a5c529498921a9c59059232848965e6a6169724e61680c4cc2d4d4d0d8d2dcc4c0d0c0c80d2b53ad82cf20d760b41b7c8c4d244cfcc82446b4ccda0d670c502008a9ebd49d2000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"price\":351.49,\"tradeSize\":1,\"timestamp\":1795513855000},{\"symbol\":\"MSFT\",\"price\":494.68,\"tradeSize\":1,\"timestamp\":1795513856000}]"
+}

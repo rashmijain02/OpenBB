@@ -1,0 +1,25 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "forex-news",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bf0e904c8ae44a14f92101a1cddea220e4846d2e73d6854c347387d35cae30e2",
+ "hosted_text_len": 1328,
+ "rest_path": "/news/forex-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "8c3db96b13fe0606605febcb62f1f4d2efd23bec25e8ae37711c3586a080e233",
+ "rest_body_len": 1445,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa5544b4edc4010dd738ad2acc7bff900991d08056593a0102424c4a26dd7d81dfa63759731932812578872871c8c93a4ba3d83084148118b594cd7e7bdaaf7ca577b00dff90730f11b5d5a3559c1e4f4f8ece2fc64321ddfbbbe54d2b7589f08c2109ee5b3fda42892d902f2f96a395fcd16cf735dc87b7f09e7e410691725492a76387692380dce6c6fea157c16a641281d8a1bf0b2314279d0d62128eb3d7a108d90c6135c9cc389554a3848e0dc561209e1140d3ac16db718528b2662b4449d5f65597cf0e95a1a612a2994b6352a699ace619756566706079f9523a3a40b8c121708259150b225940442c94828d9124a7a9f846514c56c917eed9a1d072fc745adef7c9c3fc03cee00ef28c49ef307c2aa35b2120a04e36d3c79309613a81504ac48c692402b3cefc9dea0e1f7b09f011d9481b3701bb06b905ca67b45f2e1fea7b6865a88b34ca1b2662d9de6c1c1138a7a03b51dcc205ccdabd668a8d7297ce19e9d902ee208e5621e2117d411efa3bd455d32244fbd0ce86090d528d2799ee7c035d2103aa9c1f75d671d4d61904c81e3c52207256f50713f0b95e878ca0df89693982917e9384685e96e51bd534f651c86217dbacf37ca56471f257e542169b62a3cca991f2ee71326f263fad2815c1e5dfcc781e4abe5c18b07f2c99578f7cf719c5a55c3c3fd2ff65451a4a1d71bbddd7043e6c263055eaf19d606422fb93572d26ccc2638c1421bfe532b3d90137530d5376b108656b2939fe4354850f1f611d6ce6a70e8a527e68a30df7fb784230f0382470436968b16ab5a117c23fe6e5c220dc8a69f2f0fd967a61ecb19be636565c9a06b3bd67f30a1506ce0a8e49e635efc9688fa3602938da69f1fece7a1c1d694ccbc6ad9be40bd333cc106ba9e3f50a16bed6cc7e7e31c56242d07c311f0c1c031860b8894224248f4a1e7d5c3fdefeb577cfcb8e6ac54b6c9d0644194ac28765245f304e18303f7aeff0034b31788a5050000",
+ "hosted_text": "[{\"symbol\":\"GBPUSD\",\"publishedDate\":\"2026-11-24 03:53:24\",\"publisher\":\"FX Street\",\"title\":\"British Pound: Range break signals more losses against US Dollar - Societe Generale\",\"image\":\"https://images.financialmodelingprep.com/news/british-pound-range-break-signals-more-losses-against-us-20261124.jpg\",\"site\":\"fxstreet.com\",\"text\":\"Societe Generale technical analysts note that GBP/USD has broken the lower boundary of its multi‑month range, confirming steady downward momentum. The pair has already tested the November 2025 low near 1.3000 as interim support, with 1.3140 likely to cap any short‑term bounce.\",\"url\":\"https://www.fxstreet.com/news/british-pound-range-break-signals-more-losses-against-us-dollar-societe-generale-202611240853\"},{\"symbol\":\"XAUUSD\",\"publishedDate\":\"2026-11-24 03:50:57\",\"publisher\":\"Orbex\",\"title\":\"Gold –24.11.2026\",\"image\":\"https://images.financialmodelingprep.com/news/gold-24112026-20261124.jpg\",\"site\":\"orbex.com\",\"text\":\"Gold managed to hold this trading zone while managed to get close from resistance 3695 As we see over the chart, a trading zone between 3580 and 3695 is possible for the Intraday Above 3695 more advance toward 3760 is likely which in turn may push for drop correction movement Below 3580 more drops is […]\",\"url\":\"https://www.orbex.com/blog/en/2026/11/gold-24-11-2026\"}]"
+}

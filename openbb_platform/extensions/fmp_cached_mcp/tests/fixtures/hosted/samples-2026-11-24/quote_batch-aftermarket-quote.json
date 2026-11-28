@@ -1,0 +1,28 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "batch-aftermarket-quote",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "3f84eea359a72bd09c8711c999d91e753ed7306021632fc446ac3df232677e71",
+ "hosted_text_len": 238,
+ "rest_path": "/batch-aftermarket-quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c50ef557cccd92251b2c34381b88074c4252ce7e961e6d07f1ee9a2badebe983",
+ "rest_body_len": 335,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d886852664a7066552a50d81021125094990c12323635d433860a27166743151a214490159a9943c5cbf2734a7341a2e6e6a6661650c192ccdcd4e292c4dc02904de696a6a686c616269606060640e95a1d6caef40d760bc174a511a62b4d2c4df44c4c309c698ce94c134b533d731374679a98191899e271a69129d4995cb100ae17a7df4f010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"bidSize\":1,\"bidPrice\":351.3,\"askSize\":2,\"askPrice\":351.67,\"volume\":77568,\"timestamp\":1795513849000},{\"symbol\":\"MSFT\",\"bidSize\":2,\"bidPrice\":494.44,\"askSize\":3,\"askPrice\":495.74,\"volume\":46025,\"timestamp\":1795513825000}]"
+}

@@ -1,0 +1,25 @@
+{
+ "tool": "discountedCashFlow",
+ "arguments": {
+  "endpoint": "dcf-levered",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "dfb1fbd2ec8bda7ca8a607b9ce0e6784da3d7bb4f408cd83e60e1a844803ce59",
+ "hosted_text_len": 85,
+ "rest_path": "/levered-discounted-cash-flow",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ef105ffb266361a20b60e106c8569d225d99f593fc2c525564f0872c5987e524",
+ "rest_body_len": 116,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684a62492a48ccc8c0c84cd7d050d7c8042e939c0694303433d233303333333633353435b1343330844a0797e427672b0414652683f41b9b58ea195800656ab962018bcee7d774000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-24\",\"dcf\":162.06663651549601,\"Stock Price\":349.08}]"
+}

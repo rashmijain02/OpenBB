@@ -1,0 +1,25 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "dividends-calendar",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "f6ed4359193dc9be089bec0dc7753aa1a0c212d34c8b495b455ed65e8adf00f6",
+ "hosted_text_len": 189395,
+ "rest_path": "/dividends-calendar",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "048971063f8611857a63359af0e3c543bbbbacb242dbbfa87e86d552f51a4b4e",
+ "rest_body_len": 244476,
+ "json_equal": true,
+ "compact_equal": true
+}

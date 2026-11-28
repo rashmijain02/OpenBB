@@ -1,0 +1,25 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "delisted-companies",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "fe7d6b9624b583805acafe03318a7f24548f71c95accec8c1c79710a9a3b53dd",
+ "hosted_text_len": 253,
+ "rest_path": "/delisted-companies",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "fc96988c3200b27697af459cafb7c6b2b786ca6f7d57bc23a5e765ce55590218",
+ "rest_body_len": 326,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7dce410b823018c6f1bb9fe2656727734648b7a5181e144282203a2c1d39d0cde68224faee89215dacc37b79deffe17772009ee301a07e682fba411b40f9967a09723f73a9db8eab21e7ad987edad85a180531b71cd86ecec4a3acb9ba4e4d521ce759767a0ca795123fc43ec184cecf4a34b2b7a2fa16748d7d8a0382c6e0e52ed93216a5871fb64c34dc002b6f77d94b2bb582489bce83740999b32266fb45275d613242c2ff4e1fd360723ae737c651e95946010000",
+ "hosted_text": "[{\"symbol\":\"NB2.F\",\"companyName\":\"Northern Data AG\",\"exchange\":\"FSX\",\"ipoDate\":\"2018-10-02\",\"delistedDate\":\"2026-12-30\"},{\"symbol\":\"MACIU\",\"companyName\":\"Melar Acquisition Corp. I\",\"exchange\":\"NASDAQ\",\"ipoDate\":\"2024-06-18\",\"delistedDate\":\"2026-11-23\"}]"
+}

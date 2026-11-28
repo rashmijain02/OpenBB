@@ -1,0 +1,22 @@
+{
+ "tool": "crypto",
+ "arguments": {
+  "endpoint": "cryptocurrency-list"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "c4f3953ac28ce20d57a0b9805565adff8786e8ef6d34ad95bc39fec6184dad7f",
+ "hosted_text_len": 288906,
+ "rest_path": "/cryptocurrency-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "7fb11dbecf16dc7eb1f305e0fa21ba7090954b0c14a8711ed21e5b39e534d9f9",
+ "rest_body_len": 372997,
+ "json_equal": true,
+ "compact_equal": true
+}

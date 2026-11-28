@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "financial-scores",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "50835617cc6ff1029b69c48061c435d00b744aa5dc5fdc1b201a24c37d63d919",
+ "hosted_text_len": 284,
+ "rest_path": "/financial-scores",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c23c8258e8168f9f92e1f8681cb77ae7fbfbb3ad22040ac32b09301dc45c6c08",
+ "rest_body_len": 357,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a5dcfc14ec3300c06e0fb9e22ea19a1344d68c2ad1adc76409ab88038a49b85acb649e578a009f1ee24ac3d6c9672f1f7cb76de3742fce4274495ce531fc7ea51545df7b2abee2e5d823912c3717b22827038177fdd3fadec479e7c78db1f2241a65add3bed546d6b5d1b29add54b6ec6c814d3806bd22df01d69c0f0b9f533b22fdb1ba795fcaf25c13143971270caaca536da5e0508d86380e3b3a790479554ddb4525e85a0472e609c5a6d91c9d3009c0fc86c64ab9c944dfb70b37f87bec71119a18c574e69636e8ef882702a3fd3adb58dbe60b6dfcdc71f44f3133065010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"reportedCurrency\":\"USD\",\"altmanZScore\":12.949218141500884,\"piotroskiScore\":9,\"workingCapital\":3942000000,\"totalAssets\":404548000000,\"retainedEarnings\":13700000000,\"ebit\":159237000000,\"marketCap\":5072900376000,\"totalLiabilities\":292455000000,\"revenue\":478834000000}]"
+}

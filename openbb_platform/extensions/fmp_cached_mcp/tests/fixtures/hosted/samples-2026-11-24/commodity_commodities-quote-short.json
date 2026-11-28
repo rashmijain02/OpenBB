@@ -1,0 +1,25 @@
+{
+ "tool": "commodity",
+ "arguments": {
+  "endpoint": "commodities-quote-short",
+  "symbol": "GCUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e941f1c32a8681ddcbdb00baa37c84ee757dacb2420597b39192659d61da8672",
+ "hosted_text_len": 65,
+ "rest_path": "/quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ee3e9dafc2330612f94574876d327563d15145509b88875bd2887f0f3c4907f9",
+ "rest_body_len": 94,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052577e7d06017251d8870415166722a50d4d8ccd0122a949c9198970e12d33536d233810a96e5e794e68204cd2c4c4c8c8062b55cb100db51cb2d5e000000",
+ "hosted_text": "[{\"symbol\":\"GCUSD\",\"price\":3618.9,\"change\":-32.5,\"volume\":68441}]"
+}

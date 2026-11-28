@@ -1,0 +1,25 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "latest-mergers-acquisitions",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "5dcf1af206f27322169e8f8fed557ba46274719ca75ab2256f655561692c09bc",
+ "hosted_text_len": 679,
+ "rest_path": "/mergers-acquisitions-latest",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "37af7039cf70e3a38d91021ac67852b6778dd07d8226d0183dcc514bd1ea4af7",
+ "rest_body_len": 800,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9d91cb6ec2301045f77c859535c40f62e7b1cb031516858ab0a8545595eb58246ae2a0d805a1aaffde100aa5a588aa0b6fe6deb99e99f3d003e0ad7d00587a5b3dd7a515006b1147f7567f5f1575b5e26a3be595eca4f1649e807816a60b1085d3381d87f351da0793696c1f5b8a979d1521845d0fbb4374100c6f96d2c82cfe9e79d3486ec05dc90ba541c495d0396fa46e4395b0cf7abb70f55a963f84f430fea9d670a5b93045ad126ebacf08226c80f1801ca7e242c8551b70ee00d80db017107cb09685ea56cb8d59e900c2cd66636b29ec65bd866123f2622d3594d9923730e386c3cffde1ee14d81f624209735c44098199e3bb1ec9b463e7a6b2daf8f7fe6f289278767b0145525412b4a7ac64230a5e5ebcdc170ee4398c61f70a8e51fa47081de121f50875ac4b30dab428b5aee3c0de351cd8039805980614fd17c77efd3d0de430ea138689ef221f9a8a30e239940cf0d30992dee307600d459920030000",
+ "hosted_text": "[{\"symbol\":\"TCBX\",\"companyName\":\"THIRD COAST BANCSHARES, INC.\",\"cik\":\"0001781730\",\"targetedCompanyName\":\"Great Plains Bancshares, Inc.\",\"targetedCik\":null,\"targetedSymbol\":null,\"transactionDate\":\"2026-11-20\",\"acceptedDate\":\"2026-11-20 17:18:21\",\"link\":\"https://www.sec.gov/Archives/edgar/data/1781730/000119312526470522/d49782ds4.htm\"},{\"symbol\":\"DCOM\",\"companyName\":\"Dime Commercial Bancshares, Inc.\",\"cik\":\"0000846617\",\"targetedCompanyName\":\"ES Bancshares, Inc.\",\"targetedCik\":\"0001358254\",\"targetedSymbol\":\"ESBS\",\"transactionDate\":\"2026-11-18\",\"acceptedDate\":\"2026-11-18 16:15:50\",\"link\":\"https://www.sec.gov/Archives/edgar/data/846617/000110465926129709/tm2628452-1_s4.htm\"}]"
+}

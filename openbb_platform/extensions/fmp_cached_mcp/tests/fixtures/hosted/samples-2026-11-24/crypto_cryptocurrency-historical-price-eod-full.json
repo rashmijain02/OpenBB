@@ -1,0 +1,27 @@
+{
+ "tool": "crypto",
+ "arguments": {
+  "endpoint": "cryptocurrency-historical-price-eod-full",
+  "symbol": "BTCUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "7581a5f885f60c932db6a3917b6cbe5e26e7b653cc41b00823ff68672c380565",
+ "hosted_text_len": 732,
+ "rest_path": "/historical-price-eod/full",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c831fb1c47a56f1c51f3c314ec80059a7cf02f83a5344da728ad2663a621579d",
+ "rest_body_len": 997,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd2cf4e02311006f03b4fb1e10c93f9d399b61ed50730514fc603e2064c1696084a8cf1dd6d61816c09073df4f24df225bf993e0daaea3bbdaa1aaebf162f6d33bcaa86d70f378ff7b7c3d13e7f9d6cea9c32b28d89c68c8749bbaa976962141121862e9dbfcde639655502d22e6dda6d0ad57b8940d485d3a65de76e0d213058977eb6cdc722c7861e8590dcb17b3a9f2c67793416a400d2cfefeaf769bddce4b183e08ddca1713b59edfad802384be1cfe8ef708a255c30c19d1570895101ad07371213602ee0fbd5d9995cc4994b423a969fe48431c245388177ea0b37aba585e87fdda174bb1004500ab78b1c21f60f6e8c940e5eb2778b333a63a32809639078cece5fc4f125374344622de0e2310079fe37dd9fd3ddc97390ab783e9ea4830b470fa2a5bcbfba93dc2959feb2de9772118872818d80cac2e4ca8b3b4b0b569fd983e75fd0bff404e5030000",
+ "hosted_text": "[{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-20\",\"open\":61900.98,\"high\":62551.15,\"low\":57739.11,\"close\":58882.6,\"volume\":60703101498,\"change\":-3018.38,\"changePercent\":-4.87614,\"vwap\":60268.46},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-19\",\"open\":63000.46,\"high\":63995.06,\"low\":61363.22,\"close\":61900.66,\"volume\":33464018146,\"change\":-1099.8,\"changePercent\":-1.7457,\"vwap\":62564.85},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-18\",\"open\":64883.03,\"high\":64929.95,\"low\":62019.1,\"close\":63000.61,\"volume\":30351320839,\"change\":-1882.42,\"changePercent\":-2.90125,\"vwap\":63708.1725},{\"symbol\":\"BTCUSD\",\"date\":\"2026-11-17\",\"open\":64849.1,\"high\":65372.8,\"low\":63297.35,\"close\":64883.03,\"volume\":34516876177,\"change\":33.93,\"changePercent\":0.05232147,\"vwap\":64600.57}]"
+}

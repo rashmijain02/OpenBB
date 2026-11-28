@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "shares-float",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "6439e93de1a4c2499ffdd5a343394288d15beb51571fb7610b0337399abce6e3",
+ "hosted_text_len": 221,
+ "rest_path": "/shares-float",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "4dfc471b1dff178245a6e6f8cd956fe979bfd9b93c827e6601d5df463ad6d055",
+ "rest_body_len": 264,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a4d8f310bc2301085777f45c86c9be49a86a65b172707c1511c621bdb426b24495b44fcef265ac18383e3bd8fbb77a70d42cfd00861f7182f66c025c25575d8e3ed576d94d751030a22612c018e282fa92821ff2157abf56e30ca074ecab42828ff39513d76ca6a173cc673c60b26792157df4cde79756bfa5bfb4f650034d64a3933d9fa13a2f3feee4a429665499daed3d6cca4b275d7cfda11ddb4ca929057910c289319893bbe23883883204add8724fe422588b4f3230e375e9bf31b440cb9c408010000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-11-24 04:06:25\",\"freeFloat\":99.8804,\"floatShares\":14514819489,\"outstandingShares\":14532200000,\"source\":\"https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm\"}]"
+}

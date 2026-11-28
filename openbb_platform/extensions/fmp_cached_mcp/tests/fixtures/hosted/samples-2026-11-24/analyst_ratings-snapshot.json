@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "ratings-snapshot",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d4ba2547fc66eab84617d379bec683059ce9c81c4abf046f311bf6c07f673d88",
+ "hosted_text_len": 194,
+ "rest_path": "/ratings-snapshot",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0e77dfafcdbe0e381576b099075341ef6aab0b4aaac9ed61d684ca00c90bdc27",
+ "rest_body_len": 255,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a75ceb10a02310c80e1fd9ea274d545c5c5ad273a090aba8943ef1ab4581b4d5ae510dfdd8ad7c1824396ff4b20fb4a88671a21247797069d9c09a9d4662587df4a3a587ffcd47a901bde81b473db1609924cfa6c2cb7187d0033d77c5a3a7c941b0421925ffbc52ddad0659d16aa982170a9069ab0c3dfcb716f57b22d24d4e4d3b3fc876bc473a65192577578030e255790ff000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"rating\":\"B+\",\"overallScore\":3,\"discountedCashFlowScore\":3,\"returnOnEquityScore\":5,\"returnOnAssetsScore\":5,\"debtToEquityScore\":2,\"priceToEarningsScore\":2,\"priceToBookScore\":1}]"
+}

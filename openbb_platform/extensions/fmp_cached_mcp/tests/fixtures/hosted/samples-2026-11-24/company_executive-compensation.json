@@ -1,0 +1,24 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "executive-compensation",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "a097ed45e200f18745beabc6a2e4cdde7c0f17ed80624220c3cc3374e7d22476",
+ "hosted_text_len": 156870,
+ "rest_path": "/governance-executive-compensation",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ec1024f54c66c2c0edd159c4837c31cc45a2d289116d18b71efb9cc2b3e3dc0c",
+ "rest_body_len": 189451,
+ "json_equal": true,
+ "compact_equal": true
+}

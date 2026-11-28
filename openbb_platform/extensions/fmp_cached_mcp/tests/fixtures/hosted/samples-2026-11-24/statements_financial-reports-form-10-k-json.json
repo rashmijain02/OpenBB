@@ -1,0 +1,25 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "financial-reports-form-10-k-json",
+  "symbol": "AAPL",
+  "year": 2024,
+  "period": "FY"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d05729e56e15b714e8cc8dbf977ec01953902ee776c16d06134b3789004d5dec",
+ "hosted_text_len": 130381,
+ "rest_path": "/financial-reports-json",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3b5dd059436bba18153c599cc80e9e9eaa8d6d274956ed33da693fd6eea4d989",
+ "rest_body_len": 179986,
+ "json_equal": true,
+ "compact_equal": false
+}

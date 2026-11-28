@@ -1,0 +1,27 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "index-historical-price-eod-light",
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "14d951575cd3e8a01cc5e455f2c0b0999e43ed2713c1d08d99220d093f9d19fa",
+ "hosted_text_len": 301,
+ "rest_path": "/historical-price-eod/light",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3d6134ee9a78f1b730cc561442d924cbd58cbfb33a16768694224882d09ddae2",
+ "rest_body_len": 422,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b05a538f7e00067251d88704a62492a48d0c8c0c84cd7d050d7c80026535094990c9232b33434d033b6848a96e5e794e68285cdcc2dcd2c0c80002851ab43b2458696e816991b9a9bea5918a35b646a666904b6875c8b2c302c323632d633c3b4c8d8c2c290121f99635a6462a0678a6991a199a921dc475cb10083d2fe3ca6010000",
+ "hosted_text": "[{\"symbol\":\"^GSPC\",\"date\":\"2026-11-20\",\"price\":6910.39,\"volume\":6679680000},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-19\",\"price\":7175.83,\"volume\":5692800000},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-18\",\"price\":7323.63,\"volume\":5388180000},{\"symbol\":\"^GSPC\",\"date\":\"2026-11-17\",\"price\":7340.53,\"volume\":5165100000}]"
+}

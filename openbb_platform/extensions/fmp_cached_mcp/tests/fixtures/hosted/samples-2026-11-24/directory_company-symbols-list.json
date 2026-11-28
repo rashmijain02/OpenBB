@@ -1,0 +1,23 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "company-symbols-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1f97fa4d9bebbed2f278ac57c545cb148de268c8f6c4bbcf1431bbb890734d0a",
+ "hosted_text_len": 3498583,
+ "rest_path": "/stock-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "88550bc84b1be9c8c075e17e11363c3d5de705b1c367ea8126b0ce02a5178312",
+ "rest_body_len": 4458435,
+ "json_equal": true,
+ "compact_equal": true
+}

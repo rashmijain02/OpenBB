@@ -1,0 +1,25 @@
+{
+ "tool": "marketHours",
+ "arguments": {
+  "endpoint": "exchange-market-hours",
+  "exchange": "NASDAQ"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "3578b8cf88d21526f03d3e2926893f67c0bd31622ce8c135e7a2a5cddcfd6ca5",
+ "hosted_text_len": 154,
+ "rest_path": "/exchange-market-hours",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "199ee62e9ef080a1138f36fe484c0c9be9a4d2ef9088e3c5ba9bd734e2da926e",
+ "rest_body_len": 197,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5d48ae48cc4bcf454252b05253fc76017c740251d884c5e622e16d1fc82d4bcccbc748ffcd22290a481a595b18182a3af82ae81a99581014c55724e7e31b22a13a09c4200baaa92ccdcd4aafc3cb02d8eb9a94599c989fa7ea9e5f191f945d9303599c5be8945d9a925fe407b81ead212738a538132b55cb1001b6142a8c5000000",
+ "hosted_text": "[{\"exchange\":\"NASDAQ\",\"name\":\"NASDAQ\",\"openingHour\":\"09:30 AM -05:00\",\"closingHour\":\"04:00 PM -05:00\",\"timezone\":\"America/New_York\",\"isMarketOpen\":false}]"
+}

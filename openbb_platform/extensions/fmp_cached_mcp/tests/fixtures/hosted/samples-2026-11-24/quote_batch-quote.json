@@ -1,0 +1,28 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "batch-quote",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "fcc8ac163a3f158628c343f161230076c4183f58eefce7f573e6bd4ca0077ad4",
+ "hosted_text_len": 681,
+ "rest_path": "/batch-quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "d6ba1fa1491054e4ec8e89751a5a78602e9230add15ac1bae2a254dff51e99a2",
+ "rest_body_len": 898,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8d92414f833014c7effb1484f3d23cdabe967a23334693cdcccc9bf150b132e2a004d874317e770b1b38d9a61e7af9fd9bf75efb7b0f23cffb70c7f3fc6a9b3dd9957fe1f951349ffae31dcd75665a56142be3dde431e992a24ce326625c1108f7305eea3c317353c626af75d2e40151c018fd71c16141b0631bbb5ab75d502825a9527bfeacb753fbd6b640c239a5dffc3a4d964d8094883ddd1a5d76580009d901df95a19c11de15c974f96aea892e9abee0ba02302900e0f079d1264168070848e82e0d320a6d088c500edd1ce6bd7fa37f1b2d2ea3bbeec76c61f2b6982432ec4b994d6ad7d56465abdd6f52825da93acd4c55ebac9931900ab97013062efb1c9ff2365b5cdd0fbdcdd2b8b4957da9bd892d0b5bea3ab5f9502157aee96f060517bd95fe759228a97adc4b64000aa86043894d93401e29445024c063878803dead8222a714328192a910259e518881723b21c44985dc6d866094e37f1d220802886724f290bbed0608fef4387afc023c4b31fa82030000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"name\":\"Apple Inc.\",\"price\":349.08,\"changePercentage\":1.90332,\"change\":6.52,\"volume\":56997299,\"dayLow\":345.4422,\"dayHigh\":352.6,\"yearHigh\":360.83,\"yearLow\":243.42,\"marketCap\":5072900376000,\"priceAvg50\":341.8072,\"priceAvg200\":303.2406,\"exchange\":\"NASDAQ\",\"open\":347.78,\"previousClose\":342.56,\"timestamp\":1795467601},{\"symbol\":\"MSFT\",\"name\":\"Microsoft Corporation\",\"price\":492.5,\"changePercentage\":1.64699,\"change\":7.97999,\"volume\":30090263,\"dayLow\":492.17,\"dayHigh\":509.15,\"yearHigh\":559.15,\"yearLow\":349.2,\"marketCap\":3657398575000,\"priceAvg50\":519.8366,\"priceAvg200\":443.63245,\"exchange\":\"NASDAQ\",\"open\":506.055,\"previousClose\":484.52001,\"timestamp\":1795467601}]"
+}

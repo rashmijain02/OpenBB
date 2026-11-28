@@ -1,0 +1,26 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-symbol",
+  "query": "Apple",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "hosted_text_len": 2,
+ "rest_path": "/search-symbol",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rest_body_len": 2,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8b8e050029bb4c0d02000000",
+ "hosted_text": "[]"
+}

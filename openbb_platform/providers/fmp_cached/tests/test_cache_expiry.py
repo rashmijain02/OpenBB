@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from openbb_fmp_cached.utils import cache_schema, database
@@ -54,6 +54,12 @@ class SqliteSeam:
     def __init__(self) -> None:
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
+        # SQLite's CURRENT_TIMESTAMP is UTC; MySQL's UTC_TIMESTAMP() is too.
+        self.conn.create_function(
+            "UTC_TIMESTAMP",
+            0,
+            lambda: datetime.utcnow().isoformat(sep=" ", timespec="seconds"),
+        )
         self.statements: list[tuple[str, tuple]] = []
 
     @staticmethod
@@ -142,6 +148,14 @@ def seam(monkeypatch):
         _id_table("equity_quote"),
         _add("equity_quote", "FRESH", "-2 minutes"),
         _add("equity_quote", "STALE", "-10 minutes"),
+        # fmp_cached MCP (#1300): per-row expiry in expires_at.
+        "CREATE TABLE fmp_mcp_ephemeral (cache_key TEXT PRIMARY KEY, "
+        "expires_at TIMESTAMP NOT NULL);",
+        "INSERT INTO fmp_mcp_ephemeral VALUES ('k-live', datetime('now', '+1 hours'));",
+        "INSERT INTO fmp_mcp_ephemeral VALUES ('k-expired', datetime('now', '-1 minutes'));",
+        # Persistent MCP table: never pruned whatever its age.
+        "CREATE TABLE fmp_mcp_document (cache_key TEXT PRIMARY KEY, fetched_at TIMESTAMP);",
+        "INSERT INTO fmp_mcp_document VALUES ('k-ancient', datetime('now', '-900 days'));",
         # Non-expiring cache: historical bars are never TTL-evicted.
         _id_table("equity_historical"),
         _add("equity_historical", "ANCIENT", "-900 days"),
@@ -160,7 +174,7 @@ def test_cleanup_deletes_only_expired_rows(seam):
     report = cache_schema.cleanup_expired_cache()
 
     for rule in cache_schema.CACHE_EXPIRY_RULES:
-        if rule.table != "ttl_cache":
+        if rule.table not in ("ttl_cache", "fmp_mcp_ephemeral"):
             assert seam.count(rule.table, "symbol = 'STALE'") == 0, rule.table
             assert seam.count(rule.table, "symbol = 'FRESH'") == 1, rule.table
     for table in (
@@ -175,6 +189,9 @@ def test_cleanup_deletes_only_expired_rows(seam):
     assert seam.count("ttl_cache", "cache_key = 'k-fresh'") == 1
     assert seam.count("ttl_cache", "cache_key = 'k-stale'") == 0
     assert seam.count("ttl_cache", "cache_name = 'UnregisteredCache'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-live'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-expired'") == 0
+    assert seam.count("fmp_mcp_document") == 1
     assert report["dry_run"] is False
     assert report["total"] == len(cache_schema.CACHE_EXPIRY_RULES)
     assert report["errors"] == {}
@@ -187,7 +204,7 @@ def test_non_expiring_and_operator_tables_are_never_touched(seam):
     for table in PROTECTED_TABLES:
         assert seam.count(table) == 1, table
     touched = " ".join(sql for sql, _ in seam.statements)
-    for table in (*PROTECTED_TABLES, "equity_historical"):
+    for table in (*PROTECTED_TABLES, "equity_historical", "fmp_mcp_document"):
         assert not re.search(rf"\b{table}\b", touched), table
 
 
@@ -267,7 +284,31 @@ def test_rules_are_inside_the_explicit_allowlist():
     for table in PROTECTED_TABLES:
         assert table not in allow
     for table in allow:
-        assert table in cache_schema.FLATTENED_TABLES, table
+        assert (
+            table in cache_schema.FLATTENED_TABLES
+            or table in cache_schema.FMP_MCP_TABLE_COLUMNS
+        ), table
+
+
+def test_mcp_store_tables_are_not_entity_tables():
+    """Entity scripts loop over FLATTENED_TABLES; MCP tables are not entities."""
+    assert not set(cache_schema.FMP_MCP_TABLE_COLUMNS) & set(
+        cache_schema.FLATTENED_TABLES
+    )
+
+
+def test_a_failed_clock_read_is_reported_not_raised(seam, monkeypatch):
+    real = seam
+
+    def no_utc(query, params=()):
+        if "UTC_TIMESTAMP" in query.upper():
+            raise RuntimeError("connection dropped")
+        return real(query, params)
+
+    monkeypatch.setattr(cache_schema, "execute_query", no_utc)
+    report = cache_schema.cleanup_expired_cache()
+    assert "fmp_mcp_ephemeral" in report["errors"]
+    assert seam.count("equity_quote", "symbol = 'STALE'") == 0, "other tables pruned"
 
 
 def test_cutoff_uses_the_database_clock(seam, monkeypatch):
@@ -275,8 +316,9 @@ def test_cutoff_uses_the_database_clock(seam, monkeypatch):
     real = seam
 
     def skewed(query, params=()):
-        if "CURRENT_TIMESTAMP" in query.upper() and query.lstrip().upper().startswith(
-            "SELECT"
+        upper = query.upper()
+        if ("CURRENT_TIMESTAMP" in upper or "UTC_TIMESTAMP" in upper) and (
+            query.lstrip().upper().startswith("SELECT")
         ):
             # Database clock one year behind: nothing has expired yet.
             return [{"db_now": "2000-01-01 00:00:00"}]
@@ -368,6 +410,8 @@ def _reader_ttls() -> dict[str, int]:
         "institutional_ownership": institutional_ownership.INSTITUTIONAL_OWNERSHIP_TTL_DAYS
         * day,
         "equity_quote": equity_quote.QUOTE_TTL_SECONDS,
+        # fmp_cached MCP (#1300): expiry is per row in expires_at.
+        "fmp_mcp_ephemeral": 0,
     }
 
 
@@ -590,3 +634,59 @@ def test_table_error_text_is_not_echoed(seam, monkeypatch, caplog, capsys):
     assert "OperationalError 2013" in captured.out
     for leaked in ("secret-host", FAKE_PASSWORD):
         assert leaked not in captured.out + captured.err + logs
+
+
+# ---------------------------------------------------------------------------
+# #1309: fmp_mcp_ephemeral stamps expires_at in UTC, so its cutoff must be UTC
+# even when the MySQL session clock is not.
+# ---------------------------------------------------------------------------
+
+
+def test_utc_stamped_rule_uses_the_utc_clock(seam, monkeypatch):
+    real = seam
+
+    def ist_session(query, params=()):
+        if "CURRENT_TIMESTAMP" in query.upper() and query.lstrip().upper().startswith(
+            "SELECT"
+        ):
+            # Session clock at UTC+05:30: 5.5 hours ahead of the UTC stamps.
+            ahead = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            return [{"db_now": ahead.isoformat(sep=" ", timespec="seconds")}]
+        return real(query, params)
+
+    seam.setup(
+        "INSERT INTO fmp_mcp_ephemeral VALUES "
+        "('k-3h-left', datetime('now', '+3 hours'));"
+    )
+    monkeypatch.setattr(cache_schema, "execute_query", ist_session)
+    cache_schema.prune_expired_cache(tables=["fmp_mcp_ephemeral"])
+
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-3h-left'") == 1
+    assert seam.count("fmp_mcp_ephemeral", "cache_key = 'k-expired'") == 0
+
+
+def test_only_the_mcp_ephemeral_rule_is_utc_stamped():
+    utc = {r.table for r in cache_schema.CACHE_EXPIRY_RULES if r.utc_clock}
+    assert utc == {"fmp_mcp_ephemeral"}
+
+
+def test_prune_skips_the_mcp_table_on_databases_without_it(seam):
+    """Databases provisioned before the MCP server existed have no such table."""
+    seam.setup("DROP TABLE fmp_mcp_ephemeral;")
+    report = cache_schema.cleanup_expired_cache()
+    assert report["errors"] == {}
+    assert report["tables"]["fmp_mcp_ephemeral"]["rows"] == 0
+
+
+def test_create_all_flattened_tables_does_not_create_mcp_tables(monkeypatch):
+    created = []
+    monkeypatch.setattr(
+        cache_schema,
+        "FLATTENED_TABLES",
+        {"alpha": {"schema": lambda: created.append("alpha")}},
+    )
+    monkeypatch.setattr(
+        cache_schema, "execute_query", lambda *a, **k: created.append("sql")
+    )
+    cache_schema.create_all_flattened_tables()
+    assert created == ["alpha"], "the MCP server creates its own tables"

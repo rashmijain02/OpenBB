@@ -1,0 +1,25 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-intraday-1-min",
+  "symbol": "EURUSD",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "11b70d4120cbc8e5a2306110b1adf848ac5dd8e5e20dc562dc5248cd07b9e7c4",
+ "hosted_text_len": 105096,
+ "rest_path": "/historical-chart/1min",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "28efa3f6a49ceb9699ced2981b85744f8606b32a46be5cc76c3193fd2fb7a74c",
+ "rest_body_len": 147937,
+ "json_equal": true,
+ "compact_equal": true
+}

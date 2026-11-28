@@ -1,0 +1,28 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "historical-employee-count",
+  "symbol": "AAPL",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "f73c912bba4cfa7969e080c1b833e5cb5e129cdc2c44611eb7d172b58b7ab8bc",
+ "hosted_text_len": 617,
+ "rest_path": "/historical-employee-count",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "7232cee93de60b860c136224acb12c4a2e1e5a3c54dbe7a8ae379fdb2f1183e4",
+ "rest_body_len": 738,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aad904f4f843010c5effb291ace5bda4228c28de8c568d498bd190fb5cc4223d006ba8bc4f8dde5cfc2ea466f34693279efb533f37bd920f4d95f849ca62bdf74e1c4c84992a77b673ba952bd0f12ed8fef5116f9b321a40463452561a74a18321ef538660c531fd1ab9806310be6b0815ae9f471ff0c46d77609d3087b7ce9a44b23aaee414cbf25c614806e2be9ce81bdaecb5d674697517cb7e8aa50557623ecc514b30fa529740770ad0fd5d09bf1b0dfe66436fa50cbf1616ead696242dab6751b906ea68f24a965ae8ed01048335193545841260ce44cc4e343edf11f121e961b45acaa143edcdc964edff06bbb2eef00f7207c86288f298bcf2cffe41d8cbcc3f5799fa6f89f375f977730d461f48b778027f182f7e6f51beaf5502be2020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"cik\":\"0000320193\",\"acceptanceTime\":\"2026-11-03 08:05:15\",\"periodOfReport\":\"2026-09-26\",\"companyName\":\"Apple Inc.\",\"formType\":\"10-K\",\"filingDate\":\"2026-11-03\",\"employeeCount\":167000,\"source\":\"https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/0000320193-26-000026-index.htm\"},{\"symbol\":\"AAPL\",\"cik\":\"0000320193\",\"acceptanceTime\":\"2025-10-31 06:01:26\",\"periodOfReport\":\"2025-09-27\",\"companyName\":\"Apple Inc.\",\"formType\":\"10-K\",\"filingDate\":\"2025-10-31\",\"employeeCount\":166000,\"source\":\"https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/0000320193-25-000079-index.htm\"}]"
+}

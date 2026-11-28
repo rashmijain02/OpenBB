@@ -1,0 +1,24 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "historical-sp-500",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "dbc2b3f44975f6ed03e1d28bd6bcac1faebcbc92554eec07bc6929f0a4120a47",
+ "hosted_text_len": 364488,
+ "rest_path": "/historical-sp500-constituent",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "2f4a659f3dc4126214ee636182098ef647e07abd6ebdef1a87052423616e9e46",
+ "rest_body_len": 456415,
+ "json_equal": true,
+ "compact_equal": true
+}

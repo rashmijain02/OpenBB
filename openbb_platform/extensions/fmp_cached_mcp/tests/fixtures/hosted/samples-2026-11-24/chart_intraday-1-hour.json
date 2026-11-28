@@ -1,0 +1,27 @@
+{
+ "tool": "chart",
+ "arguments": {
+  "endpoint": "intraday-1-hour",
+  "symbol": "AAPL",
+  "from_date": "2026-11-20",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "e041a89c05af4be8507afa87d1c1a125ef7e02da90d558b8cccde659feeda441",
+ "hosted_text_len": 721,
+ "rest_path": "/historical-chart/1hour",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c1b1c1ed72b9db8eaeeacad77799b48122c8ac553bbdd22aa75ddd8eba57c16b",
+ "rest_body_len": 1016,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8dd3c94ec3301006e07b9fc2cab91d79367b9c57411c104414a910a4b21c10ef8e1b522a8d09e4e0cb2f4bfe66f1d526848f7a42e8ee6e5e86ae0f1d454a3bc41dc580da73ec63ecb6df57c6e7e1a95e6161a0326787f17d8a22689aa3fdc3fd7eca04ec9cdd1ec6e330850479cedec6c3ebe3294432b3c858e3cfeddf2259144572a2fa107a918250236260f624cd82aa6585881744022539117b4e822c2dc75b584595648585162c0a9a9d45404bcbe1b63bb50ef32241514e6be6850ba20c824ea4c0ea45190c1b9142c2a6478508895688e282c8c0fc06a54be96791c686534b69365a8a1959fc9f13cbef1c25303f32bbfcba1f8e00b71b64509a06216bc909f544da5c7f01c3f46a16f8030000",
+ "hosted_text": "[{\"date\":\"2026-11-20 15:30:00\",\"open\":343.29,\"low\":340.56,\"high\":344.86,\"close\":342.7,\"volume\":12888031},{\"date\":\"2026-11-20 14:30:00\",\"open\":343.02,\"low\":342.71,\"high\":345.42,\"close\":343.33,\"volume\":5741559},{\"date\":\"2026-11-20 13:30:00\",\"open\":344.96,\"low\":343,\"high\":346.74,\"close\":343,\"volume\":3545524},{\"date\":\"2026-11-20 12:30:00\",\"open\":345.57,\"low\":344.59,\"high\":346.32,\"close\":344.98,\"volume\":4145361},{\"date\":\"2026-11-20 11:30:00\",\"open\":347.41,\"low\":345.35,\"high\":347.81,\"close\":345.61,\"volume\":3922122},{\"date\":\"2026-11-20 10:30:00\",\"open\":348.82,\"low\":346.98,\"high\":350,\"close\":347.47,\"volume\":4988280},{\"date\":\"2026-11-20 09:30:00\",\"open\":352.87,\"low\":348.29,\"high\":354.34,\"close\":348.91,\"volume\":13597615}]"
+}

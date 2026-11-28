@@ -1,0 +1,28 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "batch-quote-short",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ]
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "ae9d4649477956f1231f3a8f668cc7cb14e9dd7e61f61e436c0061dc0de33eea",
+ "hosted_text_len": 133,
+ "rest_path": "/batch-quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "c745d1b134565ca1199b046897345e0a448825e475aed6c9f069d71b52099725",
+ "rest_body_len": 194,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d8868415166722a50d0d8c452cfc0022a989c9198970e1235d33335828a95e5e794e682c44ccd2c2dcd8d2c2d81c2b53ad88cf70d760b4137dec4d248cf14dd74733d4b734b4b4b740b8c0d0c2c0d8ccc8c411670c502009abcb8a9c2000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"price\":349.08,\"change\":6.52,\"volume\":56997299},{\"symbol\":\"MSFT\",\"price\":492.5,\"change\":7.97999,\"volume\":30090263}]"
+}

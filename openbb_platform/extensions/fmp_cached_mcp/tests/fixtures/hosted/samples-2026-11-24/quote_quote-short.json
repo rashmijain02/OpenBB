@@ -1,0 +1,25 @@
+{
+ "tool": "quote",
+ "arguments": {
+  "endpoint": "quote-short",
+  "symbol": "AAPL"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "7a42ba8ecde050e1af1af5b8808f2897550fb8fc33500a0c86dbf95d06cf02af",
+ "hosted_text_len": 66,
+ "rest_path": "/quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "4db70e8be489c9c38b75d013ae9dfefa112409b2bbeaf0da4d324bf56c44bce0",
+ "rest_body_len": 97,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d8868415166722a50d0d8c452cfc0022a989c9198970e1235d33335828a95e5e794e682c44ccd2c2dcd8d2c2d81c2b55cb100ad2a8cea61000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"price\":349.08,\"change\":6.52,\"volume\":56997299}]"
+}

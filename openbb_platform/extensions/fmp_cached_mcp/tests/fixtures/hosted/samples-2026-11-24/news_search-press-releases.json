@@ -1,0 +1,29 @@
+{
+ "tool": "news",
+ "arguments": {
+  "endpoint": "search-press-releases",
+  "symbols": [
+   "AAPL",
+   "MSFT"
+  ],
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d284617913256c0d25a936fd8240313c12640f408c4ce006e5e8cdf7838f80f9",
+ "hosted_text_len": 1713,
+ "rest_path": "/news/press-releases",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "89639b65daa113ef36c35049fba5224355c09663210f7a287920347bde362c96",
+ "rest_body_len": 1823,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa594c172db361086ef798a1d5d92cc6849894ee3583739913bea44b2c74c9d743a3d40e452424c021c0014ade9e495fa107db22e4052b11da739e4a083885decbfdffe8b3f9f01fccd3f80913d541b5d8e66305aa5171f46e3ee6bdd6c4a697794bf138efc6132495ee3748ac9094c4e67c99bd964f238d6f8b8abeb35b5f6a334341c3be9ca70c54df2091677b550b985b7ba2cc5461be1a456d04ab78395cc8cb6ba70e034ccf3bd501981db11ace9cec1afa4a88fd605cc9778a55b3294739ab5feeb65dd9fdba1b0acc43614de3957db591c870f362aa4e2bba5282b9d5329d5b636544799ae62c5d2e37d7287d4c9c4ecbe4cf432b11a64a2d3283a99c83251b14cf498a6d3e424fa5c6f071d5676086be3ef6f198d2f76c4c369fef47a917eb85c8fe146446358eb7d04c9c918fc7d1077507d660c88c020c7b05459042fd67fa48b19dcdc7c7a09d202dd655c2bf7008552baf1048582ae1bfe9efd80bab847ddb703dbc7d4eb9e7ad553d747ead1d05063cafbd0dbb68d1e761e30a3a19284a59fe4fd5520ea02851c04622f10bf0ac4934972f6eaf49487b373553962b55fc64fedc17c7ef5fe877b303d83c9192fc1f7f6e0bcb15291b5f0e42afc26aa02ce0d7bcfc2bcae4b8277b4974c7e25147bb422e5787039a4943546ba830fb27e426f8d6ef3d419794b7021ca8c4770c173cecde1275dff9915e1262842e115611e1461755484ac086dafc807593f92cef1d3b3a71cbfe9217ccff3abe57abd985f5dbe5fa6882fce7f4f97eb459ac2c7e5f5e225a287340e5eb48e4b0b93835410f4b0ccc0a753c37f3a88c241abcd2d27e95c1c8e3bc00bb1e323e906d85d6b503d843db406be3510867740b720f642b227398b597f8bffdf7f86018c213b6cc80cb73cb7504863f96af6a893992f4aa5ae43b9ba14aed0a68a8621668d75bae26cc8786143dd2cf3f6094ef9566f2e9c08a245c379ec4d307c90cb6e5745161ccf6d1bdd6c779ea134fc0c48eb3cacbee6b15fcfac28756ba39e4f511231ac5ba21ab6dc32278d61d3b8308c5ecc51011721d12b0a9c6ba31d6521b8e267c3918252eec90fcfb2e5fee79d78ec97ce9a3b06130f36fbe574f26a328d49c59e0c763b844136763b84ab878e1d76c80705c7de1b227628b01f611c1e85677ffd07073e46de1f070000",
+ "hosted_text": "[{\"symbol\":\"MSFT\",\"publishedDate\":\"2026-11-23 07:28:00\",\"publisher\":\"PRNewsWire\",\"title\":\"V2X Expands Collaboration with Microsoft to Advance the Next Generation of AI-Powered Mission Operations\",\"image\":\"https://images.financialmodelingprep.com/news/v2x-expands-collaboration-with-microsoft-to-advance-the-next-20261123.jpg\",\"site\":\"prnewswire.com\",\"text\":\"RESTON, Va., Nov. 23, 2026 /PRNewswire/ -- V2X, Inc. (NYSE: VVX) is excited to announce an expanded collaboration with Microsoft to advance the next generation of AI-powered mission operations.\",\"url\":\"https://www.prnewswire.com/news-releases/v2x-expands-collaboration-with-microsoft-to-advance-the-next-generation-of-ai-powered-mission-operations-302947723.html\"},{\"symbol\":\"AAPL\",\"publishedDate\":\"2026-11-19 09:00:00\",\"publisher\":\"Business Wire\",\"title\":\"Jamf Brings Apple Device Management and Security Apps to CrowdStrike Falcon Foundry\",\"image\":\"https://images.financialmodelingprep.com/news/jamf-brings-apple-device-management-and-security-apps-to-20261119.jpg\",\"site\":\"businesswire.com\",\"text\":\"MINNEAPOLIS--(BUSINESS WIRE)--Jamf, the standard in managing and securing Apple at work, today announced that its Apple device management and security apps are now available on CrowdStrike Falcon® Foundry, cybersecurity's first agentic development platform. Falcon customers can now access Jamf device management data and automate remediation actions through their existing Falcon security workflows. Apple fleets keep growing, but the device data and threat data that protect them often live in sep.\",\"url\":\"https://www.businesswire.com/news/home/20261119570401/en/Jamf-Brings-Apple-Device-Management-and-Security-Apps-to-CrowdStrike-Falcon-Foundry/\"}]"
+}

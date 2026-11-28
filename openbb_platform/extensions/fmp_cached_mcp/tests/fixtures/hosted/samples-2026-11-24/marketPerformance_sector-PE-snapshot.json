@@ -1,0 +1,25 @@
+{
+ "tool": "marketPerformance",
+ "arguments": {
+  "endpoint": "sector-PE-snapshot",
+  "date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "bc52a2c9364309ba046653a2107897f109664139af313cfd02dd77e67ff54610",
+ "hosted_text_len": 997,
+ "rest_path": "/sector-pe-snapshot",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "0853fb86e488f3e7a1b235b565b454573264463e66765bcde0b0c0dff3d85b65",
+ "rest_body_len": 1328,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020aa594cd4e03211485f77d0a32eb760297cb9fbbdad6e84213adae8c0b42b125993266863636c67797d6b89fc110369c4bbe7be0c0eb8490af3c09a93636f9ea8a544041ce189b01ada6bf4aef5d6abbb3766dfbe0c87daeec826dfabf02ffe976366e2fdb1fe6ebe5fcf14ff938af81a80da34ca3e4d228543a6bdfd371e445bbdf1f627036853692b5ef8ec1f9a10d30590300350c157250c0a1a883d81ff6be238b936b7223cd40b8ccee8581ec5e0b2dff455efa771ffb70f403d1c86a4a0520c7ec9973c402f82afa6e7b1a7ad050a3341a74be69cdf25005c49b106d74395fa3afd9d442196da4a0467205ac007eeb6d9376ce767e0414b8a69caa0ca7c00ba0777173e8d39827c5582d41b26c55302a38c802ea53b64a567d3a970ea372aca9409163ac2552214d01f5d9bb5d6c9b7670a6b8a81948a5b4e08631a35489d797149a90821ff365096d3818044111f112e4c9db0fe6c921b130050000",
+ "hosted_text": "[{\"date\":\"2026-11-20\",\"sector\":\"Basic Materials\",\"exchange\":\"NASDAQ\",\"pe\":25.91018463697478},{\"date\":\"2026-11-20\",\"sector\":\"Communication Services\",\"exchange\":\"NASDAQ\",\"pe\":16.222091474327232},{\"date\":\"2026-11-20\",\"sector\":\"Consumer Cyclical\",\"exchange\":\"NASDAQ\",\"pe\":65.959284685862},{\"date\":\"2026-11-20\",\"sector\":\"Consumer Defensive\",\"exchange\":\"NASDAQ\",\"pe\":41.00524347233344},{\"date\":\"2026-11-20\",\"sector\":\"Energy\",\"exchange\":\"NASDAQ\",\"pe\":12.469828636818187},{\"date\":\"2026-11-20\",\"sector\":\"Financial Services\",\"exchange\":\"NASDAQ\",\"pe\":19.57989650963721},{\"date\":\"2026-11-20\",\"sector\":\"Healthcare\",\"exchange\":\"NASDAQ\",\"pe\":19.52380307579023},{\"date\":\"2026-11-20\",\"sector\":\"Industrials\",\"exchange\":\"NASDAQ\",\"pe\":11.62619655105326},{\"date\":\"2026-11-20\",\"sector\":\"Real Estate\",\"exchange\":\"NASDAQ\",\"pe\":34.05455868640569},{\"date\":\"2026-11-20\",\"sector\":\"Technology\",\"exchange\":\"NASDAQ\",\"pe\":35.126778539119776},{\"date\":\"2026-11-20\",\"sector\":\"Utilities\",\"exchange\":\"NASDAQ\",\"pe\":25.958932942504447}]"
+}

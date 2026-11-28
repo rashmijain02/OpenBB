@@ -1,0 +1,26 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "price-target-consensus",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "81ddd8e26cf2bcfa2c7cbd1f13a103a3f6a35f942715694e8c8bdcbcb629d197",
+ "hosted_text_len": 98,
+ "rest_path": "/price-target-consensus",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "ed23ab6cbe83c6263f7e3e965b0d82e4589dabe34818fd3fbab014766c41203d",
+ "rest_body_len": 135,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88684962517a6a8947667a0650c6c4c00045d827bf1c286a64628a22ea9c9f579c9a575c5a0c94333631d433304691f64d4dc94ccc03c9991ae99902656ab96201a72244aa87000000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"targetHigh\":400,\"targetLow\":245,\"targetConsensus\":341.03,\"targetMedian\":352.5}]"
+}

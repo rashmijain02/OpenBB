@@ -1,0 +1,27 @@
+{
+ "tool": "analyst",
+ "arguments": {
+  "endpoint": "financial-estimates",
+  "symbol": "AAPL",
+  "period": "annual",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "242ffee07d27de59ea615dd17751e87db1a50b599aca9e372836986047705119",
+ "hosted_text_len": 1056,
+ "rest_path": "/analyst-estimates",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "21eb6045d5d01fb10df33ca1101d58375f6a15581d1f73d03b8f648a4ceb1562",
+ "rest_body_len": 1333,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a95944d6bdb401086eff915c6e7c4ccd7ce476f3e045ac8a1f45a7a701ae10662d9544eda50fadf3bb6e4af4a0a6441977967dfd1ce3eb35faf26933ff94d26d3e67575bf7e9a7e984ce7f3cf77d3eb36fab0d856bb1801e30dc40de941f959bd54f57375b7fe957a3175515221944bfde3e3f2472668449807b1a05e26cc5f963b5d0a81c27e757a75ffb87d58b4fe694bee6002201772674f866ae24ce697db5b771245b11259fc5c6ebd31420aa043613b130fce459d353818f94ced7c3308610099d08975b5fd547f5fafbac6a08a84a74591f27fc6a102a253008372cfa42d83016605b5985197d12c17b7bf3755dd7475d8d890104a442fa3ab2385c5051c8e654e296d1d41cb6b22b2387669d374bf40b3d053b0b3449971009d09dda9718626713cf1f36a5e2f9e5e9b6df3a5bdf4cc89be78bb69f69b53f87bfd0e32e12d3285cc5898907598cce2ca140aec3248261844e1fd1a2033e951d5c2e13e4c66a1b0900896413229726a580b7af4c9f4dc9c8d4cccca0099ec0a628066d82713c53d8a9a128c9059c8b329250870844c0cb5ac1fc9b08c90994432255679cc3132135c36773f8e5e9f4c52cd26b1aa8c9099e3978306398943649ede8413993c6375e31e993063cfb7e22d326d8c4cdb8179f5ed1f883be20835050000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2031-09-26\",\"revenueLow\":576846264214,\"revenueHigh\":699978923416,\"revenueAvg\":645206000000,\"ebitdaLow\":214288074004,\"ebitdaHigh\":271674832780,\"ebitdaAvg\":246147594160,\"ebitLow\":199450180537,\"ebitHigh\":256836939313,\"ebitAvg\":231309700693,\"netIncomeLow\":164498683545,\"netIncomeHigh\":211829030633,\"netIncomeAvg\":190775165772,\"sgaExpenseLow\":37371210599,\"sgaExpenseHigh\":45348408033,\"sgaExpenseAvg\":41799922790,\"epsAvg\":12.96,\"epsHigh\":14.39026,\"epsLow\":11.17495,\"numAnalystsRevenue\":9,\"numAnalystsEps\":11},{\"symbol\":\"AAPL\",\"date\":\"2030-09-26\",\"revenueLow\":542773432136,\"revenueHigh\":658632960384,\"revenueAvg\":607095333333,\"ebitdaLow\":199666539884,\"ebitdaHigh\":252979499340,\"ebitdaAvg\":229264365189,\"ebitLow\":185291742315,\"ebitHigh\":238604701771,\"ebitAvg\":214889567620,\"netIncomeLow\":152821359201,\"netIncomeHigh\":196791796444,\"netIncomeAvg\":177232484252,\"sgaExpenseLow\":35163788860,\"sgaExpenseHigh\":42669793664,\"sgaExpenseAvg\":39330908360,\"epsAvg\":12.04,\"epsHigh\":13.36873,\"epsLow\":10.38167,\"numAnalystsRevenue\":7,\"numAnalystsEps\":7}]"
+}

@@ -1,0 +1,29 @@
+{
+ "tool": "technicalIndicators",
+ "arguments": {
+  "endpoint": "weighted-moving-average",
+  "symbol": "AAPL",
+  "periodLength": 10,
+  "timeframe": "1day",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "f1f8c86e048c62c004658dc55ec0842d790cc485c0d33641f1ce6e23c0669624",
+ "hosted_text_len": 519,
+ "rest_path": "/technical-indicators/wma",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6af9a70293b0b76b50a52ba45fb33891976b6a8011de80f08634cb75a479f36b",
+ "rest_body_len": 712,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a85d2c16ec2300c06e03b4f11f50c96ed244eccab4c3ba0ad02a4b24e02c661dabb2f74592312014a7bf96b555ffee46561cc777a8de9de37a7be5b9b8e916545b4623488ebe9e9967f23e367ff9146ac67882167bbfd7637650eaccbd9305eae9143f092a3b7613cf653c825fc1a87f3e19a461465ef7cce2f87cdf44b042142fd5f367dfd59de17933e122bd5620f1c2bb1800b8d5881a916bb041245acc40c6c8b383e03c7fb6002753538e9f8169cc65a7052cc55cee0543caace1b2e60efd14a5e5e9e89c3c34b61db8aad54152b482ba6723c451c1c066f435b3187db8a17afbfbecc8328c8020000",
+ "hosted_text": "[{\"date\":\"2026-11-20 00:00:00\",\"open\":352.87,\"high\":354.34,\"low\":340.56,\"close\":342.56,\"volume\":80692545,\"wma\":350.61109090909093},{\"date\":\"2026-11-19 00:00:00\",\"open\":352.91,\"high\":355.28,\"low\":346.47,\"close\":349.21,\"volume\":40906900,\"wma\":352.2310909090908},{\"date\":\"2026-11-18 00:00:00\",\"open\":351.94,\"high\":356.42,\"low\":351.47,\"close\":352.45,\"volume\":34209928,\"wma\":352.55036363636356},{\"date\":\"2026-11-17 00:00:00\",\"open\":352.83,\"high\":355.36,\"low\":349.67,\"close\":351.91,\"volume\":37407537,\"wma\":352.2270909090908}]"
+}

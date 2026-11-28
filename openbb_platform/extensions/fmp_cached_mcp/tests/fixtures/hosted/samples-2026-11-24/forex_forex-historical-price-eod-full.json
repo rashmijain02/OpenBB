@@ -1,0 +1,27 @@
+{
+ "tool": "forex",
+ "arguments": {
+  "endpoint": "forex-historical-price-eod-full",
+  "symbol": "EURUSD",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "599dc3c7651de307263e1ae1493a9560db7148e6df4e1d33ab0790b73acb4927",
+ "hosted_text_len": 702,
+ "rest_path": "/historical-price-eod/full",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "12d63e9e8b3240d23c680b6aca42edb934a03fbfb3bd9b809ccc02fd64fcda12",
+ "rest_body_len": 967,
+ "json_equal": true,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a9dd3cf4bc33014c0f1fbfe8ad2f33ade8f262fcfb3de45d9493cd459d641d70e373744fcdf4d6a2b6832c11d7af9beb4e193d0875996bdfb27cbf2fddbf6a96ff3ab2cbf59de2defaff3f9577fae0e75a804640bc482609af4bbbaf3135c805ac531369b753344048029b6fd695c68ac8e6dd5f6fb7a7a5da67aecdbd7ed908d887eaf6daa6e1d6a018bf059fad16feb9755dd1dc63182b2ba69c5f154edc64d848d6f1ff3ff935113646189c90814938d4992292233183e43b6e60fb25162329c205bb994ec126475d12dfba8654c664a90a5e4881cf6334932b13b4f26b465cc75c8977225c5151bdf30b18db8d625b4eaca58ab58dadfdae17ee11c364c85fcd161ecf5bf5df0ce1e3f0116f6f12bc7030000",
+ "hosted_text": "[{\"symbol\":\"EURUSD\",\"date\":\"2026-11-20\",\"open\":1.09691,\"high\":1.10001,\"low\":1.09569,\"close\":1.09679,\"volume\":157799,\"change\":-0.00012,\"changePercent\":-0.01093982,\"vwap\":1.09735},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-19\",\"open\":1.09737,\"high\":1.10102,\"low\":1.09555,\"close\":1.09672,\"volume\":130539,\"change\":-0.00065,\"changePercent\":-0.05923253,\"vwap\":1.09767},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-18\",\"open\":1.09981,\"high\":1.09994,\"low\":1.09532,\"close\":1.09743,\"volume\":120265,\"change\":-0.00238,\"changePercent\":-0.2164,\"vwap\":1.09813},{\"symbol\":\"EURUSD\",\"date\":\"2026-11-17\",\"open\":1.09976,\"high\":1.10236,\"low\":1.0968,\"close\":1.09984,\"volume\":129146,\"change\":0.00008,\"changePercent\":0.00727431,\"vwap\":1.09969}]"
+}

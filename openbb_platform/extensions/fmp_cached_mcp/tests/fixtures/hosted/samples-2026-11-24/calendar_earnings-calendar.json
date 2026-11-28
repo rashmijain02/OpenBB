@@ -1,0 +1,25 @@
+{
+ "tool": "calendar",
+ "arguments": {
+  "endpoint": "earnings-calendar",
+  "limit": 2,
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "0b66979555ae453ca3d6be93d86baf4ce7955c60d99f5f5fc4d7bd29f6fc8a90",
+ "hosted_text_len": 91816,
+ "rest_path": "/earnings-calendar",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "e74d5da5b04891cfaaf17d3c27bd13244e813e9f7729b0ae164ffee44de541b6",
+ "rest_body_len": 120041,
+ "json_equal": true,
+ "compact_equal": true
+}

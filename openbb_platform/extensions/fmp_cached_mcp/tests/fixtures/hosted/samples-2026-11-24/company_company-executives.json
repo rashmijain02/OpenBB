@@ -1,0 +1,26 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "company-executives",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "1863bcd58e669a7a616f56903b884afbaba7e8014f6817d8024c012db2e16b8d",
+ "hosted_text_len": 1876,
+ "rest_path": "/key-executives",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "7c5fc016bbe6a07b671458146aabda8a9f9b92e76e63f8f205ed0666b797edce",
+ "rest_body_len": 2471,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ab5964d6fd3401086effd15a31ccaa5aa92349fdcf201811668680a1c1087653d8e47b167a3f13aa985f8ef8cd386908f5642710e96ecd9b5358fde77def5f733805f7a01543cf9182bafa132412627f0952cc25830a500d9830be19b933858ea237c3432434f3cad5c3cbecc2659bd3b129cc2b54b976466ebb5b9c97589b3387e2ad84c04d9e6e3d542e5cb64b8de3a450e508a6262b499a76a8e46fa4e78fb2bab7e27c416b7ebc67a5a14352f196ae9f7c501c6414418c29b07b459b11b6ec3507105ce614882d63bd925bb7611c33d0a67e929c06add76ab0cb0c3e29dc323f05b62c3964cbc06dea5bcc18561181bc159b48dd9a85e356aed4629a4f5324837e20d22439268dfea511f21f49d916097ec9e12e7a31c869730706ec79cb556bbd96dd63a65d0b56a65ea382ea0466ea1c64b0a257b61a8b0a92a3a42465125072ee314e33dbf2233856ae9d1257cc265ead104471937c4e705ad96836c05bd917ccf9446551562840f97d00b4cb23381cd6abddee8d4cb616935ca6079293c072e4932266b3c394ef76085524d5678974d33f4f03933f9a6d372852b2b4cd7915960bee705a6c5fd1dc6870127596452622ac696033189cb623a06f09fdd27801babf12ccd75d07ad6eaa815a7de73e9d947d6f0116deb446744a7e46c599f0bb7738d9297c826e6274570a38aed8d5ead5b6d96929bedd39d7f6acc3b8d168a95788c6ebe69610d38449240f447e0555f08f728afda9dbffd1d1b30ffcd79f6e30fa724d24da7090000",
+ "hosted_text": "[{\"title\":\"Senior Vice President of Worldwide Marketing\",\"name\":\"Greg Joswiak\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":null,\"titleSince\":null,\"active\":true},{\"title\":\"Chief Executive Officer & Director\",\"name\":\"John Ternus\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":1976,\"titleSince\":null,\"active\":true},{\"title\":\"Senior Vice President & Chief Financial Officer\",\"name\":\"Kevan Parekh\",\"pay\":4034174,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":1972,\"titleSince\":null,\"active\":true},{\"title\":\"Executive Chairman of the Board\",\"name\":\"Timothy D. Cook\",\"pay\":16759518,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":1961,\"titleSince\":null,\"active\":true},{\"title\":\"Senior VP of Government Affairs & General Counsel\",\"name\":\"Jennifer G. Newstead\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":\"female\",\"yearBorn\":1970,\"titleSince\":null,\"active\":true},{\"title\":\"Secretary\",\"name\":\"Katherine L. Adams\",\"pay\":5022482,\"currencyPay\":\"USD\",\"gender\":\"female\",\"yearBorn\":1964,\"titleSince\":null,\"active\":true},{\"title\":\"Vice President of Worldwide Communications\",\"name\":\"Kristin Huguet Quayle\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":\"female\",\"yearBorn\":null,\"titleSince\":null,\"active\":true},{\"title\":\"Director of Investor Relations\",\"name\":\"Suhasini Chandramouli\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":null,\"yearBorn\":null,\"titleSince\":null,\"active\":true},{\"title\":\"Principal Accounting Officer\",\"name\":\"Ben Borders\",\"pay\":null,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":1981,\"titleSince\":null,\"active\":true},{\"title\":\"Senior VP & Chief Operating Officer\",\"name\":\"Sabih Khan\",\"pay\":5021905,\"currencyPay\":\"USD\",\"gender\":\"male\",\"yearBorn\":1967,\"titleSince\":null,\"active\":true},{\"title\":\"Senior Vice President of Retail & People\",\"name\":\"Deirdre O'Brien\",\"pay\":5037867,\"currencyPay\":\"USD\",\"gender\":\"female\",\"yearBorn\":1967,\"titleSince\":null,\"active\":true}]"
+}

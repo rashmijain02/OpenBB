@@ -1,0 +1,25 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "available-countries",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "3e39a7634be0bb7d77c8b9cd85d8f7c368b1d1aafd07e82079c53f4487174555",
+ "hosted_text_len": 2007,
+ "rest_path": "/available-countries",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6be6d26ed09f506fd94f3cff8a3a5a25fe0dc7c31588cf12f4b3cd37b528d034",
+ "rest_body_len": 3424,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7dd6bb4ec3401085e13e4f61b9e609e8bceb787d5b63623b80232a7a90101408f1ee44a2455f9126bf3cbb7366cecc5e0e45f17dfd1545f9f2f6f9faf1fe55de16653394d7ff7e6efe85a70db0d697cb24d801c61d703801f6336058002be51947c0fb0a301d018f82592284ac5456c091c20b9e55cf4a55191e948abe9ca4edacaa8c0a1ba46d8e82d23649be63d26d69248950ab8716851d95ca22f932bdf224e10360abb08db41da46d27857ac150036eacca9d3a417368d2976babdb0aaeaca75289ba50907c955c961a41393b6bf6cdb483da64535506a532314f3575a5db6e32d22485a22675279875a15dc22ff2caca91aa3c5b4db0a0bd7256b12b4d93452224b92c0a8eea8455a9446e4139bbe15a96f0e359674adbfca8e7a4a64952d82885562e749d39ab64bbce6c988a4ad6c9489d8c9465de5967eeec213d05262e57cda19eab8361f9ccd223a2d3188fdc821a3583da24fd853d3cff0293212560600d0000",
+ "hosted_text": "[{\"country\":\"FK\"},{\"country\":\"RU\"},{\"country\":\"DK\"},{\"country\":\"SN\"},{\"country\":\"SI\"},{\"country\":\"CZ\"},{\"country\":\"KR\"},{\"country\":\"JP\"},{\"country\":\"BS\"},{\"country\":\"AU\"},{\"country\":\"CL\"},{\"country\":\"QA\"},{\"country\":\"GE\"},{\"country\":\"EE\"},{\"country\":\"MZ\"},{\"country\":\"BM\"},{\"country\":\"AT\"},{\"country\":\"LI\"},{\"country\":\"CI\"},{\"country\":\"VN\"},{\"country\":\"AR\"},{\"country\":\"KW\"},{\"country\":\"BR\"},{\"country\":\"NA\"},{\"country\":\"PL\"},{\"country\":\"LR\"},{\"country\":\"BZ\"},{\"country\":\"MC\"},{\"country\":\"MT\"},{\"country\":\"GI\"},{\"country\":\"EG\"},{\"country\":\"LK\"},{\"country\":\"SA\"},{\"country\":\"DE\"},{\"country\":\"SK\"},{\"country\":\"LT\"},{\"country\":\"SR\"},{\"country\":\"MU\"},{\"country\":\"CY\"},{\"country\":\"BB\"},{\"country\":\"HU\"},{\"country\":\"FI\"},{\"country\":\"KG\"},{\"country\":\"IE\"},{\"country\":\"JE\"},{\"country\":\"BD\"},{\"country\":\"UA\"},{\"country\":\"DO\"},{\"country\":\"ES\"},{\"country\":\"NO\"},{\"country\":\"TH\"},{\"country\":\"BH\"},{\"country\":\"TR\"},{\"country\":\"MA\"},{\"country\":\"CO\"},{\"country\":\"BE\"},{\"country\":\"AZ\"},{\"country\":\"GF\"},{\"country\":\"GL\"},{\"country\":\"MM\"},{\"country\":\"PE\"},{\"country\":\"SG\"},{\"country\":\"US\"},{\"country\":\"KZ\"},{\"country\":\"NZ\"},{\"country\":\"GU\"},{\"country\":\"AE\"},{\"country\":\"UY\"},{\"country\":\"NL\"},{\"country\":\"CN\"},{\"country\":\"IN\"},{\"country\":\"ME\"},{\"country\":\"ZM\"},{\"country\":\"SD\"},{\"country\":\"TC\"},{\"country\":\"MY\"},{\"country\":\"HK\"},{\"country\":\"BW\"},{\"country\":\"VG\"},{\"country\":\"AI\"},{\"country\":\"SE\"},{\"country\":\"GH\"},{\"country\":\"CH\"},{\"country\":\"LU\"},{\"country\":\"TW\"},{\"country\":\"CA\"},{\"country\":\"PR\"},{\"country\":\"FR\"},{\"country\":\"KY\"},{\"country\":\"LV\"},{\"country\":\"PG\"},{\"country\":\"MX\"},{\"country\":\"RO\"},{\"country\":\"GG\"},{\"country\":\"CW\"},{\"country\":\"TZ\"},{\"country\":\"MO\"},{\"country\":\"PH\"},{\"country\":\"ZW\"},{\"country\":\"FO\"},{\"country\":\"GA\"},{\"country\":\"IM\"},{\"country\":\"ID\"},{\"country\":\"MN\"},{\"country\":\"PA\"},{\"country\":\"ZA\"},{\"country\":\"PT\"},{\"country\":\"NG\"},{\"country\":\"IL\"},{\"country\":\"JO\"},{\"country\":\"BG\"},{\"country\":\"IT\"},{\"country\":\"GB\"},{\"country\":\"IS\"},{\"country\":\"CR\"},{\"country\":\"MK\"},{\"country\":\"KH\"},{\"country\":\"GR\"}]"
+}

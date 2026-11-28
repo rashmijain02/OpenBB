@@ -1,0 +1,24 @@
+{
+ "tool": "economics",
+ "arguments": {
+  "endpoint": "economics-calendar",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "421213d58fb33736c6b79937c16e6b12c175d6b84721d820631d818a594d9109",
+ "hosted_text_len": 85597,
+ "rest_path": "/economic-calendar",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "5929f40da3762bea8c35e7d3242c5bc592b40a9d0fa7b45853d86d3eb39457d8",
+ "rest_body_len": 114902,
+ "json_equal": true,
+ "compact_equal": true
+}

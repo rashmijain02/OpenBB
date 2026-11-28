@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "income-statement",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "fc4d5135d090f21949320010fa1d25e27d3d778dfc58a0a1fb3c96c885bd76af",
+ "hosted_text_len": 2308,
+ "rest_path": "/income-statement",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "715bf2973b2f448f58a6d4a40ed04a307483c7003eed4bf9410bde120e7a0c2f",
+ "rest_body_len": 2789,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020ac5944d4fdb401086effc8a883341fbe1ddb5734b0954952841851e50d583b127898be38dd61b0aadfadf3bebc4c45f38a4071a842033efbc333b5e3fdf8e0683dff83b181cc7a185e3d1e098112687241832797cb2c9e4cfcb7b9dbadc787c7d59460dacb4b1109fad8d812c7a76f9af3793321d250f2e42f0c319a1012f13b3244db2f9a4da8dd22179c98751042bf46d2b06c41f1131a262679547617a07a1298565660526d1b18b5edced067e846ced3c3de5fbdc23c5a71c57e7763afbf222619e6038775532373acfaf8d9e25d6093897a42e3090e328d1629cc513344af56a09993d7f5a419643eefa0a2545dd133230618a15e3789964496e4d689347a81495d21c52b738947e0ecd0358fcff75d5c7fdbe2c50aabe036d17603a3c356e336cf45342f0a0b541ec57d1e0fe94a2355106f653660137857f23bd844a9b645f626b5dc9c4b0321025389ccedc59977823935fc5575451ee315e6b0ff7898d4397524c4ad2cab98c081857f5a175362d57b019eefc294ad771f175331a16e21d6deeb35e5498fb44d647b2da86e9d46dbeb4deecef0a8a699a9e4921fa00336de0367cea1e7823c2f46e634c11c9da8fc2e92e8c5e9ee90c075de3acdb93ea2c2f36c8a812af974df005dc54425c2bac5da971fc639d5bf72ee4b7fa0ada0f38abc4fa5a4e205e47cd16f7da5abdbc4c32b8eab781952b0b4e09dd052649ba46d660dc3f0dfc6dfc2724f30546c78f78a239dc2cf2e9ba78189e940832b1b3ec54a26721568c70e22e196aff9c74825614a055ef045a31a464c8690f68b78a01912342473b9cb6402bde085a2af1a71fb48c048d37b10e5a1a083cd661a0e59e10e450d0fa48ab5a4d3f71dd5c5e97fe2dec55b271a443d82b1915740f7b99cf29fd9feca532f05f61afe7794c75b29733c5827f602fbeecfbc8cb39695c897ef20e9b9e1de46d8fdb455ea268703879e9cba57f37f2f6b43c84bc6d9b0d79d5a917749117e3722f7903cf1755cb3ef2a2d09381da92f7e8fb5f371c213be50a0000",
+ "hosted_text": "[{\"date\":\"2026-09-26\",\"symbol\":\"AAPL\",\"reportedCurrency\":\"USD\",\"cik\":\"0000320193\",\"filingDate\":\"2026-11-03\",\"acceptedDate\":\"2026-11-03 08:05:15\",\"fiscalYear\":\"2026\",\"period\":\"FY\",\"revenue\":478834000000,\"costOfRevenue\":245232000000,\"grossProfit\":233602000000,\"researchAndDevelopmentExpenses\":45765000000,\"generalAndAdministrativeExpenses\":0,\"sellingAndMarketingExpenses\":0,\"sellingGeneralAndAdministrativeExpenses\":29774000000,\"otherExpenses\":0,\"operatingExpenses\":75539000000,\"costAndExpenses\":320771000000,\"netInterestIncome\":0,\"interestIncome\":0,\"interestExpense\":0,\"depreciationAndAmortization\":13423000000,\"ebitda\":172660000000,\"ebit\":159237000000,\"nonOperatingIncomeExcludingInterest\":-1174000000,\"operatingIncome\":158063000000,\"totalOtherIncomeExpensesNet\":1174000000,\"incomeBeforeTax\":159237000000,\"incomeTaxExpense\":27062000000,\"netIncomeFromContinuingOperations\":132175000000,\"netIncomeFromDiscontinuedOperations\":0,\"otherAdjustmentsToNetIncome\":0,\"netIncome\":132175000000,\"netIncomeDeductions\":0,\"bottomLineNetIncome\":132175000000,\"eps\":9.01,\"epsDiluted\":8.98,\"weightedAverageShsOut\":14661935000,\"weightedAverageShsOutDil\":14720306000},{\"date\":\"2025-09-27\",\"symbol\":\"AAPL\",\"reportedCurrency\":\"USD\",\"cik\":\"0000320193\",\"filingDate\":\"2025-10-31\",\"acceptedDate\":\"2025-10-31 06:01:26\",\"fiscalYear\":\"2025\",\"period\":\"FY\",\"revenue\":416161000000,\"costOfRevenue\":220960000000,\"grossProfit\":195201000000,\"researchAndDevelopmentExpenses\":34550000000,\"generalAndAdministrativeExpenses\":8077000000,\"sellingAndMarketingExpenses\":19524000000,\"sellingGeneralAndAdministrativeExpenses\":27601000000,\"otherExpenses\":0,\"operatingExpenses\":62151000000,\"costAndExpenses\":283111000000,\"netInterestIncome\":0,\"interestIncome\":0,\"interestExpense\":0,\"depreciationAndAmortization\":11698000000,\"ebitda\":144427000000,\"ebit\":132729000000,\"nonOperatingIncomeExcludingInterest\":321000000,\"operatingIncome\":133050000000,\"totalOtherIncomeExpensesNet\":-321000000,\"incomeBeforeTax\":132729000000,\"incomeTaxExpense\":20719000000,\"netIncomeFromContinuingOperations\":112010000000,\"netIncomeFromDiscontinuedOperations\":0,\"otherAdjustmentsToNetIncome\":0,\"netIncome\":112010000000,\"netIncomeDeductions\":0,\"bottomLineNetIncome\":112010000000,\"eps\":7.49,\"epsDiluted\":7.46,\"weightedAverageShsOut\":14948500000,\"weightedAverageShsOutDil\":15004697000}]"
+}

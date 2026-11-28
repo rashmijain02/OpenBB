@@ -1,0 +1,23 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "actively-trading-list",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "06ef70197521c783dff7e28597178e0898656d334129ac421f701f4cf48b977f",
+ "hosted_text_len": 2166755,
+ "rest_path": "/actively-trading-list",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "87b9d949a90b9ee5e7add850f8425da0285fb77f3009e0248c2edf4b3c580a6d",
+ "rest_body_len": 2824782,
+ "json_equal": true,
+ "compact_equal": true
+}

@@ -275,7 +275,9 @@ class TestPerformance:
         from openbb_fmp_cached.utils import cache_schema
 
         def fake_execute_query(query, params=()):
-            if "CURRENT_TIMESTAMP" in query:
+            # Both clocks: CURRENT_TIMESTAMP, and UTC_TIMESTAMP() for rules on
+            # tables stamped in UTC (fmp_mcp_ephemeral, #1309).
+            if "CURRENT_TIMESTAMP" in query or "UTC_TIMESTAMP" in query:
                 return [{"db_now": "2026-01-02 00:00:00"}]
             return [{"expired": 0}]
 

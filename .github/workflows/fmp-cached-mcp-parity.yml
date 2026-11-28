@@ -1,0 +1,67 @@
+name: FMP cached MCP parity
+
+# Hermetic parity contract for openbb_fmp_cached_mcp (#1298): tools/list and
+# payload replay against the recorded FMP hosted MCP server, validation error
+# texts, the persistent store semantics, and the fmp_cached prune allowlist.
+# No network and no MySQL: the store runs on its SQLite backend.
+
+on:
+  pull_request:
+    branches:
+      - portfolio
+    paths:
+      - ".github/workflows/fmp-cached-mcp-parity.yml"
+      - "openbb_platform/extensions/fmp_cached_mcp/**"
+      - "openbb_platform/providers/fmp_cached/openbb_fmp_cached/utils/cache_schema.py"
+      - "openbb_platform/providers/fmp_cached/openbb_fmp_cached/utils/plan_limited.py"
+      - "openbb_platform/providers/fmp_cached/tests/test_cache_expiry.py"
+      - "scripts/fmp_mcp_record.py"
+      - "scripts/fmp_mcp_build_assets.py"
+      - "specs/gh-1298-fmp-cached-mcp-parity/retention-classes.json"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: FMP cached MCP parity (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            -e openbb_platform/core \
+            -e openbb_platform/providers/fmp \
+            -e openbb_platform/providers/fmp_cached \
+            -e openbb_platform/extensions/fmp_cached_mcp \
+            pytest
+
+      - name: Assets match the recorded fixtures
+        run: |
+          python scripts/fmp_mcp_build_assets.py
+          git diff --exit-code -- openbb_platform/extensions/fmp_cached_mcp/openbb_fmp_cached_mcp/assets
+
+      - name: Parity, store and security tests (node differential included)
+        working-directory: openbb_platform/extensions/fmp_cached_mcp
+        run: python -m pytest -q -m "not integration" tests
+
+      - name: fmp_cached prune allowlist contract
+        working-directory: openbb_platform/providers/fmp_cached
+        run: python -m pytest -q tests/test_cache_expiry.py

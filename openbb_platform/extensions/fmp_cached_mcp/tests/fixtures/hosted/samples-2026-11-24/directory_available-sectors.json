@@ -1,0 +1,25 @@
+{
+ "tool": "directory",
+ "arguments": {
+  "endpoint": "available-sectors",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "b109627fd76ab6f4c3f388a96d72bfbabe7ef259c1db0e44b4f6c37be2c549d6",
+ "hosted_text_len": 302,
+ "rest_path": "/available-sectors",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "4c866dc2a1a17c8bcd57b285966ac63b72faba0e674ff74f184c30be0436f773",
+ "rest_body_len": 435,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8d903b0ec2400c447b4e616dcd0928094150d0f0a91085650cb1b4f14a6b275284b83b5b509290c2d53cdb33735d00bcca000463f294c30ac21a4d080ee89c05a385a2bf97bfc02ab56da742e892144e9c7b219ee4d5ba96335403c5b21667a01b7eb09af43cced6caf9398ceb5b51542a516658dc31466f08f3c4bfbdde3bf33fdd1ccb21a8cd4b8be3d099a9d114d394fb8b4b1497afe9c5ed03f87100a7b3010000",
+ "hosted_text": "[{\"sector\":\"Basic Materials\"},{\"sector\":\"Communication Services\"},{\"sector\":\"Consumer Cyclical\"},{\"sector\":\"Consumer Defensive\"},{\"sector\":\"Energy\"},{\"sector\":\"Financial Services\"},{\"sector\":\"Healthcare\"},{\"sector\":\"Industrials\"},{\"sector\":\"Real Estate\"},{\"sector\":\"Technology\"},{\"sector\":\"Utilities\"}]"
+}

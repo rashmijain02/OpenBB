@@ -1,0 +1,26 @@
+{
+ "tool": "statements",
+ "arguments": {
+  "endpoint": "enterprise-values",
+  "symbol": "AAPL",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "16059b5645b08b51b3bbdd11cca27c1836197c77e4e6b9cc1e9633eaa270613f",
+ "hosted_text_len": 452,
+ "rest_path": "/enterprise-values",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "6ae709f4fb0df41e1c01450e1810978408c638e66a43ca8e6c2f243c5180c5bc",
+ "rest_body_len": 561,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a95904d4b03311086effd1561cf6dc9e47bbd2dd59b6041f1221eb2dd484377b335c90a2afe77936ed5166cc5431298f79999f03c4c107a4f07a122bc7675df1617a8a8aae575311dab8d8e26d708266286cb19115f4988fd6ab3f4769573ca608ee53e7143571b7ff374bbd6de84940213024aca31c67ba4d37e63e2426f6dd4ad7dd3d1f62e8199904c80c48c7fa3d60d61a1c3ba724d7eae9e07fba25be3621e4d05c5b9eb67b46e9abb3e4dbd34754c80c2007004a44ee3b7de0673afdbc1ecd632c63919d726e863fa0f2d7ca745feaa85703e67e2b49692297ef8b5135aa8022559ba0fd1f35a7849d9392d00844af98717aa4a0e4a8c7bb397c9e327cd9af19b31020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"date\":\"2026-09-26\",\"stockPrice\":341.07,\"numberOfShares\":14661935000,\"marketCapitalization\":5000746170450,\"minusCashAndCashEquivalents\":36305000000,\"addTotalDebt\":80111000000,\"enterpriseValue\":5044552170450},{\"symbol\":\"AAPL\",\"date\":\"2025-09-27\",\"stockPrice\":255.46,\"numberOfShares\":14948500000,\"marketCapitalization\":3818743810000,\"minusCashAndCashEquivalents\":35934000000,\"addTotalDebt\":112377000000,\"enterpriseValue\":3895186810000}]"
+}

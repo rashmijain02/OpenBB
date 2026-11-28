@@ -1,0 +1,25 @@
+{
+ "tool": "company",
+ "arguments": {
+  "endpoint": "all-shares-float",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "96a74424420dc0d2727b8ce215c76bba475c7456b43cd12ccab509e22a10fbd5",
+ "hosted_text_len": 235,
+ "rest_path": "/shares-float-all",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "868e4a90890d7e94a4944194f660cdce468bee90c5485ebac560b3df87147161",
+ "rest_body_len": 308,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a7d8ebd0ac2301845f73e45c8dc96efcb5f9b6c2e4e6e4e220e91c61f8829b4e920e2bbdb201584d0e12ee79ee11c0b425ef308a1e3f371ee3d3584028343bda3e5977736ba4419305521568c136c0d6a2360512e83735bdfdb387b61f27ec109ed6f7670e3ffd14f718c3674f770fddd12011bdef2d97897d9aa0dc8f52a66a43290ade2504b09221ba64073259b9536d45a2826446a2b4e1f84865b9d34010000",
+ "hosted_text": "[{\"symbol\":\"020Y.L\",\"date\":\"2026-11-23 18:19:40\",\"freeFloat\":null,\"floatShares\":null,\"outstandingShares\":51017383},{\"symbol\":\"0A05.L\",\"date\":\"2026-11-23 12:56:00\",\"freeFloat\":30.5504,\"floatShares\":6093657,\"outstandingShares\":19946244}]"
+}

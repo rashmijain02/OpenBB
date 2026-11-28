@@ -1,0 +1,25 @@
+{
+ "tool": "crypto",
+ "arguments": {
+  "endpoint": "cryptocurrency-quote",
+  "symbol": "BTCUSD"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "d7e1db6dd1fe170ae9488298816e67f3cc17d663684e6d18b19b1f79a5ea005e",
+ "hosted_text_len": 360,
+ "rest_path": "/quote",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "3a9003ad01005264b1f700ad9f4b7429ddb41b1b4702c470b58637fd990390a6",
+ "rest_body_len": 468,
+ "json_equal": false,
+ "compact_equal": false,
+ "rest_body_gz_hex": "1f8b080000000000020a6590414f84301085effb2b1aceda740a1da837c583071337ba1e8cf150b1611b8112605162fcef965a56d4432fef7b7d336f1e37847cb84748d44ff5b3ada233125decf2fbbbcbe8e45b6f54adbd6a86c29a86ac50db99626642ca38a180412ef6aa29f55677856e0655ce8e534e5986fc97619681a748a50cfa68ab831f2640c42e92c759202f6abab66f7e94c8520a59f203ae4cb9770441304e11173269d50504800930ca7085429c804452810ba955f7aa875cb5f32fce840b052e18c0baf1f9580ae60c2922c654f23f8c330f79ccd1950e50bf1f4b47f9edc37677b31cd1b6baf1eb73000ae218a647630f7d5ed95effc783a9753fa8daef994a57234e111cfbdc3c7d014f94828ed4010000",
+ "hosted_text": "[{\"symbol\":\"BTCUSD\",\"name\":\"Bitcoin USD\",\"price\":59934.87,\"changePercentage\":-2.08504,\"change\":-1276.28,\"volume\":5153722838,\"dayLow\":59587.184,\"dayHigh\":61502.664,\"yearHigh\":116410.06,\"yearLow\":55149.566,\"marketCap\":1205629407129,\"priceAvg50\":76663.92,\"priceAvg200\":72326.08,\"exchange\":\"CRYPTO\",\"open\":61211.15,\"previousClose\":61211.15,\"timestamp\":1795513760}]"
+}

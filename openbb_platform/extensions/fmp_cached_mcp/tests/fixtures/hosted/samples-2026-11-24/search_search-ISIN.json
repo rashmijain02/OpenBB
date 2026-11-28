@@ -1,0 +1,26 @@
+{
+ "tool": "search",
+ "arguments": {
+  "endpoint": "search-ISIN",
+  "isin": "US0378331005",
+  "limit": 2
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "4b0ef1da94afbaea658a9394461df5fb1245b4de5fac24d1eb80859cd5c1fee6",
+ "hosted_text_len": 429,
+ "rest_path": "/search-isin",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "bc750cd7b4eb09616024977e8fa6966a92886da3443b08215b55df973e762896",
+ "rest_body_len": 580,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b052547c7001f251d88685e626e2a58aca0202755c1332f590f2693599c990792090d363036b730363634303085c9e5261665a7963827160015981a981b591a00d59819181800a56b7570d9a9e7e24a3d6b0958e51b413dab2ccd4d2d2c2c4d4d4c2d8df07a31c099aa3e343133373033b134b0302064ab1b352d353334323036348559ca150b00d80dc9c844020000",
+ "hosted_text": "[{\"symbol\":\"AAPL\",\"name\":\"Apple Inc.\",\"isin\":\"US0378331005\",\"marketCap\":5072900376000},{\"symbol\":\"AAPL.DE\",\"name\":\"Apple Inc.\",\"isin\":\"US0378331005\",\"marketCap\":0},{\"symbol\":\"AAPL.MX\",\"name\":\"Apple Inc.\",\"isin\":\"US0378331005\",\"marketCap\":97588954592000},{\"symbol\":\"APC.DE\",\"name\":\"Apple Inc.\",\"isin\":\"US0378331005\",\"marketCap\":4670649080000},{\"symbol\":\"APC.F\",\"name\":\"Apple Inc.\",\"isin\":\"US0378331005\",\"marketCap\":4661203150000}]"
+}

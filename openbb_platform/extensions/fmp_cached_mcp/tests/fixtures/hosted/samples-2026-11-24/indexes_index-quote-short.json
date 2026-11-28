@@ -1,0 +1,27 @@
+{
+ "tool": "indexes",
+ "arguments": {
+  "endpoint": "index-quote-short",
+  "symbol": "^GSPC",
+  "from_date": "2026-11-17",
+  "to_date": "2026-11-20"
+ },
+ "isError": null,
+ "result_keys": [
+  "content"
+ ],
+ "content_types": [
+  "text"
+ ],
+ "hosted_text_sha256": "6b7932904b4a2a236f8c768f100d06736c666b315226189bf6ca7d17ce68b3aa",
+ "hosted_text_len": 72,
+ "rest_path": "/quote-short",
+ "rest_status": 200,
+ "rest_content_type": "application/json",
+ "rest_body_sha256": "68cefbbf34c4477b8ae5bd8d17b6929aa18f59103bd9579ff3f37b6dd3778d43",
+ "rest_body_len": 103,
+ "json_equal": true,
+ "compact_equal": true,
+ "rest_body_gz_hex": "1f8b080000000000020a8be65250a806620505a5e2cadca4fc1c252b05a538f7e00067251d8870415166722a50d4dcc8d85ccfd01c2a9a9c9198970e12363632d333b7808a96e5e794e682444d8c4c4ccd4c4d0c0c0c8012b55cb1004b0da47a67000000",
+ "hosted_text": "[{\"symbol\":\"^GSPC\",\"price\":7237.17,\"change\":326.78,\"volume\":4245654000}]"
+}
