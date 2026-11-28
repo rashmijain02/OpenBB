@@ -344,6 +344,10 @@ def write_proposal(
 
     Refuses invalid names, a quarantine inside any search root, names that shadow
     an admitted skill (directory or frontmatter, case-insensitive) and overwrites.
+    The proposal directory is re-checked for a link after the exclusive create and
+    before any content is written; a directory swapped for a link in that window is
+    refused and the empty file removed. A swap after that re-check, between it and
+    the write, remains a residual race that Windows offers no handle-based way to close.
     """
     if not isinstance(name, str) or not _NAME_RE.match(name):
         raise ProposalRejected("invalid_name")
@@ -369,7 +373,16 @@ def write_proposal(
         raise ProposalRejected("link_in_proposal_path")
     try:
         with target.open("x", encoding="utf-8", newline="") as handle:
-            handle.write(content)
+            # Re-check after the create: a directory swapped for a link between
+            # the checks above and the open would have redirected the file.
+            if is_link(proposal_dir) or proposal_dir.resolve() != proposal_dir:
+                escaped = True
+            else:
+                escaped = False
+                handle.write(content)
     except FileExistsError as exc:
         raise ProposalRejected("proposal_exists") from exc
+    if escaped:
+        target.unlink(missing_ok=True)  # remove only the file this call created
+        raise ProposalRejected("link_in_proposal_path")
     return target

@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import socket
 import threading
 import urllib.request
@@ -219,7 +220,7 @@ def test_verified_leak_projects_only_vocabulary_names():
     assert not [n for n in names if any(ch.isdigit() for ch in n)]
     text = proj.model_dump_json()
     assert "nvda" not in text.lower() and "4242424" not in text
-    assert proj.dropped_unvetted == 4
+    assert proj.unvetted_dropped is True
     assert proj.as_of is not None  # the date still crosses; the ticker does not
 
 
@@ -241,7 +242,7 @@ def test_unvetted_codes_and_names_are_dropped_and_counted(slot, item):
         artifact[slot] = [item]
     proj = _project_artifact(artifact)
     assert item not in proj.model_dump_json()
-    assert proj.dropped_unvetted == 1
+    assert proj.unvetted_dropped is True
     assert _emitted_names(proj) == set()
 
 
@@ -266,7 +267,7 @@ def test_vocabulary_entries_with_digits_or_symbol_words_still_drop(monkeypatch):
         }
     )
     assert _emitted_names(proj) == set()
-    assert proj.dropped_unvetted == 5
+    assert proj.unvetted_dropped is True
 
 
 def test_emitted_names_are_checked_for_the_reidentifying_combination(monkeypatch):
@@ -599,7 +600,7 @@ def test_policy_probe_projection_real_path(capsys):
     assert proj["model_capture_scan_hits"] == [] and proj["egress_attempts"] == []
     assert proj["unlisted_field_denied"] == "field_not_granted"
     assert proj["reidentifying_denied"] == "reidentifying_combination"
-    assert proj["dropped_unvetted"] >= 4 and proj["unvetted_names_emitted"] == 0
+    assert proj["unvetted_dropped"] is True and proj["unvetted_names_emitted"] == 0
     assert "NVDA" not in out and "4242424" not in out
     assert summary["scan_hits"] == []
     assert scan_text(out) == []
@@ -963,3 +964,52 @@ def test_duplicate_memory_key_is_refused(tmp_path):
         hermes_config.read_route_facts(
             _safe_cfg(tmp_path), _managed_memory(tmp_path, text)
         )
+
+
+def test_unvetted_drop_is_a_flag_not_a_holding_count():
+    """A producer keying by ticker must not leak the holding count (N1)."""
+    tickers = [f"tk{chr(65 + i // 26)}{chr(65 + i % 26)}" for i in range(37)]
+    artifact = {
+        "run_id": "r",
+        "artifact_id": "a",
+        "aggregates": {t: 0.1 for t in tickers},
+    }
+    proj = _project_artifact(artifact)
+    text = proj.model_dump_json()
+    assert proj.unvetted_dropped is True
+    assert not re.search(r"37", text) and scan_text(text) == []
+    assert "dropped_unvetted" not in text
+
+
+@pytest.mark.parametrize(
+    "value", [float("nan"), float("inf"), float("-inf"), -1, True, "3", None]
+)
+def test_bucket_out_of_range_for_non_finite_and_non_numbers(value):
+    assert projection.bucket(value) == "out_of_range"
+    assert projection.bucket(value, count=True) == "out_of_range"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(0, "0"), (0.0, "0"), (1, "1-9"), (1.0, "1-9"), (37.0, "10-99"), (1000.0, "1000+")],
+)
+def test_counts_use_count_buckets_even_as_integral_floats(value, expected):
+    assert projection.bucket(value, count=True) == expected
+
+
+def test_non_integral_count_is_out_of_range():
+    assert projection.bucket(0.5, count=True) == "out_of_range"
+    assert projection.bucket(12.5, count=True) == "out_of_range"
+
+
+def test_position_count_projects_with_count_buckets_from_floats():
+    artifact = {
+        "run_id": "r",
+        "artifact_id": "a",
+        "aggregates": {"position_count": 1.0, "sector_count": 2.5},
+    }
+    proj = _project_artifact(artifact)
+    assert proj.aggregate_buckets == {
+        "position_count": "1-9",
+        "sector_count": "out_of_range",
+    }

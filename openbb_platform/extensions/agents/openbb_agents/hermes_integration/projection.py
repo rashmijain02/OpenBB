@@ -20,7 +20,8 @@ It reports labels only (never the matched text) and exits 1 on any hit.
 Names that reach Hermes come from closed vocabularies (:data:`FINDING_CODES`,
 :data:`AGGREGATE_NAMES`, :data:`METRIC_NAMES`). A producer-supplied code or
 name outside them (``TOP_HOLDING_NVDA``, an aggregate named after a ticker, a
-digit-bearing code) is dropped and counted in ``dropped_unvetted``, never
+digit-bearing code) is dropped and flagged by the boolean ``unvetted_dropped`` (never a count: a
+producer keying by ticker would make it the exact holding count), never
 passed. Opaque IDs are keyed HMAC-SHA256 digests; the key file is named by
 :data:`PROJECTION_KEY_ENV` and must live outside any git work tree. Without a
 usable key, :func:`project` fails closed (``projection_key_unconfigured``).
@@ -32,6 +33,7 @@ import argparse
 import datetime as dt
 import hashlib
 import hmac
+import math
 import os
 import re
 import sys
@@ -64,6 +66,7 @@ REIDENTIFYING_CLASSES: tuple[frozenset[str], ...] = (
 
 PCT_BUCKETS = ("0-5%", "5-10%", "10-25%", "25-50%", "50-100%")
 COUNT_BUCKETS = ("0", "1-9", "10-99", "100-999", "1000+")
+COUNT_AGGREGATES: frozenset[str] = frozenset({"position_count", "sector_count"})
 Bucket = Literal[
     "0-5%",
     "5-10%",
@@ -159,7 +162,7 @@ class EvidenceProjection(BaseModel):
     metric_refs: tuple[str, ...] = ()
     aggregate_buckets: dict[str, Bucket] = Field(default_factory=dict)
     as_of: dt.date | None = None
-    dropped_unvetted: int = Field(default=0, ge=0)
+    unvetted_dropped: bool = False
 
     @field_validator("run_id", "artifact_id")
     @classmethod
@@ -250,13 +253,23 @@ def opaque_id(prefix: str, raw: object, key: bytes) -> str:
     return f"{prefix}_{digest.hexdigest()[:16]}"
 
 
-def bucket(value: object) -> str:
-    """Map a number to a coarse bucket; fractions in [0, 1] are percentages."""
+def bucket(value: object, *, count: bool = False) -> str:
+    """Map a number to a coarse bucket; fractions in [0, 1] are percentages.
+
+    NaN, infinities, negatives and non-numbers are ``out_of_range``. With
+    ``count=True`` (names in :data:`COUNT_AGGREGATES`) the value must be a whole
+    number, even when passed as an integral float, and always uses the count
+    buckets; a fractional count is ``out_of_range``.
+    """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "out_of_range"
+    if isinstance(value, float) and not math.isfinite(value):
         return "out_of_range"
     if value < 0:
         return "out_of_range"
-    if isinstance(value, float) and value <= 1:
+    if count and value != int(value):
+        return "out_of_range"
+    if not count and isinstance(value, float) and value <= 1:
         for upper, label in zip((0.05, 0.10, 0.25, 0.50, 1.0), PCT_BUCKETS):
             if value <= upper:
                 return label
@@ -308,8 +321,8 @@ def project(
     emit) combines re-identifying classes, the gate refuses it, or no ID key is
     configured. Raw values never reach the result: IDs are keyed HMACs,
     finding codes and metric / aggregate names come only from the closed
-    vocabularies (anything else is dropped and counted in
-    ``dropped_unvetted``), metrics become references and aggregates buckets.
+    vocabularies (anything else is dropped and flagged by
+    ``unvetted_dropped``), metrics become references and aggregates buckets.
     """
     requested = frozenset(fields)
     if is_reidentifying(requested):
@@ -354,14 +367,14 @@ def project(
     if "aggregate_buckets" in requested:
         aggregates = artifact.get("aggregates") or {}
         names, n = _vetted(aggregates, lambda a: vetted_name(a, AGGREGATE_NAMES))
-        values["aggregate_buckets"] = {a: bucket(aggregates[a]) for a in names}
+        values["aggregate_buckets"] = {a: bucket(aggregates[a], count=a in COUNT_AGGREGATES) for a in names}
         emitted.update(names)
         dropped += n
     if "as_of" in requested:
         values["as_of"] = _as_date(artifact.get("as_of"))
     if is_reidentifying(emitted):
         raise ProjectionDenied("reidentifying_combination")
-    values["dropped_unvetted"] = dropped
+    values["unvetted_dropped"] = dropped > 0
     return EvidenceProjection(**values)
 
 

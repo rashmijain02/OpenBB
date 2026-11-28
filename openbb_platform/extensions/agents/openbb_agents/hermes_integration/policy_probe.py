@@ -289,7 +289,7 @@ def _projection_check() -> tuple[bool, dict[str, Any]]:
         "egress_attempts": list(attempts),
         "unlisted_field_denied": unlisted,
         "reidentifying_denied": reidentifying,
-        "dropped_unvetted": proj.dropped_unvetted,
+        "unvetted_dropped": proj.unvetted_dropped,
         "unvetted_names_emitted": _unvetted_names(proj),
     }
     ok = (
@@ -298,7 +298,7 @@ def _projection_check() -> tuple[bool, dict[str, Any]]:
         and not attempts
         and unlisted is not None
         and reidentifying == "reidentifying_combination"
-        and proj.dropped_unvetted > 0
+        and proj.unvetted_dropped
         and summary["unvetted_names_emitted"] == 0
     )
     summary["result"] = "projected" if ok else "FAIL"

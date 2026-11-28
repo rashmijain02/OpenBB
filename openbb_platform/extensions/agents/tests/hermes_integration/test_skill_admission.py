@@ -769,3 +769,30 @@ def test_cli_skills_treat_recursion_error_as_config_error(
         code, comp, _, _ = _skills_component(_cli_skills_argv(tmp_path, home), capsys)
     assert code == 2 and comp["failed_layer"] == "skills", comp
     assert "hermes_config_unreadable" in comp["detail"], comp
+
+
+def test_link_appearing_after_the_create_is_refused_and_cleaned(tmp_path, monkeypatch):
+    """A directory swapped for a link after the open writes nothing and is removed."""
+    home = _home(tmp_path)
+    quarantine = tmp_path / "proposals"
+    quarantine.mkdir()
+    real = skills_admission.is_link
+    state: dict[str, int] = {}
+
+    def late_link(path):
+        # 2 checks before mkdir, 1 after; the 4th call is the post-create re-check
+        state["calls"] = state.get("calls", 0) + 1
+        return True if state["calls"] == 4 else real(path)
+
+    monkeypatch.setattr(skills_admission, "is_link", late_link)
+    with pytest.raises(ProposalRejected, match="link_in_proposal_path"):
+        skills_admission.write_proposal(
+            quarantine,
+            "late",
+            BODY.replace(SKILL, "late"),
+            facts=_facts(tmp_path),
+            skills_root=home / "skills",
+            admitted=_manifest(home),
+        )
+    assert state["calls"] == 4
+    assert not (quarantine / "late" / "SKILL.md").exists()
