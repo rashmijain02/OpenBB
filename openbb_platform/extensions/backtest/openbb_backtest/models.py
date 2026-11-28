@@ -297,6 +297,36 @@ class SweepPoint(Data):
     metrics: PerformanceMetrics = Field(description="Metrics for this combo.")
 
 
+class ExperimentSummary(Data):
+    """Trial accounting for a Nautilus sweep / validate experiment (#1357).
+
+    ``n_trials_dsr`` counts every attempted configuration (failed and excluded
+    included; retries never add) plus ``external_trials``. Any exclusion makes
+    ``matrix_complete`` false, which caps the verdict at ``fragile``.
+    """
+
+    experiment_id: str = Field(description="sha256 of the experiment spec.")
+    status: Literal["ok", "incomplete", "failed_closed", "mixed_dataset"] = Field(
+        description="Assembly status of the trial ledger."
+    )
+    window_policy: Literal["continuous", "per_fold"] = Field(
+        description="How evaluation windows map to worker runs."
+    )
+    n_planned: int = Field(description="Planned (config, window) cells.")
+    n_ok: int = Field(description="Cells with an ok attempt.")
+    n_failed: int = Field(description="Cells that failed terminally.")
+    n_excluded: int = Field(description="Cells excluded (e.g. admission).")
+    n_trials_dsr: int = Field(description="N used for the deflated Sharpe ratio.")
+    external_trials: int = Field(description="Declared trials searched elsewhere.")
+    matrix_sha256: str | None = Field(
+        default=None, description="Hash of the canonical long-form return matrix."
+    )
+    matrix_complete: bool = Field(description="Every planned config fully ok.")
+    exclusions: list[dict[str, str]] = Field(
+        default_factory=list, description="Excluded configs with a reason."
+    )
+
+
 class SweepResult(Data):
     """Outcome of a parameter sweep (component 09.2, ``obb.backtest.sweep``).
 
@@ -309,6 +339,9 @@ class SweepResult(Data):
     best: dict[str, Any] = Field(description="Parameters of the best combo.")
     best_metrics: PerformanceMetrics = Field(description="Metrics of the best combo.")
     rank_by: str = Field(description="PerformanceMetrics field used to rank combos.")
+    experiment: ExperimentSummary | None = Field(
+        default=None, description="Trial accounting (nautilus backend only)."
+    )
 
 
 class ReconciliationReport(Data):
@@ -324,6 +357,12 @@ class ReconciliationReport(Data):
     tolerance: float = Field(description="Tolerance applied to the comparison.")
     reference_engine: str = Field(description="Source-of-truth engine name.")
     candidate_engine: str = Field(description="Engine under test name.")
+    diagnostic_only: bool = Field(
+        default=False, description="True when agreement is not a gate (nautilus)."
+    )
+    modeled_differences: list[str] = Field(
+        default_factory=list, description="Documented modelling differences."
+    )
 
 
 class FactorExposure(Data):
@@ -407,7 +446,12 @@ class ValidationReport(Data):
     oos_metrics: PerformanceMetrics = Field(
         description="Aggregated out-of-sample metrics."
     )
-    pbo: float = Field(description="Probability of backtest overfitting [0,1].")
+    pbo: float | None = Field(
+        description=(
+            "Probability of backtest overfitting [0,1]; None when undefined"
+            " (nautilus backend only, never 0.0)."
+        )
+    )
     deflated_sharpe: float = Field(description="Deflated Sharpe ratio.")
     min_backtest_length_years: float = Field(
         description="Minimum backtest length (years) to trust the target Sharpe."
@@ -416,11 +460,14 @@ class ValidationReport(Data):
     thresholds: dict[str, float] = Field(
         description="Effective verdict thresholds, recorded for auditability."
     )
+    experiment: ExperimentSummary | None = Field(
+        default=None, description="Trial accounting (nautilus backend only)."
+    )
 
     @field_validator("pbo")
     @classmethod
-    def _pbo_range(cls, v: float) -> float:
-        if not 0.0 <= v <= 1.0:
+    def _pbo_range(cls, v: float | None) -> float | None:
+        if v is not None and not 0.0 <= v <= 1.0:
             raise ValueError("pbo must be in [0,1]")
         return v
 
