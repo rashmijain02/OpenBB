@@ -6,6 +6,7 @@ import json
 
 import pytest
 from openbb_agents._stage_graph import check_acyclic, check_unique_stages
+from openbb_agents.hermes_integration.admission import admit_workflow
 from openbb_agents.hermes_integration.workflow import (
     ACCESS_VOCABULARIES,
     WorkflowManifest,
@@ -131,3 +132,36 @@ def test_shared_graph_rules_reject_duplicates_and_cycles():
     stages = check_unique_stages("w", [_S("a", ["b"]), _S("b", ["a"])])
     with pytest.raises(ValueError, match="stage cycle"):
         check_acyclic("w", stages)
+
+
+_LAX_VALUES = [
+    (("access_version",), True),
+    (("access_version",), 1.0),
+    (("schema_version",), True),
+    (("schema_version",), 1.0),
+    (("stages", 0, "optional"), 0),
+    (("stages", 0, "optional"), "false"),
+    (("capabilities", "platform:story_concentration", "schema_sha256"), None),
+]
+
+
+@pytest.mark.parametrize(("path", "value"), _LAX_VALUES)
+def test_contract_is_strict_and_never_coerces(shipped_document, path, value):
+    """Coercion would make the parsed digest differ from the raw one (finding 2)."""
+    node = shipped_document
+    for part in path[:-1]:
+        node = node[part]
+    node[path[-1]] = value
+    with pytest.raises(ValidationError):
+        WorkflowManifest.model_validate(shipped_document)
+    admission = admit_workflow(shipped_document, live_tools={})
+    assert not admission.admitted
+    assert "schema_invalid" in {r.code for r in admission.rejections}
+
+
+def test_parsed_digest_equals_raw_digest_for_shipped_workflow(shipped_document):
+    """The registry hashes the raw file; admission hashes the parsed model."""
+    manifest = WorkflowManifest.model_validate(shipped_document)
+    assert workflow_manifest_sha256(manifest) == workflow_manifest_sha256(
+        shipped_document
+    )

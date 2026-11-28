@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
 from openbb_mcp_server.utils.schema_digest import canonical_json_sha256
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from openbb_agents._stage_graph import (
     check_acyclic,
@@ -50,7 +50,14 @@ MAPPED_ACCESS: frozenset[str] = _V1_ACCESS
 
 
 class _Contract(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    """Strict base: unknown fields are errors and nothing is coerced.
+
+    Strictness is what makes ``workflow_manifest_sha256`` of a parsed manifest
+    equal the digest of the raw document the registry records: ``true`` or
+    ``1.0`` for an ``int`` field would otherwise parse and re-serialise as ``1``.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
 
 class CapabilityPin(_Contract):
@@ -96,6 +103,15 @@ class WorkflowManifest(_Contract):
     input_schemas: Mapping[Identifier, Sha256]
     artifact_schemas: Mapping[Identifier, Sha256]
     limitations: list[str]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _schema_version_is_an_int(cls, value: Any) -> Any:
+        # ``Literal[1]`` matches ``True`` and ``1.0`` (equal to 1) even in
+        # strict mode; only a real ``int`` may pass.
+        if type(value) is not int:  # pylint: disable=unidiomatic-typecheck
+            raise ValueError("schema_version must be an integer")
+        return value
 
 
 def workflow_manifest_sha256(workflow: WorkflowManifest | Mapping[str, Any]) -> str:
