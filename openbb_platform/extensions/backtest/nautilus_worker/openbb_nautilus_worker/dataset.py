@@ -204,9 +204,46 @@ def discard_dir(path: Path) -> None:
 
 
 def replace_dir(tmp: Path, dest: Path) -> None:
-    """Move a fully written ``tmp`` directory into place at ``dest``."""
-    discard_dir(dest)
-    tmp.rename(dest)
+    """Move a fully written ``tmp`` directory into place at ``dest``.
+
+    Used for derived, rebuildable output (catalogs). A filesystem failure
+    (e.g. a file held open on Windows) is a :class:`DatasetError`.
+    """
+    try:
+        discard_dir(dest)
+        tmp.rename(dest)
+    except OSError as exc:
+        raise DatasetError(
+            ErrorCode.PROCESS, "replace_failed", f"cannot replace {dest.name}"
+        ) from exc
+
+
+def place_dataset_dir(tmp: Path, dest: Path, ds_id: str) -> None:
+    """Move a written dataset ``tmp`` to ``dest`` without destroying a good copy.
+
+    Content addressing means an existing ``dest`` that admits under the same
+    id already holds the same content: keep it (no ``rmtree``) and drop
+    ``tmp``. An existing ``dest`` that does not admit is never deleted here;
+    it is a :class:`DatasetError` the owner resolves.
+    """
+    if dest.exists() or dest.is_symlink():
+        try:
+            # precision is the reader's concern, not identity: admit at the cap (16).
+            admit_dataset(dest.parent, ds_id, 16)
+        except DatasetError as exc:
+            raise DatasetError(
+                ErrorCode.SCHEMA,
+                "dataset_dir_conflict",
+                f"{ds_id} exists and does not admit ({exc.reason})",
+            ) from exc
+        discard_dir(tmp)
+        return
+    try:
+        tmp.rename(dest)
+    except OSError as exc:
+        raise DatasetError(
+            ErrorCode.PROCESS, "replace_failed", f"cannot place {ds_id}"
+        ) from exc
 
 
 def _reject(code: ErrorCode, reason: str, message: str) -> DatasetError:

@@ -394,7 +394,7 @@ def _write_atomic(
         ds_id = ds.dataset_id(manifest)
         (tmp / ds.MANIFEST_NAME).write_bytes(ds.manifest_bytes(manifest))
         dest = safe_join(out_root, ds_id)
-        ds.replace_dir(tmp, dest)
+        ds.place_dataset_dir(tmp, dest, ds_id)
     finally:
         ds.discard_dir(tmp)
     return ExportResult(dataset_id=ds_id, path=dest, manifest=manifest)

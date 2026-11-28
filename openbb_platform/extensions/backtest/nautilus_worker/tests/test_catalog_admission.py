@@ -314,3 +314,60 @@ def test_worker_catalog_build_round_trip(tmp_path):
     assert [(str(b.close), b.ts_event) for b in bars] == [
         (cb.scaled_to_str(r["close"], 2), r["ts_event"]) for r in expected
     ]
+
+
+# --- placing a dataset dir (#1355 CODE-5) ------------------------------------------
+
+
+def _tmp_copy(root: Path, ds_id: str) -> Path:
+    tmp = root / ".incoming.tmp"
+    tmp.mkdir()
+    for name in (ds.MANIFEST_NAME, *ds.DATA_FILES):
+        (tmp / name).write_bytes((root / ds_id / name).read_bytes())
+    return tmp
+
+
+def test_place_keeps_existing_dataset_that_admits(tmp_path):
+    """An existing dest with the same id is kept, never rmtree'd."""
+    ds_id = _make_dataset(tmp_path)
+    sentinel = tmp_path / ds_id / "kept.marker"
+    sentinel.write_bytes(b"original")
+    tmp = _tmp_copy(tmp_path, ds_id)
+    ds.place_dataset_dir(tmp, tmp_path / ds_id, ds_id)
+    assert sentinel.read_bytes() == b"original"
+    assert not tmp.exists()
+    ds.admit_dataset(tmp_path, ds_id, 9)
+
+
+def test_place_refuses_existing_dir_that_does_not_admit(tmp_path):
+    """A corrupt dest is a DatasetError and is left for the owner (not deleted)."""
+    ds_id = _make_dataset(tmp_path)
+    tmp = _tmp_copy(tmp_path, ds_id)
+    bars = tmp_path / ds_id / ds.BARS_FILE
+    bars.write_bytes(bars.read_bytes() + b"\0")
+    err = _reason(ds.place_dataset_dir, tmp, tmp_path / ds_id, ds_id)
+    assert (err.reason, err.code) == ("dataset_dir_conflict", ErrorCode.SCHEMA)
+    assert bars.exists()
+
+
+def test_place_moves_new_dataset_into_place(tmp_path):
+    """A fresh id is renamed into place."""
+    ds_id = _make_dataset(tmp_path)
+    tmp = _tmp_copy(tmp_path, ds_id)
+    other = tmp_path / "other"
+    other.mkdir()
+    ds.place_dataset_dir(tmp, other / ds_id, ds_id)
+    ds.admit_dataset(other, ds_id, 9)
+
+
+def test_replace_dir_os_error_is_dataset_error(tmp_path, monkeypatch):
+    """A locked dest (PermissionError on Windows) surfaces as a DatasetError."""
+    (tmp_path / "dest").mkdir()
+    (tmp_path / "tmp").mkdir()
+
+    def locked(_path):
+        raise PermissionError("file in use")
+
+    monkeypatch.setattr(ds.shutil, "rmtree", locked)
+    err = _reason(ds.replace_dir, tmp_path / "tmp", tmp_path / "dest")
+    assert (err.reason, err.code) == ("replace_failed", ErrorCode.PROCESS)
