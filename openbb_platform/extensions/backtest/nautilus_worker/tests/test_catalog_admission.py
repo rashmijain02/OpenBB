@@ -350,6 +350,68 @@ def test_place_refuses_existing_dir_that_does_not_admit(tmp_path):
     assert bars.exists()
 
 
+def test_place_rename_race_with_identical_export_is_success(tmp_path, monkeypatch):
+    """dest appears between the exists() check and rename: same id => success."""
+    ds_id = _make_dataset(tmp_path)
+    tmp = _tmp_copy(tmp_path, ds_id)
+    dest = tmp_path / "race" / ds_id
+    dest.parent.mkdir()
+    real_rename = Path.rename
+
+    def racing_rename(self, target):
+        if self == tmp:
+            real_rename(tmp_path / ds_id, target)  # the concurrent winner
+            raise FileExistsError(17, "exists")
+        return real_rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", racing_rename)
+    ds.place_dataset_dir(tmp, dest, ds_id)
+    assert not tmp.exists()
+    ds.admit_dataset(dest.parent, ds_id, 9)
+
+
+def test_place_rename_failure_without_admitted_dest_is_replace_failed(
+    tmp_path, monkeypatch
+):
+    ds_id = _make_dataset(tmp_path)
+    tmp = _tmp_copy(tmp_path, ds_id)
+
+    def failing_rename(self, target):
+        raise PermissionError(13, "denied")
+
+    monkeypatch.setattr(Path, "rename", failing_rename)
+    err = _reason(ds.place_dataset_dir, tmp, tmp_path / "x" / ds_id, ds_id)
+    assert err.reason == "replace_failed"
+
+
+def test_place_rename_failure_with_corrupt_dest_is_replace_failed(
+    tmp_path, monkeypatch
+):
+    """A raced dest that does not admit is never treated as success."""
+    ds_id = _make_dataset(tmp_path)
+    tmp = _tmp_copy(tmp_path, ds_id)
+    dest = tmp_path / "bad" / ds_id
+    dest.mkdir(parents=True)
+    (dest / "junk").write_bytes(b"x")
+    real_rename, real_exists = Path.rename, Path.exists
+    first = {"call": True}
+
+    def racing_rename(self, target):
+        if self == tmp:
+            raise FileExistsError(17, "exists")
+        return real_rename(self, target)
+
+    def exists(self):  # dest "appears" only after the first check
+        if self == dest and first.pop("call", False):
+            return False
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "rename", racing_rename)
+    monkeypatch.setattr(Path, "exists", exists)
+    err = _reason(ds.place_dataset_dir, tmp, dest, ds_id)
+    assert err.reason == "replace_failed"
+
+
 def test_place_moves_new_dataset_into_place(tmp_path):
     """A fresh id is renamed into place."""
     ds_id = _make_dataset(tmp_path)

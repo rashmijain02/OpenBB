@@ -179,7 +179,13 @@ class ProcessBounds:
             raise
 
     def _resume_main_thread(self, pid: int) -> None:
-        """Resume the (only) thread of the suspended process ``pid``."""
+        """Resume the (only) thread of the suspended process ``pid``.
+
+        ``subprocess.Popen`` closes ``PROCESS_INFORMATION.hThread`` and does not
+        expose it, so the id from ``CreateProcess`` is unavailable here. The
+        process was created ``CREATE_SUSPENDED`` and has run no code, so it has
+        exactly one thread and the Toolhelp match is unambiguous.
+        """
         k32 = self._k32
         snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPTHREAD, 0)
         if snap in (None, ctypes.c_void_p(-1).value):

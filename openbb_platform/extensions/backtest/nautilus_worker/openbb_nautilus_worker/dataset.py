@@ -226,6 +226,14 @@ def replace_dir(tmp: Path, dest: Path) -> None:
         ) from exc
 
 
+def _admits(dest: Path, ds_id: str) -> bool:
+    try:
+        admit_dataset(dest.parent, ds_id, 16)
+    except DatasetError:
+        return False
+    return True
+
+
 def place_dataset_dir(tmp: Path, dest: Path, ds_id: str) -> None:
     """Move a written dataset ``tmp`` to ``dest`` without destroying a good copy.
 
@@ -249,6 +257,10 @@ def place_dataset_dir(tmp: Path, dest: Path, ds_id: str) -> None:
     try:
         tmp.rename(dest)
     except OSError as exc:
+        # A concurrent identical export may have placed ``dest`` first.
+        if dest.is_dir() and _admits(dest, ds_id):
+            discard_dir(tmp)
+            return
         raise DatasetError(
             ErrorCode.PROCESS, "replace_failed", f"cannot place {ds_id}"
         ) from exc

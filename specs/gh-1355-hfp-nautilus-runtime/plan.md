@@ -222,7 +222,7 @@ the parity test skipped until `openbb_agents` is importable.
 |---|---|---|
 | A `feat/hfp-nautilus-runtime-gh-1355` | T01–T03 code + fake-worker fixtures; `Refs #1355` (not `Closes`: LIVE acceptance pending) | focused pytest, black/ruff, codespell on docs, `/code-review` + `/security-review` + `local-privacy-review`, code-only real-path (`qualify`/`probe` against the fake worker, exit 2 expected for a mismatched fixture) |
 | B (small, after #1338 PR A merges; may batch with #1339's PR B or P16's first PR) | T03 wiring in `hermes_integration` | same + local CI on the merged tip (`test-unit-platform`, `general-linting` until `scripts/local_ci.py` lands) |
-| LIVE | T01-L..T03-L evidence posted on #1355 by the lead/owner | issue closes after both acceptance bullets are proven on the real worker; then update the issue's Command field |
+| LIVE | T01-L..T03-L evidence posted on #1355 by the lead/owner | T03-L also confirms `docker image inspect` env lists no credential-shaped names beyond the allowlisted `GPG_KEY`; issue closes after both acceptance bullets are proven on the real worker; then update the issue's Command field |
 
 ## 5. Risks
 

@@ -116,6 +116,27 @@ def test_env_url_with_userinfo_is_refused_plain_url_is_not():
     assert SENTINEL not in info.value.message and "svc" not in info.value.message
 
 
+def test_python_base_image_gpg_key_is_accepted_real_key_still_refused():
+    """python:*-slim exports GPG_KEY (a public key id); a genuine API key is refused."""
+    assert guards.broker_env_names({**BENIGN, "GPG_KEY": "A035C8C19219BA82"}) == []
+    assert guards.broker_env_names({"PYTHON_GPG_KEY": "x"}) == []
+    env = {"GPG_KEY": "ABCD", "IB_API_KEY": SENTINEL}
+    assert guards.broker_env_names(env) == ["IB_API_KEY"]
+    with pytest.raises(ProtocolError) as info:
+        guards.refuse_broker_env(env)
+    assert SENTINEL not in info.value.message and "GPG_KEY" not in info.value.message
+
+
+def test_heavy_lock_on_unwritable_dir_is_a_structured_config_error(tmp_path):
+    """A read-only data root must not leak a raw OSError."""
+    blocker = tmp_path / "ro"
+    blocker.write_bytes(b"a file where the lock dir should be")
+    with pytest.raises(ProtocolError) as info:
+        with guards.HeavyJobLock(blocker / "runs" / ".heavy.lock"):
+            pytest.fail("lock must not be acquired")
+    assert info.value.code == ErrorCode.CONFIG
+
+
 def test_env_allowlist_exempts_named_variables_only():
     env = {"MY_SERVICE_API_KEY": SENTINEL, "GH_TOKEN": SENTINEL}
     assert guards.broker_env_names(env, allow=frozenset({"GH_TOKEN"})) == [

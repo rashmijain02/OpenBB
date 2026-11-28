@@ -507,6 +507,27 @@ def test_small_split_ratio_is_ambiguous_not_a_basis_verdict(tmp_path):
     ]
 
 
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), 0.0, -2.0])
+def test_non_finite_split_ratio_is_schema_bad_action_not_a_basis_verdict(bad):
+    import pandas as pd
+
+    class Reader:
+        def splits(self, _syms):
+            return pd.DataFrame(
+                {"symbol": ["AAA"], "ex_date": ["2024-12-02"], "ratio": [bad]}
+            )
+
+        def dividends(self, _syms):
+            return pd.DataFrame({"symbol": [], "ex_date": [], "amount": []})
+
+    sessions = [date(2024, 12, 2)]
+    with pytest.raises(DatasetError) as info:
+        ex._event_frames(
+            Reader(), ["AAA"], sessions
+        )  # pylint: disable=protected-access
+    assert (info.value.code, info.value.reason) == (ex.ErrorCode.SCHEMA, "bad_action")
+
+
 def test_split_on_first_session_is_recorded_as_ambiguous(tmp_path):
     """No prior session in the window: no verdict, but the manifest says so."""
     res = _export(tmp_path, start="2024-12-02")

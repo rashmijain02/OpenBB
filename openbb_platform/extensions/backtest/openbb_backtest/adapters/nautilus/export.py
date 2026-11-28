@@ -313,7 +313,7 @@ def _event_frames(
                     "action_not_on_session",
                     f"{sym} {col} ex-date {day} is not a session",
                 )
-            if not value or float(value) <= 0:
+            if not value or not math.isfinite(float(value)) or float(value) <= 0:
                 raise _fail(ErrorCode.SCHEMA, "bad_action", f"{sym} {col} {day}")
             events.append((str(sym).upper(), day, float(value)))
         out.append(sorted(events))

@@ -97,8 +97,8 @@ def worker_command(  # pylint: disable=too-many-arguments
 
     Docker: random ``--name`` (so a deadline can ``docker kill`` it), memory /
     cpu / pids limits, ``--tmpfs /tmp``, and the data root mounted read-only at
-    ``/data``. ``build_catalog`` additionally mounts only ``<root>/catalogs``
-    writable (the one place the worker writes).
+    ``/data``. ``<root>/runs`` is mounted writable on every call (heavy-job lock);
+    ``build_catalog`` additionally mounts ``<root>/catalogs`` writable.
     """
     pin = pin or load_pin()
     if runtime == "native":
@@ -118,7 +118,12 @@ def worker_command(  # pylint: disable=too-many-arguments
                 raise ProtocolError(
                     ErrorCode.CONFIG, f"{DATA_ROOT_ENV} must be absolute"
                 )
-            mounts = ["-v", f"{root}:{CONTAINER_DATA_ROOT}:ro"]
+            # ``runs/`` stays writable on every call: the heavy-job lock file lives
+            # there and the rest of ``/data`` is read-only.
+            mounts = [
+                *("-v", f"{root}:{CONTAINER_DATA_ROOT}:ro"),
+                *("-v", f"{Path(root, 'runs')}:{CONTAINER_DATA_ROOT}/runs"),
+            ]
             if build_catalog:
                 mounts += [
                     *("-v", f"{Path(root, 'catalogs')}:{CONTAINER_DATA_ROOT}/catalogs"),
@@ -133,6 +138,8 @@ def worker_command(  # pylint: disable=too-many-arguments
             *("--cpus", f"{cpus:g}", "--pids-limit", str(PIDS_LIMIT)),
             *("--tmpfs", "/tmp"),  # noqa: S108
             *mounts,
+            # The python base image exports GPG_KEY (a public key id); blank it.
+            *("-e", "GPG_KEY="),
             image,
         ]
     raise ProtocolError(ErrorCode.CONFIG, "unknown runtime")

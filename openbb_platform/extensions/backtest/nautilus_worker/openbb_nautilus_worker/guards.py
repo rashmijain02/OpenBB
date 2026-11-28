@@ -68,7 +68,10 @@ _EXTRA_RE = re.compile(r"(?:KEY$|_PWD$|PRIVKEY|^DATABASE_URL$|^FMP)")
 _URL_USERINFO_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*://[^/@\s]+@")
 # Owner-reviewed names that match a pattern but carry no credential. Code
 # constant on purpose: an env-controlled allowlist would defeat the scrub.
-ENV_ALLOWLIST: frozenset[str] = frozenset()
+# ``GPG_KEY`` / ``PYTHON_GPG_KEY``: the official ``python:*-slim`` images export the
+# *public* key id used to verify the interpreter tarball; it matches ``KEY$`` but is
+# not a credential.
+ENV_ALLOWLIST: frozenset[str] = frozenset({"GPG_KEY", "PYTHON_GPG_KEY"})
 
 # Modules the worker must never import: live/exec clients and broker SDKs.
 BLOCKED_IMPORT_PREFIXES = (
@@ -279,9 +282,16 @@ class HeavyJobLock:
         self._fh: IO[bytes] | None = None
 
     def __enter__(self) -> HeavyJobLock:
-        """Acquire or raise ``process`` (busy)."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        fh = open(self._path, "a+b")  # pylint: disable=consider-using-with
+        """Acquire; ``process`` if busy, ``config`` if the lock dir is unwritable."""
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            fh = open(self._path, "a+b")  # pylint: disable=consider-using-with
+        except OSError as exc:
+            raise GuardError(
+                ErrorCode.CONFIG,
+                "lock_unavailable",
+                "heavy-job lock directory is not writable",
+            ) from exc
         try:
             _lock_fd(fh)
         except OSError as exc:

@@ -205,7 +205,9 @@ def test_docker_command_exact_argv_is_hardened(monkeypatch, tmp_path):
         *("--memory", "4096m", "--cpus", "2", "--pids-limit", "256"),
         *("--tmpfs", "/tmp"),  # noqa: S108
         *("-v", f"{tmp_path}:/data:ro"),
+        *("-v", f"{tmp_path / 'runs'}:/data/runs"),  # heavy-job lock dir is rw
         *("-e", "OPENBB_NAUTILUS_DATA_ROOT=/data"),
+        *("-e", "GPG_KEY="),
         IMAGE,
     ]
 
@@ -220,8 +222,22 @@ def test_docker_command_overrides_and_catalog_build_mount(monkeypatch, tmp_path)
     mounts = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
     assert mounts == [
         f"{tmp_path}:/data:ro",
-        f"{tmp_path / 'catalogs'}:/data/catalogs",  # only catalogs/ is writable
+        f"{tmp_path / 'runs'}:/data/runs",
+        f"{tmp_path / 'catalogs'}:/data/catalogs",  # only runs/ + catalogs/ are rw
     ]
+
+
+def test_runs_dir_is_writable_for_run_and_build_catalog(monkeypatch, tmp_path):
+    """/data is ro, so the lock dir runs/ must be an rw mount on every call."""
+    _docker_env(monkeypatch, tmp_path)
+    for build in (False, True):
+        cmd = client_mod.worker_command("docker", os.environ, build_catalog=build)
+        mounts = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
+        assert f"{tmp_path / 'runs'}:/data/runs" in mounts
+        assert f"{tmp_path}:/data:ro" in mounts
+        assert mounts.index(f"{tmp_path}:/data:ro") < mounts.index(
+            f"{tmp_path / 'runs'}:/data/runs"
+        )
 
 
 def test_docker_command_names_are_random_per_call(monkeypatch):
