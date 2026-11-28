@@ -772,3 +772,10 @@ def test_route_policy_blocks_env_refs_and_url_userinfo(tmp_path, mutate, reason)
 def test_route_policy_admits_env_ref_in_secret_value_only(tmp_path):
     verdict = _mutated_verdict(tmp_path, _set_path("model.api_key", "${GW_KEY}"))
     assert verdict.blocked is False, verdict.reasons
+
+
+def test_route_policy_blocks_delegation_request_overrides(tmp_path):
+    verdict = _mutated_verdict(
+        tmp_path, _set_path("delegation.request_overrides", {"base_url": HOSTED})
+    )
+    assert "delegation_request_overrides_set" in verdict.reasons, verdict.reasons

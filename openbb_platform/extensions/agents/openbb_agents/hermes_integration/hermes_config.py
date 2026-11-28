@@ -124,7 +124,14 @@ AUXILIARY_SETTINGS = frozenset(
     {"transient_retries", "free_only", "stream_only_base_urls"}
 )
 # Delegation keys that pick another route; ``backend`` is allowed only as ``default``.
-DELEGATION_ROUTE_KEYS = ("provider", "base_url", "model", "api_mode", "backends")
+DELEGATION_ROUTE_KEYS = (
+    "provider",
+    "base_url",
+    "model",
+    "api_mode",
+    "backends",
+    "request_overrides",  # merged into every child request (incl. extra_body)
+)
 _URL_KEYS = ("base_url", "url", "api", "inference_base_url")
 # Leaf keys whose value is a credential, never a route: a ``${VAR}`` there is allowed.
 _SECRET_LEAF = re.compile(r"(?:^|_)(?:api_key|key|token|password|secret)$")

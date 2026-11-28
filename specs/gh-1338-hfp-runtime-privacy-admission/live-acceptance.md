@@ -72,6 +72,10 @@ Preconditions: PR A merged; O3 runtime chosen and listening on 127.0.0.1:<LOCAL_
    step 2. Never paste it into chat or a file in the repo.
    Also confirm in the admin UI or /model/info (owner-run) that no model is stored in the database
    (store_model_in_db is false) and that the YAML has no `include:` section: the preflight reads only this YAML.
+   Then, owner-run, GET /key/info for the new key and /team/info for its team (if any) and confirm:
+   the key's aliases is empty ({}), it has no router_settings override (absent or {}), its metadata has
+   "disable_fallbacks": true, and the team has no model_aliases. A key or team alias can remap
+   finance-private to a hosted model after the preflight has passed; the preflight reads only the YAML.
 6. With a synthetic sentinel prompt only: request-level fallback check. Send one chat request with the scoped key,
    model finance-private, and body field "fallbacks": ["<a hosted alias>"] while the local runtime is stopped.
                                     Expect: an error; no hosted request. (In-process, a caller-supplied fallbacks
