@@ -26,8 +26,8 @@ _ID = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
 _PROFILE_SERVER = {"portfolio-ops": "platform"}
 
 
-async def live_tool_hashes(profile: str = "portfolio-ops") -> dict[str, str]:
-    """Return ``"<server>:<tool>" -> input-schema SHA-256`` from an in-process server."""
+def build_server(profile: str = "portfolio-ops", principal: str = "workflow-admit"):
+    """Build an in-process MCP server for ``profile`` (no network, no services)."""
     # pylint: disable=import-outside-toplevel
     from openbb_core.api.rest_api import app
     from openbb_mcp_server.app.app import create_mcp_server
@@ -41,12 +41,21 @@ async def live_tool_hashes(profile: str = "portfolio-ops") -> dict[str, str]:
             "default_skills_dir": None,
         }
     )
-    server = create_mcp_server(settings, app, auth=("workflow-admit", "x" * 32))
+    return create_mcp_server(settings, app, auth=(principal, "x" * 32))
+
+
+async def server_tool_hashes(server, profile: str = "portfolio-ops") -> dict[str, str]:
+    """Return ``"<server>:<tool>" -> input-schema SHA-256`` for a built server."""
     logical = _PROFILE_SERVER.get(profile, profile)
     return {
         f"{logical}:{tool.name}": tool_input_schema_sha256(tool.parameters)
         for tool in await server.list_tools()
     }
+
+
+async def live_tool_hashes(profile: str = "portfolio-ops") -> dict[str, str]:
+    """Return ``"<server>:<tool>" -> input-schema SHA-256`` from an in-process server."""
+    return await server_tool_hashes(build_server(profile), profile)
 
 
 def _load_document(args: argparse.Namespace) -> object:
