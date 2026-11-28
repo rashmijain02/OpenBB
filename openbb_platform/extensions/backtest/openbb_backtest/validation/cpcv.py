@@ -116,7 +116,7 @@ def cpcv(
 
 
 def n_backtest_paths(n_groups: int, n_test_groups: int) -> int:
-    """Number of reconstructed OOS backtest paths: ``C(N, k) · k / N``.
+    """Return the number of reconstructed OOS backtest paths: ``C(N, k) · k / N``.
 
     Each of the ``C(N, k)`` splits contributes ``k`` tested groups, and every group
     is tested in ``C(N-1, k-1)`` splits, so the recombined OOS paths number
@@ -125,17 +125,56 @@ def n_backtest_paths(n_groups: int, n_test_groups: int) -> int:
     if n_groups < 2:
         raise ValueError(f"n_groups must be >= 2, got {n_groups}")
     if not 1 <= n_test_groups < n_groups:
-        raise ValueError(
-            f"n_test_groups ({n_test_groups}) must be in [1, n_groups)"
-        )
+        raise ValueError(f"n_test_groups ({n_test_groups}) must be in [1, n_groups)")
     return math.comb(n_groups, n_test_groups) * n_test_groups // n_groups
+
+
+def cpcv_paths(n_groups: int, n_test_groups: int) -> list[list[tuple[int, int]]]:
+    """Reconstruct the CPCV backtest paths (López de Prado, AFML ch. 7).
+
+    Every group ``g`` is tested in ``C(N-1, k-1)`` of the :func:`cpcv` splits
+    (taken in the same ``itertools.combinations`` order). Path ``p`` takes, for
+    each group ``g = 0 … N-1``, the ``p``-th split that tests ``g``, so each path
+    covers every session exactly once out of sample and each ``(split, group)``
+    cell belongs to exactly one path.
+
+    Returns
+    -------
+    list[list[tuple[int, int]]]
+        :func:`n_backtest_paths` paths, each a list of ``(split_index, group)``
+        in group order.
+    """
+    n_paths = n_backtest_paths(n_groups, n_test_groups)
+    testing: list[list[int]] = [[] for _ in range(n_groups)]
+    for split, combo in enumerate(combinations(range(n_groups), n_test_groups)):
+        for group in combo:
+            testing[group].append(split)
+    return [
+        [(testing[group][path], group) for group in range(n_groups)]
+        for path in range(n_paths)
+    ]
+
+
+def atomic_test_windows(test_idx: np.ndarray) -> list[np.ndarray]:
+    """Split a CPCV test set into its maximal contiguous windows.
+
+    A split of non-adjacent groups (e.g. groups 0 and 2) is two windows, never one
+    ``first … last`` span that would include the train group between them
+    (#1357, finding F2). The ``per_fold`` window policy runs each window as its
+    own cell; :func:`cpcv` output itself is unchanged.
+    """
+    ordered = sorted({int(i) for i in np.asarray(test_idx).ravel()})
+    return [
+        np.arange(start, end + 1, dtype=int)
+        for start, end in _contiguous_blocks(ordered)
+    ]
 
 
 # --- internal helpers -----------------------------------------------------
 
 
 def _embargo_indices(test_set: set[int], embargo_size: int, total: int) -> set[int]:
-    """Indices removed by embargo: ``embargo_size`` sessions after each test block.
+    """Return indices removed by embargo: ``embargo_size`` sessions after each test block.
 
     The test set may span several non-adjacent contiguous blocks (a combination of
     non-adjacent groups), so embargo is applied after the end of *each* block.
@@ -148,7 +187,9 @@ def _embargo_indices(test_set: set[int], embargo_size: int, total: int) -> set[i
     return embargoed
 
 
-def _label_overlaps_test(i: int, label_span: int, total: int, test_set: set[int]) -> bool:
+def _label_overlaps_test(
+    i: int, label_span: int, total: int, test_set: set[int]
+) -> bool:
     """Whether training index ``i``'s forward label window touches a test index."""
     window_end = min(i + label_span + 1, total)
     return any(j in test_set for j in range(i, window_end))
