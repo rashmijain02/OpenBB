@@ -896,3 +896,137 @@ def test_local_alias_with_trailing_tab_is_not_the_private_alias(tmp_path):
     cfg["model_list"][0]["model_name"] = f"{ALIAS}\t"
     _, verdict = _verdict(tmp_path, cfg)
     assert verdict.blocked and "alias_name_not_canonical" in verdict.reasons
+
+
+# --- RR3: transitive fallback chains (#1338 SEC-3) ------------------------------------
+
+
+def _with_local_b(port=8080, name="local-b") -> dict:
+    cfg = _local_cfg(port)
+    second = copy.deepcopy(cfg["model_list"][0])
+    second["model_name"] = name
+    cfg["model_list"].append(second)
+    return cfg
+
+
+def _chain_reasons(verdict):
+    return [
+        r for r in verdict.reasons if r.startswith("fallback_chain_reaches_hosted:")
+    ]
+
+
+def test_chained_fallback_through_local_alias_to_hosted_blocks(tmp_path):
+    # litellm 1.106.6 re-enters ``async_function_with_fallbacks`` for the fallback
+    # group (``run_async_fallback``), so local-b's own fallbacks apply in turn.
+    cfg = _with_local_b()
+    cfg["router_settings"]["fallbacks"] = [
+        {ALIAS: ["local-b"]},
+        {"local-b": ["hosted-a"]},
+    ]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked
+    assert _chain_reasons(verdict) == [
+        "fallback_chain_reaches_hosted:finance-private>local-b>hosted-a"
+    ], verdict.reasons
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        (
+            ("router_settings", "fallbacks"),
+            ("router_settings", "context_window_fallbacks"),
+        ),
+        (
+            ("router_settings", "fallbacks"),
+            ("litellm_settings", "content_policy_fallbacks"),
+        ),
+        (("litellm_settings", "fallbacks"), ("router_settings", "fallbacks")),
+    ],
+)
+def test_chained_fallback_split_across_keys_blocks(tmp_path, first, second):
+    cfg = _with_local_b()
+    cfg.setdefault(first[0], {})[first[1]] = [{ALIAS: ["local-b"]}]
+    cfg.setdefault(second[0], {})[second[1]] = [{"local-b": ["hosted-a"]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked and _chain_reasons(verdict), verdict.reasons
+
+
+def test_chain_through_default_fallbacks_blocks(tmp_path):
+    # bare default_fallbacks apply to every group, the private alias included
+    cfg = _with_local_b()
+    cfg["router_settings"]["default_fallbacks"] = ["local-b"]
+    cfg["router_settings"]["fallbacks"] = [{"local-b": ["hosted-a"]}]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert _chain_reasons(verdict) == [
+        "fallback_chain_reaches_hosted:finance-private>local-b>hosted-a"
+    ], verdict.reasons
+
+
+def test_fallback_cycle_between_local_aliases_terminates_and_admits(tmp_path):
+    cfg = _with_local_b()
+    cfg["router_settings"]["fallbacks"] = [
+        {ALIAS: ["local-b"]},
+        {"local-b": [ALIAS]},
+        {"hosted-a": ["hosted-b"]},  # unreachable from the private alias
+    ]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert not verdict.blocked, verdict.reasons
+
+
+def test_chain_through_provider_prefixed_source_blocks(tmp_path):
+    cfg = _with_local_b()
+    cfg["router_settings"]["fallbacks"] = [
+        {ALIAS: ["local-b"]},
+        {"openai/local-b": ["hosted-a"]},
+    ]
+    _, verdict = _verdict(tmp_path, cfg)
+    assert verdict.blocked and _chain_reasons(verdict), verdict.reasons
+
+
+def test_provider_prefixed_private_alias_matches_unprefixed_fallback_key(tmp_path):
+    prefixed = f"openai/{ALIAS}"
+    cfg = _local_cfg()
+    cfg["model_list"][0]["model_name"] = prefixed
+    cfg["router_settings"]["fallbacks"] = [{ALIAS: ["hosted-a"]}]
+    profile = _profile(tmp_path, 8080, allow=(prefixed,))
+    facts = litellm_config.read_gateway_facts(_write(tmp_path, cfg), profile)
+    verdict = litellm_config.evaluate_gateway(facts, profile)
+    assert (
+        "unsafe_fallback:router_settings.fallbacks" in verdict.reasons
+    ), verdict.reasons
+
+
+def test_cli_deeply_nested_litellm_config_is_config_layer(tmp_path, capsys):
+    from openbb_agents.hermes_integration.hermes_preflight import main
+
+    deep = _write(tmp_path, "include: " + "[" * 3000 + "]" * 3000 + "\n")
+    code = main(["--profile", str(PROFILE), "--litellm-config", str(deep)])
+    report = json.loads(capsys.readouterr().out)
+    cfg = next(c for c in report["components"] if c["name"] == "litellm_config")
+    assert code == 2 and cfg["detail"] == "config_unreadable: RecursionError"
+
+
+@pytest.mark.requires_agents
+def test_inprocess_chained_fallback_positive_control_reaches_hosted(
+    tmp_path, monkeypatch, litellm_mod, egress
+):
+    """1.106.6 follows fallbacks transitively: private -> local-b -> hosted-a."""
+    with _serve("ok") as (hosted, hosted_port):
+        cfg = _with_local_b(_closed_port())
+        cfg["model_list"][2]["litellm_params"][
+            "api_base"
+        ] = f"http://127.0.0.1:{_closed_port()}/v1"
+        cfg["model_list"][1]["litellm_params"] = {
+            "model": "openai/hosted-model-a",
+            "api_base": f"http://127.0.0.1:{hosted_port}/v1",
+            "api_key": "os.environ/SYNTHETIC_HOSTED_KEY_ENV",
+        }
+        cfg["router_settings"]["fallbacks"] = [
+            {ALIAS: ["local-b"]},
+            {"local-b": ["hosted-a"]},
+        ]
+        router = _router(litellm_mod, cfg, monkeypatch)
+        router.completion(model=ALIAS, messages=_prompt(), timeout=2)
+        assert hosted.hits >= 1
+        assert egress == []

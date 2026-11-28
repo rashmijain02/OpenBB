@@ -291,6 +291,50 @@ def _is_pattern(name: str) -> bool:
     return any(c in name for c in _PATTERN_CHARS)
 
 
+def _bare(name: str) -> str:
+    """Group name without a provider prefix (``openai/x`` -> ``x``)."""
+    return name.rsplit("/", 1)[-1]
+
+
+def _fallback_chain_reasons(
+    fallbacks: dict[str, list[tuple[str, list[str]]]],
+    private: list[str],
+    local: set[str],
+) -> list[str]:
+    """Hosted or unknown groups reached from a private alias through local hops.
+
+    litellm 1.106.6 ``run_async_fallback`` (``router_utils/fallback_event_handlers.py``)
+    re-enters ``Router.async_function_with_fallbacks`` with the fallback group as
+    ``model``, so that group's own fallbacks apply in turn, up to ``max_fallbacks``
+    hops (default ``ROUTER_MAX_FALLBACKS`` = 5). The list used at each hop depends on
+    the error, so edges of every fallback key in both sections are unioned and depth
+    is unbounded (a superset). Direct hops are ``unsafe_fallback`` reasons already.
+    """
+    edges: dict[str, list[str]] = {}
+    generic: list[str] = []
+    for pairs in fallbacks.values():
+        for src, targets in pairs:
+            if src == _ALL_SOURCES:
+                generic += targets
+            elif not _is_pattern(src):  # wildcard sources block on their own
+                edges.setdefault(_bare(src), []).extend(targets)
+    reasons: list[str] = []
+    for start in private:
+        seen = {_bare(start)}
+        queue: list[tuple[str, ...]] = [(start,)]
+        while queue:
+            path = queue.pop(0)
+            for target in [*edges.get(_bare(path[-1]), []), *generic]:
+                if target in local:
+                    if _bare(target) not in seen:  # cycle / revisit guard
+                        seen.add(_bare(target))
+                        queue.append((*path, target))
+                elif len(path) > 1:
+                    chain = ">".join(safe_label(p) for p in (*path, target))
+                    reasons.append(f"fallback_chain_reaches_hosted:{chain[:160]}")
+    return list(dict.fromkeys(reasons))
+
+
 def _fallback_pairs(value: Any) -> list[tuple[str, list[str]]]:
     """Normalise ``[{src: [targets]}]`` and ``default_fallbacks: [targets]``."""
     pairs: list[tuple[str, list[str]]] = []
@@ -479,6 +523,7 @@ def evaluate_gateway(
                 reasons.append(f"alias_{name}_pattern_overlaps_private")
                 if other.kind is BackendKind.HOSTED:
                     reasons.append(f"alias_{name}_captured_by_hosted_wildcard")
+    private_bare = {_bare(p) for p in private}
     for key, pairs in sorted(facts.fallbacks.items()):
         for src, targets in pairs:
             if src != _ALL_SOURCES and _is_pattern(src):
@@ -487,14 +532,12 @@ def evaluate_gateway(
                 continue
             # litellm also looks up ``<provider>/<group>`` keys for a group named
             # without a slash (``_provider_prefixed_model_group``), so match on the
-            # last path segment too (a superset, so it fails closed).
-            bare = src.rsplit("/", 1)[-1]
-            applies = (
-                src == _ALL_SOURCES or src in private or bare in private or not private
-            )
+            # last path segment on both sides (a superset, so it fails closed).
+            applies = src == _ALL_SOURCES or _bare(src) in private_bare or not private
             if applies and any(t not in local for t in targets):
                 reasons.append(f"unsafe_fallback:{key}")
                 break
+    reasons += _fallback_chain_reasons(facts.fallbacks, private, local)
     for key in sorted(facts.callbacks):
         reasons.append(f"callbacks_set:{key}")
     if facts.turn_off_message_logging is not True:
