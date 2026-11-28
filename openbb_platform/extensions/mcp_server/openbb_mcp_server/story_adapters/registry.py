@@ -129,6 +129,7 @@ class RunRecord(BaseModel):
     created_at: datetime
     updated_at: datetime
     binding: RunBinding | None = None
+    cancel_requested_at: datetime | None = None
 
 
 class StaleCheckpoint(Exception):
@@ -362,6 +363,18 @@ def ensure_workflow_current(record: RunRecord, workflows: WorkflowCatalog) -> No
         )
 
 
+def ensure_run_open(record: RunRecord) -> None:
+    """Raise ``409 run_cancelled`` once ``story_run_cancel`` was called.
+
+    Shared by every mutating route; reads and job cancel stay open.
+    """
+    if record.cancel_requested_at is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "run_cancelled: this run was cancelled; start a new run.",
+        )
+
+
 class RunStore:
     """SQLite run store with optimistic concurrency per run."""
 
@@ -493,6 +506,42 @@ class RunStore:
                 connection.execute("ROLLBACK")
                 raise
         return updated
+
+    def request_cancel(self, principal: str, run_id: str) -> RunRecord | None:
+        """Record the run-level cancel request once; return the run after it.
+
+        The write bumps the run version, so a checkpoint computed before the
+        cancel is stale. A repeat keeps the first timestamp.
+        """
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = connection.execute(
+                    "SELECT version, record FROM story_runs"
+                    " WHERE run_id = ? AND principal = ?",
+                    (run_id, principal),
+                ).fetchone()
+                if row is None:
+                    connection.execute("ROLLBACK")
+                    return None
+                record = RunRecord.model_validate_json(row[1])
+                if record.cancel_requested_at is None:
+                    record = record.model_copy(
+                        update={
+                            "cancel_requested_at": _now(),
+                            "updated_at": _now(),
+                        }
+                    )
+                    connection.execute(
+                        "UPDATE story_runs SET version = ?, record = ?"
+                        " WHERE run_id = ? AND principal = ?",
+                        (row[0] + 1, record.model_dump_json(), run_id, principal),
+                    )
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+        return record
 
 
 def default_workflow_dir() -> Path | None:
@@ -660,6 +709,7 @@ def build_router(
         """Record one stage's status and JSON state against the version read."""
         record = _owned_run(run_id)
         ensure_workflow_current(record, workflows)
+        ensure_run_open(record)
         if checkpoint.stage_id not in record.stage_status:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,

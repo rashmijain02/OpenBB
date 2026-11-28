@@ -69,6 +69,7 @@ from openbb_mcp_server.story_adapters.registry import (
     WorkflowCatalog,
     default_store_path,
     default_workflow_dir,
+    ensure_run_open,
     ensure_workflow_current,
 )
 
@@ -524,6 +525,41 @@ class Apply(_Strict):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
+def withdraw_pending_requests(
+    db_path: Path, principal: str, run_id: str
+) -> dict[str, int]:
+    """Withdraw a run's ``pending`` requests; count ``applying`` ones left alone.
+
+    Used by ``story_run_cancel`` (#1341). A withdrawn request can never be
+    applied: apply only claims ``pending`` rows. An ``applying`` request is
+    never touched, because its engine call may already have taken effect.
+    """
+    counts = {"withdrawn": 0, "applying": 0}
+    if not db_path.exists():
+        return counts
+    connection = sqlite3.connect(db_path, isolation_level=None, timeout=30)
+    try:
+        has_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table'"
+            " AND name = 'story_paper_requests'"
+        ).fetchone()
+        if has_table is None:
+            return counts
+        counts["withdrawn"] = connection.execute(
+            "UPDATE story_paper_requests SET status = 'withdrawn'"
+            " WHERE principal = ? AND run_id = ? AND status = 'pending'",
+            (principal, run_id),
+        ).rowcount
+        counts["applying"] = connection.execute(
+            "SELECT COUNT(*) FROM story_paper_requests"
+            " WHERE principal = ? AND run_id = ? AND status = 'applying'",
+            (principal, run_id),
+        ).fetchone()[0]
+    finally:
+        connection.close()
+    return counts
+
+
 def _sandbox_view(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "sandbox_id": row["sandbox_id"],
@@ -657,6 +693,7 @@ def build_router(  # pylint: disable=too-many-statements
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
         if mutating:
             ensure_workflow_current(record, workflow_catalog)
+            ensure_run_open(record)
         return record
 
     def _owned_sandbox(sandbox_id: str) -> sqlite3.Row:

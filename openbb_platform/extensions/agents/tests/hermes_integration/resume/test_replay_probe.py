@@ -52,3 +52,28 @@ def test_probe_restores_the_environment(monkeypatch):
 def test_unknown_scenario_is_a_usage_error():
     """Unknown scenario is a usage error."""
     assert replay_probe.main(["--scenario", "nope"]) == 3
+
+
+def test_cancel_scenario_reads_back_explicit_outcomes(capsys):
+    """Cancel: queued confirmed, claimed too late and kept, run then cancelled."""
+    assert replay_probe.main(["--scenario", "cancel", "--format", "json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["ok"] is True
+    assert report["first"]["cancel_state"] == "cancel_requested"
+    assert report["second"]["run_state"] == "cancelled"
+    states = {job["label"]: job["cancel_state"] for job in report["first"]["jobs"]}
+    assert states == {
+        "finished": "already_finished",
+        "running": "too_late",
+        "queued": "cancel_confirmed",
+    }
+    stored = report["readback"]
+    assert stored["job_status"] == {
+        "finished": "succeeded",
+        "running": "succeeded",
+        "queued": "cancelled",
+    }
+    assert stored["request_status"] == ["withdrawn"]
+    assert stored["cancel_requested_at_set"] is True
+    assert stored["cancel_receipts"] == [["cancelled", 2]]
+    assert "gh1341-probe" not in json.dumps(report)

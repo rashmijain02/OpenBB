@@ -314,7 +314,8 @@ async def test_real_mcp_exposes_jobs_only_with_ops_and_explicit_maintenance(
     all_names = {tool.name for tool in await ops.list_tools()}
     # Reviewed exception (#2218): story_job_cancel cancels only the calling
     # principal's own queued story jobs, never a cache job or another job.
-    reviewed = {"story_job_cancel"}
+    # story_run_cancel (#1341) is the same exception at run level.
+    reviewed = {"story_job_cancel", "story_run_cancel"}
     assert reviewed <= all_names
     assert not any(
         fragment in name

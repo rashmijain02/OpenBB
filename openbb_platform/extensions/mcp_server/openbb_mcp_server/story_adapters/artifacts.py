@@ -72,6 +72,7 @@ from openbb_mcp_server.story_adapters.registry import (
     WorkflowCatalog,
     default_store_path,
     default_workflow_dir,
+    ensure_run_open,
     ensure_workflow_current,
 )
 
@@ -508,6 +509,7 @@ def build_router(  # pylint: disable=too-many-statements
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
         if mutating:
             ensure_workflow_current(record, workflow_catalog)
+            ensure_run_open(record)
         return record
 
     def _write(

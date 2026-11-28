@@ -36,9 +36,11 @@ from openbb_core.app.service.job_service import JobService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from openbb_mcp_server.story_adapters.artifacts import ArtifactStore
+from openbb_mcp_server.story_adapters.paper import withdraw_pending_requests
 from openbb_mcp_server.story_adapters.receipts import (
     Receipt,
     ReceiptLedger,
+    args_digest,
     logical_operation_key,
     run_workflow_ref,
 )
@@ -47,6 +49,7 @@ from openbb_mcp_server.story_adapters.registry import (
     WorkflowCatalog,
     default_store_path,
     default_workflow_dir,
+    ensure_run_open,
     ensure_workflow_current,
 )
 from openbb_mcp_server.story_adapters.story_job_kinds import (
@@ -108,13 +111,56 @@ class StoryJob(BaseModel):
     replay_of: str | None = None
 
 
+CancelState = Literal[
+    "cancel_confirmed", "cancel_requested", "too_late", "already_finished"
+]
+
+
 class CancelOutcome(BaseModel):
     """What cancelling did, and the job after it."""
 
     model_config = ConfigDict(extra="forbid")
 
     outcome: Literal["cancelled", "too_late", "already_finished"]
+    cancel_state: CancelState
     job: StoryJob
+
+
+class JobCancel(BaseModel):
+    """One job's cancel state inside a run-level cancel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str
+    cancel_state: CancelState
+
+
+class RequestCancel(BaseModel):
+    """Paper requests touched by a run-level cancel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    withdrawn: int
+    applying: int
+
+
+class RunCancelOutcome(BaseModel):
+    """What cancelling a run did.
+
+    ``cancel_state`` is ``cancel_requested`` while any claimed job or
+    ``applying`` request is still in flight (never interrupted),
+    ``cancel_confirmed`` when this call stopped everything that was left, and
+    ``already_finished`` when a repeat found nothing to do.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    run_state: Literal["cancel_requested", "cancelled"]
+    cancel_state: CancelState
+    cancel_requested_at: datetime
+    jobs: list[JobCancel]
+    requests: RequestCancel
 
 
 def _view(
@@ -164,6 +210,7 @@ def build_router(  # pylint: disable=too-many-statements
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
         if mutating:
             ensure_workflow_current(record, workflow_catalog)
+            ensure_run_open(record)
         return record
 
     def _job(
@@ -383,7 +430,11 @@ def build_router(  # pylint: disable=too-many-statements
         """Cancel a queued job; report too_late once a worker has claimed it."""
         submission, job = _job(service, run_id, job_id)
         if job.status in _TERMINAL:
-            return CancelOutcome(outcome="already_finished", job=_view(submission, job))
+            return CancelOutcome(
+                outcome="already_finished",
+                cancel_state="already_finished",
+                job=_view(submission, job),
+            )
         if job.status == "queued":
             try:
                 cancelled = service.cancel(job_id)
@@ -392,9 +443,94 @@ def build_router(  # pylint: disable=too-many-statements
                 job = service.get_run(job_id)
             else:
                 return CancelOutcome(
-                    outcome="cancelled", job=_view(submission, cancelled)
+                    outcome="cancelled",
+                    cancel_state="cancel_confirmed",
+                    job=_view(submission, cancelled),
                 )
-        return CancelOutcome(outcome="too_late", job=_view(submission, job))
+        return CancelOutcome(
+            outcome="too_late", cancel_state="too_late", job=_view(submission, job)
+        )
+
+    def _record_cancel(record, state: str) -> None:
+        """Receipt the cancel transition: hashes and states only."""
+        digest = args_digest(record.run_id)
+        key = logical_operation_key(
+            tool="story_run_cancel",
+            run_id=record.run_id,
+            workflow_ref=run_workflow_ref(record),
+            stage_id=None,
+            args_sha256=digest,
+        )
+        receipt = receipts.claim(
+            principal,
+            key,
+            tool="story_run_cancel",
+            run_id=record.run_id,
+            workflow_ref=run_workflow_ref(record),
+            stage_id=None,
+            args_sha256=digest,
+            operation_id=record.run_id,
+        )
+        receipts.record_outcome(
+            principal,
+            key,
+            operation_id=receipt.operation_id,
+            outcome_ref=record.run_id,
+            state="cancel_requested" if state == "cancel_requested" else "cancelled",
+        )
+
+    @router.post(
+        "/{run_id}/cancel",
+        operation_id="story_run_cancel",
+        openapi_extra={"mcp_config": {"name": "story_run_cancel"}},
+    )
+    def story_run_cancel(
+        run_id: str,
+        service: Annotated[JobService, Depends(get_authenticated_job_service)],
+    ) -> RunCancelOutcome:
+        """Cancel a run: stop queued work, never interrupt claimed work.
+
+        Queued jobs are cancelled and pending paper requests withdrawn. A
+        claimed job or an ``applying`` request is left to finish, so the run
+        reports ``cancel_requested`` until none remain, then ``cancelled``.
+        The run refuses new mutations from the first call on.
+        """
+        before = _owned_run(run_id)
+        record = runs.request_cancel(principal, run_id)
+        if record is None or record.cancel_requested_at is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown run.")
+        repeat = before.cancel_requested_at is not None
+        results: list[JobCancel] = []
+        for submission in ledger.for_run(principal, run_id):
+            if submission.job_id is None:
+                continue
+            outcome = story_job_cancel(run_id, submission.job_id, service)
+            results.append(
+                JobCancel(job_id=submission.job_id, cancel_state=outcome.cancel_state)
+            )
+        counts = withdraw_pending_requests(ledger.db_path, principal, run_id)
+        in_flight = counts["applying"] > 0 or any(
+            item.cancel_state == "too_late" for item in results
+        )
+        changed = counts["withdrawn"] > 0 or any(
+            item.cancel_state == "cancel_confirmed" for item in results
+        )
+        if in_flight:
+            state: CancelState = "cancel_requested"
+        elif repeat and not changed:
+            state = "already_finished"
+        else:
+            state = "cancel_confirmed"
+        if record.binding is not None:
+            _record_cancel(record, state)
+        return RunCancelOutcome(
+            run_id=run_id,
+            run_state="cancel_requested" if in_flight else "cancelled",
+            cancel_state=state,
+            cancel_requested_at=record.cancel_requested_at,
+            jobs=results,
+            requests=RequestCancel(**counts),
+        )
 
     return router
 
