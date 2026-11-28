@@ -8,6 +8,7 @@ the counts and the exclusions cover only the current plan's cells.
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -18,7 +19,6 @@ from openbb_backtest.validation.trials import (
     dispatch,
     returns_sha256,
 )
-
 from trial_helpers import ok_executor, wfo_cells  # pylint: disable=import-error
 
 
@@ -188,3 +188,51 @@ def test_declared_external_fails_closed_on_tampering(tmp_path):
     led.external_path.write_text('garbage\n{"external_trials":1}\n', "utf-8")
     with pytest.raises(ValueError, match="unreadable"):
         led.declared_external()
+
+
+# --- torn tails: appends never glue onto a crash fragment -------------------
+
+
+def test_declare_external_after_torn_tail_is_not_lost(tmp_path):
+    """A crash fragment is dropped before the next declaration is appended."""
+    led = _ledger(tmp_path)
+    led.directory.mkdir(parents=True)
+    led.external_path.write_bytes(b'{"external_trials":3}\n{"external_trials":9')
+    assert led.declared_external() == 3
+    assert led.declare_external(5) == 5
+    assert led.declared_external() == 5, "the declaration was glued to the fragment"
+    assert led.declare_external(4) == 5
+    assert led.declare_external(8) == 8
+    assert led.declared_external() == 8, "the file became unreadable"
+    values = [
+        json.loads(x)["external_trials"]
+        for x in led.external_path.read_text("utf-8").splitlines()
+    ]
+    assert values == sorted(values) and values == [3, 5, 8]
+
+
+def test_declare_external_keeps_complete_unterminated_tail(tmp_path):
+    """A tail that is complete JSON only lacks a newline: it is kept, never lost."""
+    led = _ledger(tmp_path)
+    led.directory.mkdir(parents=True)
+    led.external_path.write_bytes(b'{"external_trials":3}\n{"external_trials":9}')
+    assert led.declared_external() == 9
+    assert led.declare_external(12) == 12
+    assert led.declared_external() == 12
+
+
+def test_ledger_append_after_torn_tail_keeps_every_record(tmp_path):
+    """A torn ledger line is dropped; the next record is not swallowed with it."""
+    led = _ledger(tmp_path)
+    cells = wfo_cells(1, 2)
+    dispatch(led, cells, ok_executor)
+    before = led.records()
+    assert len(before) == len(cells)
+    with led.ledger_path.open("ab") as fh:
+        fh.write(b'{"attempt_id":"torn')
+    assert len(led.records()) == len(before)
+    led.append(replace(before[0], attempt_no=before[0].attempt_no + 1))
+    after = led.records()
+    assert len(after) == len(before) + 1, "the new record was glued to the fragment"
+    led.append(replace(before[1], attempt_no=before[1].attempt_no + 1))
+    assert len(led.records()) == len(before) + 2, "the ledger became unreadable"

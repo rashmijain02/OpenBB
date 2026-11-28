@@ -290,6 +290,37 @@ def returns_sha256(returns: Iterable[tuple[str, str]]) -> str:
     return sha256_canonical([list(r) for r in returns])
 
 
+def _append_jsonl(path: Path, line: str) -> None:
+    """Append one fsynced JSONL line, first repairing a torn tail.
+
+    A crash mid-append leaves a last line without a newline. Appending to it would
+    glue the new record onto the fragment and the reader would drop both. The
+    fragment was never committed, so it is truncated back to the last newline
+    (a tail that is complete JSON merely missing its newline is kept and
+    terminated instead, never losing a record).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        data = path.read_bytes()
+        if data and not data.endswith(b"\n"):
+            cut = data.rfind(b"\n") + 1
+            try:
+                json.loads(data[cut:].decode("utf-8"))
+                prefix = b"\n"
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                prefix = b""
+                logger.warning("dropping torn tail of %s before append", path)
+                with path.open("r+b") as fh:
+                    fh.truncate(cut)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+            line = prefix.decode() + line
+    with path.open("a", encoding="utf-8", newline="\n") as fh:
+        fh.write(line)
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
 class TrialLedger:
     """Append-only JSONL ledger under ``<root>/experiments/<experiment_id>/``.
 
@@ -445,21 +476,17 @@ class TrialLedger:
             raise ValueError("external_trials must be >= 0")
         prior = self.declared_external()
         if external_trials > prior:
-            self.directory.mkdir(parents=True, exist_ok=True)
-            with self.external_path.open("a", encoding="utf-8", newline="\n") as fh:
-                fh.write(canonical({"external_trials": int(external_trials)}) + "\n")
-                fh.flush()
-                os.fsync(fh.fileno())
+            _append_jsonl(
+                self.external_path,
+                canonical({"external_trials": int(external_trials)}) + "\n",
+            )
         return max(prior, int(external_trials))
 
     def append(self, record: AttemptRecord) -> None:
         """Append one attempt record (refused before the planned list exists)."""
         if not self.planned_path.exists():
             raise RuntimeError("planned.json must be written before any attempt")
-        with self.ledger_path.open("a", encoding="utf-8", newline="\n") as fh:
-            fh.write(canonical(record.to_json()) + "\n")
-            fh.flush()
-            os.fsync(fh.fileno())
+        _append_jsonl(self.ledger_path, canonical(record.to_json()) + "\n")
 
     def records(self) -> list[AttemptRecord]:
         """Every attempt in append order (a torn final line is ignored).
