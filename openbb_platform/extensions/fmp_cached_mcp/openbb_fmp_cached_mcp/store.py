@@ -343,13 +343,14 @@ class Store:
         now = _fmt(self.now())
         items = {}
         for row in rows:
-            ident = row.get("url") or row.get("link") or row.get("finalLink")
-            raw = json.dumps(row, ensure_ascii=False, sort_keys=True)
-            item_id = hashlib.sha256(str(ident or raw).encode()).hexdigest()
+            # One link can cover several transactions (a disclosure PDF, a
+            # Form 4), so the id is the whole row, not the link.
+            canonical = json.dumps(row, ensure_ascii=False, sort_keys=True)
+            item_id = hashlib.sha256(canonical.encode()).hexdigest()
             items[item_id] = {
                 "family": family,
                 "item_id": item_id,
-                "row_json": raw,
+                "row_json": json.dumps(row, ensure_ascii=False),  # FMP key order
                 "fetched_at": now,
             }
         self._upsert_many(FEED_ITEM_TABLE, list(items.values()), ("family", "item_id"))

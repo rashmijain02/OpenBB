@@ -189,7 +189,8 @@ def test_integer_like_keys_come_first_in_ascending_order():
 
 
 def test_lone_surrogates_are_escaped_like_well_formed_stringify():
-    assert js_dumps("a\ud800b") == '"a\ud800b"'
+    # node: JSON.stringify("a\ud800b") -> "a\ud800b" (six escaped characters)
+    assert js_dumps("a\ud800b") == r'"a\ud800b"'
     assert js_dumps("\U0001f600") == '"\U0001f600"'
 
 
@@ -247,3 +248,11 @@ def test_js_dumps_matches_node_on_edge_corpus_and_fixtures(tmp_path):
         if want is None:
             continue
         assert js_dumps(json.loads(body)) == want
+
+
+def test_lone_surrogates_from_fmp_render_and_encode():
+    """FMP text can hold a truncated emoji; JSON.stringify escapes it."""
+    out = js_dumps(json.loads('{"title":"Rally \\ud83d"}'))
+    assert out == '{"title":"Rally \\ud83d"}'
+    out.encode("utf-8")
+    assert js_dumps("\U0001f600") == '"\U0001f600"', "valid pairs stay as characters"

@@ -92,3 +92,24 @@ def test_store_is_opened_before_the_http_client(monkeypatch):
     with pytest.raises(cli.StoreSetupError):
         cli.build_upstream("k" * 32, "mysql")
     assert built == [], "no client is created when the store cannot be opened"
+
+
+@pytest.mark.parametrize("spec", ["sqlite:", "sqlite:   ", "bogus", ""])
+def test_invalid_store_specs_are_rejected(spec):
+    assert cli.valid_store_spec(spec) is False
+
+
+@pytest.mark.parametrize("spec", ["auto", "mysql", "none", "sqlite:data/store.db"])
+def test_valid_store_specs_are_accepted(spec):
+    assert cli.valid_store_spec(spec) is True
+
+
+def test_unsafe_bind_is_refused_before_the_store_is_opened(monkeypatch):
+    opened = []
+    monkeypatch.setattr(cli, "load_fmp_key", lambda: "k" * 32)
+    monkeypatch.setattr(cli, "build_upstream", lambda *a: opened.append(a))
+    monkeypatch.delenv("FMP_CACHED_MCP_TOKEN", raising=False)
+    assert (
+        cli.main(["--transport", "http", "--host", "0.0.0.0", "--store", "none"]) == 2
+    )
+    assert opened == []

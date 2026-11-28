@@ -72,6 +72,13 @@ def open_store(spec: str) -> Store | None:
         return None
 
 
+def valid_store_spec(spec: str) -> bool:
+    """Return True for ``auto``, ``mysql``, ``none`` or ``sqlite:<non-empty path>``."""
+    if spec in ("auto", "mysql", "none"):
+        return True
+    return spec.startswith("sqlite:") and bool(spec[len("sqlite:") :].strip())
+
+
 def build_upstream(key: str, store_spec: str) -> tuple[Upstream, FmpRestUpstream]:
     """FMP REST client, with the persistent store in front unless disabled."""
     store = open_store(store_spec)  # first: a failure must not leak a client
@@ -100,10 +107,8 @@ def main(argv: list[str] | None = None) -> int:
         "--store", default=os.environ.get("FMP_CACHED_MCP_STORE", "auto")
     )
     args = parser.parse_args(argv)
-    if not (
-        args.store in ("auto", "mysql", "none") or args.store.startswith("sqlite:")
-    ):
-        parser.error("--store must be auto, mysql, none or sqlite:PATH")
+    if not valid_store_spec(args.store):
+        parser.error("--store must be auto, mysql, none or sqlite:PATH (non-empty)")
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     # httpx logs request URLs at INFO; keep tool arguments out of the log.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -114,6 +119,13 @@ def main(argv: list[str] | None = None) -> int:
             "error: FMP key not configured (FMP_API_KEY or user_settings.json)\n"
         )
         return 2
+    token = os.environ.get("FMP_CACHED_MCP_TOKEN", "")
+    if args.transport == "http":
+        try:  # refuse an unsafe bind before touching the store or the network
+            check_bind(args.host, token)
+        except BindError as exc:
+            sys.stderr.write(f"error: {exc}\n")
+            return 2
     try:
         upstream, rest = build_upstream(key, args.store)
     except StoreSetupError as exc:
@@ -124,12 +136,6 @@ def main(argv: list[str] | None = None) -> int:
         asyncio.run(_run_stdio(upstream, rest))
         return 0
 
-    token = os.environ.get("FMP_CACHED_MCP_TOKEN", "")
-    try:
-        check_bind(args.host, token)
-    except BindError as exc:
-        sys.stderr.write(f"error: {exc}\n")
-        return 2
     import uvicorn  # pylint: disable=import-outside-toplevel
 
     if not token:

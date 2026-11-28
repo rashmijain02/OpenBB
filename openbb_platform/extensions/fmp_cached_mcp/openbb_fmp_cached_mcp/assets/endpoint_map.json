@@ -5,7 +5,7 @@
    "required": [
     "cik"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "crowdfunding-search": {
    "path": "/crowdfunding-offerings-search",
@@ -19,7 +19,7 @@
    "required": [
     "cik"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "equity-offering-search": {
    "path": "/fundraising-search",
@@ -109,7 +109,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "earnings-calendar": {
    "path": "/earnings-calendar",
@@ -121,7 +121,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "ipos-calendar": {
    "path": "/ipos-calendar",
@@ -131,12 +131,12 @@
   "ipos-disclosure": {
    "path": "/ipos-disclosure",
    "required": [],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "ipos-prospectus": {
    "path": "/ipos-prospectus",
    "required": [],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "splits-calendar": {
    "path": "/splits-calendar",
@@ -148,7 +148,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   }
  },
  "chart": {
@@ -352,7 +352,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "executive-compensation-benchmark": {
    "path": "/executive-compensation-benchmark",
@@ -415,7 +415,7 @@
    "required": [
     "name"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "shares-float": {
    "path": "/shares-float",
@@ -758,7 +758,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "all-transaction-types": {
    "path": "/insider-trading-transaction-type",
@@ -780,7 +780,7 @@
   "search-insider-trades": {
    "path": "/insider-trading/search",
    "required": [],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "search-reporting-name": {
    "path": "/insider-trading/reporting-name",
@@ -915,7 +915,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "immutable-doc",
+   "retention": "revisable",
    "defaults": {
     "symbols": "BTCUSD"
    },
@@ -926,7 +926,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "immutable-doc",
+   "retention": "revisable",
    "defaults": {
     "symbols": "EURUSD"
    },
@@ -937,7 +937,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "immutable-doc",
+   "retention": "revisable",
    "defaults": {
     "symbols": "AAPL"
    },
@@ -948,7 +948,7 @@
    "required": [
     "symbols"
    ],
-   "retention": "immutable-doc",
+   "retention": "revisable",
    "defaults": {
     "symbols": "AAPL"
    },
@@ -1149,7 +1149,7 @@
     "from_date",
     "to_date"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "search-by-form-type": {
    "path": "/sec-filings-search/form-type",
@@ -1158,14 +1158,14 @@
     "from_date",
     "to_date"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "search-by-name": {
    "path": "/sec-filings-company-search/name",
    "required": [
     "company"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "search-by-symbol": {
    "path": "/sec-filings-search/symbol",
@@ -1174,7 +1174,7 @@
     "from_date",
     "to_date"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "sec-company-full-profile": {
    "path": "/sec-profile",
@@ -1199,14 +1199,14 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "house-trading-by-name": {
    "path": "/house-trades-by-name",
    "required": [
     "name"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "senate-latest": {
    "path": "/senate-latest",
@@ -1218,14 +1218,14 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "senate-trading-by-name": {
    "path": "/senate-trades-by-name",
    "required": [
     "name"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   }
  },
  "statements": {
@@ -1234,28 +1234,28 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "as-reported-cashflow-statements": {
    "path": "/cash-flow-statement-as-reported",
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "as-reported-financial-statements": {
    "path": "/financial-statement-full-as-reported",
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "as-reported-income-statements": {
    "path": "/income-statement-as-reported",
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "balance-sheet-statement": {
    "path": "/balance-sheet-statement",
@@ -1297,7 +1297,7 @@
    "required": [
     "symbol"
    ],
-   "retention": "immutable-doc"
+   "retention": "revisable"
   },
   "financial-reports-form-10-k-json": {
    "path": "/financial-reports-json",

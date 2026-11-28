@@ -4,7 +4,7 @@
 |---|---|
 | Parent issue | #1298 (Drop-in MCP server with FMP hosted-MCP parity, backed by the persistent fmp_cached store) |
 | Sub-issues | #1299 (parity contract and server core), #1300 (persistent raw store), #1301 (switch-over, CI, gap issues) |
-| Gap issues filed | #1302 #1303 #1304 #1305 #1306 #1307 (`area:fmp-cached-gap`) |
+| Gap issues filed | #1302 (prune deletes durable rows), #1303 (statement refresh erases history), #1304 (intraday calendars for 24h assets), #1305 (EOD light variants), #1306 (search-style fetchers), #1307 (12 missing fetchers) (`area:fmp-cached-gap`) |
 | Branch | `feat/pi-fmp-mcp-parity-gh-1298` (not pushed) |
 | Base | `portfolio` @ `041f292ea` |
 | HEAD | see `git log -1`; the last code commit is `edb28824c` |
@@ -22,7 +22,7 @@ fixtures (about 2 MB of JSON).
 | A1 recorder and fixtures | done | `e6236a42b` |
 | A2–A7 endpoint map, verbatim `tools/list`, zod-style validation, REST upstream, security, real path | done | `2f0908208`, review fixes `8bf60a181` |
 | B1–B5, B7–B9 persistent store, retention policy, provenance, prune allowlist, plan_limited aliases, real path | done | `bc0eb8966`, review fixes `3629a856b` |
-| B6 warm start from typed tables | **deferred** (no MySQL on host; see #1300 comment) | — |
+| B6 warm start from typed tables | **deferred** (see the #1300 (persistent raw store) comment) | — |
 | C1–C6 402 fixture, runbook and `.mcp.json`, CI job, live drift tests, gap issues, scripted client smoke | done | `edb28824c` |
 
 ## Evidence
@@ -87,11 +87,19 @@ B9  run 1 (cold store): 10/10 identical to hosted; states=['cached', 'live']
 
 A third `/code-review` round still found important issues, all in series gap-fill (truncation
 coverage, sparse series refetching, mixed bases after a failed drop). With the owner's approval:
-- series gap-fill was removed; series ranges are stored per request (#1310 tracks the redesign);
+- series gap-fill was removed; series ranges are stored per request (#1310 (series gap-fill redesign) tracks it);
 - `--store auto` now falls back to live on a refused CREATE (MySQL 1142);
 - a first-call FMP 429/5xx now renders the hosted text (it used to say `ConnectionError`);
 - #1309 (prune clock) is fixed: the `fmp_mcp_ephemeral` rule cuts off on `UTC_TIMESTAMP()`;
 - the MCP tables are created unprefixed in test mode.
+
+## Live MySQL verification (2026-11-27)
+
+MySQL 8.4.9 LTS turned out to be running locally (service `MySQL84`); the owner's target is
+9.7 LTS. Real-path run with `--store mysql` against the configured test schema: cold store
+10/10 identical to hosted, second process 10/10 served from MySQL and still identical (9
+documents and 1 ephemeral row written). The row-alias upsert requires MySQL 8.0.19+, so 8.4
+and 9.7 LTS are both supported; MariaDB and MySQL 5.7 are not.
 
 ## Local CI-equivalent (Actions is not creating runs)
 
@@ -104,8 +112,8 @@ coverage, sparse series refetching, mixed bases after a failed drop). With the o
 
 ## Open questions for the owner
 
-- **Push and PR.** Push the branch and open one PR into `portfolio` closing #1299, #1300 and
-  #1301 (batching per the local CI rule), or three stacked PRs as the plan first said?
+- **Push and PR.** Resolved: one PR, #1308, closes #1299 (parity core), #1300 (persistent
+  store), #1301 (switch-over) and #1309 (prune clock).
 - **Claude Code `.mcp.json`.** Add the `fmp_cached` entry to the workspace `.mcp.json` next to
   `fmp` (example in `docs/operations/fmp-cached-mcp.md` §3)? It was not edited.
 - **FMP terms.** Is permanent storage of FMP payloads acceptable under the subscription terms?
@@ -114,6 +122,6 @@ coverage, sparse series refetching, mixed bases after a failed drop). With the o
 ## Not done / follow-ups
 
 - **B6 warm start, MySQL live verification, long intraday range truncation:** tracked as a comment
-  on #1300.
-- **`fmp_cached` provider gaps** found along the way: #1302–#1307.
+  on #1300 (persistent raw store).
+- **`fmp_cached` provider gaps** found along the way: #1302 (prune deletes durable rows), #1303 (statement refresh erases history), #1304 (intraday calendars for 24h assets), #1305 (EOD light variants), #1306 (search-style fetchers), #1307 (12 missing fetchers).
 - **Prune clock mismatch:** #1309 (fmp_mcp_ephemeral prune compares UTC with the DB session clock).

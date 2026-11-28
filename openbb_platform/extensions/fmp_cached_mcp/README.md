@@ -54,7 +54,8 @@ On an FMP failure the stored copy is served with `_meta.openbb/provenance.state 
 Only `fmp_mcp_ephemeral` is prunable (`python -m openbb_fmp_cached.utils.cache_prune`); the
 persistent tables are not in its allowlist.
 
-`--store auto` (default) uses the `fmp_cached` MySQL database and serves live-only if it is
+Requires MySQL 8.0.19 or newer for the MySQL store (target: 8.4 or 9.7 LTS; MariaDB and
+5.7 are not supported, because upserts use the row-alias form). `--store auto` (default) uses the `fmp_cached` MySQL database and serves live-only if it is
 unreachable; `--store mysql` refuses to start without it; `--store sqlite:PATH` uses a local file;
 `--store none` stores nothing. `FMP_CACHED_MCP_STORE` sets the default.
 

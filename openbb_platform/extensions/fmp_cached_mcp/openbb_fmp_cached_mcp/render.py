@@ -87,8 +87,15 @@ def js_number(value: float | int) -> str:
     return f"{prefix}{mantissa}e{'+' if e >= 0 else '-'}{abs(e)}"
 
 
+_LONE_SURROGATE = re.compile("[\\ud800-\\udfff]")
+
+
 def _js_string(text: str) -> str:
-    return json.dumps(text, ensure_ascii=False)
+    """``JSON.stringify`` of a string; lone UTF-16 surrogates are escaped as in JS."""
+    out = json.dumps(text, ensure_ascii=False)
+    if _LONE_SURROGATE.search(out):
+        out = _LONE_SURROGATE.sub(lambda m: f"\\u{ord(m.group()):04x}", out)
+    return out
 
 
 def js_dumps(obj: Any) -> str:

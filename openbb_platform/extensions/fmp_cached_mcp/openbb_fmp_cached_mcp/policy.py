@@ -153,7 +153,7 @@ def resolve_policy(  # noqa: PLR0911
         ("date" in args and _is_past(args["date"], today))
         or ("to_date" in args and _is_past(args["to_date"], today))
     ):
-        return Policy("document", None, retention)
+        return Policy("document", None, retention, feed=retention == "feed")
     if retention == "immutable-doc":
         return Policy("document", None, retention)
     if retention == "revisable":

@@ -124,7 +124,12 @@ def _range(a, b):
     [
         (
             "statements",
-            {"endpoint": "as-reported-income-statements", "symbol": "AAPL"},
+            {
+                "endpoint": "financial-reports-form-10-k-json",
+                "symbol": "AAPL",
+                "year": 2024,
+                "period": "FY",
+            },
             "document",
             None,
         ),
@@ -200,7 +205,12 @@ def test_every_endpoint_resolves_to_a_policy(hosted_inventory):
 
 def test_immutable_document_is_fetched_once_and_kept(env):
     svc, fmp, _, clock = env
-    args = {"endpoint": "as-reported-income-statements", "symbol": "AAPL"}
+    args = {
+        "endpoint": "financial-reports-form-10-k-json",
+        "symbol": "AAPL",
+        "year": 2024,
+        "period": "FY",
+    }
     first = _get(svc, "statements", args)
     clock.advance(days=400)
     second = _get(svc, "statements", args)
@@ -892,3 +902,78 @@ def test_a_refusal_while_a_copy_is_stored_serves_the_copy_as_stale(env):
         assert out.state == "stale" and out.response.body == good.response.body
         assert out.reason == "upstream-402"
     assert len(fmp.calls) == 2, "the refusal is remembered; FMP is not re-asked"
+
+
+# --- /code-review (high) round 6 on PR #1308 ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "tool, args, refresh",
+    [
+        ("calendar", {"endpoint": "dividends-company", "symbol": "AAPL"}, 86400),
+        ("senate", {"endpoint": "senate-trading", "symbol": "AAPL"}, 86400),
+        (
+            "statements",
+            {"endpoint": "financial-reports-dates", "symbol": "AAPL"},
+            86400,
+        ),
+        (
+            "secFilings",
+            {
+                "endpoint": "search-by-symbol",
+                "symbol": "AAPL",
+                "from_date": "2026-11-01",
+                "to_date": "2027-01-01",
+            },
+            86400,
+        ),
+        (
+            "secFilings",
+            {
+                "endpoint": "search-by-symbol",
+                "symbol": "AAPL",
+                "from_date": "2025-01-01",
+                "to_date": "2025-03-01",
+            },
+            None,
+        ),
+        (
+            "statements",
+            {
+                "endpoint": "financial-reports-form-10-k-json",
+                "symbol": "AAPL",
+                "year": 2024,
+                "period": "FY",
+            },
+            None,
+        ),
+    ],
+)
+def test_growing_lists_refresh_and_only_fixed_reports_are_immutable(
+    tool, args, refresh
+):
+    pol = resolve_policy(tool, args, today=TODAY)
+    assert (pol.mode, pol.refresh_s) == ("document", refresh)
+
+
+def test_feed_rows_sharing_a_link_are_all_kept(env):
+    """Several transactions share one disclosure link (recorded senate-latest)."""
+    _, _, store, _ = env
+    rec = load_hosted(f"samples-{SNAPSHOT}/senate_senate-latest.json")
+    rows = json.loads(gzip.decompress(bytes.fromhex(rec["rest_body_gz_hex"])))
+    assert len({r.get("link") for r in rows}) < len(rows), "fixture must share links"
+    store.put_feed_items("/senate-latest", rows)
+    kept = store.dump("fmp_mcp_feed_item")
+    assert len(kept) == len(rows)
+    assert [json.loads(k["row_json"]) for k in kept] and all(
+        list(json.loads(k["row_json"])) == list(rows[0]) for k in kept[:1]
+    ), "stored rows keep FMP key order"
+
+
+def test_past_date_feed_calls_still_keep_their_items(env):
+    pol = resolve_policy(
+        "secFilings",
+        {"endpoint": "8k-latest", "from_date": "2024-01-01", "to_date": "2024-03-01"},
+        today=TODAY,
+    )
+    assert pol.mode == "document" and pol.refresh_s is None and pol.feed
