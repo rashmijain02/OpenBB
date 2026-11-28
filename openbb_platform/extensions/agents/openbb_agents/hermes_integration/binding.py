@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 
 KEY_HEX = 32
 MCP_PREFIX = "mcp__"
+# Hermes' name for the OpenBB MCP server (``mcp_servers.<name>``); only tools
+# of that server are rewritten. The plugin reads an override from this env.
+DEFAULT_SERVER = "openbb"
+SERVER_ENV = "OPENBB_HERMES_MCP_SERVER"
 RUN_CREATE = "story_run_create"
 DELIVERY_KEYED = frozenset({"story_job_submit", "story_paper_prepare"})
 
@@ -60,17 +64,22 @@ def delivery_key(session_id: str, tool_call_id: str) -> str:
     return _key("hd", session_id, tool_call_id)
 
 
-def story_tool(tool_name: Any) -> str | None:
+def story_tool(tool_name: Any, server: str = DEFAULT_SERVER) -> str | None:
     """Return the OpenBB tool name of a Hermes tool name, else ``None``.
 
-    Hermes names MCP tools ``mcp__<server>__<tool>``; a bare name is accepted
-    for direct registrations.
+    Hermes names MCP tools ``mcp__<server>__<tool>``; only the exact OpenBB
+    server prefix matches, so a same-named tool on another server is left
+    alone. A bare name is accepted for direct registrations.
     """
     if not isinstance(tool_name, str):
         return None
-    name = (
-        tool_name.rsplit("__", 1)[-1] if tool_name.startswith(MCP_PREFIX) else tool_name
-    )
+    if tool_name.startswith(MCP_PREFIX):
+        prefix = f"{MCP_PREFIX}{server}__"
+        if not tool_name.startswith(prefix):
+            return None
+        name = tool_name[len(prefix) :]
+    else:
+        name = tool_name
     if name == RUN_CREATE or name in DELIVERY_KEYED:
         return name
     return None
@@ -102,12 +111,13 @@ def _cron_ids(
 
 def make_pre_tool_call(
     current_cron_execution: Callable[[], Any] | None = None,
+    server: str = DEFAULT_SERVER,
 ) -> Callable[..., dict[str, Any] | None]:
     """Return a Hermes ``pre_tool_call`` callback.
 
     ``current_cron_execution`` is the plugin context's reader
     (``ctx.current_cron_execution``); it returns the running cron execution or
-    ``None``.
+    ``None``. ``server`` is Hermes' name for the OpenBB MCP server.
     """
 
     def pre_tool_call(  # pylint: disable=too-many-arguments,unused-argument
@@ -121,7 +131,7 @@ def make_pre_tool_call(
         api_request_id: str = "",
         **_: Any,
     ) -> dict[str, Any] | None:
-        name = story_tool(tool_name)
+        name = story_tool(tool_name, server)
         if name is None or not isinstance(args, dict):
             return None
         if not (isinstance(session_id, str) and session_id):

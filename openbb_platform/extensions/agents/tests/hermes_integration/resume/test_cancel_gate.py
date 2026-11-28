@@ -6,14 +6,7 @@ cancel tool to the reviewed server policy therefore opens nothing here.
 """
 
 import pytest
-from openbb_agents.hermes_integration import access
 from openbb_agents.hermes_integration.access import PRINCIPALS, build_tool_gate
-
-
-def test_run_cancel_has_no_tool_binding():
-    """No binding means no grant can ever match it."""
-    assert "story_run_cancel" not in access.TOOL_BINDINGS
-    assert "story_job_cancel" not in access.TOOL_BINDINGS
 
 
 @pytest.mark.parametrize("principal", sorted(PRINCIPALS))

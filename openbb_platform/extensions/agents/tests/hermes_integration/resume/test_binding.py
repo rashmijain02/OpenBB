@@ -232,3 +232,61 @@ def test_binding_module_imports_nothing_from_hermes():
         elif isinstance(node, ast.ImportFrom) and node.module:
             roots.add(node.module.split(".")[0])
     assert not roots & {"hermes", "hermes_cli", "hermes_agent", "cron", "tools"}
+
+
+def test_hook_matches_only_the_openbb_server_prefix(monkeypatch):
+    """A same-named tool on another MCP server is untouched (#1341 review)."""
+    args = {"run_id": "r1", "operation_id": "model-chosen", "kind": "k"}
+    hook = make_pre_tool_call()
+    assert (
+        hook(
+            tool_name="mcp__other__story_job_submit",
+            args=dict(args),
+            **_hermes_kwargs(),
+        )
+        is None
+    )
+    assert hook(
+        tool_name="mcp__openbb__story_job_submit", args=dict(args), **_hermes_kwargs()
+    )
+    custom = make_pre_tool_call(server="obb-local")
+    assert custom(
+        tool_name="mcp__obb-local__story_job_submit",
+        args=dict(args),
+        **_hermes_kwargs(),
+    )
+    assert (
+        custom(
+            tool_name="mcp__openbb__story_job_submit",
+            args=dict(args),
+            **_hermes_kwargs(),
+        )
+        is None
+    )
+
+
+def test_plugin_reads_the_server_name_from_the_environment(monkeypatch):
+    """The plugin binds the configured server name, not every server."""
+    from openbb_agents.hermes_integration import hermes_plugin
+
+    monkeypatch.setenv("OPENBB_HERMES_MCP_SERVER", "obb-local")
+    hooks = {}
+    ctx = type(
+        "Ctx", (), {"register_hook": lambda self, name, fn: hooks.update({name: fn})}
+    )()
+    hermes_plugin.register(ctx)
+    args = {"run_id": "r1", "operation_id": "model-chosen", "kind": "k"}
+    hook = hooks["pre_tool_call"]
+    assert hook(
+        tool_name="mcp__obb-local__story_job_submit",
+        args=dict(args),
+        **_hermes_kwargs(),
+    )
+    assert (
+        hook(
+            tool_name="mcp__openbb__story_job_submit",
+            args=dict(args),
+            **_hermes_kwargs(),
+        )
+        is None
+    )
