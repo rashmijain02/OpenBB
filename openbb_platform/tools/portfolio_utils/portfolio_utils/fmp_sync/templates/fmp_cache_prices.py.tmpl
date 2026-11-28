@@ -201,22 +201,28 @@ class _WinJob:
         from ctypes import wintypes  # pylint: disable=import-outside-toplevel
 
         k32 = self.k32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        k32.CreateJobObjectW.restype = wintypes.HANDLE
-        k32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
-        k32.SetInformationJobObject.argtypes = [
-            wintypes.HANDLE,
-            ctypes.c_int,
-            wintypes.LPVOID,
-            wintypes.DWORD,
-        ]
-        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
-        k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
-        k32.CloseHandle.argtypes = [wintypes.HANDLE]
-        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-        k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
-        k32.OpenThread.restype = wintypes.HANDLE
-        k32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-        k32.ResumeThread.argtypes = [wintypes.HANDLE]
+        # Every call gets an explicit prototype: ctypes' default c_int result
+        # would turn ResumeThread's (DWORD)-1 into -1 and truncate handles.
+        handle, dword, boolean = wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL
+        for name, restype, argtypes in (
+            ("CreateJobObjectW", handle, [wintypes.LPVOID, wintypes.LPCWSTR]),
+            (
+                "SetInformationJobObject",
+                boolean,
+                [handle, ctypes.c_int, wintypes.LPVOID, dword],
+            ),
+            ("AssignProcessToJobObject", boolean, [handle, handle]),
+            ("TerminateJobObject", boolean, [handle, wintypes.UINT]),
+            ("CloseHandle", boolean, [handle]),
+            ("CreateToolhelp32Snapshot", handle, [dword, dword]),
+            ("Thread32First", boolean, [handle, wintypes.LPVOID]),
+            ("Thread32Next", boolean, [handle, wintypes.LPVOID]),
+            ("OpenThread", handle, [dword, boolean, dword]),
+            ("ResumeThread", dword, [handle]),
+        ):
+            function = getattr(k32, name)
+            function.restype = restype
+            function.argtypes = argtypes
         self.job = k32.CreateJobObjectW(None, None)  # not inheritable
         if not self.job:
             raise OSError("CreateJobObjectW failed")
@@ -252,7 +258,11 @@ class _WinJob:
             raise OSError("SetInformationJobObject failed")
 
     def adopt(self, proc):
-        """Assign the suspended child to the job, then resume its threads."""
+        """Assign the suspended child to the job, then resume its threads.
+
+        Any failure raises; the caller then terminates the job, so the child
+        never runs outside it and a half-resumed child is killed.
+        """
         handle = int(proc._handle)  # pylint: disable=protected-access
         if not self.k32.AssignProcessToJobObject(self.job, handle):
             raise OSError("AssignProcessToJobObject failed")
@@ -280,10 +290,14 @@ class _WinJob:
             while more:
                 if entry.th32OwnerProcessID == proc.pid:
                     thread = self.k32.OpenThread(0x0002, False, entry.th32ThreadID)
-                    if thread:
-                        if self.k32.ResumeThread(thread) != 0xFFFFFFFF:
-                            resumed += 1
+                    if not thread:
+                        raise OSError("OpenThread failed")
+                    try:
+                        if self.k32.ResumeThread(thread) == 0xFFFFFFFF:
+                            raise OSError("ResumeThread failed")
+                    finally:
                         self.k32.CloseHandle(thread)
+                    resumed += 1
                 more = self.k32.Thread32Next(snap, ctypes.byref(entry))
         finally:
             self.k32.CloseHandle(snap)
@@ -291,7 +305,8 @@ class _WinJob:
             raise OSError("child thread not resumed")
 
     def kill(self):
-        self.k32.TerminateJobObject(self.job, 1)
+        """Terminate every process in the job; report whether it worked."""
+        return bool(self.k32.TerminateJobObject(self.job, 1))
 
     def close(self):
         self.k32.CloseHandle(self.job)
@@ -321,7 +336,8 @@ def _spawn():
         try:
             job.adopt(proc)
         except BaseException:
-            proc.kill()
+            if not job.kill():
+                proc.kill()
             proc.wait()
             job.close()
             raise
@@ -335,7 +351,8 @@ def _spawn():
 
 def _kill(proc, job):
     if job is not None:
-        job.kill()
+        if not job.kill():
+            proc.kill()
     else:
         import signal  # pylint: disable=import-outside-toplevel
 

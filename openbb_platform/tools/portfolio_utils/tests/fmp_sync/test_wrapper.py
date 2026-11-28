@@ -292,3 +292,53 @@ def test_wrapper_deadline_terminates_the_job(real, child_env, python_exe, monkey
                 capture_output=True,
                 check=False,
             )
+
+
+# ------------------------------------------------------------------ ctypes contract
+
+
+def _load_wrapper(script: Path, monkeypatch) -> dict:
+    """Exec an applied wrapper in-process (``__name__`` is not ``__main__``)."""
+    monkeypatch.setattr(sys, "path", sys.path[:])  # the wrapper scrubs sys.path
+    namespace: dict = {"__file__": str(script), "__name__": "wrapper_under_test"}
+    exec(compile(script.read_text("utf-8"), str(script), "exec"), namespace)  # noqa: S102
+    return namespace
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows job object")
+def test_resume_thread_failure_is_detected(real, monkeypatch):
+    """ResumeThread returns DWORD (u32): (DWORD)-1 must compare as 0xFFFFFFFF."""
+    render.apply_files(real["map"], real["home"])
+    namespace = _load_wrapper(_script(real), monkeypatch)
+    job = namespace["_WinJob"]()
+    try:
+        assert job.k32.ResumeThread(None) == 0xFFFFFFFF  # NULL handle fails
+    finally:
+        job.close()
+
+
+@pytest.mark.skipif(not WINDOWS, reason="Windows job object")
+def test_failed_resume_terminates_the_job_and_exits_internal(real, monkeypatch, capfd):
+    """A failed ResumeThread kills the suspended child and exits "internal"."""
+    render.apply_files(real["map"], real["home"])
+    namespace = _load_wrapper(_script(real), monkeypatch)
+    namespace["DEADLINE_S"] = 5.0  # a missed failure would otherwise hang
+    seen: list = []
+    base = namespace["_WinJob"]
+
+    class _FailingResume(base):  # type: ignore[misc, valid-type]
+        def __init__(self):
+            super().__init__()
+            real_resume = self.k32.ResumeThread
+            self.k32.ResumeThread = lambda _thread: real_resume(None)
+
+        def adopt(self, proc):
+            seen.append(proc)
+            super().adopt(proc)
+
+    namespace["_WinJob"] = _FailingResume
+    code = namespace["main"]()
+    out = capfd.readouterr().out
+    assert code == 4
+    assert out.strip() == "fmp_cache_prices: internal error"
+    assert seen and seen[0].poll() is not None, "suspended child left behind"
