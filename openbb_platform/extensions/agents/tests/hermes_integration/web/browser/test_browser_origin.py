@@ -14,6 +14,8 @@ import threading
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from openbb_agents.hermes_integration.web.web_journey import PINNED_SHELL_ASSETS
+
 PROXY = "/api/extensions/openbb-hfp/sidecar/plans/plan_" + "0" * 32 + "/approve"
 BODY = json.dumps({"plan_sha256": "a" * 64, "approval_nonce": "n" * 43})
 
@@ -138,6 +140,5 @@ def test_browser_origin(browser_context, stack):
     # 4. Nothing left loopback. The pinned WebUI shell itself references CDN assets
     #    (xterm etc.); those were aborted. Any other aborted URL (from the extension
     #    or these flows) fails the test.
-    shell = (stack.src / "static" / "index.html").read_text(encoding="utf-8")
-    unexpected = [u for u in stack.aborted if u not in shell]
+    unexpected = [u for u in stack.aborted if u not in PINNED_SHELL_ASSETS]
     assert unexpected == [], unexpected

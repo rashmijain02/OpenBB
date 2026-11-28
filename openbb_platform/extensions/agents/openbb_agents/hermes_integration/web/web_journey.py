@@ -41,6 +41,23 @@ from typing import Any
 
 WEBUI_PIN = "22d984026c305dfbadd09f29482be6cefe0f028b"
 _WAIT_MS = 30000
+# The only off-box requests the pinned WebUI shell (``static/index.html`` at
+# WEBUI_PIN) makes: CDN assets, aborted by the guard and not counted as egress.
+# Any other aborted URL, including one the shell or the extension adds later,
+# fails the journey.
+PINNED_SHELL_ASSETS = frozenset(
+    {
+        "https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js",
+        "https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/"
+        "prism-autoloader.min.js",
+        "https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css",
+        "https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js",
+        "https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/"
+        "xterm-addon-web-links.js",
+        "https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css",
+        "https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js",
+    }
+)
 # The fresh temp profile opens the WebUI onboarding dialog; it would cover cards.
 _SHOW = """(marker) => { document.getElementById('onboardingOverlay')?.remove();
   if (marker) { const d = document.createElement('div');
@@ -244,8 +261,10 @@ def _steps(
     ]
     run_id = starts[0].json()["run_id"]
     facts["start_replay_of"] = starts[1].json().get("replay_of") == run_id
-    page.evaluate(_SHOW, f"[[hfp:run:{run_id}]]")
-    _card(page, run_id)
+    facts["start_marker"] = starts[0].json().get("marker") == f"[[hfp:run:{run_id}]]"
+    # No run marker is injected: the approved plan card polls its plan until the
+    # start names the run, then mounts the run card itself (production path).
+    _card(page, run_id, scope=f'[data-hfp-plan="{plan_id}"] ')
     yield "run_card"
     # Reload mid-run (the job is held queued): no marker is on the new page, so
     # the card can only come back from the extension's own storage.
@@ -297,7 +316,6 @@ def drive_reconnect(
     except Exception as exc:  # pylint: disable=broad-except
         error = type(exc).__name__
     requests = facts["requests"]
-    shell = (webui.src / "static" / "index.html").read_text(encoding="utf-8")
     approve = f"/sidecar/plans/{facts.get('plan_id')}/approve"
     report = {
         "stack": "local",
@@ -309,12 +327,13 @@ def drive_reconnect(
             1 for m, u in requests if m == "POST" and u.endswith(approve)
         ),
         "start_replay_of": facts.get("start_replay_of", False),
+        "start_marker": facts.get("start_marker", False),
         "worker_ran": facts.get("worker_ran", False),
         "chat_starts": sum(1 for _, u in requests if "/api/chat/start" in u),
         "runs": len(journey.rows(journey.store, "SELECT run_id FROM story_runs")),
         "jobs": len(journey.rows(journey.jobs_db, "SELECT run_id FROM job_run")),
         "provider_calls": len(journey.provider_calls),
-        "aborted": [u for u in webui.aborted if u not in shell],
+        "aborted": [u for u in webui.aborted if u not in PINNED_SHELL_ASSETS],
     }
     report["ok"] = (
         tuple(done) == EXPECTED_STEPS
@@ -322,6 +341,7 @@ def drive_reconnect(
         and report["consent"] == 200
         and report["approve_posts"] == 1
         and report["start_replay_of"] is True
+        and report["start_marker"] is True
         and report["worker_ran"] is True
         and report["chat_starts"] == 0
         and report["runs"] == 1

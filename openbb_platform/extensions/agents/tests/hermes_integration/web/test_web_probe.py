@@ -103,3 +103,32 @@ def test_web_journey_local_without_webui_is_unavailable_not_pass(
     monkeypatch.delenv("HFP_WEBUI_DIR", raising=False)
     assert web_journey.main(["--stack", "local"]) == 4
     assert json.loads(capsys.readouterr().out)["unavailable"] == "HFP_WEBUI_DIR unset"
+
+
+def test_journey_abort_accounting_uses_an_explicit_allowlist(tmp_path):
+    """H4: an aborted URL counts unless it is a pinned shell asset by exact match.
+
+    A URL that merely appears somewhere in ``index.html`` (a link, a new script)
+    is still counted as egress.
+    """
+    from openbb_agents.hermes_integration.web import web_journey
+
+    pinned = sorted(web_journey.PINNED_SHELL_ASSETS)[0]
+    linked = "https://get-hermes.ai/"
+    (tmp_path / "static").mkdir()
+    (tmp_path / "static" / "index.html").write_text(
+        f'<script src="{pinned}"></script><a href="{linked}">x</a>', encoding="utf-8"
+    )
+
+    class Journey:  # pylint: disable=too-few-public-methods
+        store = jobs_db = None
+        provider_calls: list[str] = []
+
+        @staticmethod
+        def rows(*_args):
+            return []
+
+    webui = web_journey.WebUi("http://127.0.0.1:1", "pw", tmp_path, [pinned, linked])
+    report = web_journey.drive_reconnect(None, webui, Journey(), "synthetic.x")
+    assert report["aborted"] == [linked]
+    assert report["ok"] is False

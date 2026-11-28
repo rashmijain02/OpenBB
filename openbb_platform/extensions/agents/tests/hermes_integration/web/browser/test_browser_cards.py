@@ -24,6 +24,10 @@ from openbb_agents.hermes_integration.web.journey import (  # noqa: E402
     synthetic_stack,
 )
 
+from openbb_agents.hermes_integration.web.web_journey import (  # noqa: E402
+    PINNED_SHELL_ASSETS,
+)
+
 from .test_browser_origin import _attacker, _login  # noqa: E402
 
 
@@ -97,6 +101,7 @@ def test_browser_cards(browser_context, stack, journey):  # noqa: PLR0915
     assert [s.status_code for s in starts] == [202, 202]
     run_id = starts[0].json()["run_id"]
     assert starts[1].json()["run_id"] == run_id
+    assert starts[0].json()["marker"] == f"[[hfp:run:{run_id}]]"
     # Playwright's sync API owns this thread's event loop; the worker's own
     # asyncio.run needs a thread without one (as in the real worker process).
     ran: list[object] = []
@@ -104,10 +109,16 @@ def test_browser_cards(browser_context, stack, journey):  # noqa: PLR0915
     worker.start()
     worker.join(timeout=120)
     assert ran and ran[0]
-    page.evaluate(_SHOW, f"[[hfp:run:{run_id}]]")
-    page.locator(f'[data-hfp-run="{run_id}"][data-hfp-outcome="succeeded"]').wait_for(
-        timeout=20000
-    )
+    # No run marker is injected: the approved plan card polled its plan until
+    # the start named the run, then mounted the run card (production path).
+    page.locator(
+        f'[data-hfp-plan="{plan_id}"] [data-hfp-run="{run_id}"]'
+        '[data-hfp-outcome="succeeded"]'
+    ).wait_for(timeout=30000)
+    run_gets = [
+        u for m, u in requests if m == "GET" and u.endswith(f"/sidecar/runs/{run_id}")
+    ]
+    assert run_gets, "the run card polled the run"
     # Reload: the plan card now shows its run, read from the same stores.
     page.reload()
     page.evaluate(_SHOW, f"[[hfp:plan:{plan_id}]]")
@@ -142,5 +153,4 @@ def test_browser_cards(browser_context, stack, journey):  # noqa: PLR0915
         == approvals_before
     )
     assert not [u for m, u in requests if "/api/chat/start" in u]
-    shell = (stack.src / "static" / "index.html").read_text(encoding="utf-8")
-    assert [u for u in stack.aborted if u not in shell] == []
+    assert [u for u in stack.aborted if u not in PINNED_SHELL_ASSETS] == []
