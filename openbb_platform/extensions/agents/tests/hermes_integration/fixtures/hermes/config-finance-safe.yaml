@@ -1,0 +1,78 @@
+# Synthetic Hermes config trimmed from cli-config.yaml.example (MIT, (c) 2025 Nous Research)
+# Source: rashmijain02/hermes-agent main @ 710fa8a073f9a8136e10749b083a16779341faef
+# Only the keys the route reader consumes are kept. No real values.
+# Finance-safe: explicit loopback gateway, private alias, no fallbacks, no adoption,
+# and every auxiliary task of the pinned DEFAULT_CONFIG bound to the gateway (#1338).
+model:
+  default: "finance-private"
+  provider: "custom"
+  base_url: "http://127.0.0.1:4000/v1"
+  api_key: "SYNTHETIC-GATEWAY-KEY-SENTINEL"
+fallback_providers: []
+delegation:
+  fallback_providers: []
+auxiliary:
+  approval:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  background_review:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  compression:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  curator:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  goal_judge:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  kanban_decomposer:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  mcp:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  memory_query_rewrite:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  moa_aggregator:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  moa_reference:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  monitor:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  profile_describer:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  review:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  skills_hub:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  title_generation:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  triage_specifier:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  tts_audio_tags:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  vision:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+  voice_chat:
+    provider: "custom"
+    base_url: "http://127.0.0.1:4000/v1"
+auth:
+  adopt_external_logins: false
+memory:
+  memory_enabled: false
+telemetry:
+  shared_metrics:
+    enabled: false

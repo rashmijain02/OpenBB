@@ -1,0 +1,10 @@
+{
+  "credentials": {
+    "mysql_host": "127.0.0.1",
+    "mysql_port": "3306",
+    "mysql_user": "synthetic_user",
+    "mysql_password": "SYNTHETIC-PASSWORD-SENTINEL",
+    "mysql_database": "openbb_fmp_cache_test",
+    "fmp_cached_api_key": "SYNTHETIC-APIKEY-SENTINEL"
+  }
+}

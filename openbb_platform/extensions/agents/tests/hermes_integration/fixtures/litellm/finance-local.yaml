@@ -1,0 +1,23 @@
+# Synthetic admitted shape (#1338-T03): one finance-private alias on an allowlisted
+# loopback local runtime, hosted aliases kept for other users, no fallbacks or
+# callbacks, message logging off, prompts not stored in spend logs.
+# PORT_LOCAL is substituted by tests. Key names verified against litellm 1.106.6.
+model_list:
+  - model_name: finance-private
+    litellm_params:
+      model: openai/local-finance-model
+      api_base: http://127.0.0.1:PORT_LOCAL/v1
+      api_key: os.environ/SYNTHETIC_LOCAL_RUNTIME_KEY_ENV
+  - model_name: hosted-a
+    litellm_params:
+      model: github_copilot/model-a
+litellm_settings:
+  turn_off_message_logging: true
+  set_verbose: false
+  num_retries: 0
+router_settings:
+  num_retries: 0
+general_settings:
+  master_key: os.environ/SYNTHETIC_MASTER_KEY_ENV
+  database_url: os.environ/SYNTHETIC_DATABASE_URL_ENV
+  store_prompts_in_spend_logs: false

@@ -1,0 +1,21 @@
+# Synthetic finance runtime profile (#1338). No real paths or secrets.
+# Pins: rashmijain02/hermes-agent main and rashmijain02/hermes-webui multilora-ux.
+schema_version: 1
+hermes_agent:
+  dir_env: HFP_HERMES_AGENT_DIR
+  expected_sha: 710fa8a073f9a8136e10749b083a16779341faef
+  expected_remote: github.com/rashmijain02/hermes-agent
+hermes_webui:
+  dir_env: HFP_HERMES_WEBUI_DIR
+  agent_dir_env: HERMES_WEBUI_AGENT_DIR
+  expected_sha: 22d984026c305dfbadd09f29482be6cefe0f028b
+  expected_remote: github.com/rashmijain02/hermes-webui
+python:
+  requires: ">=3.11,<3.15"
+  supported: "3.14"
+  venv_env: HFP_HERMES_RUNTIME_VENV
+database:
+  expected: openbb_fmp_cache_test
+gateway_base_url: http://127.0.0.1:4000
+private_alias_allowlist: []
+skills_roots: []
