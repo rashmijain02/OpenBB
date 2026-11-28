@@ -54,6 +54,7 @@ class NautilusOptions:
     cache with ``execute`` into ``data_root``/datasets). ``qualify=False``
     skips the describe-vs-pin check and is recorded in the provenance; it is
     reachable only from code (tests, the golden CLI), never from the route.
+    ``runs_root`` locates experiment ledgers for sweep / validate.
     """
 
     client_factory: Callable[[], Any] | None = None
@@ -62,6 +63,8 @@ class NautilusOptions:
     data_root: Path | None = None
     qualify: bool = True
     runtime: str | None = None
+    #: Experiment ledgers root (#1357); default ``settings.runs_root``.
+    runs_root: Path | None = None
 
 
 def map_error(exc: ProtocolError) -> BacktestError:

@@ -130,6 +130,11 @@ def _build_sample_plan(segment: str, as_of: date) -> TradePlan:
     )
 
 
+def _fmt_pbo(pbo: Any, spec: str = ".2f") -> str:
+    """Format a PBO; ``None`` (undefined on the nautilus backend) is "undefined"."""
+    return "undefined" if pbo is None else format(pbo, spec)
+
+
 def _reason_for(verdict: str, report: Any, *, no_op: bool) -> str:
     """Build the human-stable reason string (Q-F + Q-F guard 4 stable shape)."""
     if no_op:
@@ -137,7 +142,7 @@ def _reason_for(verdict: str, report: Any, *, no_op: bool) -> str:
     pbo = getattr(report, "pbo", float("nan"))
     dsr = getattr(report, "deflated_sharpe", float("nan"))
     # Stable field order + 2-decimal precision so two runs produce identical strings.
-    return f"verdict={verdict} (pbo={pbo:.2f}, dsr={dsr:.2f})"
+    return f"verdict={verdict} (pbo={_fmt_pbo(pbo)}, dsr={dsr:.2f})"
 
 
 @router.command(
@@ -260,7 +265,7 @@ async def tune(  # pylint: disable=too-many-arguments
             "tune: segment %s verdict=%s -> not persisted (pbo=%s dsr=%s)",
             segment,
             verdict,
-            getattr(report, "pbo", None),
+            _fmt_pbo(getattr(report, "pbo", None), ""),
             getattr(report, "deflated_sharpe", None),
         )
 

@@ -1,0 +1,831 @@
+{
+ "_source": "origin/portfolio f7ce26ccc",
+ "reconcile": {
+  "candidate_engine": "vectorized",
+  "max_divergence": "0x1.27dc28f5c2900p+8",
+  "passed": false,
+  "reference_engine": "event",
+  "tolerance": "0x1.0c6f7a0b5ed8dp-20"
+ },
+ "sweep": {
+  "best": {
+   "entry_z": "0x1.0000000000000p-1",
+   "lookback": 10,
+   "symbols": [
+    "AAA",
+    "BBB"
+   ]
+  },
+  "best_metrics": {
+   "alpha": null,
+   "beta": null,
+   "cagr": "-0x1.d295c7c0e18d8p-4",
+   "calmar": "-0x1.6a4e18f2fe94fp-1",
+   "cvar_95": "-0x1.6e0480e542f55p-6",
+   "max_drawdown": "-0x1.49aed1944c18cp-3",
+   "profit_factor": "0x1.c6e46e041d5cap-1",
+   "sharpe": "-0x1.70c92cd194026p-1",
+   "sortino": "-0x1.f69d666b659f7p-1",
+   "turnover": "0x1.28ccccccccccdp+7",
+   "var_95": "-0x1.ff1a8717fa67cp-7",
+   "volatility": "0x1.36e5a97f50d4cp-3",
+   "win_rate": "0x1.05b05b05b05b0p-1"
+  },
+  "rank_by": "sharpe",
+  "results": [
+   {
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.3bb330c6a037ap-2",
+     "calmar": "-0x1.ad546b6659d0ap+0",
+     "cvar_95": "-0x1.8a64bef67aa4ep-6",
+     "max_drawdown": "-0x1.787d736ea52ecp-3",
+     "profit_factor": "0x1.4de9235519cb6p-1",
+     "sharpe": "-0x1.3a792cfc04c9ap+1",
+     "sortino": "-0x1.7df79c5929df2p+1",
+     "turnover": "0x1.b4ccccccccccdp+7",
+     "var_95": "-0x1.16394d3a266e9p-6",
+     "volatility": "0x1.2a2687a4aeaf2p-3",
+     "win_rate": "0x1.e93e93e93e93fp-2"
+    },
+    "params": {
+     "entry_z": "0x1.0000000000000p-1",
+     "lookback": 5,
+     "symbols": [
+      "AAA",
+      "BBB"
+     ]
+    }
+   },
+   {
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.167b79f3c3deep-2",
+     "calmar": "-0x1.ad85dc3985580p+0",
+     "cvar_95": "-0x1.b0fe4383cf068p-6",
+     "max_drawdown": "-0x1.4bf4e2d3a1f8cp-3",
+     "profit_factor": "0x1.441ed31fa61dbp-1",
+     "sharpe": "-0x1.1ba9d59aa27d9p+1",
+     "sortino": "-0x1.1c8f9e41a5ad6p+1",
+     "turnover": "0x1.a400000000000p+7",
+     "var_95": "-0x1.1a6c9114a2e89p-6",
+     "volatility": "0x1.1c279e0dbc25cp-3",
+     "win_rate": "0x1.5555555555555p-2"
+    },
+    "params": {
+     "entry_z": "0x1.0000000000000p+0",
+     "lookback": 5,
+     "symbols": [
+      "AAA",
+      "BBB"
+     ]
+    }
+   },
+   {
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.d295c7c0e18d8p-4",
+     "calmar": "-0x1.6a4e18f2fe94fp-1",
+     "cvar_95": "-0x1.6e0480e542f55p-6",
+     "max_drawdown": "-0x1.49aed1944c18cp-3",
+     "profit_factor": "0x1.c6e46e041d5cap-1",
+     "sharpe": "-0x1.70c92cd194026p-1",
+     "sortino": "-0x1.f69d666b659f7p-1",
+     "turnover": "0x1.28ccccccccccdp+7",
+     "var_95": "-0x1.ff1a8717fa67cp-7",
+     "volatility": "0x1.36e5a97f50d4cp-3",
+     "win_rate": "0x1.05b05b05b05b0p-1"
+    },
+    "params": {
+     "entry_z": "0x1.0000000000000p-1",
+     "lookback": 10,
+     "symbols": [
+      "AAA",
+      "BBB"
+     ]
+    }
+   },
+   {
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.5177e747ee8c6p-2",
+     "calmar": "-0x1.94a115cc8dd45p+0",
+     "cvar_95": "-0x1.b803a55ca34bbp-6",
+     "max_drawdown": "-0x1.ab04817fe7340p-3",
+     "profit_factor": "0x1.3bce66c8308f5p-1",
+     "sharpe": "-0x1.4bd1d873b78d7p+1",
+     "sortino": "-0x1.7bcadec445afdp+1",
+     "turnover": "0x1.2333333333333p+7",
+     "var_95": "-0x1.3d96ca8373bb1p-6",
+     "volatility": "0x1.32b1293f92874p-3",
+     "win_rate": "0x1.999999999999ap-2"
+    },
+    "params": {
+     "entry_z": "0x1.0000000000000p+0",
+     "lookback": 10,
+     "symbols": [
+      "AAA",
+      "BBB"
+     ]
+    }
+   }
+  ]
+ },
+ "tearsheet_auto": {
+  "benchmark_relative": null,
+  "drawdown_periods": [
+   {
+    "depth": "-0x1.3f982963b3fa0p-3",
+    "end": "2021-05-07",
+    "length": 47,
+    "start": "2021-03-03",
+    "valley": "2021-04-21"
+   },
+   {
+    "depth": "-0x1.22b74b9b8f0d0p-5",
+    "end": "2021-02-22",
+    "length": 21,
+    "start": "2021-01-22",
+    "valley": "2021-02-17"
+   },
+   {
+    "depth": "-0x1.0d39842c58520p-6",
+    "end": "2021-03-03",
+    "length": 5,
+    "start": "2021-02-24",
+    "valley": "2021-03-01"
+   },
+   {
+    "depth": "-0x1.0bef84db93200p-7",
+    "end": "2021-02-24",
+    "length": 2,
+    "start": "2021-02-22",
+    "valley": "2021-02-23"
+   },
+   {
+    "depth": "-0x1.69fee35734580p-8",
+    "end": "2021-01-15",
+    "length": 4,
+    "start": "2021-01-11",
+    "valley": "2021-01-13"
+   }
+  ],
+  "html_path": null,
+  "metrics": {
+   "alpha": null,
+   "beta": null,
+   "cagr": "-0x1.fd0eb85278de8p-4",
+   "calmar": "-0x1.97c34afcadda5p-1",
+   "cvar_95": "-0x1.14ed6a6a7d35ep-6",
+   "max_drawdown": "-0x1.3f982963b3fa0p-3",
+   "profit_factor": "0x0.0p+0",
+   "sharpe": "-0x1.cde48439b7eeap-1",
+   "sortino": "-0x1.97e9a2eb0bdedp+0",
+   "turnover": "0x0.0p+0",
+   "var_95": "-0x1.88a7d83583a1fp-7",
+   "volatility": "0x1.17ff6f292c4d8p-3",
+   "win_rate": "0x0.0p+0"
+  },
+  "monthly_returns": [
+   {
+    "month": 1,
+    "ret": "0x1.30369410c3a00p-4",
+    "year": 2021
+   },
+   {
+    "month": 2,
+    "ret": "0x1.785ef86fc5500p-8",
+    "year": 2021
+   },
+   {
+    "month": 3,
+    "ret": "-0x1.7b5521b8f75c8p-4",
+    "year": 2021
+   },
+   {
+    "month": 4,
+    "ret": "-0x1.b802b22ffb900p-7",
+    "year": 2021
+   },
+   {
+    "month": 5,
+    "ret": "-0x1.c99600cb1c080p-7",
+    "year": 2021
+   }
+  ],
+  "rolling_sharpe": [
+   "0x1.883ac9e97da48p+2",
+   "0x1.c895a42b71beep+2",
+   "0x1.a7a7aeccca413p+2",
+   "0x1.6d06f79444851p+2",
+   "0x1.11a04346e1dbfp+2",
+   "0x1.c133d1826cc9dp+1",
+   "0x1.04905fd691533p+1",
+   "0x1.1a748ed3788f7p+1",
+   "0x1.9bf093b42b1e9p+1",
+   "0x1.5f6aee33d90fbp+1",
+   "0x1.0d793f329ffe2p-1",
+   "-0x1.2b8b4b15ac4b8p+0",
+   "-0x1.bc2b45e91ba53p+0",
+   "-0x1.7d134e4df10f0p+0",
+   "-0x1.7110cb3401ed8p+0",
+   "0x1.3dee1fa1de93cp-3",
+   "-0x1.a34f12fa2ad6cp-5",
+   "0x1.54ec3cc5fa027p+0",
+   "0x1.5ce0c8deb040fp-1",
+   "0x1.a527c18407827p+0",
+   "-0x1.d515bff031565p-3",
+   "0x1.ac9166f145dcap+0",
+   "0x1.218774f1f3944p+0",
+   "0x1.10348bcec6d8cp+0",
+   "0x1.2eef2a1052d33p-2",
+   "0x1.803b6f3a5aa89p-2",
+   "0x1.a19623088185bp-2",
+   "-0x1.537ccf8bc4c21p-2",
+   "-0x1.cf439873c7d3cp-4",
+   "-0x1.069ec7a3359b8p+0",
+   "-0x1.69cd30538f263p-1",
+   "-0x1.6c1759c1a2d44p-4",
+   "-0x1.a9ee2351578f4p-4",
+   "0x1.048ef8486adf8p-3",
+   "-0x1.12f05e3b847c2p+0",
+   "-0x1.f44f2b1c2d10dp-1",
+   "-0x1.df6dc8d59fc57p+1",
+   "-0x1.9e48dbb67bd23p+1",
+   "-0x1.a332206da4bc8p+2",
+   "-0x1.bef18e3025bc2p+2",
+   "-0x1.e160cbc49ee42p+2",
+   "-0x1.e980465b19c90p+2",
+   "-0x1.706618e6d1f7ap+3",
+   "-0x1.b0803f3e3428ap+3",
+   "-0x1.9e4238175f589p+3",
+   "-0x1.4377a92cfd6f8p+3",
+   "-0x1.277af43602374p+3",
+   "-0x1.3bac473212c72p+3",
+   "-0x1.41651bdaa58dbp+3",
+   "-0x1.73da6334d28bfp+3",
+   "-0x1.5d29ae453420fp+3",
+   "-0x1.70f9781c75572p+3",
+   "-0x1.4c92518219defp+3",
+   "-0x1.4bca51521593ap+3",
+   "-0x1.7fe9989a9bad7p+3",
+   "-0x1.8bde31f564b35p+3",
+   "-0x1.cca9ef8da4d44p+3",
+   "-0x1.b207c7d004603p+3",
+   "-0x1.692308912ed87p+3",
+   "-0x1.ee3e744c9f6a2p+2",
+   "-0x1.360fab00d4c42p+2",
+   "-0x1.2e1862d9a8a09p+2",
+   "-0x1.a10d61703cb10p+1",
+   "-0x1.4839f88ff97b5p+1",
+   "-0x1.2851e3b2bef15p-1",
+   "0x1.52ba98db8a2fdp-1",
+   "-0x1.3a720a34e2b2dp-1",
+   "-0x1.9d44c654e8c9ap-1",
+   "-0x1.31b9e25f744c4p+0",
+   "-0x1.0ecf829ae8591p+0"
+  ]
+ },
+ "tearsheet_event": {
+  "benchmark_relative": null,
+  "drawdown_periods": [
+   {
+    "depth": "-0x1.3f9828cea93b0p-3",
+    "end": "2021-05-07",
+    "length": 47,
+    "start": "2021-03-03",
+    "valley": "2021-04-21"
+   },
+   {
+    "depth": "-0x1.22b72ad166b80p-5",
+    "end": "2021-02-22",
+    "length": 21,
+    "start": "2021-01-22",
+    "valley": "2021-02-17"
+   },
+   {
+    "depth": "-0x1.0d398219fb300p-6",
+    "end": "2021-03-03",
+    "length": 5,
+    "start": "2021-02-24",
+    "valley": "2021-03-01"
+   },
+   {
+    "depth": "-0x1.0befb8b702400p-7",
+    "end": "2021-02-24",
+    "length": 2,
+    "start": "2021-02-22",
+    "valley": "2021-02-23"
+   },
+   {
+    "depth": "-0x1.69fd7e5d50e00p-8",
+    "end": "2021-01-15",
+    "length": 4,
+    "start": "2021-01-11",
+    "valley": "2021-01-13"
+   }
+  ],
+  "html_path": null,
+  "metrics": {
+   "alpha": null,
+   "beta": null,
+   "cagr": "-0x1.0c1e058a93920p-3",
+   "calmar": "-0x1.ad8837f648b68p-1",
+   "cvar_95": "-0x1.14ed9437c023dp-6",
+   "max_drawdown": "-0x1.3f9828cea93b0p-3",
+   "profit_factor": "0x1.02638bc15bfb6p+2",
+   "sharpe": "-0x1.eac94de1172f0p-1",
+   "sortino": "-0x1.b1198845463e4p+0",
+   "turnover": "0x1.228d22dfae34ap+3",
+   "var_95": "-0x1.88a78ed92b683p-7",
+   "volatility": "0x1.17c8fc53d9492p-3",
+   "win_rate": "0x1.51745d1745d17p-1"
+  },
+  "monthly_returns": [
+   {
+    "month": 1,
+    "ret": "0x1.2446ec4d9b970p-4",
+    "year": 2021
+   },
+   {
+    "month": 2,
+    "ret": "0x1.785df62a16f00p-8",
+    "year": 2021
+   },
+   {
+    "month": 3,
+    "ret": "-0x1.7b5510cca5068p-4",
+    "year": 2021
+   },
+   {
+    "month": 4,
+    "ret": "-0x1.b802c96829f80p-7",
+    "year": 2021
+   },
+   {
+    "month": 5,
+    "ret": "-0x1.c99577bb4cf40p-7",
+    "year": 2021
+   }
+  ],
+  "rolling_sharpe": [
+   "0x1.759e9d9b1dc57p+2",
+   "0x1.b5c9d37c471c9p+2",
+   "0x1.a7a79a4b2f39cp+2",
+   "0x1.6d0700b834e6dp+2",
+   "0x1.11a0081194ea7p+2",
+   "0x1.c133ba6003013p+1",
+   "0x1.04905cecda034p+1",
+   "0x1.1a74613fe26bap+1",
+   "0x1.9bf0597f884c4p+1",
+   "0x1.5f6b2a52691d4p+1",
+   "0x1.0d78a8dfe6580p-1",
+   "-0x1.2b8b1ec80ce4ap+0",
+   "-0x1.bc2b1bd96a9b3p+0",
+   "-0x1.7d13b26261778p+0",
+   "-0x1.711030c1337d5p+0",
+   "0x1.3df0f65955752p-3",
+   "-0x1.a356e04188a4ep-5",
+   "0x1.54ebef040d69ep+0",
+   "0x1.5ce0484c7c012p-1",
+   "0x1.a5278c2db3bbep+0",
+   "-0x1.d51a504e2a96dp-3",
+   "0x1.ac9171fecdaf1p+0",
+   "0x1.2187c7391c866p+0",
+   "0x1.103489f6f18b5p+0",
+   "0x1.2eed4abf53235p-2",
+   "0x1.803d7c22944a9p-2",
+   "0x1.a1947ab982e17p-2",
+   "-0x1.537d56dbdaf97p-2",
+   "-0x1.cf486760688b2p-4",
+   "-0x1.069eb98460cc8p+0",
+   "-0x1.69ccb5cd8be83p-1",
+   "-0x1.6c13e8068b797p-4",
+   "-0x1.a9f5376d53cddp-4",
+   "0x1.049081bb0b4f4p-3",
+   "-0x1.12ef98ebd307ep+0",
+   "-0x1.f44f802deaf3ep-1",
+   "-0x1.df6de1a594628p+1",
+   "-0x1.9e48ac064c8f9p+1",
+   "-0x1.a331be9fabfd4p+2",
+   "-0x1.bef1556cc695ap+2",
+   "-0x1.e16097d289581p+2",
+   "-0x1.e97fee9288d39p+2",
+   "-0x1.7065ef77fc0b2p+3",
+   "-0x1.b0803cba52dd2p+3",
+   "-0x1.9e42366e297a4p+3",
+   "-0x1.437762a438b3ap+3",
+   "-0x1.277aecac92c06p+3",
+   "-0x1.3bac0f167ea0dp+3",
+   "-0x1.4164d69455304p+3",
+   "-0x1.73da2d21b5966p+3",
+   "-0x1.5d2970243ee5cp+3",
+   "-0x1.70f968cb2aa7ap+3",
+   "-0x1.4c92172434f65p+3",
+   "-0x1.4bca10e611524p+3",
+   "-0x1.7fe97b30576c7p+3",
+   "-0x1.8bde26d6232f7p+3",
+   "-0x1.cca974e636c13p+3",
+   "-0x1.b20767db7c8c8p+3",
+   "-0x1.6922bf63aa25dp+3",
+   "-0x1.ee3e21b8dc363p+2",
+   "-0x1.360f79b7c06a0p+2",
+   "-0x1.2e181aa532255p+2",
+   "-0x1.a10d5c74b1189p+1",
+   "-0x1.483a20a984912p+1",
+   "-0x1.285085f9e28f4p-1",
+   "0x1.52bb8862c00f3p-1",
+   "-0x1.3a7252b7289d0p-1",
+   "-0x1.9d44c8613b92ep-1",
+   "-0x1.31b9e71bc313ep+0",
+   "-0x1.0ecef6c5d6c31p+0"
+  ]
+ },
+ "validate_cpcv": {
+  "deflated_sharpe": "0x0.0p+0",
+  "folds": [
+   {
+    "fold": 0,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "0x1.4bdf5eae83d6ep-1",
+     "calmar": "0x1.0653e983dd1dcp+5",
+     "cvar_95": "-0x1.764eb13e6a05ap-7",
+     "max_drawdown": "-0x1.43de023a89460p-6",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "0x1.16d54efd73b1bp+2",
+     "sortino": "0x1.054e3a2e35177p+3",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.5ed85430bc121p-7",
+     "volatility": "0x1.dc95331545131p-4",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 1,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "0x1.1361f1da57ee8p-1",
+     "calmar": "0x1.e4fecb52f7cb8p+3",
+     "cvar_95": "-0x1.ae4ecf5592f20p-7",
+     "max_drawdown": "-0x1.22b74b9b8f0d0p-5",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "0x1.9fc3d2d20d61bp+1",
+     "sortino": "0x1.9a23540cf3daep+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.6183c6e9dd028p-7",
+     "volatility": "0x1.155cb293b21e5p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 2,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "0x1.44cabd14f7c40p-6",
+     "calmar": "0x1.01807e472fcc9p-2",
+     "cvar_95": "-0x1.23a23f2206febp-6",
+     "max_drawdown": "-0x1.42e5c5265d2b8p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "0x1.b182be37b5857p-3",
+     "sortino": "0x1.7701b789ede4ep-2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.8fc16993e9fc0p-7",
+     "volatility": "0x1.18bd124c79d3bp-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 3,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.6e44fee3fee84p-3",
+     "calmar": "-0x1.52432f6cd5613p+0",
+     "cvar_95": "-0x1.0bd88a862da1bp-6",
+     "max_drawdown": "-0x1.15322cfe9bde8p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.6e92f75f714ebp+0",
+     "sortino": "-0x1.43f9304358c62p+1",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.887bf3fe8b0c8p-7",
+     "volatility": "0x1.0d58fe1efdf97p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 4,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.fd0eb85278de8p-4",
+     "calmar": "-0x1.97c34afcadda5p-1",
+     "cvar_95": "-0x1.14ed6a6a7d35ep-6",
+     "max_drawdown": "-0x1.3f982963b3fa0p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.cde48439b7eeap-1",
+     "sortino": "-0x1.97e9a2eb0bdedp+0",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.88a7d83583a1fp-7",
+     "volatility": "0x1.17ff6f292c4d8p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 5,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "0x1.13d91df274460p-4",
+     "calmar": "0x1.ef4eb875df04ep+0",
+     "cvar_95": "-0x1.d3a33ca708c16p-7",
+     "max_drawdown": "-0x1.1d25011dd4bb0p-5",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "0x1.0906b15a94920p-1",
+     "sortino": "0x1.0c66ecaaa052bp+0",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.782c93ab830c0p-7",
+     "volatility": "0x1.2c4be01e5aa02p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 6,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.3620762e303fcp-2",
+     "calmar": "-0x1.ebc0122950224p+1",
+     "cvar_95": "-0x1.23a24b15a2d63p-6",
+     "max_drawdown": "-0x1.42e5c0fc06470p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.3edadbe8405b9p+1",
+     "sortino": "-0x1.128cc0cc3eaa0p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.f59fc9ce2b043p-7",
+     "volatility": "0x1.2040e843ae441p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 7,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.a92d454db8f14p-2",
+     "calmar": "-0x1.88aa4b2f4c8f9p+1",
+     "cvar_95": "-0x1.23a24b15a2d63p-6",
+     "max_drawdown": "-0x1.1532349b57068p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.01f09145dbac0p+2",
+     "sortino": "-0x1.bc92e158c6b25p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.8fc1913328142p-7",
+     "volatility": "0x1.0bfd0d1e0de3dp-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 8,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.4bacd94eb4002p-2",
+     "calmar": "-0x1.09ad477122a0dp+1",
+     "cvar_95": "-0x1.2909eb7404620p-6",
+     "max_drawdown": "-0x1.3f982cb5a8838p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.61b5aa3073e6bp+1",
+     "sortino": "-0x1.36116344567c2p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.b1b64ebc290edp-7",
+     "volatility": "0x1.1acdce1778028p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 9,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.1898fef469e60p-2",
+     "calmar": "-0x1.bced849148274p+1",
+     "cvar_95": "-0x1.2ddfb3abb6894p-6",
+     "max_drawdown": "-0x1.42e5b6382e890p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.160d2b204ce91p+1",
+     "sortino": "-0x1.efc9d0c521f18p+1",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.bf8b8466719e2p-7",
+     "volatility": "0x1.2424df2ea283ep-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 10,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.bbc7827ce7534p-2",
+     "calmar": "-0x1.99d877023a18fp+1",
+     "cvar_95": "-0x1.0aa0f350329dep-6",
+     "max_drawdown": "-0x1.1532266044338p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.15e3b723c8560p+2",
+     "sortino": "-0x1.ecae4dc495f7ap+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.82f57b935ee9ap-7",
+     "volatility": "0x1.07bb00629bec7p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 11,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.42e4e85b3a8cap-2",
+     "calmar": "-0x1.02a4a8cea0db6p+1",
+     "cvar_95": "-0x1.31aae1b681329p-6",
+     "max_drawdown": "-0x1.3f9827d43eb2cp-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.553268393cf28p+1",
+     "sortino": "-0x1.3271a1b8f7c08p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.8f1a48e580eb3p-7",
+     "volatility": "0x1.1b793ab17e30ep-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 12,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.5445eb0b01976p-1",
+     "calmar": "-0x1.5cc9bafffec70p+2",
+     "cvar_95": "-0x1.2ddff0149a386p-6",
+     "max_drawdown": "-0x1.f3802a5ccadd0p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.5b07850b0266dp+3",
+     "sortino": "-0x1.b56690b6e8542p+3",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.d35c4ebfadf2ap-7",
+     "volatility": "0x1.99cf032ee71f5p-4",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 13,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.f18aa40c2cd16p-2",
+     "calmar": "-0x1.b30016c91add0p+1",
+     "cvar_95": "-0x1.31aaf1e7767d9p-6",
+     "max_drawdown": "-0x1.24ce4b520dea8p-3",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.46b5d150a9f7ep+2",
+     "sortino": "-0x1.fae2c57797250p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.f57d3cf5ec83dp-7",
+     "volatility": "0x1.073cf7213738dp-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 14,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.509a711394e66p-2",
+     "calmar": "-0x1.08597d807cc7cp+2",
+     "cvar_95": "-0x1.fd644807736f3p-7",
+     "max_drawdown": "-0x1.45f8b80d22270p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.749435dca1f02p+1",
+     "sortino": "-0x1.49126224c4b27p+2",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.7e54361a19829p-7",
+     "volatility": "0x1.11e9533648619p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   }
+  ],
+  "method": "cpcv",
+  "min_backtest_length_years": "0x0.0p+0",
+  "oos_metrics": {
+   "alpha": null,
+   "beta": null,
+   "cagr": "-0x1.de7f537bc11ecp-3",
+   "calmar": "-0x1.6f00c351ab23ep-2",
+   "cvar_95": "-0x1.1e38d8d52be9dp-6",
+   "max_drawdown": "-0x1.4dc5a31b0455ap-1",
+   "profit_factor": "0x0.0p+0",
+   "sharpe": "-0x1.e5247cb2f4adep+0",
+   "sortino": "-0x1.aa7a2f2a81eccp+1",
+   "turnover": "0x0.0p+0",
+   "var_95": "-0x1.88f704e48e487p-7",
+   "volatility": "0x1.15833562c6292p-3",
+   "win_rate": "0x0.0p+0"
+  },
+  "pbo": "0x1.f330a7678dbebp-2",
+  "thresholds": {
+   "dsr_overfit": "0x1.0000000000000p-1",
+   "dsr_robust": "0x1.e666666666666p-1",
+   "pbo_overfit": "0x1.0000000000000p-1",
+   "pbo_robust": "0x1.999999999999ap-3"
+  },
+  "verdict": "overfit"
+ },
+ "validate_wfo": {
+  "deflated_sharpe": "0x1.f4900cbc00000p-24",
+  "folds": [
+   {
+    "fold": 0,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.44029210a2766p-1",
+     "calmar": "-0x1.b43163eae48d3p+2",
+     "cvar_95": "-0x1.2ddff0149a386p-6",
+     "max_drawdown": "-0x1.7c52106e0c4d8p-4",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.25748f56e2117p+3",
+     "sortino": "-0x1.77958197414e8p+3",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.04fbb2be6f6d8p-6",
+     "volatility": "0x1.bbfc6b761c19dp-4",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   },
+   {
+    "fold": 1,
+    "metrics": {
+     "alpha": null,
+     "beta": null,
+     "cagr": "-0x1.504c5699112d8p-3",
+     "calmar": "-0x1.65e2c88513e5cp+1",
+     "cvar_95": "-0x1.f25723436360bp-7",
+     "max_drawdown": "-0x1.e11dbca969190p-5",
+     "profit_factor": "0x0.0p+0",
+     "sharpe": "-0x1.3207d26ce5fadp+0",
+     "sortino": "-0x1.fd8d5a6947660p+0",
+     "turnover": "0x0.0p+0",
+     "var_95": "-0x1.71f2aaec9a0c4p-7",
+     "volatility": "0x1.22053917f1e88p-3",
+     "win_rate": "0x0.0p+0"
+    },
+    "path_id": null
+   }
+  ],
+  "method": "wfo",
+  "min_backtest_length_years": "0x0.0p+0",
+  "oos_metrics": {
+   "alpha": null,
+   "beta": null,
+   "cagr": "-0x1.c8bdb36d7c9ccp-2",
+   "calmar": "-0x1.9f059f5a3ec6cp+1",
+   "cvar_95": "-0x1.31aafe2950a37p-6",
+   "max_drawdown": "-0x1.19bbd824914a0p-3",
+   "profit_factor": "0x0.0p+0",
+   "sharpe": "-0x1.212312f18566dp+2",
+   "sortino": "-0x1.b31be9ebd1119p+2",
+   "turnover": "0x0.0p+0",
+   "var_95": "-0x1.fc509fcd92a0ep-7",
+   "volatility": "0x1.07ade026f8d55p-3",
+   "win_rate": "0x0.0p+0"
+  },
+  "pbo": "0x1.8b474016ea28dp-3",
+  "thresholds": {
+   "dsr_overfit": "0x1.0000000000000p-1",
+   "dsr_robust": "0x1.e666666666666p-1",
+   "pbo_overfit": "0x1.0000000000000p-1",
+   "pbo_robust": "0x1.999999999999ap-3"
+  },
+  "verdict": "overfit"
+ }
+}

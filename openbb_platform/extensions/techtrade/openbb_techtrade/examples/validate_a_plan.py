@@ -60,13 +60,17 @@ def main(
         from openbb_techtrade.validation.backtest_bridge import (  # noqa: PLC0415
             TechtradeDependencyError,
         )
-    except ImportError:  # pragma: no cover — validation module always ships in techtrade
+    except (
+        ImportError
+    ):  # pragma: no cover — validation module always ships in techtrade
         logger.error("validation module not importable; cannot continue")
         return None
 
     try:
         result = obb.techtrade.validate(
-            plan=plan, method=method, horizon_years=horizon_years,
+            plan=plan,
+            method=method,
+            horizon_years=horizon_years,
         )
     except TechtradeDependencyError as exc:
         logger.warning(
@@ -77,9 +81,10 @@ def main(
 
     report = result.results
     logger.info(
-        "verdict=%s  pbo=%.3f  dsr=%.3f  oos_sharpe=%.3f",
+        "verdict=%s  pbo=%s  dsr=%.3f  oos_sharpe=%.3f",
         report.verdict,
-        getattr(report, "pbo", float("nan")),
+        # None = undefined (nautilus backend, #1357); never shown as 0.0
+        ("undefined" if getattr(report, "pbo", None) is None else f"{report.pbo:.3f}"),
         getattr(report, "deflated_sharpe", float("nan")),
         getattr(getattr(report, "oos_metrics", None), "sharpe", float("nan")),
     )

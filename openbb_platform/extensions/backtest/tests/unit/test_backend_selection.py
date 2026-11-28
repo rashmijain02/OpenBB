@@ -20,6 +20,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -231,18 +232,200 @@ def test_legacy_rejects_reviewed_only_strategy(legacy_spy):
     assert not legacy_spy
 
 
-def test_sweep_reconcile_validate_tearsheet_reject_nautilus(legacy_spy):
-    cfg = _config(backend="nautilus")
-    calls = [
-        lambda: asyncio.run(rr.sweep(cfg, param_grid={"x": [1]})),
-        lambda: rr.reconcile(cfg),
-        lambda: asyncio.run(vr.validate(cfg)),
-        lambda: asyncio.run(vr.tearsheet(cfg)),
+# ---- #1357: sweep / validate / tearsheet / reconcile route to nautilus ----
+
+TWR = "target_weight_rebalance"
+TWR_BASE = {"rebalance_every_sessions": 5, "execution": {"fill_timing": "same_close"}}
+TWR_GRID = {
+    "weights": [
+        {"AAA": "0.5", "BBB": "0.5"},
+        {"AAA": "0.8", "BBB": "0.2"},
+        {"AAA": "0.3", "BBB": "0.6"},
     ]
-    for call in calls:
-        with pytest.raises(UnsupportedSemanticsError, match="P17"):
-            call()
+}
+
+
+def _twr_config(**kw) -> BacktestConfig:
+    params = dict(
+        strategy=TWR,
+        start=date(2024, 1, 2),
+        end=date(2024, 4, 30),
+        initial_cash=Decimal("100000.00"),
+        backend="nautilus",
+    )
+    params.update(kw)
+    return _config(**params)
+
+
+@pytest.fixture
+def synthetic_cells(monkeypatch, tmp_path):
+    """Real plan / dispatch / assemble / statistics; cells return seeded series.
+
+    Only the worker call is replaced: every cell returns a deterministic
+    series over its own window's calendar sessions (seeded by config id), so
+    configurations differ and fold structure is visible.
+    """
+    from openbb_backtest.adapters.nautilus import backend, experiment
+    from openbb_backtest.validation.matrix import encode_returns
+    from openbb_backtest.validation.trials import CellOutcome
+
+    windows: list[tuple[str, str]] = []
+
+    def cell_executor(the_plan, config, _options):
+        calendar = experiment.session_calendar(config)
+
+        def execute(cell, _attempt_no):
+            if cell.config_id in the_plan.rejected:
+                return CellOutcome(
+                    status="excluded",
+                    error_code="admission",
+                    reason="admission_rejected",
+                )
+            windows.append((cell.window.start_session, cell.window.end_session))
+            first = calendar.index(cell.window.start_session)
+            last = calendar.index(cell.window.end_session)
+            days = calendar[first : last + 1]
+            rng = np.random.default_rng(int(cell.config_id[:8], 16))
+            rets = rng.normal(0.0004, 0.01, len(calendar))[first + 1 : last + 1]
+            return CellOutcome(
+                status="ok", returns=encode_returns(zip(days[1:], rets.tolist()))
+            )
+
+        return execute
+
+    monkeypatch.setattr(experiment, "cell_executor", cell_executor)
+    opts = backend.NautilusOptions(
+        export=lambda binding, config: "d" * 64,
+        runtime="fake",
+        runs_root=tmp_path / "runs",
+    )
+    for mod in (rr, vr):
+        monkeypatch.setattr(mod, "_nautilus_options", lambda: opts)
+    return windows
+
+
+def _validate_nautilus(method="wfo", **kw):
+    kw.setdefault("strategy_params", TWR_BASE)
+    return asyncio.run(vr.validate(_twr_config(), method=method, **kw)).results
+
+
+def test_sweep_routes_nautilus_never_calls_legacy(legacy_spy, synthetic_cells):
+    grid = {**{k: [v] for k, v in TWR_BASE.items()}, **TWR_GRID}
+    result = asyncio.run(rr.sweep(_twr_config(), param_grid=grid)).results
     assert not legacy_spy
+    assert len(result.results) == 3
+    assert result.experiment is not None and result.experiment.n_trials_dsr == 3
+    assert synthetic_cells, "no cell reached the (nautilus) executor"
+
+
+def test_validate_nautilus_n_is_configs_not_folds(legacy_spy, synthetic_cells):
+    report = _validate_nautilus(param_grid=TWR_GRID)
+    assert not legacy_spy
+    assert len(report.folds) != 3, "fixture must separate folds from configs"
+    assert report.experiment.n_trials_dsr == 3
+    with_external = _validate_nautilus(param_grid=TWR_GRID, external_trials=7)
+    assert with_external.experiment.n_trials_dsr == 10
+    assert with_external.deflated_sharpe < report.deflated_sharpe
+
+
+def test_validate_nautilus_uses_configs_as_pbo_columns(legacy_spy, synthetic_cells):
+    from openbb_backtest.adapters.nautilus import experiment
+    from openbb_backtest.validation import pbo_detail
+    from openbb_backtest.validation.matrix import assemble
+    from openbb_backtest.validation.trials import TrialLedger
+
+    report = _validate_nautilus(param_grid=TWR_GRID)
+    exp = report.experiment
+    opts = rr._nautilus_options()  # pylint: disable=protected-access
+    ledger = TrialLedger.for_experiment(opts.runs_root, exp.experiment_id)
+    matrix = assemble(ledger.planned(), ledger.records()).matrix
+    sessions, cols, mat = matrix.wide()
+    assert len(cols) == 3
+    calendar = experiment.session_calendar(_twr_config())
+    oos_days = {
+        calendar[j]
+        for idx, _p in experiment.fold_plan(calendar, "wfo", "continuous").folds
+        for j in idx
+    }
+    rows = [i for i, s in enumerate(sessions) if s in oos_days]
+    oos = mat[rows, :]
+    assert report.pbo == pytest.approx(pbo_detail(oos, statistic="sharpe").pbo)
+    # folds-as-columns (the legacy F4 reading) differs on this fixture
+    best = int(np.argmax(oos.mean(0) / oos.std(0, ddof=1)))
+    half = len(rows) // 2
+    folds_pbo = pbo_detail(
+        np.column_stack([oos[:half, best], oos[half : 2 * half, best]]),
+        statistic="sharpe",
+    ).pbo
+    assert folds_pbo != pytest.approx(report.pbo)
+
+
+def test_validate_nautilus_cpcv_runs_atomic_groups():
+    from openbb_backtest.adapters.nautilus import experiment
+
+    sessions = [f"2024-01-{d:02d}" for d in range(1, 31)]
+    plan = experiment.fold_plan(sessions, "cpcv", "per_fold")
+    assert len(plan.windows) == 6, "CPCV dedupes to n_groups windows, not C(N,k)"
+    covered = []
+    for w in plan.windows:
+        idx = [sessions.index(s) for s in w.sessions]
+        assert idx == list(range(idx[0], idx[-1] + 1)), "non-contiguous span (F2)"
+        covered.extend(idx)
+    assert covered == list(range(len(sessions)))
+
+
+def test_validate_nautilus_path_id_from_cpcv_paths(legacy_spy, synthetic_cells):
+    from openbb_backtest.validation import cpcv_paths
+
+    report = _validate_nautilus(method="cpcv", param_grid=TWR_GRID)
+    paths = cpcv_paths(6, 2)
+    assert [f.path_id for f in report.folds] == [
+        p for p, cells in enumerate(paths) for _cell in cells
+    ]
+    assert not legacy_spy
+
+
+def test_validate_nautilus_without_grid_pbo_none(legacy_spy, synthetic_cells):
+    params = {**TWR_BASE, "weights": TWR_GRID["weights"][0]}
+    report = _validate_nautilus(strategy_params=params, external_trials=4)
+    assert report.pbo is None
+    assert report.experiment.n_trials_dsr == 5
+    assert report.verdict != "robust"
+
+
+def test_legacy_validate_rejects_nautilus_only_args(legacy_spy):
+    with pytest.raises(ValueError, match="nautilus"):
+        asyncio.run(vr.validate(_config(), param_grid={"x": [1]}))
+    with pytest.raises(ValueError, match="nautilus"):
+        asyncio.run(vr.validate(_config(), external_trials=3))
+    assert not legacy_spy
+
+
+def test_reconcile_nautilus_strict_rejected(legacy_spy):
+    with pytest.raises(UnsupportedSemanticsError) as err:
+        rr.reconcile(_config(backend="nautilus"), strict=True)
+    assert err.value.reason == "reconcile_not_a_gate"
+    assert not legacy_spy
+
+
+def test_tearsheet_nautilus_uses_execute_run(legacy_spy, monkeypatch):
+    seen = {}
+
+    def fake_execute_run(config, **kw):
+        seen.update(kw, backend=config.backend)
+        raise BackendUnavailableError("stop here", reason="probe", code="config")
+
+    monkeypatch.setattr(rr, "execute_run", fake_execute_run)
+    with pytest.raises(BackendUnavailableError, match="stop here"):
+        asyncio.run(vr.tearsheet(_config(backend="nautilus"), engine="event"))
+    assert seen["backend"] == "nautilus" and seen["engine"] == "event"
+    assert not legacy_spy
+
+
+def test_reject_helper_deleted():
+    from openbb_backtest import router_helpers
+
+    assert not hasattr(router_helpers, "reject_nautilus_until_p17")
 
 
 # ---- worker error mapping ------------------------------------------------

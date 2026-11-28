@@ -407,3 +407,16 @@ def test_tune_forwards_trials_and_early_stop(
         )
     )
     assert captured == {"trials": 37, "early_stop": 11}
+
+
+def test_reason_for_undefined_pbo_is_never_zero():
+    """#1357 D3: a nautilus report's pbo=None reads "undefined", never 0.00."""
+    from openbb_techtrade.tuning.tune_router import _reason_for
+
+    report = SimpleNamespace(pbo=None, deflated_sharpe=0.5)
+    reason = _reason_for("fragile", report, no_op=False)
+    assert reason == "verdict=fragile (pbo=undefined, dsr=0.50)"
+    legacy = SimpleNamespace(pbo=0.31, deflated_sharpe=0.62)
+    assert _reason_for("fragile", legacy, no_op=False) == (
+        "verdict=fragile (pbo=0.31, dsr=0.62)"
+    )
