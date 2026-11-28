@@ -61,7 +61,7 @@ from . import backend, projection, strategies
 
 logger = logging.getLogger(__name__)
 
-_EXPERIMENT_V = "experiment/2"
+_EXPERIMENT_V = "experiment/3"
 #: Fixed precision of the event-replay fake worker (``fake_run_worker.py``).
 _FAKE_PRECISION = 9
 
@@ -110,6 +110,8 @@ class Plan:  # pylint: disable=too-many-instance-attributes
     cash: str
     external_trials: int
     base_dataset_id: str
+    #: The current plan's dataset-independent configuration keys (CODE-2c).
+    config_keys: tuple[str, ...] = ()
     #: ``(symbols, first, last) -> dataset_id``: one export per window (D2).
     exports: dict[tuple[tuple[str, ...], str, str], str] = field(default_factory=dict)
 
@@ -268,6 +270,10 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
     # generation instead of a new, empty experiment that would forget the
     # configurations already tried. N counts distinct config keys over every
     # generation; the matrix comes from this plan's generation only.
+    # CODE-2c: neither the configuration set nor ``external_trials`` is part of
+    # the identity, so a changed grid appends planned cells to the same ledger
+    # (N keeps every configuration ever planned) and ``external_trials`` is a
+    # per-run declaration recorded in the ledger (max over history).
     spec = {
         "v": _EXPERIMENT_V,
         "command": command,
@@ -279,8 +285,6 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         "method": method,
         "policy": policy,
         "fold_params": dict(fold_params),
-        "external_trials": int(external_trials),
-        "config_keys": sorted(config_keys),
         "windows": [sha256_canonical(asdict(w)) for w in wins],
     }
     return Plan(
@@ -294,6 +298,7 @@ def plan(  # pylint: disable=too-many-arguments,too-many-locals
         cash=cash,
         external_trials=int(external_trials),
         base_dataset_id=base_dataset_id,
+        config_keys=tuple(sorted(config_keys)),
         exports=exports,
     )
 
@@ -435,6 +440,7 @@ def run(  # pylint: disable=too-many-arguments
     bounds = _bounds()
     ledger = TrialLedger.for_experiment(runs_root(options), the_plan.experiment_id)
     ledger.write_spec(the_plan.spec)
+    external = ledger.declare_external(the_plan.external_trials)
     appended = dispatch(
         ledger,
         the_plan.cells,
@@ -444,16 +450,21 @@ def run(  # pylint: disable=too-many-arguments
         clock=clock,
         only=only,
     )
+    versions = ledger.planned_versions()
+    planned = [cell for version in versions for cell in version]
     assembly = assemble(
-        ledger.planned(),
+        planned,
         ledger.records(),
-        external_trials=the_plan.external_trials,
+        external_trials=external,
         max_attempts=bounds.max_attempts,
         dataset_id=the_plan.base_dataset_id,
+        config_keys=the_plan.config_keys,
     )
     summary = ExperimentSummary(
         experiment_id=the_plan.experiment_id,
         window_policy=the_plan.policy,
+        n_planned_versions=len(versions),
+        n_datasets=len({c.config.base_dataset_id for c in planned}),
         **assembly.summary(),
     )
     return Outcome(

@@ -44,12 +44,14 @@ legacy backend: unchanged code path and numbers (summary field None)
   `config_key` = the same hash without `base_dataset_id` (dataset-independent identity, used for N; CODE-2b).
 - `window = {policy, method, fold_params_sha256, ordinal, start_session, end_session, session_count, sessions_sha256}`.
 - `trial_id = sha256(canon{"v":"trial/1", config_id, window})`; `attempt_id = sha256(trial_id, attempt_no, spawn_nonce_sha256)`.
-- `experiment_id = sha256(canon(ExperimentSpec))`, where the spec is dataset-independent (strategy, universe, cash, method,
-  policy, fold params, windows, external trials, and each config identity minus `base_dataset_id`). The planned cell list
-  (trial ids) is written first, so completeness is checkable; a re-plan on refreshed data appends its new cells as
-  `planned.v<k>.json` (earlier versions are never rewritten). One planned version = one `base_dataset_id`; a
-  **generation** = all planned cells of one dataset (CODE-2b). The matrix comes from the current plan's generation only;
-  N keeps every config of every generation.
+- `experiment_id = sha256(canon(ExperimentSpec))` (`experiment/3`), where the spec holds neither the dataset nor the
+  configuration set (CODE-2c): command, backend, strategy, strategy version, universe, cash, method, policy, fold params
+  and windows. The planned cell list (trial ids) is written first, so completeness is checkable; a re-plan on refreshed
+  data or with a changed grid appends its new cells as `planned.v<k>.json` (earlier versions are never rewritten). One
+  planned version = one `base_dataset_id`; a **generation** = all planned cells of one dataset (CODE-2b). The matrix
+  comes from the **current plan's cells** only (its dataset and its config keys); N keeps every config ever planned or
+  attempted. `external_trials` is a per-run declaration, not identity: each increase is appended to `external.jsonl`
+  and the effective value is the maximum ever declared, so N never decreases.
 - `AttemptRecord{attempt_id, trial_id, attempt_no, status: ok|failed|excluded, error_code (protocol.ErrorCode / FailedLayer),
   reason, result_sha256, window_dataset_id, binding_sha256, started_at, ended_at}`. Nothing is ever deleted or overwritten.
 
@@ -74,11 +76,14 @@ legacy backend: unchanged code path and numbers (summary field None)
 3. Matrix columns: configs whose every planned window is `ok`. Others are listed in `exclusions[{config_id, reason}]` with
    reason ∈ {`worker_failed`, `admission_rejected`, `unsupported_semantics`, `incomplete_windows`, `zero_variance`,
    `insufficient_sessions`, `conflict`}. Any exclusion ⇒ `matrix_complete=false` ⇒ verdict capped at `fragile` (D3).
-4. Dataset generations (CODE-2b): matrix, cell counts and exclusions cover only the generation of the current plan's
-   `base_dataset_id`; datasets are never mixed in one matrix, and an incomplete current generation is `incomplete` as any
+4. Dataset generations (CODE-2b) and current plan selection (CODE-2c): matrix, cell counts and exclusions cover only
+   the current plan's cells (its `base_dataset_id` and its config keys), so a narrowed grid still yields a complete
+   matrix; datasets are never mixed in one matrix, and an incomplete current generation is `incomplete` as any
    experiment. `mixed_dataset` (no matrix) is kept only for an inconsistent ledger: an attempt whose dataset disagrees with
    its planned cell. A planned version mixing datasets is refused on write and fails closed on read. A conflict in any
-   generation fails the experiment closed.
+   generation or earlier plan fails the experiment closed **permanently** (engine nondeterminism needs a human). Operator
+   remedy: archive (move away) the ledger directory `<runs_root>/experiments/<experiment_id>/` to start a fresh
+   experiment. This resets N to the new plan, so it must be a deliberate, manual act, never automated.
 5. Retry policy: retry only `process`/`timeout`/spawn failures, `max_attempts=2` (settings). Deterministic codes (`schema`,
    `admission`, `module_origin`, `egress`, unsupported semantics) are terminal on first attempt.
 6. Resume: re-running the same `experiment_id` reads the ledger, skips cells with terminal `ok`, continues attempt numbers.
@@ -121,7 +126,7 @@ Every load-bearing test gets reverse verification (Testing Rule 7: mutate produc
 Files (new): `validation/{trials,matrix,experiment}.py`, `adapters/nautilus/experiment.py` (cell executor over
 `execute_run` internals; reuses one export per window), `validation/__init__.py` exports. Edit: `models.py`
 (`ExperimentSummary{experiment_id, n_planned, n_ok, n_failed, n_excluded, n_trials_dsr, external_trials, matrix_sha256,
-matrix_complete, exclusions, window_policy}`; `SweepResult.experiment`, `ValidationReport.experiment`,
+matrix_complete, exclusions, window_policy, n_planned_versions, n_datasets}`; `SweepResult.experiment`, `ValidationReport.experiment`,
 `ReconciliationReport.{diagnostic_only, modeled_differences}` — all optional), `settings.py` (bounds), `router_helpers.py`,
 `routers/run_router.py` (sweep, reconcile), `routers/validate_router.py` (validate, tearsheet), story manifests if the schema
 hash is pinned (`scripts/build_story_manifests.py`, reviewed diff).
@@ -252,3 +257,8 @@ T02 (pure stats + independent fixtures; no routing)  ->  T01 (ledger, matrix, ex
   - "Latest" = the generation of the current plan's `base_dataset_id` (a refresh back to an earlier dataset reuses that generation, nothing re-runs).
   - Bounds stay per plan (`max_configs=64`, `max_cells=512`, raw-combo pre-check). N may legitimately grow through history, so no cross-generation cap. Accepted: the ledger grows by at most one planned version per data refresh.
   - Accepted (fail closed): the raw-combo pre-check runs before normalisation, so it is stricter than the distinct count (65 raw combos that normalise to 60 configs are rejected).
+- **Old-generation conflict:** stays `failed_closed` permanently (accepted: engine nondeterminism needs human attention). Operator remedy: archive the ledger directory to start a fresh experiment; this resets N and must be a deliberate, manual act.
+- **CODE-2c:** experiment identity excludes the config set; grid changes append planned cells; matrix = current plan's cells; N = all configs ever planned/attempted + external.
+  - `experiment/3` spec; ids changed (no real ledgers existed), matrix hashes did not.
+  - `external_trials` is not identity either (it must not open a new ledger): each run's declaration is recorded in `external.jsonl`, the effective value is the maximum ever declared (conservative: N never decreases).
+  - `ExperimentSummary` gains `n_planned_versions` and `n_datasets`; both are in the CLI row.

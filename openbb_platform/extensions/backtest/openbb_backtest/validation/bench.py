@@ -173,6 +173,8 @@ def _row(
         "n_ok": s.n_ok,
         "n_failed": s.n_failed,
         "n_excluded": s.n_excluded,
+        "n_planned_versions": s.n_planned_versions,
+        "n_datasets": s.n_datasets,
         "attempts": len(outcome.ledger.records()),
         "new_attempts": appended,
         "n_trials_dsr": s.n_trials_dsr,

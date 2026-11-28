@@ -166,6 +166,7 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches,too-many-argu
     external_trials: int = 0,
     max_attempts: int = 2,
     dataset_id: str | None = None,
+    config_keys: Iterable[str] | None = None,
 ) -> Assembly:
     """Fold a planned list and its attempts into an :class:`Assembly`.
 
@@ -176,16 +177,29 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches,too-many-argu
     experiment unusable. ``N`` counts every configuration of every generation
     (:func:`n_trials_dsr`).
 
+    Current plan selection (CODE-2c): ``config_keys`` (default: every
+    configuration of the selected generation) narrows the matrix, the cell
+    counts and the exclusions to the current plan's configurations, so a
+    narrowed grid still yields a complete matrix. Configurations of earlier
+    plans affect only ``N``.
+
     Order-independent in ``records``. Matrix columns are configurations whose
     every planned window is ``ok``; every other configuration is excluded with a
     reason, and any exclusion makes the matrix incomplete. A conflict in any
-    generation fails the experiment closed (nondeterminism is never forgotten
-    by a refresh); an attempt that disagrees with its planned cell on the
+    generation or earlier plan fails the experiment closed (nondeterminism is
+    never forgotten by a refresh or a grid change); an attempt that disagrees with its planned cell on the
     dataset (a corrupted ledger) yields ``mixed_dataset`` and no matrix.
     """
     n = n_trials_dsr(records, external_trials, planned=planned)
     if dataset_id is None and planned:
         dataset_id = planned[-1].config.base_dataset_id
+    keys = None if config_keys is None else set(config_keys)
+
+    def in_plan(cell: Cell) -> bool:
+        return cell.config.base_dataset_id == dataset_id and (
+            keys is None or cell.config.config_key in keys
+        )
+
     all_states = [
         (c, cell_state(c.trial_id, c.config_id, records, max_attempts)) for c in planned
     ]
@@ -193,12 +207,10 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches,too-many-argu
         {
             c.config_id
             for c, st in all_states
-            if st.state == "conflict" and c.config.base_dataset_id != dataset_id
+            if st.state == "conflict" and not in_plan(c)
         }
     )
-    current = [
-        (c, st) for c, st in all_states if c.config.base_dataset_id == dataset_id
-    ]
+    current = [(c, st) for c, st in all_states if in_plan(c)]
     states = [st for _c, st in current]
     counts = {
         s: sum(1 for st in states if st.state == s)
@@ -226,7 +238,7 @@ def assemble(  # pylint: disable=too-many-locals,too-many-branches,too-many-argu
             else:
                 reason = "incomplete_windows"
             exclusions.append({"config_id": cfg, "reason": reason})
-    # A conflict on an older dataset still fails closed; list it.
+    # A conflict on an older dataset or an earlier plan still fails closed.
     for cfg in old_conflicts:
         conflict = True
         exclusions.append({"config_id": cfg, "reason": "conflict"})

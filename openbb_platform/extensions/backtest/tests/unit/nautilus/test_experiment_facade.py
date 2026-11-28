@@ -362,8 +362,10 @@ def test_reconcile_nautilus_is_diagnostic(tmp_path, monkeypatch, snap):
 
 
 SMALL = Path(__file__).parents[1] / "validation" / "fixtures" / "experiment_small.json"
-# experiment/2 (CODE-2): keyed on the dataset-independent spec.
-SMALL_EXPERIMENT_ID = "1da3e2f7c3bb575d06d80bdca653ee0ab0b248f83e1c849f1872a14db69b39e5"
+# experiment/3 (CODE-2c): keyed on the dataset-independent spec without the
+# configuration set or external_trials (experiment/2 hashed both, so the id
+# changed; the matrix hash below did not).
+SMALL_EXPERIMENT_ID = "aae80e0703724047ed48501704defcec28ca156e1e05d7b2655702f131291989"
 SMALL_MATRIX_SHA = "aeb710591c644eea1cfccd4d431cd42de4d54cd9c5d4ff7f0fae050f36191c11"
 
 
@@ -381,6 +383,8 @@ def test_experiment_run_cli_then_resume(tmp_path, capsys):
     assert first["matrix_sha256"] == SMALL_MATRIX_SHA
     assert (first["n_trials_dsr"], first["n_ok"], first["n_excluded"]) == (4, 3, 1)
     assert first["matrix_complete"] is False and first["new_attempts"] == 4
+    assert (first["n_planned_versions"], first["n_datasets"]) == (1, 1)
+    assert first["external_trials"] == 0
     assert second["new_attempts"] == 0
     assert {k: v for k, v in second.items() if k != "new_attempts"} == {
         k: v for k, v in first.items() if k != "new_attempts"
@@ -440,7 +444,7 @@ def snap_changed(tmp_path_factory) -> Path:
     return path
 
 
-def _refresh_plan(tmp: Path, snap: Path, name: str, combos):
+def _refresh_plan(tmp: Path, snap: Path, name: str, combos, external: int = 0):
     """Options on their own data root but the shared ``tmp/runs`` ledger root."""
     opts = _options(tmp / name, snap)
     opts = backend.NautilusOptions(**{**opts.__dict__, "runs_root": tmp / "runs"})
@@ -457,6 +461,7 @@ def _refresh_plan(tmp: Path, snap: Path, name: str, combos):
         policy="continuous",
         fold_params=folds.fold_params,
         options=opts,
+        external_trials=external,
     )
     return the_plan, config, opts
 
@@ -545,6 +550,66 @@ def test_rerun_after_refresh_keeps_prior_configs_in_n(tmp_path, snap, snap_chang
     back = experiment.run(plan_a, config, opts_a)
     assert back.appended == 0 and back.summary.n_trials_dsr == 2
     assert back.summary.matrix_sha256 == before.summary.matrix_sha256
+
+
+# --- CODE-2c: the experiment identity excludes the configuration set --------
+
+
+def _weights(*idx: int):
+    return experiment.expand_grid({"weights": [GRID["weights"][i] for i in idx]}, BASE)
+
+
+def test_grid_change_keeps_experiment_and_counts_every_config(tmp_path, snap):
+    """Widen then narrow the grid: one ledger, only new cells run, N never drops."""
+    plan_a, config, opts = _refresh_plan(tmp_path, snap, "a", _weights(0, 1))
+    first = experiment.run(plan_a, config, opts)
+    windows = len({c.window.ordinal for c in plan_a.cells})
+    plan_w, _c, _o = _refresh_plan(tmp_path, snap, "a", _weights(0, 1, 2))
+    assert plan_w.experiment_id == plan_a.experiment_id, "a wider grid opened a ledger"
+    wide = experiment.run(plan_w, config, opts)
+    assert wide.appended == windows, "re-ran configs already in the ledger"
+    assert wide.summary.n_trials_dsr == 3 and wide.summary.matrix_complete
+    assert (wide.summary.n_planned_versions, wide.summary.n_datasets) == (2, 1)
+    plan_n, _c, _o = _refresh_plan(tmp_path, snap, "a", _weights(0, 1))
+    assert plan_n.experiment_id == plan_a.experiment_id
+    narrow = experiment.run(plan_n, config, opts)
+    assert narrow.appended == 0
+    assert narrow.summary.n_trials_dsr == 3, "the dropped config left N"
+    assert narrow.summary.status == "ok" and narrow.summary.matrix_complete
+    assert narrow.summary.n_planned == first.summary.n_planned
+    assert narrow.summary.matrix_sha256 == first.summary.matrix_sha256
+    assert narrow.summary.n_planned_versions == 2
+
+
+def test_refresh_with_grid_change_summary(tmp_path, snap, snap_changed):
+    """New data and a narrower grid: one new version on the new dataset."""
+    plan_a, config, opts_a = _refresh_plan(tmp_path, snap, "a", _weights(0, 1, 2))
+    experiment.run(plan_a, config, opts_a)
+    plan_b, config, opts_b = _refresh_plan(tmp_path, snap_changed, "b", _weights(0))
+    assert plan_b.experiment_id == plan_a.experiment_id
+    out = experiment.run(plan_b, config, opts_b)
+    assert out.appended == len(plan_b.cells)
+    assert (out.summary.n_planned_versions, out.summary.n_datasets) == (2, 2)
+    assert out.summary.n_trials_dsr == 3
+    assert out.summary.status == "ok" and out.summary.matrix_complete
+    assert out.summary.n_planned == len(plan_b.cells)
+    _assert_matrix_from(out, plan_b, plan_a)
+
+
+def test_external_trials_change_keeps_ledger_and_never_lowers_n(tmp_path, snap):
+    """external_trials is not identity; N uses the largest value ever declared."""
+    combos = _weights(0, 1)
+    plan_5, config, opts = _refresh_plan(tmp_path, snap, "a", combos, external=5)
+    plan_2, _c, _o = _refresh_plan(tmp_path, snap, "a", combos, external=2)
+    plan_9, _c, _o = _refresh_plan(tmp_path, snap, "a", combos, external=9)
+    assert plan_5.experiment_id == plan_2.experiment_id == plan_9.experiment_id
+    assert experiment.run(plan_5, config, opts).summary.n_trials_dsr == 2 + 5
+    lower = experiment.run(plan_2, config, opts)
+    assert lower.appended == 0
+    assert (lower.summary.n_trials_dsr, lower.summary.external_trials) == (7, 5)
+    higher = experiment.run(plan_9, config, opts)
+    assert (higher.summary.n_trials_dsr, higher.summary.external_trials) == (11, 9)
+    assert experiment.run(plan_2, config, opts).summary.n_trials_dsr == 11
 
 
 # --- grid bounds are checked before any expansion (security MEDIUM) ----------

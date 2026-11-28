@@ -21,6 +21,14 @@ deleted or overwritten.
 Dataset generations (CODE-2b): every planned version holds the cells of one
 ``base_dataset_id``; a generation is all planned cells of one dataset. The
 return matrix comes from one generation only (see ``matrix.assemble``).
+
+Experiment identity excludes the configuration set (CODE-2c): a plan with a
+changed grid re-opens the same ledger and appends its new cells as a planned
+version, exactly like a refresh. The matrix covers the current plan's cells
+only; configurations of earlier plans affect only ``N``. ``external_trials`` is
+not part of the identity either: each run's declaration is recorded in
+``external.jsonl`` and the effective value is the maximum ever declared, so
+``N`` never decreases.
 """
 
 from __future__ import annotations
@@ -349,8 +357,8 @@ class TrialLedger:
         """Persist the planned cells before any dispatch (append-only, versioned).
 
         The first plan is ``planned.json``. A re-plan of the same experiment
-        that adds cells (CODE-2: refreshed data gives new configuration ids)
-        writes only the new cells to the next ``planned.v<k>.json``; earlier
+        that adds cells (CODE-2: refreshed data gives new configuration ids;
+        CODE-2c: a changed grid adds configurations) writes only the new cells to the next ``planned.v<k>.json``; earlier
         versions are never rewritten. A re-plan adding nothing writes nothing.
         The new cells of one write must share one ``base_dataset_id``.
         """
@@ -394,6 +402,55 @@ class TrialLedger:
     def planned(self) -> list[Cell]:
         """Every planned cell over all versions, in version order."""
         return [cell for version in self.planned_versions() for cell in version]
+
+    @property
+    def external_path(self) -> Path:
+        """``external.jsonl``: every increase of the declared external trials."""
+        return self.directory / "external.jsonl"
+
+    def declared_external(self) -> int:
+        """Largest ``external_trials`` ever declared (0 when none; fail closed).
+
+        A torn final line is ignored like a torn ledger line; any other
+        unreadable or negative entry raises :class:`ValueError`.
+        """
+        if not self.external_path.exists():
+            return 0
+        best = 0
+        lines = self.external_path.read_text("utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if not line.strip():
+                continue
+            try:
+                value = json.loads(line)["external_trials"]
+            except (json.JSONDecodeError, TypeError, KeyError):
+                if i == len(lines) - 1:
+                    logger.warning("ignoring torn final line in %s", self.external_path)
+                    continue
+                raise ValueError("unreadable external.jsonl entry") from None
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError("invalid external_trials entry in external.jsonl")
+            best = max(best, value)
+        return best
+
+    def declare_external(self, external_trials: int) -> int:
+        """Record this run's ``external_trials``; return the effective maximum.
+
+        CODE-2c: the declaration is a per-run input, not part of the experiment
+        identity, so changing it never opens a new ledger. The effective value
+        is the maximum ever declared, so a lower declaration never lowers ``N``.
+        Only an increase is appended (append-only, fsynced).
+        """
+        if external_trials < 0:
+            raise ValueError("external_trials must be >= 0")
+        prior = self.declared_external()
+        if external_trials > prior:
+            self.directory.mkdir(parents=True, exist_ok=True)
+            with self.external_path.open("a", encoding="utf-8", newline="\n") as fh:
+                fh.write(canonical({"external_trials": int(external_trials)}) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+        return max(prior, int(external_trials))
 
     def append(self, record: AttemptRecord) -> None:
         """Append one attempt record (refused before the planned list exists)."""

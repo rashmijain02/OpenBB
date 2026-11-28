@@ -303,9 +303,11 @@ class ExperimentSummary(Data):
     ``n_trials_dsr`` counts every distinct configuration planned on any dataset
     generation (failed and excluded included; retries and re-runs of the same
     configuration on refreshed data never add) plus ``external_trials``. The
-    cell counts and the matrix cover the current dataset generation only. Any
-    exclusion makes ``matrix_complete`` false, which caps the verdict at
-    ``fragile``.
+    cell counts and the matrix cover the current plan only (its dataset
+    generation and its configurations, CODE-2c); configurations of earlier
+    plans count only in ``n_trials_dsr``. ``external_trials`` is the largest
+    value ever declared for the experiment. Any exclusion makes
+    ``matrix_complete`` false, which caps the verdict at ``fragile``.
     """
 
     experiment_id: str = Field(description="sha256 of the experiment spec.")
@@ -320,7 +322,15 @@ class ExperimentSummary(Data):
     n_failed: int = Field(description="Cells that failed terminally.")
     n_excluded: int = Field(description="Cells excluded (e.g. admission).")
     n_trials_dsr: int = Field(description="N used for the deflated Sharpe ratio.")
-    external_trials: int = Field(description="Declared trials searched elsewhere.")
+    external_trials: int = Field(
+        description="Declared trials searched elsewhere (max ever declared)."
+    )
+    n_planned_versions: int = Field(
+        default=0, description="Planned versions (plans that added cells) recorded."
+    )
+    n_datasets: int = Field(
+        default=0, description="Distinct base datasets (generations) planned."
+    )
     matrix_sha256: str | None = Field(
         default=None, description="Hash of the canonical long-form return matrix."
     )

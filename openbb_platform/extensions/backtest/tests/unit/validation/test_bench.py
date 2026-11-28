@@ -156,8 +156,10 @@ def test_bench_failure_injections(tmp_path, clean):
     assert (changed["n_before"], changed["n_after"]) == (3, 3)
     assert changed["status"] == changed["status_before"] == "incomplete"
     assert changed["matrix_sha256"] is not None and changed["matrix_changed"] is True
+    # CODE-2c: the injected rejected configuration widens the grid; the grid is
+    # not part of the experiment identity, so the experiment id is unchanged.
     assert (
-        rep["scenarios"][0]["experiment_id"] != clean["scenarios"][0]["experiment_id"]
+        rep["scenarios"][0]["experiment_id"] == clean["scenarios"][0]["experiment_id"]
     )
 
 

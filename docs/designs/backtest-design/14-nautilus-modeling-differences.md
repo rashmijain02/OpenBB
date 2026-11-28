@@ -111,6 +111,14 @@ two engines agree.
   (PBO, DSR, fold metrics) is built from the current dataset's generation only, never from mixed
   data. `N` counts each configuration once whatever data it ran on, so a daily refresh does not
   inflate it, and a configuration tried only on older data still counts.
+- Grid changes: the experiment identity holds neither the dataset nor the configuration set, so a
+  narrowed or widened grid re-opens the same ledger and runs only cells it has not seen. The matrix
+  covers the current plan's configurations only; `N` keeps every configuration ever planned or
+  attempted plus the largest `external_trials` ever declared, so `N` never decreases.
+- A conflict (two `ok` attempts that disagree) fails the experiment closed permanently, even after a
+  refresh or grid change. Remedy: archive the experiment's ledger directory under
+  `<runs_root>/experiments/` and run again. This starts a fresh experiment and resets `N`, so it
+  must be a deliberate, manual act.
 
 **id:** `shared_metrics`
 
